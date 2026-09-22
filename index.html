@@ -1576,7 +1576,7 @@ function buildCotizacionPdf() {
     [`Indirectos ${(q.indirect * 100).toFixed(0)} %`, M(Q.ind)],
     [`Utilidad ${(q.utility * 100).toFixed(0)} %`, M(Q.uti)],
     ...(pctContingencia() ? [[`Contingencia ${(pctContingencia() * 100).toFixed(1)} % sobre costo directo`, M(Q.cont)]] : []),
-    [`Flete y maniobras ${(q.freight * 100).toFixed(1)} %`, M(Q.flete)],
+    [fleteLocalTxt("es"), M(Q.flete)],
     [`Fianzas ${(q.bond * 100).toFixed(1)} %`, M(Q.fianza)],
     [`Financiamiento ${(q.financing * 100).toFixed(1)} %`, M(Q.finan)],
     ["SUBTOTAL", M(Q.sub)],
@@ -1589,6 +1589,7 @@ function buildCotizacionPdf() {
   pdfParagraph(d, "Incluye: suministro de equipo, instalacion mecanica, bases, izaje, arranque y puesta en marcha, tuberia de refrigerante o hidraulica aislada, ducto de lamina galvanizada sellado, difusores con caja plenum y control DDC con tablero local por equipo.");
   pdfParagraph(d, "No incluye: permisos, ni certificacion de cuarto limpio salvo indicacion expresa. La obra civil, la instalacion electrica y las demas disciplinas se incluyen solo en la medida en que aparecen como concepto en la seccion 3.");
   if (Q.faltan && Q.faltan.length) pdfParagraph(d, "AVISO: esta cotizacion NO incluye " + Q.faltan.join(" ni ") + ", que la suite si calculo. Autorizar el cruce entre motores para incorporarlos antes de emitir.");
+  pdfParagraph(d, fleteNota("es"));
   if (pendientesTexto(Q).length) pdfParagraph(d, "PARTIDAS PENDIENTES, NO COTIZADAS (falta un dato; no se supone): " + pendientesTexto(Q).join(" · ") + ".");
   pdfParagraph(d, "Precios sujetos a verificacion contra lista vigente de fabricante al momento de la orden de compra. Equipo Carrier de importacion: confirmar tiempo de entrega, tipicamente 10 a 14 semanas para manejadoras y unidades condensadoras.");
   pdfParagraph(d, "Vigencia de la cotizacion: 15 dias naturales. Condiciones de pago sujetas a contrato.");
@@ -5224,7 +5225,7 @@ function buildPropuestaXlsx(opt) {
   rf.push([xV(XS.TD), xT(`${L("Indirectos", "Overhead")} ${n(q.indirect * 100, 0)} %`, XS.TD), xF(`C${rDir}*${q.indirect}`, XS.MXN), xV(XS.TD)]);
   rf.push([xV(XS.TD), xT(`${L("Utilidad", "Fee")} ${n(q.utility * 100, 0)} %`, XS.TD), xF(`(C${rDir}+C${rInd})*${q.utility}`, XS.MXN), xV(XS.TD)]);
   if (conCont) rf.push([xV(XS.TD), xT(`${L("Contingencia sobre costo directo", "Contingency on direct cost")} ${n(pctContingencia() * 100, 1)} %`, XS.TD), xF(`C${rDir}*${pctContingencia()}`, XS.MXN), xV(XS.TD)]);
-  rf.push([xV(XS.TD), xT(`${L("Flete, maniobras y seguro de transito", "Freight, rigging and transit insurance")} ${n(num(q.freight) * 100, 1)} %`, XS.TD), xF(`C${rDir}*${num(q.freight)}`, XS.MXN), xV(XS.TD)]);
+  rf.push([xV(XS.TD), xT(fleteLocalTxt(lang), XS.TD), xF(`C${rDir}*${num(q.freight)}`, XS.MXN), xV(XS.TD)]);
   rf.push([xV(XS.TD), xT(`${L("Fianzas de anticipo y cumplimiento", "Advance payment and performance bonds")} ${n(num(q.bond) * 100, 1)} %`, XS.TD), xF(`C${rDir}*${num(q.bond)}`, XS.MXN), xV(XS.TD)]);
   if (conFin) rf.push([xV(XS.TD), xT(`${L("Financiamiento", "Financing")} ${n(num(q.financing) * 100, 1)} %`, XS.TD), xF(`C${rDir}*${num(q.financing)}`, XS.MXN), xV(XS.TD)]);
   rf.push([xV(XS.SUBT), xT(L("SUBTOTAL ANTES DE IMPUESTO", "SUBTOTAL BEFORE TAX"), XS.SUBT), xF(`SUM(C${rDir}:C${rFin})`, XS.SUBT), xV(XS.SUBT)]);
@@ -5683,6 +5684,7 @@ function buildPropuestaXlsx(opt) {
   secC(L("1. CONDICIONES COMERCIALES", "1. COMMERCIAL TERMS"));
   li(L(`Vigencia: ${num(P0.vigencia, 30)} dias calendario a partir de la fecha de emision de esta propuesta.`,
     `Validity: ${num(P0.vigencia, 30)} calendar days from the issue date of this proposal.`));
+  li(`${fleteLocalTxt(lang)}. ${fleteNota(lang)}`);
   li(L(`Moneda: ${mon}${mon === "USD" ? `, con tipo de cambio de ${fxTexto("es")} que se reconsidera al momento de contratar.` : "."}`,
     `Currency: ${mon}${mon === "USD" ? `, at an exchange rate of ${fxTexto("en")} to be revisited at contract award.` : "."}`));
   li(L(`Impuesto: ${n(q.iva * 100, 0)} %${q.iva === 0.08 ? " conforme al estimulo fiscal de la Region Fronteriza Norte, mientras este vigente y el domicilio de la obra califique." : "."}`,
@@ -6563,7 +6565,7 @@ function buildPropuestaPdf(opt) {
     [`${L("Indirectos", "Overhead")} ${n(S.quote.indirect * 100, 0)} %`, $(Q.ind)],
     [`${L("Utilidad", "Fee")} ${n(S.quote.utility * 100, 0)} %`, $(Q.uti)],
     ...(pctContingencia() ? [[`${L("Contingencia sobre costo directo", "Contingency on direct cost")} ${n(pctContingencia() * 100, 1)} %`, $(Q.cont)]] : []),
-    [`${L("Flete y maniobras", "Freight and handling")} ${n(num(S.quote.freight) * 100, 1)} %`, $(Q.flete)],
+    [fleteLocalTxt(lang), $(Q.flete)],
     [`${L("Fianzas", "Bonds")} ${n(num(S.quote.bond) * 100, 1)} %`, $(Q.fianza)],
     [L("SUBTOTAL antes de impuesto", "SUBTOTAL before tax"), $(Q.sub)],
     [`${L("IVA", "VAT")} ${n(S.quote.iva * 100, 0)} %`, $(Q.iva)],
@@ -6609,6 +6611,7 @@ function buildPropuestaPdf(opt) {
     }), [55, 195, 230]);
 
   pdfHeading(d, `${secN + 3}. ${L("Condiciones", "Terms")}`);
+  pdfParagraph(d, `${fleteLocalTxt(lang)}. ${fleteNota(lang)}`);
   if ((Q.referencias || []).length) pdfParagraph(d, L(
     `PRECIOS DE REFERENCIA DE MERCADO, SUJETOS A COTIZACION DE PROVEEDOR: ${Q.referencias.map((r) => refTexto(r, "es")).join(" · ")}.`,
     `MARKET REFERENCE PRICES, SUBJECT TO SUPPLIER QUOTATION: ${Q.referencias.map((r) => refTexto(r, "en")).join(" · ")}.`), { color: PDF_SENAL });
@@ -8207,6 +8210,12 @@ const refTexto = (r, lang) => {
   const ed = r.edicion ? `, ${lang === "en" ? "ed." : "ed."} ${r.edicion}` : "", pg = r.pagina ? `, ${lang === "en" ? "p." : "p."} ${r.pagina}` : "";
   return `${r.desc} (${r.fuente}${ed}${pg}${r.ubicacion ? ", " + r.ubicacion : ""}${r.fecha ? ", " + r.fecha : ""}; ${n(r.bruto, 2)} ${r.moneda}${r.porTramo && r.porTramo !== 1 ? (lang === "en" ? ` per ${n(r.porTramo, 2)} m` : ` por ${n(r.porTramo, 2)} m`) : ""}, ${alc}, ${imp}, ${lista})`;
 };
+/* rev 2.9.23 · decisión del dueño (22-sep-2026): «Flete local y maniobras en obra» es parámetro comercial suyo (no estimación);
+   se dice siempre, también en 0 o sin capturar, y la cotización aclara que NO incluye flete de importación, aduana ni internación (sección H). */
+const fleteLocalTxt = (lang) => { const p = num(S.quote && S.quote.freight, 0); const cap = S.quote && S.quote.freight !== undefined && S.quote.freight !== null && S.quote.freight !== "";
+  return lang === "en" ? `Local freight and site handling ${n(p * 100, 1)} %${p > 0 ? "" : cap ? " (set to 0)" : " (not captured)"}` : `Flete local y maniobras en obra ${n(p * 100, 1)} %${p > 0 ? "" : cap ? " (en 0)" : " (sin capturar)"}`; };
+const fleteNota = (lang) => lang === "en" ? "Local freight and site handling does NOT include import freight, customs or entry into Mexico: those go in section H (Freight, customs and import into Mexico), always as a separate line, never prorated."
+  : "El flete local y maniobras en obra NO incluye flete de importacion, aduana ni internacion a Mexico: eso va en la seccion H (Flete, aduana e importacion a Mexico), siempre como renglon aparte, nunca prorrateado.";
 const hidroPUetiqueta = (o) => o === "referencia" ? "Referencia Budget" : "Proveedor local";
 /* Sustituir una referencia por costo de proveedor deja el antes y el después en la bitácora del proyecto. */
 function hidroPUPoner(clave, nuevo, via) {
@@ -18822,7 +18831,7 @@ function viewCotizacion() {
             <div class="qstep"><span>Indirectos · ${(q.indirect * 100).toFixed(0)} %</span><span class="n">${M(Q.ind)}</span></div>
             <div class="qstep"><span>Utilidad · ${(q.utility * 100).toFixed(0)} %</span><span class="n">${M(Q.uti)}</span></div>
             ${pctContingencia() ? `<div class="qstep"><span>Contingencia · ${(pctContingencia() * 100).toFixed(1)} % sobre directo</span><span class="n">${M(Q.cont)}</span></div>` : ""}
-            ${Q.flete ? `<div class="qstep"><span>Flete y maniobras · ${(q.freight * 100).toFixed(1)} %</span><span class="n">${M(Q.flete)}</span></div>` : ""}
+            <div class="qstep"><span>${fleteLocalTxt("es")}</span><span class="n">${M(Q.flete)}</span></div>
             ${Q.fianza ? `<div class="qstep"><span>Fianzas · ${(q.bond * 100).toFixed(1)} %</span><span class="n">${M(Q.fianza)}</span></div>` : ""}
             ${Q.finan ? `<div class="qstep"><span>Financiamiento · ${(q.financing * 100).toFixed(1)} %</span><span class="n">${M(Q.finan)}</span></div>` : ""}
             <div class="qstep sum"><span>Subtotal</span><span class="n">${M(Q.sub)}</span></div>
@@ -18888,7 +18897,7 @@ function viewCotizacion() {
           ${slider("Utilidad", "quote.utility", q.utility, 0, 0.40, 0.01, (v) => (v * 100).toFixed(0) + " %", "margen de la empresa")}
           ${slider("Contingencia", "quote.contingencia", num(q.contingencia, QUOTE_SEED.contingencia), 0, 0.30, 0.005, (v) => (v * 100).toFixed(1) + " %", "sobre el costo directo")}
           ${slider("Instalación sobre equipo", "quote.instPct", q.instPct, 0, 0.90, 0.01, (v) => (v * 100).toFixed(0) + " %", "mano de obra y accesorios")}
-          ${slider("Flete y maniobras", "quote.freight", q.freight, 0, 0.10, 0.005, (v) => (v * 100).toFixed(1) + " %", "sobre el costo directo")}
+          ${slider("Flete local y maniobras en obra", "quote.freight", q.freight, 0, 0.10, 0.005, (v) => (v * 100).toFixed(1) + " %", "sobre el costo directo · parámetro comercial; no incluye importación ni aduana (sección H)")}
           <div class="hint" style="margin-top:8px"><b>Flete, aduana e importación a México</b> · renglón propio (sección H). Sale «Por cotizar» hasta capturarlo con monto, fuente y fecha; nunca se prorratea ni se estima.</div>
           <div class="row">
             ${inp("Monto de importación", "quote.importacion.monto", "number", "1")}

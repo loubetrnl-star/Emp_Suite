@@ -6033,6 +6033,31 @@ t("S.41 (rev 2.9.23) referencias de mercado: únicamente California y sólo mate
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+/* ===== Flete local y maniobras en obra (rev 2.9.23, decisión del dueño 22-sep-2026) ===== */
+t("S.42 (rev 2.9.23) «Flete local y maniobras en obra»: parámetro comercial, se dice siempre (también en 0 o sin capturar) y la cotización aclara que no incluye flete de importación, aduana ni internación (sección H)", () => {
+  const guardado = JSON.stringify(S);
+  const txtPdf = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.42"; Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.42" }; });
+    S.zones[0].area = 100; S.zones[0].height = 3; S.quote.freight = 0.025; G("recompute")();
+    const nota = "NO incluye flete de importacion, aduana ni internacion a Mexico: eso va en la seccion H";
+    const prop = txtPdf(G("buildPropuestaPdf")({ lang: "es", mon: "MXN" }));
+    contiene(prop, "Flete local y maniobras en obra 2.5 %", "propuesta PDF: nombre nuevo con porcentaje:"); contiene(prop, nota, "propuesta PDF: aclaración de no doble cobro:");
+    if (/Flete y maniobras\b/.test(prop)) throw new Error("quedó el nombre viejo en la propuesta");
+    contiene(txtPdf(G("buildPropuestaPdf")({ lang: "en", mon: "USD" })), "Local freight and site handling 2.5 %", "en inglés:"); contiene(txtPdf(G("buildPropuestaPdf")({ lang: "en", mon: "USD" })), "does NOT include import freight, customs or entry into Mexico", "aclaración en inglés:");
+    const xl = Buffer.from(G("buildPropuestaXlsx")({ lang: "es", mon: "MXN" })).toString("utf8");
+    contiene(xl, "Flete local y maniobras en obra 2.5 %", "Excel: resumen:"); contiene(xl, nota, "Excel: condiciones:"); if (/Flete, maniobras y seguro de transito/.test(xl)) throw new Error("quedó el nombre viejo en el Excel");
+    const tec = txtPdf(G("buildCotizacionPdf")()); contiene(tec, "Flete local y maniobras en obra 2.5 %", "cotización técnica:"); contiene(tec, nota, "cotización técnica: aclaración:");
+    /* En 0 o sin capturar: se dice, no se omite. */
+    S.quote.freight = 0; G("recompute")();
+    contiene(txtPdf(G("buildPropuestaPdf")({ lang: "es", mon: "MXN" })), "Flete local y maniobras en obra 0 % (en 0)", "en 0 se dice:");
+    contiene(Buffer.from(G("buildPropuestaXlsx")({ lang: "es", mon: "MXN" })).toString("utf8"), "Flete local y maniobras en obra 0 % (en 0)", "Excel en 0:");
+    delete S.quote.freight; G("recompute")();
+    contiene(txtPdf(G("buildPropuestaPdf")({ lang: "es", mon: "MXN" })), "Flete local y maniobras en obra 0 % (sin capturar)", "sin capturar se dice:");
+    S.tab = "cotizacion"; G("render")(); contiene(w.document.querySelector("#view").innerHTML, "Flete local y maniobras en obra", "pantalla: nombre nuevo:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 /* ============================== resultado =============================== */
 t("R.7 H-95 la licitación, la propuesta, la cotización y la memoria integral ya traen bloque de firma (Revisado por / Aprobado por)", () => {
   const g = { perms: JSON.parse(JSON.stringify(S.perms)) };

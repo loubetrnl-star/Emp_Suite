@@ -80,3 +80,9 @@ Pruebas de humo sobre la rev actual (no se rehízo nada):
 6. **Flete, aduana e importación a México**: sección H propia, siempre «Por cotizar» (Budget PDF/Excel, contador, pendiente en la formal) hasta capturar monto, moneda, fuente y fecha en Cotización. Nunca se prorratea ni se estima. Nota: el porcentaje «Flete y maniobras» sobre el costo directo (parámetro comercial del dueño, capturable) se dejó como estaba; si también debe salir, es decisión aparte.
 
 Motor `quote` 5 → 6. Pruebas: S.20 y S.39 ajustadas (la importación siempre pendiente), S.41 reescrita (11 bloques: IUSA fuera y archivada, referencia de prueba, etiqueta honesta, sólo material, únicamente California, USD con tipo de cambio fechado, Por cotizar y formal bloqueada, importación, proveedor local por pantalla y CSV, pantalla). Banco 350/350 y 355/355 con base.
+
+## 10. Decisión del dueño (22-sep-2026): «Flete local y maniobras en obra»
+- El porcentaje sobre el costo directo se queda: es parámetro comercial del dueño, no estimación. Se renombra **«Flete local y maniobras en obra»** (antes «Flete y maniobras» / «Flete, maniobras y seguro de tránsito») en cotización técnica, propuesta PDF y Excel (resumen y condiciones) y pantalla.
+- La cotización aclara siempre: **no incluye flete de importación, aduana ni internación a México; eso va en la sección H**, renglón aparte, nunca prorrateado. Así no hay doble cobro ni confusión con el cliente.
+- En 0 o sin capturar se dice explícitamente («0 % (en 0)» / «0 % (sin capturar)»), no se omite.
+- Cambio de texto/documento: sin cambio de números ni de `MOTOR_VER`. Prueba S.42. Banco 351/351 y 356/356 con base.
