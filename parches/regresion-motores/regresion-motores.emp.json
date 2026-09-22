@@ -354,31 +354,31 @@
  "her": {
   "vent.area": {
    "modo": "heredado",
-   "ts": 1790063465918,
+   "ts": 1790065668518,
    "valor": 700,
    "origen": "load"
   },
   "vent.height": {
    "modo": "heredado",
-   "ts": 1790063465918,
+   "ts": 1790065668518,
    "valor": 4.71,
    "origen": "load"
   },
   "vent.occ": {
    "modo": "heredado",
-   "ts": 1790063465918,
+   "ts": 1790065668518,
    "valor": 46,
    "origen": "load"
   },
   "fuego.area": {
    "modo": "heredado",
-   "ts": 1790063465918,
+   "ts": 1790065668518,
    "valor": 700,
    "origen": "load"
   },
   "fuego.altura": {
    "modo": "heredado",
-   "ts": 1790063465918,
+   "ts": 1790065668518,
    "valor": 4.71,
    "origen": "load"
   }
@@ -435,7 +435,7 @@
   },
   "segments": [
    {
-    "id": "svii6bd",
+    "id": "sdwjlca",
     "tag": "TR-1",
     "service": "supply",
     "shape": "rect",
@@ -459,7 +459,7 @@
     ]
    },
    {
-    "id": "s0exlz5",
+    "id": "shnpjrt",
     "tag": "TR-2",
     "service": "supply",
     "shape": "rect",
@@ -483,7 +483,7 @@
     ]
    },
    {
-    "id": "saxmyq8",
+    "id": "s3o3u3w",
     "tag": "RT-1",
     "service": "return",
     "shape": "rect",
@@ -528,6 +528,12 @@
   "fx": 18.5,
   "fxFecha": "2026-09-22",
   "fxFuente": "fixture de regresión",
+  "importacion": {
+   "monto": 0,
+   "moneda": "MXN",
+   "fuente": "",
+   "fecha": ""
+  },
   "plaza": "tijuana",
   "basePrecio": "casa",
   "fasar": 1.45,
@@ -561,100 +567,124 @@
   "hidroPU": {
    "cobre_1_2_": 128,
    "cobre_3_4_": {
-    "precio": 1762,
-    "moneda": "MXN",
-    "iva": true,
-    "porTramo": 6.1,
+    "precio": 3.1,
+    "moneda": "USD",
+    "iva": false,
+    "porTramo": 1,
     "origen": "referencia",
-    "fuente": "Tienda IUSA, menudeo, tubo rígido tipo L tramo 6.10 m",
-    "ubicacion": "México",
-    "lista": "neta",
+    "alcance": "material",
+    "fuente": "REFERENCIA DE PRUEBA del fixture de regresión (no es una fuente real)",
+    "edicion": "",
+    "pagina": "",
+    "ubicacion": "San Diego, CA (fixture)",
+    "lista": "no especificado",
     "url": "",
-    "fecha": "2026-09-21"
+    "fecha": "2026-09-22"
    },
    "cobre_1_": {
-    "precio": 2924.99,
-    "moneda": "MXN",
-    "iva": true,
-    "porTramo": 6.1,
+    "precio": 4.6,
+    "moneda": "USD",
+    "iva": false,
+    "porTramo": 1,
     "origen": "referencia",
-    "fuente": "Tienda IUSA, menudeo, tubo rígido tipo L tramo 6.10 m",
-    "ubicacion": "México",
-    "lista": "neta",
+    "alcance": "material",
+    "fuente": "REFERENCIA DE PRUEBA del fixture de regresión (no es una fuente real)",
+    "edicion": "",
+    "pagina": "",
+    "ubicacion": "San Diego, CA (fixture)",
+    "lista": "no especificado",
     "url": "",
-    "fecha": "2026-09-21"
+    "fecha": "2026-09-22"
    },
    "cobre_1_1_4_": {
-    "precio": 6172.11,
-    "moneda": "MXN",
+    "precio": 6.2,
+    "moneda": "USD",
     "iva": false,
-    "porTramo": 6.1,
+    "porTramo": 1,
     "origen": "referencia",
-    "fuente": "IUSA lista de precios distribuidor plomería-cobre vigente 11-ago-2026, tipo L cód. 308765",
-    "ubicacion": "México",
-    "lista": "bruta",
-    "url": "https://www.iusa.com.mx/assets/descargables/listas/construccion/lista-de-precios-plomeria-cobre.pdf",
-    "fecha": "2026-09-21"
+    "alcance": "material",
+    "fuente": "REFERENCIA DE PRUEBA del fixture de regresión (no es una fuente real)",
+    "edicion": "",
+    "pagina": "",
+    "ubicacion": "San Diego, CA (fixture)",
+    "lista": "no especificado",
+    "url": "",
+    "fecha": "2026-09-22"
    },
    "cobre_1_1_2_": {
-    "precio": 8045.11,
-    "moneda": "MXN",
+    "precio": 8,
+    "moneda": "USD",
     "iva": false,
-    "porTramo": 6.1,
+    "porTramo": 1,
     "origen": "referencia",
-    "fuente": "IUSA lista de precios distribuidor plomería-cobre vigente 11-ago-2026, tipo L cód. 308766",
-    "ubicacion": "México",
-    "lista": "bruta",
-    "url": "https://www.iusa.com.mx/assets/descargables/listas/construccion/lista-de-precios-plomeria-cobre.pdf",
-    "fecha": "2026-09-21"
+    "alcance": "material",
+    "fuente": "REFERENCIA DE PRUEBA del fixture de regresión (no es una fuente real)",
+    "edicion": "",
+    "pagina": "",
+    "ubicacion": "San Diego, CA (fixture)",
+    "lista": "no especificado",
+    "url": "",
+    "fecha": "2026-09-22"
    },
    "cobre_2_": {
-    "precio": 12851.2,
-    "moneda": "MXN",
+    "precio": 12.9,
+    "moneda": "USD",
     "iva": false,
-    "porTramo": 6.1,
+    "porTramo": 1,
     "origen": "referencia",
-    "fuente": "IUSA lista de precios distribuidor plomería-cobre vigente 11-ago-2026, tipo L cód. 308767",
-    "ubicacion": "México",
-    "lista": "bruta",
-    "url": "https://www.iusa.com.mx/assets/descargables/listas/construccion/lista-de-precios-plomeria-cobre.pdf",
-    "fecha": "2026-09-21"
+    "alcance": "material",
+    "fuente": "REFERENCIA DE PRUEBA del fixture de regresión (no es una fuente real)",
+    "edicion": "",
+    "pagina": "",
+    "ubicacion": "San Diego, CA (fixture)",
+    "lista": "no especificado",
+    "url": "",
+    "fecha": "2026-09-22"
    },
    "cobre_2_1_2_": {
-    "precio": 22748.07,
-    "moneda": "MXN",
+    "precio": 22.7,
+    "moneda": "USD",
     "iva": false,
-    "porTramo": 6.1,
+    "porTramo": 1,
     "origen": "referencia",
-    "fuente": "IUSA lista de precios distribuidor plomería-cobre vigente 11-ago-2026, tipo L cód. 308768",
-    "ubicacion": "México",
-    "lista": "bruta",
-    "url": "https://www.iusa.com.mx/assets/descargables/listas/construccion/lista-de-precios-plomeria-cobre.pdf",
-    "fecha": "2026-09-21"
+    "alcance": "material",
+    "fuente": "REFERENCIA DE PRUEBA del fixture de regresión (no es una fuente real)",
+    "edicion": "",
+    "pagina": "",
+    "ubicacion": "San Diego, CA (fixture)",
+    "lista": "no especificado",
+    "url": "",
+    "fecha": "2026-09-22"
    },
    "cobre_3_": {
-    "precio": 30821.54,
-    "moneda": "MXN",
+    "precio": 30.8,
+    "moneda": "USD",
     "iva": false,
-    "porTramo": 6.1,
+    "porTramo": 1,
     "origen": "referencia",
-    "fuente": "IUSA lista de precios distribuidor plomería-cobre vigente 11-ago-2026, tipo L cód. 312964",
-    "ubicacion": "México",
-    "lista": "bruta",
-    "url": "https://www.iusa.com.mx/assets/descargables/listas/construccion/lista-de-precios-plomeria-cobre.pdf",
-    "fecha": "2026-09-21"
+    "alcance": "material",
+    "fuente": "REFERENCIA DE PRUEBA del fixture de regresión (no es una fuente real)",
+    "edicion": "",
+    "pagina": "",
+    "ubicacion": "San Diego, CA (fixture)",
+    "lista": "no especificado",
+    "url": "",
+    "fecha": "2026-09-22"
    },
    "cobre_4_": {
-    "precio": 57438.08,
-    "moneda": "MXN",
+    "precio": 57.4,
+    "moneda": "USD",
     "iva": false,
-    "porTramo": 6.1,
+    "porTramo": 1,
     "origen": "referencia",
-    "fuente": "IUSA lista de precios distribuidor plomería-cobre vigente 11-ago-2026, tipo L cód. 312967",
-    "ubicacion": "México",
-    "lista": "bruta",
-    "url": "https://www.iusa.com.mx/assets/descargables/listas/construccion/lista-de-precios-plomeria-cobre.pdf",
-    "fecha": "2026-09-21"
+    "alcance": "material",
+    "fuente": "REFERENCIA DE PRUEBA del fixture de regresión (no es una fuente real)",
+    "edicion": "",
+    "pagina": "",
+    "ubicacion": "San Diego, CA (fixture)",
+    "lista": "no especificado",
+    "url": "",
+    "fecha": "2026-09-22"
    }
   },
   "hidroPUlog": [],
@@ -762,7 +792,7 @@
   "fpObjetivo": 0.95,
   "cargas": [
    {
-    "id": "cdkntxf",
+    "id": "c1oi94n",
     "nombre": "Compresor de proceso",
     "tipo": "motor",
     "kW": 15,
@@ -774,7 +804,7 @@
     "fija": false
    },
    {
-    "id": "cv7jypw",
+    "id": "czo24bv",
     "nombre": "Alumbrado",
     "tipo": "alumbrado",
     "kW": 9.5,
@@ -816,7 +846,7 @@
   "presRed": 0,
   "tramos": [
    {
-    "id": "hxxhmqu",
+    "id": "h83aajk",
     "tag": "AF-GENERAL",
     "servicio": "fria",
     "um": 72,
@@ -825,7 +855,7 @@
     "tipoUM": "auto"
    },
    {
-    "id": "h9wmkz4",
+    "id": "hdb6kr7",
     "tag": "AF-RAMAL BAÑOS",
     "servicio": "fria",
     "um": 20,
@@ -880,7 +910,7 @@
   "redundancia": "ninguna",
   "consumos": [
    {
-    "id": "a8q2e6q",
+    "id": "azovknu",
     "tipo": "generico",
     "nombre": "Sopleteo",
     "cant": 2,
@@ -889,7 +919,7 @@
     "uso": 0.5
    },
    {
-    "id": "aghhhq4",
+    "id": "a2lbuyk",
     "tipo": "generico",
     "nombre": "Actuadores",
     "cant": 4,

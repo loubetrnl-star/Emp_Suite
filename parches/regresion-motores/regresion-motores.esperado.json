@@ -110,11 +110,11 @@
    }
   },
   "quote": {
-   "ver": "5",
+   "ver": "6",
    "cifras": {
-    "direct": 12402931.921478646,
-    "sub": 18748271.892507117,
-    "tot": 21747995.395308256,
+    "direct": 12335153.650167169,
+    "sub": 18645818.25759269,
+    "tot": 21629149.17880752,
     "aux": [
      [
       "Instalación mecánica, bases, izaje y arranque (35 % del equipo)",
@@ -172,14 +172,14 @@
       76400
      ],
      [
-      "Tubería de Cobre tipo L de 2\" instalada y probada (25 m de los tramos calculados)",
+      "Tubería de Cobre tipo L de 2\" · material, precio de referencia de mercado (25 m de los tramos calculados); mano de obra por capturar",
       25,
-      52668.8524590164
+      5966.25
      ],
      [
-      "Tubería de Cobre tipo L de 1 1/2\" instalada y probada (18 m de los tramos calculados)",
+      "Tubería de Cobre tipo L de 1 1/2\" · material, precio de referencia de mercado (18 m de los tramos calculados); mano de obra por capturar",
       18,
-      23739.668852459017
+      2664
      ],
      [
       "Cisterna de 0 m³ y equipo de bombeo de 2 HP",
@@ -332,7 +332,10 @@
       29100
      ]
     ],
-    "pendientes": []
+    "pendientes": [
+     "Flete, aduana e importación a México",
+     "Mano de obra de tubería hidráulica (rendimientos y costos propios; la referencia de mercado sólo cubre material)"
+    ]
    }
   },
   "valor": {

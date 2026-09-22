@@ -56,3 +56,27 @@ Pruebas de humo sobre la rev actual (no se rehízo nada):
 - Moneda: `S.quote.fxFecha` y `S.quote.fxFuente` capturables; `fxVigente()` sólo con tipo > 0 y fecha AAAA-MM-DD. Un precio en USD sin tipo de cambio fechado no se convierte: sale «Por cotizar» (motivo «tipo de cambio sin capturar») y bloquea la formal. El tipo de cambio con su fecha y fuente se imprime en la cotización técnica, la propuesta (PDF y Excel) y las condiciones. Motor `quote` 4 → 5 con hallazgo.
 - Etiqueta de cada precio: fuente, ubicación, fecha, moneda, impuestos incluidos/antes de impuestos, lista bruta/neta (renglón, CSV con columnas `ubicacion` y `lista`, pantalla, leyenda del Budget).
 - Regresión: el proyecto fijo pasa a cobre tipo L (1/2" con precio numérico de proveedor local; el resto por referencia de mercado) para que el golden ejercite ambas rutas; tipo de cambio fechado en el fixture. Se regeneraron `hidro` y `quote` a propósito (cambio de fixture, no de lógica de hidro).
+
+## 9. Decisiones del dueño (22-sep-2026): Craftsman aprobado, sólo material, etiqueta honesta, Terra Universal, IUSA fuera, importación
+1. **Fuente aprobada**: Craftsman Book Company (Carlsbad, CA), estimadores 2026 de construcción, plomería/HVAC y eléctrico, factor de área San Diego. El dueño consigue los libros/acceso y pasa el PDF. **No se ha cargado nada.**
+2. **Sólo material**: de la fuente se toma únicamente el costo de material; la mano de obra la pone la empresa con sus rendimientos y costos. Renglón de referencia con `alcance: "material"`; si la fuente combina material + mano de obra sin separarlos (`material_mo`) → «Por cotizar». Mientras no se capture la mano de obra, cada red con referencia de material deja el pendiente «mano de obra por capturar» (no se estima).
+3. **Etiqueta honesta**: cada precio se imprime como lo describe la fuente: fuente, edición, página, ubicación, fecha, moneda, alcance, impuestos (incluidos / antes de impuestos / **no especificado**), lista (texto tal cual / **no especificado**). Se retiró el valor «lista bruta» que se había puesto por suposición.
+4. **Terra Universal** (Fullerton, CA): complemento sólo para cuarto limpio (FFU, HEPA, paneles, puertas, pass-through), con su propia fuente y fecha de consulta. Todo lo demás, Craftsman o «Por cotizar». Se cargará junto con Craftsman al extender el modelo de referencia a las demás secciones.
+5. **IUSA fuera del Budget** (regla: únicamente California). `HIDRO_PU_REFERENCIA` queda vacía; el cobre sale «Por cotizar» hasta recibir los libros. Al abrir un proyecto guardado con referencias fuera de California, `sanearEstado` las retira y deja el antes/después en `hidroPUlog` (vía «regla California»). Archivo de lo retirado (cobre tipo L, tramo 6.10 m, MXN; antes → después):
+
+| Diámetro | Antes (referencia IUSA) | MXN/m antes de IVA | Después |
+|---|---:|---:|---|
+| 1/2" | 1,105.00 con IVA (Tienda IUSA menudeo, 21-sep-2026) | 156.15 | Por cotizar |
+| 3/4" | 1,762.00 con IVA (ídem) | 249.01 | Por cotizar |
+| 1" | 2,924.99 con IVA (ídem) | 413.36 | Por cotizar |
+| 1-1/4" | 6,172.11 sin IVA (lista distribuidor IUSA vigente 11-ago-2026, cód. 308765) | 1,011.82 | Por cotizar |
+| 1-1/2" | 8,045.11 sin IVA (cód. 308766) | 1,318.87 | Por cotizar |
+| 2" | 12,851.20 sin IVA (cód. 308767) | 2,106.75 | Por cotizar |
+| 2-1/2" | 22,748.07 sin IVA (cód. 308768) | 3,729.19 | Por cotizar |
+| 3" | 30,821.54 sin IVA (cód. 312964) | 5,052.71 | Por cotizar |
+| 4" | 57,438.08 sin IVA (cód. 312967) | 9,416.08 | Por cotizar |
+
+   Fixture de regresión: referencia de prueba aislada («REFERENCIA DE PRUEBA del fixture de regresión, no es una fuente real», San Diego CA, USD, sólo material) en 3/4"–4" y proveedor local numérico en 1/2"; esperado de `quote` regenerado (v6).
+6. **Flete, aduana e importación a México**: sección H propia, siempre «Por cotizar» (Budget PDF/Excel, contador, pendiente en la formal) hasta capturar monto, moneda, fuente y fecha en Cotización. Nunca se prorratea ni se estima. Nota: el porcentaje «Flete y maniobras» sobre el costo directo (parámetro comercial del dueño, capturable) se dejó como estaba; si también debe salir, es decisión aparte.
+
+Motor `quote` 5 → 6. Pruebas: S.20 y S.39 ajustadas (la importación siempre pendiente), S.41 reescrita (11 bloques: IUSA fuera y archivada, referencia de prueba, etiqueta honesta, sólo material, únicamente California, USD con tipo de cambio fechado, Por cotizar y formal bloqueada, importación, proveedor local por pantalla y CSV, pantalla). Banco 350/350 y 355/355 con base.

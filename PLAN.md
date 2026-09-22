@@ -1,6 +1,6 @@
 # PLAN · Fuente única de precios de referencia (California, USD) para el Budget Proposal
 
-Estado: **PROPUESTA, pendiente de aprobación del dueño**. No se ha cargado ningún precio de esta fuente. Fecha: 22-sep-2026.
+Estado: **APROBADO por el dueño el 22-sep-2026** (fuente A + Terra Universal sólo cuarto limpio). No se ha cargado ningún precio: se espera el PDF/acceso a los libros. Reglas añadidas por el dueño: sólo costo de material (mano de obra propia; combinados → Por cotizar); etiqueta exactamente como la describe la fuente (lo que no diga: «no especificado»); IUSA fuera (archivado en Bitacora-rev-2.9.23.md §9); flete/aduana/importación en renglón propio siempre Por cotizar hasta capturarlo. Modelo y pruebas listos en la suite (S.41).
 
 ## 1. Lo que pediste
 - Una sola fuente, con sede en California, para **todos** los componentes (no sólo cobre).
