@@ -5904,6 +5904,30 @@ t("R.2 abrir un proyecto viejo nunca recalcula solo: los sellos quedan como ven�
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+/* ===== Instalación limpia (rev 2.9.22, decisión del dueño): la suite se entrega en vacío ===== */
+const wLimpia = await cargar(file);
+t("S.40 una instalación limpia abre con todo en cero: sin proyectos, sin cuartos, cargas, cantidades ni precios de ejemplo; los fixtures de prueba no se cargan al abrir", () => {
+  const GL = (e) => wLimpia.eval(e), SL = GL("S"), num = (v) => Number(v) || 0;
+  eq(GL("projList()").length, 0, "sin proyectos guardados:"); eq(SL.pid, null, "sin proyecto abierto:");
+  eq(GL("hayProyecto()"), false, "no hay proyecto:");
+  eq(SL.zones.length, 1, "una zona en blanco:"); eq(num(SL.zones[0].area) + num(SL.zones[0].height) + num(SL.zones[0].occ) + num(SL.zones[0].lights) + num(SL.zones[0].equip), 0, "zona en ceros:");
+  eq(num(SL.zones[0].achClean), 0, "cambios/h en blanco:");
+  const r = GL("cleanRooms()")[0]; eq(num(r.area) + num(r.height) + num(r.occ), 0, "cuarto limpio en ceros:");
+  eq(SL.duct.segments.length, 0, "sin tramos de ducto:"); eq(SL.elec.cargas.length, 0, "sin cargas eléctricas:");
+  eq(SL.hidro.muebles.length + SL.hidro.tramos.length, 0, "sin muebles ni tramos de agua:"); eq(num(SL.fuego.area), 0, "sin área contra incendio:");
+  eq(SL.aire.consumos.length, 0, "sin consumos de aire:"); eq(num(SL.civil.firmeM2) + num(SL.civil.puertasSimples) + num(SL.civil.puertasLimpias), 0, "civil en ceros:");
+  eq(num(SL.soporte.rielM) + num(SL.soporte.basesEquipo), 0, "soportería en ceros:");
+  eq(SL.quote.items.length, 0, "sin equipos elegidos:"); eq(JSON.stringify(SL.quote.hidroPU), "{}", "sin precios de tubería:"); eq(SL.kaizen.items.length, 0, "sin mejoras:");
+  eq(Object.keys(SL.sellos).length, 0, "sin sellos:"); eq(Object.keys(SL.perms).length, 0, "sin cruces autorizados:");
+  GL("recompute()");
+  eq(GL("QUOTE").tot, 0, "cotización en cero:"); eq(GL("totals()").tons, 0, "carga en cero:"); eq(GL("HIDRO").Qtotal, 0, "hidro en cero:"); eq(GL("FUEGO").qTotal, 0, "incendio en cero:"); eq(GL("AIRE").fadRequerido, 0, "aire en cero:"); eq(GL("CIVIL").total + GL("SOPORTE").total, 0, "civil y soportería en cero:");
+  GL("semaforoSuite()").forEach((s) => { if (!["vacia", "externo", "gestion"].includes(s.nivel)) throw new Error(`${s.id}: ${s.nivel} en instalación limpia`); });
+  /* Los datos de prueba viven en fixtures y nunca en la aplicación. */
+  const html = fs.readFileSync(file, "utf8");
+  if (/regresion-motores\.emp|proyecto-formato-1_rev|fetch\(|XMLHttpRequest/.test(html)) throw new Error("index.html carga o referencia un fixture de prueba");
+  ["parches/regresion-motores/regresion-motores.emp.json", "parches/fixtures-formato/proyecto-formato-1_rev-2.9.13.emp.json"].forEach((f) => { if (!fs.existsSync(f)) throw new Error(`falta el fixture ${f}`); });
+});
+
 /* ============================== resultado =============================== */
 t("R.7 H-95 la licitación, la propuesta, la cotización y la memoria integral ya traen bloque de firma (Revisado por / Aprobado por)", () => {
   const g = { perms: JSON.parse(JSON.stringify(S.perms)) };
