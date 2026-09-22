@@ -5862,7 +5862,7 @@ t("S.39 (rev 2.9.22, decisión del dueño) precios de tubería hidráulica: PP-R
     eq(T.ppr.d.length, 9, "PP-R con 9 diámetros (20–110 mm, DIN 8077 PN20):"); eq(T.ppr.d[0][0], 13.2, "PP-R 20 mm: interior 13.2 mm:");
     eq(G("famSoporteAgua")("ppr"), "plastico", "PP-R se soporta como termoplástico:");
     const csv = G("hidroPUPlantillaCsv")();
-    contiene(csv, "material,clave,diametro,precio,por_tramo_m,iva_incluido,moneda,origen,alcance,fuente,edicion,pagina,ubicacion,lista,url,fecha", "encabezado (rev 2.9.23):");
+    contiene(csv, "material,clave,diametro,precio,por_tramo_m,iva_incluido,moneda,origen,alcance,fuente,edicion,pagina,ubicacion,estado,pais,lista,url,fecha", "encabezado (rev 2.9.24, H-251: columnas estado y pais):");
     eq(csv.split("\n").length - 1, Object.values(T).reduce((a, t) => a + t.d.length, 0), "una fila por diámetro y material:");
     contiene(csv, "cpvc,cpvc_1_1_4_,\"1 1/4\"\"\",,1,no,MXN,proveedor,no especificado,,,,,no especificado,,", "fila CPVC 1 1/4 (el diámetro lleva comillas):");
     if (/IUSA/.test(csv)) throw new Error("la plantilla no debe traer referencias IUSA (regla: únicamente California)");
@@ -6109,6 +6109,45 @@ t("S.43 (H-250) sin tipo de cambio con fecha nada sale en USD: la cotización qu
     S.quote.fxFecha = "2026-09-22"; G("recompute")();
     eq(G("QUOTE").cur, "USD", "con fecha vuelve USD:"); eq(G("QUOTE").usdSinFecha, false, "sin marca:"); eq(G("monedaEspejoEN")(), "USD", "espejo en USD:");
     contiene(txt(G("buildPropuestaPdf")({ lang: "en", mon: "USD" })), "US$", "propuesta EN en USD:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+/* ===== H-251 (auditoría 22-sep-2026, regla del dueño): California es el ESTADO; «Baja California» se rechaza ===== */
+t("S.44 (H-251) una referencia sólo es de California si su estado es California (CA) de EE. UU.: Baja California, Baja California Sur, BC, México y Canadá se rechazan en el motor, al abrir un proyecto y al importar el CSV; la plantilla trae la columna estado", () => {
+  const guardado = JSON.stringify(S);
+  const REF = (ubicacion, extra) => ({ precio: 4.2, moneda: "USD", iva: false, porTramo: 1, origen: "referencia", alcance: "material", fuente: "REFERENCIA DE PRUEBA (no es una fuente real)", edicion: "2026", pagina: "1", ubicacion, lista: "no especificado", url: "", fecha: "2026-09-22", ...(extra || {}) });
+  try {
+    G("importarRespaldo")(REG_PROY); S.quote.fx = 18.5; S.quote.fxFecha = "2026-09-22"; S.quote.fxFuente = "fixture";
+    const k = "cobre_2_"; /* diámetro en uso en la red del fixture (AF-GENERAL): así tiene partida y puede quedar «Por cotizar» */
+    /* 1. Motor: la referencia de Baja California queda fuera y sale «Por cotizar». */
+    S.quote.hidroPU[k] = REF("Tijuana, Baja California"); G("recompute")();
+    eq(G("hidroPUEntrada")(k).fueraCA, true, "«Tijuana, Baja California» está fuera de California:");
+    eq(((G("QUOTE").porCotizar || []).find((p) => p.clave === k) || {}).motivo, "fuera de California", "Por cotizar:");
+    S.quote.hidroPU[k] = REF("San Diego, CA"); G("recompute")();
+    eq(G("hidroPUEntrada")(k).fueraCA, false, "«San Diego, CA» sí es California:");
+    /* 2. La regla, caso por caso (ubicación libre y columna estado). */
+    const ok = (u, extra) => G("referenciaEnCalifornia")({ ubicacion: u, ...(extra || {}) });
+    [["Tijuana, Baja California", false], ["La Paz, Baja California Sur", false], ["Tijuana, BC", false], ["Tijuana, B.C.", false], ["Ensenada, B.C., México", false], ["Toronto, ON, CA", false], ["(ca. 2026)", false], ["Phoenix, AZ", false], ["Tijuana", false], ["", false],
+     ["San Diego, CA", true], ["Carlsbad, California", true], ["Fullerton, CA 92831, USA", true], ["Carlsbad, California, Estados Unidos", true], ["California", true], ["Fullerton CA", true]]
+      .forEach(([u, esp]) => eq(ok(u), esp, `ubicación «${u}»:`));
+    eq(ok("Carlsbad", { estado: "California" }), true, "columna estado = California:"); eq(ok("Carlsbad", { estado: "CA", pais: "USA" }), true, "estado CA, país USA:");
+    eq(ok("Tijuana", { estado: "Baja California" }), false, "estado Baja California:"); eq(ok("Mexicali", { estado: "BC" }), false, "estado BC:");
+    eq(ok("Carlsbad", { estado: "CA", pais: "México" }), false, "estado CA con país México:"); eq(ok("Carlsbad, CA", { estado: "Baja California" }), false, "la columna estado manda sobre el texto:");
+    /* 3. Al abrir un proyecto guardado con esa referencia, se retira con antes/después. */
+    const sv = G("sanearEstado")(JSON.parse(JSON.stringify({ ...S, quote: { ...S.quote, hidroPU: { [k]: REF("Tijuana, Baja California"), cobre_3_4_: REF("Carlsbad, California") }, hidroPUlog: [] } })));
+    eq(sv.quote.hidroPU[k], undefined, "la de Baja California se retira al abrir:"); eq(sv.quote.hidroPU.cobre_3_4_.origen, "referencia", "la de California se queda:");
+    eq(sv.quote.hidroPUlog.length, 1, "queda en la bitácora:"); eq(sv.quote.hidroPUlog[0].via, "regla California", "vía:"); eq(sv.quote.hidroPU.cobre_3_4_.estado, undefined, "sin columna estado no se inventa:");
+    const sv2 = G("sanearEstado")(JSON.parse(JSON.stringify({ ...S, quote: { ...S.quote, hidroPU: { cobre_3_4_: REF("Carlsbad", { estado: "California", pais: "USA" }) }, hidroPUlog: [] } })));
+    eq(sv2.quote.hidroPU.cobre_3_4_.estado, "California", "la columna estado se conserva al abrir:"); eq(sv2.quote.hidroPU.cobre_3_4_.pais, "USA", "y el país:");
+    /* 4. CSV: la plantilla trae estado y país; la importación rechaza Baja California y acepta California por ubicación o por columna estado. */
+    contiene(G("hidroPUPlantillaCsv")(), "estado", "la plantilla trae la columna estado:"); contiene(G("hidroPUPlantillaCsv")(), "pais", "y país:");
+    const r = G("hidroPUImportarCsv")(["material,clave,diametro,precio,por_tramo_m,iva_incluido,moneda,origen,alcance,fuente,edicion,pagina,ubicacion,estado,pais,lista,url,fecha",
+      `cobre,,1",5,1,no,USD,referencia,material,"Ref BC",,,"Tijuana, Baja California",,,,,2026-09-22`,
+      `cobre,,1 1/4",5,1,no,USD,referencia,material,"Ref estado BC",,,"Tijuana",Baja California,México,,,2026-09-22`,
+      `cobre,,1 1/2",5,1,no,USD,referencia,material,"Ref CA",,,"San Diego, CA",,,,,2026-09-22`,
+      `cobre,,2",5,1,no,USD,referencia,material,"Ref estado CA",,,"Carlsbad",California,USA,,,2026-09-22`].join("\n"));
+    eq(r.ok, 2, "dos filas de California importadas:"); eq(r.malas.length, 2, "dos rechazadas:"); contiene(r.malas.join("|"), "Tijuana, Baja California", "rechaza Baja California por ubicación:"); contiene(r.malas.join("|"), "Baja California", "y por columna estado:");
+    eq(G("hidroPUEntrada")("cobre_2_").estado, "California", "la columna estado viaja al renglón:"); eq(G("hidroPUEntrada")("cobre_1_1_2_").fueraCA, false, "San Diego, CA por ubicación:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 

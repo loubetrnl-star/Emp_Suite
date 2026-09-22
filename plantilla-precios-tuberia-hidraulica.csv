@@ -1,4 +1,4 @@
-﻿material,clave,diametro,precio,por_tramo_m,iva_incluido,moneda,origen,alcance,fuente,edicion,pagina,ubicacion,lista,url,fecha
+﻿material,clave,diametro,precio,por_tramo_m,iva_incluido,moneda,origen,alcance,fuente,edicion,pagina,ubicacion,estado,pais,lista,url,fecha
 cobre,cobre_1_2_,"1/2""",,1,no,MXN,proveedor,no especificado,,,,,no especificado,,
 cobre,cobre_3_4_,"3/4""",,1,no,MXN,proveedor,no especificado,,,,,no especificado,,
 cobre,cobre_1_,"1""",,1,no,MXN,proveedor,no especificado,,,,,no especificado,,

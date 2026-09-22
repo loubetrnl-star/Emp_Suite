@@ -4702,8 +4702,30 @@ const fechaLocalISO = () => { const d = new Date(); return `${d.getFullYear()}-$
    Fullerton CA, sólo cuarto limpio). Las referencias IUSA (México) salieron del Budget: quedan archivadas con antes/después en
    Bitacora-rev-2.9.23.md §9. Hasta recibir los libros no se carga nada: el cobre sale «Por cotizar». */
 const HIDRO_PU_REFERENCIA = {};
-const REFERENCIA_UBICACION_OK = /california|\bCA\b/i; /* regla del dueño: únicamente California */
-const esUbicacionCalifornia = (u) => REFERENCIA_UBICACION_OK.test(String(u || ""));
+/* H-251 (regla del dueño 22-sep-2026): California es el ESTADO. Una referencia es de California sólo si su estado es
+   «California» o «CA» de EE. UU. (columna `estado` del renglón o del CSV; si falta, el estado que dice la ubicación).
+   Baja California, Baja California Sur, BC/BCS, México y Canadá se rechazan aunque el texto contenga «California» o «CA». */
+const esEstadoCalifornia = (e) => /^(california|ca)$/i.test(String(e || "").trim());
+const NO_CALIFORNIA = /baja\s+california|\bB\.?\s?C\.?S?\b|m[eé]xico|\bMX\b|canad[aá]/i;
+function estadoDeUbicacion(u) {
+  /* Una nota entre paréntesis al final («CA (fixture)», «CA (consultado en línea)») no es parte del estado. */
+  const partes = String(u || "").replace(/\s*\([^()]*\)\s*$/, "").split(",").map((s) => s.trim()).filter(Boolean);
+  if (!partes.length) return "";
+  const esPais = (s) => /^(usa|u\.s\.a\.?|us|u\.s\.|ee\.?\s*uu\.?|estados unidos( de am[eé]rica)?|united states( of america)?)$/i.test(s);
+  if (partes.length === 1) { const w = partes[0].split(/\s+/); return w.length >= 2 ? w[w.length - 1] : partes[0]; }
+  let i = partes.length - 1;
+  if (esPais(partes[i]) && i > 0) i--;
+  /* «Toronto, ON, CA»: CA después de un código de provincia es el país (Canadá), no el estado. */
+  if (/^ca$/i.test(partes[i]) && i >= 2 && /^[A-Z]{2}$/.test(partes[i - 1])) return "";
+  return partes[i].replace(/\s*\d{5}(-\d{4})?\s*$/, "").trim();
+}
+function referenciaEnCalifornia(r) {
+  const o = r && typeof r === "object" ? r : { ubicacion: r };
+  const u = String(o.ubicacion || ""), est = String(o.estado || "").trim(), pais = String(o.pais || "").trim();
+  if (NO_CALIFORNIA.test(`${u} ${est} ${pais}`)) return false;
+  return esEstadoCalifornia(est || estadoDeUbicacion(u));
+}
+const esUbicacionCalifornia = (u) => referenciaEnCalifornia({ ubicacion: u }); /* compatibilidad: sólo texto de ubicación */
 const QUOTE_SEED = {
   currency: "MXN", fx: 0, fxFecha: "", fxFuente: "", /* H-250: sin semilla de tipo de cambio; se captura con fecha o no vale */ importacion: { monto: 0, moneda: "MXN", fuente: "", fecha: "" }, /* rev 2.9.23 · el tipo de cambio sólo vale con fecha capturada (decisión del dueño 22-sep-2026) */
   plaza: "tijuana",       // plaza de compra del noroeste
@@ -8211,11 +8233,11 @@ function hidroPUEntrada(clave) {
   const alcance = e.alcance === "material" ? "material" : e.alcance === "material_mo" ? "material_mo" : "no especificado";
   /* Reglas del dueño (22-sep-2026) para precios de REFERENCIA: sólo California; sólo costo de material (material + mano de
      obra combinados e inseparables → Por cotizar). USD sin tipo de cambio con fecha: no se convierte. precioM 0 → Por cotizar / bloqueo formal. */
-  const fueraCA = origen === "referencia" && !esUbicacionCalifornia(e.ubicacion);
+  const fueraCA = origen === "referencia" && !referenciaEnCalifornia(e); /* H-251: estado California, no sólo el texto */
   const combinado = origen === "referencia" && alcance !== "material";
   const iva = e.iva === true ? true : e.iva === false ? false : null; /* null = la fuente no lo especifica */
   const precioM = (usd && !fxv) || fueraCA || combinado ? 0 : p / porTramo / (iva === true ? 1 + IVA_MX : 1) * (usd ? fxv.fx : 1);
-  return { precioM, sinFx: usd && !fxv, fueraCA, combinado, origen, alcance, fuente: String(e.fuente || ""), ubicacion: String(e.ubicacion || ""), lista: String(e.lista || "").trim() || "no especificado", edicion: String(e.edicion || ""), pagina: String(e.pagina || ""), url: String(e.url || ""), fecha: String(e.fecha || ""), iva, porTramo, moneda: usd ? "USD" : "MXN", bruto: p, fx: fxv };
+  return { precioM, sinFx: usd && !fxv, fueraCA, combinado, origen, alcance, fuente: String(e.fuente || ""), ubicacion: String(e.ubicacion || ""), lista: String(e.lista || "").trim() || "no especificado", edicion: String(e.edicion || ""), pagina: String(e.pagina || ""), url: String(e.url || ""), fecha: String(e.fecha || ""), estado: String(e.estado || ""), pais: String(e.pais || ""), iva, porTramo, moneda: usd ? "USD" : "MXN", bruto: p, fx: fxv };
 }
 /* rev 2.9.23 · Etiqueta completa de un precio de referencia: fuente, ubicación, fecha, moneda, impuestos y lista bruta/neta. */
 /* Se imprime lo que dice la fuente; lo que no dice queda «no especificado» (decisión del dueño 22-sep-2026: nada por suposición). */
@@ -18696,9 +18718,10 @@ function hidroDiametrosSinPrecio() {
 function hidroPUPlantillaCsv() {
   /* rev 2.9.23 · precio tal como lo publica el proveedor: por_tramo_m (1 = por metro), iva_incluido (si/no), origen
      (proveedor = cotización de proveedor local; referencia = precio de mercado para el Budget), url y fecha. */
-  const filas = [["material", "clave", "diametro", "precio", "por_tramo_m", "iva_incluido", "moneda", "origen", "alcance", "fuente", "edicion", "pagina", "ubicacion", "lista", "url", "fecha"]];
+  /* H-251: columnas estado y pais; una referencia sólo entra con estado California (CA), EE. UU. */
+  const filas = [["material", "clave", "diametro", "precio", "por_tramo_m", "iva_incluido", "moneda", "origen", "alcance", "fuente", "edicion", "pagina", "ubicacion", "estado", "pais", "lista", "url", "fecha"]];
   Object.entries(TUB_AGUA).forEach(([mat, T]) => T.d.forEach(([, nom]) => { const d = String(nom).split(" ·")[0], k = claveHidroPU(mat, d), e = (S.quote && S.quote.hidroPU && typeof S.quote.hidroPU[k] === "object") ? S.quote.hidroPU[k] : null;
-    filas.push(e ? [mat, k, d, e.precio, e.porTramo || 1, e.iva === true ? "si" : e.iva === false ? "no" : "no especificado", e.moneda || "MXN", e.origen || "proveedor", e.alcance || "no especificado", e.fuente || "", e.edicion || "", e.pagina || "", e.ubicacion || "", e.lista || "no especificado", e.url || "", e.fecha || ""] : [mat, k, d, "", "1", "no", "MXN", "proveedor", "no especificado", "", "", "", "", "no especificado", "", ""]); }));
+    filas.push(e ? [mat, k, d, e.precio, e.porTramo || 1, e.iva === true ? "si" : e.iva === false ? "no" : "no especificado", e.moneda || "MXN", e.origen || "proveedor", e.alcance || "no especificado", e.fuente || "", e.edicion || "", e.pagina || "", e.ubicacion || "", e.estado || "", e.pais || "", e.lista || "no especificado", e.url || "", e.fecha || ""] : [mat, k, d, "", "1", "no", "MXN", "proveedor", "no especificado", "","", "", "", "no especificado", "", ""]); }));
   return filas.map((f) => f.map((c) => /[",\n]/.test(String(c)) ? `"${String(c).replace(/"/g, '""')}"` : String(c)).join(",")).join("\n");
 }
 /* Importa un CSV con las columnas de la plantilla. USD se convierte con el tipo de cambio del proyecto. Devuelve el resumen. */
@@ -18721,10 +18744,11 @@ function hidroPUImportarCsv(texto) {
     const origen = /^ref/i.test(col(c, "origen", "proveedor")) ? "referencia" : "proveedor";
     const fuente = col(c, "fuente", "");
     if (origen === "referencia" && !fuente) { malas.push(`fila ${i + 2}: un precio de referencia necesita fuente`); return; }
-    if (origen === "referencia" && !esUbicacionCalifornia(col(c, "ubicacion", ""))) { malas.push(`fila ${i + 2}: una referencia debe ser de California (ubicacion «${col(c, "ubicacion", "")}»)`); return; }
+    /* H-251: California es el estado (columna estado, o el estado de la ubicación); Baja California se rechaza. */
+    if (origen === "referencia" && !referenciaEnCalifornia({ ubicacion: col(c, "ubicacion", ""), estado: col(c, "estado", ""), pais: col(c, "pais", "") })) { malas.push(`fila ${i + 2}: una referencia debe ser de California (el estado, EE. UU.; Baja California no cuenta): ubicacion «${col(c, "ubicacion", "")}», estado «${col(c, "estado", "")}», pais «${col(c, "pais", "")}»`); return; }
     const ivaTxt = col(c, "iva_incluido", "no especificado"), alcTxt = col(c, "alcance", "no especificado").toLowerCase();
     hidroPUPoner(claveHidroPU(mat, d), { precio, moneda: mon === "USD" ? "USD" : "MXN", iva: /^(s|y|1|true)/i.test(ivaTxt) ? true : /^(n|0|false)/i.test(ivaTxt) && !/^no esp/i.test(ivaTxt) ? false : null, porTramo: num(col(c, "por_tramo_m", "1"), 1) > 0 ? num(col(c, "por_tramo_m", "1"), 1) : 1,
-      origen, alcance: /^material\s*[+y_]\s*m/.test(alcTxt) || alcTxt === "material_mo" ? "material_mo" : alcTxt === "material" ? "material" : "no especificado", fuente: fuente || "CSV de proveedor local", edicion: col(c, "edicion", ""), pagina: col(c, "pagina", ""), ubicacion: col(c, "ubicacion", ""), lista: col(c, "lista", "no especificado"), url: col(c, "url", ""), fecha: col(c, "fecha", "") || fechaLocalISO() }, "csv"); ok++;
+      origen, alcance: /^material\s*[+y_]\s*m/.test(alcTxt) || alcTxt === "material_mo" ? "material_mo" : alcTxt === "material" ? "material" : "no especificado", fuente: fuente || "CSV de proveedor local", edicion: col(c, "edicion", ""), pagina: col(c, "pagina", ""), ubicacion: col(c, "ubicacion", ""), estado: col(c, "estado", ""), pais: col(c, "pais", ""), lista: col(c, "lista", "no especificado"), url: col(c, "url", ""), fecha: col(c, "fecha", "") || fechaLocalISO() }, "csv"); ok++;
   });
   return { ok, malas };
 }
@@ -21584,10 +21608,10 @@ function sanearEstado(d) {
   }
   if (s.soporte && s.soporte.snap && typeof s.soporte.snap !== "object") delete s.soporte.snap;
   s.zi = 0; s.clean.ci = 0;
-  if (s.quote && typeof s.quote === "object") { const h = s.quote.hidroPU; s.quote.hidroPU = {}; if (h && typeof h === "object" && !Array.isArray(h)) Object.keys(h).forEach((k) => { if (/^[a-z]+_[0-9a-z_]+$/i.test(k)) { const v = h[k]; if (v && typeof v === "object" && num(v.precio, 0) > 0) s.quote.hidroPU[k] = { precio: num(v.precio), moneda: String(v.moneda || "MXN").toUpperCase() === "USD" ? "USD" : "MXN", iva: !!v.iva, porTramo: num(v.porTramo, 1) > 0 ? num(v.porTramo, 1) : 1, origen: v.origen === "referencia" ? "referencia" : "proveedor", fuente: String(v.fuente || ""), ubicacion: String(v.ubicacion || "").slice(0, 120), lista: String(v.lista || "").slice(0, 120) || "no especificado", alcance: v.alcance === "material" ? "material" : v.alcance === "material_mo" ? "material_mo" : "no especificado", edicion: String(v.edicion || "").slice(0, 60), pagina: String(v.pagina || "").slice(0, 40), url: String(v.url || ""), fecha: String(v.fecha || ""), iva: v.iva === true ? true : v.iva === false ? false : null }; else if (num(v, 0) > 0) s.quote.hidroPU[k] = num(v); } });
+  if (s.quote && typeof s.quote === "object") { const h = s.quote.hidroPU; s.quote.hidroPU = {}; if (h && typeof h === "object" && !Array.isArray(h)) Object.keys(h).forEach((k) => { if (/^[a-z]+_[0-9a-z_]+$/i.test(k)) { const v = h[k]; if (v && typeof v === "object" && num(v.precio, 0) > 0) s.quote.hidroPU[k] = { precio: num(v.precio), moneda: String(v.moneda || "MXN").toUpperCase() === "USD" ? "USD" : "MXN", iva: !!v.iva, porTramo: num(v.porTramo, 1) > 0 ? num(v.porTramo, 1) : 1, origen: v.origen === "referencia" ? "referencia" : "proveedor", fuente: String(v.fuente || ""), ubicacion: String(v.ubicacion || "").slice(0, 120), ...(v.estado ? { estado: String(v.estado).slice(0, 60) } : {}), ...(v.pais ? { pais: String(v.pais).slice(0, 60) } : {}), lista: String(v.lista || "").slice(0, 120) || "no especificado", alcance: v.alcance === "material" ? "material" : v.alcance === "material_mo" ? "material_mo" : "no especificado", edicion: String(v.edicion || "").slice(0, 60), pagina: String(v.pagina || "").slice(0, 40), url: String(v.url || ""), fecha: String(v.fecha || ""), iva: v.iva === true ? true : v.iva === false ? false : null }; else if (num(v, 0) > 0) s.quote.hidroPU[k] = num(v); } });
     /* rev 2.9.23 · regla del dueño: las referencias de mercado son únicamente de California; las demás (p. ej. IUSA, México) salen del Budget al abrir, con antes/después en la bitácora. */
     if (!Array.isArray(s.quote.hidroPUlog)) s.quote.hidroPUlog = [];
-    Object.keys(s.quote.hidroPU).forEach((k) => { const v = s.quote.hidroPU[k]; if (v && typeof v === "object" && v.origen === "referencia" && !esUbicacionCalifornia(v.ubicacion)) {
+    Object.keys(s.quote.hidroPU).forEach((k) => { const v = s.quote.hidroPU[k]; if (v && typeof v === "object" && v.origen === "referencia" && !referenciaEnCalifornia(v)) { /* H-251 */
       s.quote.hidroPUlog.push({ clave: k, fecha: fechaLocalISO(), via: "regla California", antes: { precio: v.precio, moneda: v.moneda, porTramo: v.porTramo, iva: v.iva, fuente: v.fuente, ubicacion: v.ubicacion, fecha: v.fecha }, despues: { precioM: 0, fuente: "Por cotizar (referencia fuera de California retirada)", fecha: "" } });
       delete s.quote.hidroPU[k]; } });
     const im = (s.quote.importacion && typeof s.quote.importacion === "object") ? s.quote.importacion : {};
