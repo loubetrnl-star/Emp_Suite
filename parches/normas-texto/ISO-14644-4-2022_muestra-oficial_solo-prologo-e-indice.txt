@@ -1,0 +1,584 @@
+Cleanrooms and associated controlled 
+environments —
+Part 4: 
+Design, construction and start-up
+Salles propres et environnements maîtrisés apparentés —
+Partie 4: Conception, construction et mise en service
+INTERNATIONAL 
+STANDARD
+ISO 
+14644-4
+Second edition 
+2022-11
+Reference number 
+ISO 14644-4:2022(E)
+© ISO 2022
+iTeh STANDARD PREVIEW
+(standards.iteh.ai)
+ISO 14644-4:2022
+https://standards.iteh.ai/catalog/standards/sist/fa93b865-17f2-4fe8-97e1-497680624c6a/iso-
+14644-4-2022
+ii
+ISO 14644-4:2022(E)
+COPYRIGHT PROTECTED DOCUMENT
+©  ISO 2022
+All rights reserved. Unless otherwise specified, or required in the context of its implementation, no part of this publication may 
+be reproduced or utilized otherwise in any form or by any means, electronic or mechanical, including photocopying, or posting on 
+the internet or an intranet, without prior written permission. Permission can be requested from either ISO at the address below 
+or ISO’s member body in the country of the requester.
+ISO copyright office
+CP 401 • Ch. de Blandonnet 8
+CH-1214 Vernier, Geneva
+Phone: +41 22 749 01 11
+Email: copyright@iso.org
+Website: www.iso.org
+Published in Switzerland
+   © ISO 2022 – All rights reserved
+ 
+iTeh STANDARD PREVIEW
+(standards.iteh.ai)
+ISO 14644-4:2022
+https://standards.iteh.ai/catalog/standards/sist/fa93b865-17f2-4fe8-97e1-497680624c6a/iso-
+14644-4-2022
+ISO 14644-4:2022(E)
+Foreword ........................................................................................................................................................................................................................................iv
+Introduction .................................................................................................................................................................................................................................v
+1  Scope  .................................................................................................................................................................................................................................1
+2  Normative references  ..................................................................................................................................................................................... 1
+3	 	Terms	and	definitions .................................................................................................................................................................................... 1
+3.1  General ...........................................................................................................................................................................................................2
+3.2  Installation  .................................................................................................................................................................................................5
+4  Abbreviated terms  .............................................................................................................................................................................................5
+5  General  ...........................................................................................................................................................................................................................6
+6  Requirements  ..........................................................................................................................................................................................................7
+6.1  Cleanroom requirements  ..............................................................................................................................................................7
+6.2  Other requirements ........................................................................................................................................................................... 9
+6.3  Documentation  .......................................................................................................................................................................................9
+7  Design  .............................................................................................................................................................................................................................. 9
+7.1  General ...........................................................................................................................................................................................................9
+7.2  Conceptual design  ............................................................................................................................................................................. 10
+7.3  Basic design  ............................................................................................................................................................................................10
+7.4  Detailed design  ....................................................................................................................................................................................11
+7.5  Change management  ......................................................................................................................................................................11
+8  Construction  ..........................................................................................................................................................................................................12
+8.1  General ........................................................................................................................................................................................................12
+8.2  Construction plan  .............................................................................................................................................................................12
+8.2.1  General .....................................................................................................................................................................................12
+8.2.2  Schedule  ..................................................................................................................................................................................12
+8.2.3  Quality plan  ..........................................................................................................................................................................12
+8.2.4  Clean build protocol .....................................................................................................................................................12
+8.3  Construction verification  ...........................................................................................................................................................13
+8.4  Documentation  ....................................................................................................................................................................................13
+9  Start-up  .......................................................................................................................................................................................................................13
+9.1  General ........................................................................................................................................................................................................13
+9.2  Commissioning  ....................................................................................................................................................................................14
+9.2.1  General ..................................................................................................................................................................................... 14
+9.2.2  Setting to work ..................................................................................................................................................................14
+9.2.3  Functional and performance verifications  .............................................................................................. 14
+9.3  Training  ......................................................................................................................................................................................................14
+9.4  Handover  ...................................................................................................................................................................................................14
+9.5  Documentation  ....................................................................................................................................................................................14
+9.5.1  Commissioning documentation  ......................................................................................................................... 14
+9.5.2  Performance-monitoring instructions  ........................................................................................................15
+9.5.3  Maintenance instructions  .......................................................................................................................................15
+9.5.4  Maintenance record  ......................................................................................................................................................15
+9.5.5  Record of training  ..........................................................................................................................................................15
+Annex A (informative) Guidance on requirements ...........................................................................................................................16
+Annex B (informative) Guidance on design ...............................................................................................................................................24
+Annex C (informative) Guidance on construction  ..............................................................................................................................45
+Annex D (informative) Guidance on start-up ..........................................................................................................................................51
+Bibliography .............................................................................................................................................................................................................................56
+iii© ISO 2022 – All rights reserved  
+Contents Page
+iTeh STANDARD PREVIEW
+(standards.iteh.ai)
+ISO 14644-4:2022
+https://standards.iteh.ai/catalog/standards/sist/fa93b865-17f2-4fe8-97e1-497680624c6a/iso-
+14644-4-2022
+ISO 14644-4:2022(E)
+Foreword
+ISO (the International Organization for Standardization) is a worldwide federation of national standards 
+bodies (ISO member bodies). The work of preparing International Standards is normally carried out 
+through ISO technical committees. Each member body interested in a subject for which a technical 
+committee has been established has the right to be represented on that committee. International 
+organizations, governmental and non-governmental, in liaison with ISO, also take part in the work. 
+ISO collaborates closely with the International Electrotechnical Commission (IEC) on all matters of 
+electrotechnical standardization.
+The procedures used to develop this document and those intended for its further maintenance are 
+described in the ISO/IEC Directives, Part 1. In particular, the different approval criteria needed for the 
+different types of ISO documents should be noted. This document was drafted in accordance with the 
+editorial rules of the ISO/IEC Directives, Part 2 (see www.iso.org/directives ).
+Attention is drawn to the possibility that some of the elements of this document may be the subject of 
+patent rights. ISO shall not be held responsible for identifying any or all such patent rights. Details of 
+any patent rights identified during the development of the document will be in the Introduction and/or 
+on the ISO list of patent declarations received (see www.iso.org/patents).
+Any trade name used in this document is information given for the convenience of users and does not 
+constitute an endorsement.
+For an explanation of the voluntary nature of standards, the meaning of ISO specific terms and 
+expressions related to conformity assessment, as well as information about ISO's adherence to 
+the World Trade Organization (WTO) principles in the Technical Barriers to Trade (TBT), see 
+www.iso.org/iso/foreword.html .
+This document was prepared by Technical Committee ISO/TC 209, Cleanrooms and associated controlled 
+environments, in collaboration with the European Committee for Standardization (CEN) Technical 
+Committee CEN/TC 243, Cleanroom technology , in accordance with the Agreement on technical 
+cooperation between ISO and CEN (Vienna Agreement).
+This second edition cancels and replaces the first edition (ISO 14644-4:2001), which has been 
+technically revised.
+The main changes are as follows:
+— normative content has been extended;
+— the process of gathering and defining requirements has been added;
+— the scope has been extended from classified cleanrooms to include additional cleanliness attributes;
+— the entire text has been revised or clarified to aid its application.
+A list of all parts in the ISO 14644 series can be found on the ISO website.
+Any feedback or questions on this document should be directed to the user’s national standards body. A 
+complete listing of these bodies can be found at www.iso.org/members.html .
+iv    © ISO 2022 – All rights reserved
+ 
+iTeh STANDARD PREVIEW
+(standards.iteh.ai)
+ISO 14644-4:2022
+https://standards.iteh.ai/catalog/standards/sist/fa93b865-17f2-4fe8-97e1-497680624c6a/iso-
+14644-4-2022
+ISO 14644-4:2022(E)
+Introduction
+Cleanrooms and associated controlled environments provide for the control of airborne particulate 
+contamination and, if relevant, other forms of contamination, to levels appropriate for accomplishing 
+contamination-sensitive activities. Products and processes that benefit from the control of airborne 
+contamination include those in such industries as aerospace, microelectronics, pharmaceuticals, 
+medical devices, food and research and development laboratories and some applications in healthcare.
+Cleanrooms and associated controlled environments are classified for air cleanliness by particle 
+concentration (ISO 14644-1). Cleanliness attributes relating to chemicals, nanoscale particles and 
+viable particles (microorganisms), as well as cleanliness of surfaces, can also be considered.
+This document is one of the series of International Standards concerned with cleanrooms and associated 
+controlled environments prepared by ISO/TC 209.
+This document provides guidance for the design, construction and start-up of cleanrooms, both new 
+and those undergoing modification or refurbishment. In this edition, a more structured approach 
+is provided with separate normative sections on requirements, design, construction and start-up, 
+supported by four corresponding informative annexes.
+For this edition, key recommendations and considerations include:
+a) A structured approach with a logical sequential flow through the design, construction and start-
+up stages. There will normally be reviews and iterations of the requirements, contamination 
+control concepts, layouts and other considerations. The final design should be reviewed against the 
+requirements before construction commences and when construction is complete. The operation 
+and performance are verified against the requirements during start-up.
+b) Inclusion of other cleanliness attributes. The ISO 14644 series has parts that deal with other 
+cleanliness attributes, namely chemicals, nanoscale particles, macro-particles and, in ISO 14698, 
+viable particles (microorganisms), as well as cleanliness of surfaces. These other attributes should 
+be considered if relevant, bearing in mind that the primary requirement for a cleanroom or clean 
+zone is that it meets a classification by airborne particle concentration according to ISO 14644-1.
+c) Importance of a contamination risk assessment. Assessments should be carried out to better 
+understand the contamination risk and its impact on the process and product and to identify the 
+critical control points (locations) in the cleanroom or clean zone.
+d) A clear statement of requirements, namely everything needed for input into the design, including 
+the purpose of the cleanroom and the acceptance criteria for performance parameters. This is 
+critical and should be documented prior to the start of the design process.
+e) Ventilation effectiveness. This revision focuses on the importance of ventilation effectiveness 
+through control of air-flow patterns and clean-up recovery rates. Two measures are identified: air 
+change effectiveness (ACE) and contaminant removal effectiveness (CRE).
+f) Using air supply rate for calculations of contaminant dilution and removal. This will make it possible 
+to achieve energy-efficient cleanrooms while achieving the required level of air cleanliness.
+g) Energy efficiency and life cycle considerations. Energy efficiency in cleanrooms is very important 
+and is covered by ISO 14644-16.
+h) A clean build protocol. This is included to minimize contamination during construction of the 
+cleanroom.
+Information directly relevant to cleanrooms and associated controlled environments is included in the 
+informative annexes. Supporting information is given in the Bibliography.
+v© ISO 2022 – All rights reserved  
+iTeh STANDARD PREVIEW
+(standards.iteh.ai)
+ISO 14644-4:2022
+https://standards.iteh.ai/catalog/standards/sist/fa93b865-17f2-4fe8-97e1-497680624c6a/iso-
+14644-4-2022
+iTeh STANDARD PREVIEW
+(standards.iteh.ai)
+ISO 14644-4:2022
+https://standards.iteh.ai/catalog/standards/sist/fa93b865-17f2-4fe8-97e1-497680624c6a/iso-
+14644-4-2022
+INTERNATIONAL ST ANDARD ISO 14644-4:2022(E)
+Cleanrooms and associated controlled environments —
+Part 4: 
+Design, construction and start-up
+1  Scope
+This document specifies the process for creating a cleanroom from requirements through to its design, 
+construction and start-up. It applies to new, refurbished and modified cleanroom installations. It does 
+not prescribe specific technological or contractual means of achieving these requirements. It is intended 
+for use by users, specifiers, designers, purchasers, suppliers, builders and performance verifiers of 
+cleanroom installations. The primary cleanliness consideration is airborne particle concentration. 
+Detailed checklists are provided for the requirements, design, construction and start-up, which 
+include important performance parameters to be considered. Energy management design approaches 
+are identified to support an energy-efficient cleanroom design. Construction guidance is provided, 
+including requirements for start-up and verification. A basic element of this document is consideration 
+of aspects, including maintenance, that will help to ensure continued satisfactory operation for the 
+entire life cycle of the cleanroom.
+NOTE Further guidance is given in Annexes A to D. ISO 14644-1, ISO 14644-2, ISO 14644-8, ISO 14644-9, 
+ISO 14644-10, ISO 14644-12 and ISO 14644-17 provide complementary information. ISO 14644-7 offers guidance 
+on design, construction and requirements for separative devices (clean air hoods, glove boxes, isolators and 
+mini-environments).
+The following subjects are mentioned but not addressed in this document:
+— specific operational activities, processes to be accommodated and process equipment in the 
+cleanroom installation;
+— fire and safety regulations;
+— ongoing operation, cleaning and maintenance activities, which are covered by ISO 14644-5.
+2  Normative references
+The following documents are referred to in the text in such a way that some or all of their content 
+constitutes requirements of this document. For dated references, only the edition cited applies. For 
+undated references, the latest edition of the referenced document (including any amendments) applies.
+ISO 14644-1, Cleanrooms and associated controlled environments — Part 1: Classification of air cleanliness 
+by particle concentration
+ISO 14644-16, Cleanrooms and associated controlled environments — Part 16: Energy efficiency in 
+cleanrooms and separative devices
+3	 	Terms	and	definitions
+For the purposes of this document, the following terms and definitions apply.
+ISO and IEC maintain terminology databases for use in standardization at the following addresses:
+— ISO Online browsing platform: available at h t t p s :// www .iso .org/ obp
+— IEC Electropedia: available at h t t p s :// www .electropedia  .org/ 
+1© ISO 2022 – All rights reserved  
+iTeh STANDARD PREVIEW
+(standards.iteh.ai)
+ISO 14644-4:2022
+https://standards.iteh.ai/catalog/standards/sist/fa93b865-17f2-4fe8-97e1-497680624c6a/iso-
+14644-4-2022
+ISO 14644-4:2022(E)
+3.1  General
+3.1.1
+air change effectiveness
+ACE
+ratio between the recovery rate at a location or locations in a cleanroom (3.1.4) and the overall recovery 
+rate of the cleanroom after a contamination event
+Note 1 to entry: The recovery rate is defined and measured in accordance with ISO 14644-3.
+[SOURCE: ISO 14644-16:2019, 3.2.7]
+3.1.2
+classification
+method of assessing level of cleanliness against a specification for a cleanroom or clean zone
+Note 1 to entry: Levels should be expressed in terms of an ISO Class, which represents maximum allowable 
+concentrations of particles in a unit volume of air.
+[SOURCE: ISO 14644-1:2015, 3.1.4]
+3.1.3
+cleanliness
+condition not exceeding a specified level of contamination
+[SOURCE: ISO 14644-15:2017, 3.5]
+3.1.4
+cleanroom
+room within which the number concentration of airborne particles is controlled and classified, and 
+which is designed, constructed and operated in a manner to control the introduction, generation and 
+retention of particles inside the room
+Note 1 to entry: The class of airborne particle concentration is specified.
+Note 2 to entry: Levels of other cleanliness attributes, such as chemical, viable or nanoscale concentrations in the 
+air, and also surface cleanliness in terms of particle, nanoscale, chemical and viable concentrations, might also be 
+specified and controlled.
+Note 3 to entry: Other relevant physical parameters might also be controlled as required, e.g. temperature, 
+humidity, pressure, vibration and electrostatic.
+[SOURCE: ISO 14644-1:2015, 3.1.1]
+3.1.5
+clean zone
+defined space within which the number concentration of airborne particles is controlled and classified, 
+and which is constructed and operated in a manner to control the introduction, generation and retention 
+of contaminants inside the space
+Note 1 to entry: The class of airborne particle concentration is specified.
+Note 2 to entry: Levels of other cleanliness attributes, such as chemical, viable or nanoscale concentrations in the 
+air, and also surface cleanliness in terms of particle, nanoscale, chemical and viable concentrations, might also be 
+specified and controlled.
+Note 3 to entry: Other relevant physical parameters might also be controlled as required, e.g. temperature, 
+humidity, pressure, vibration and electrostatic.
+Note 4 to entry: A clean zone(s) can be a defined space within a cleanroom or might be achieved by a separative 
+device. Such a device can be located inside or outside a cleanroom.
+[SOURCE: ISO 14644-1:2015, 3.1.2]
+   © ISO 2022 – All rights reserved
+  
+2
+iTeh STANDARD PREVIEW
+(standards.iteh.ai)
+ISO 14644-4:2022
+https://standards.iteh.ai/catalog/standards/sist/fa93b865-17f2-4fe8-97e1-497680624c6a/iso-
+14644-4-2022
+ISO 14644-4:2022(E)
+3.1.6
+commissioning
+planned and documented series of inspections, adjustments, measurements, tests and verifications 
+carried out systematically to set the installation into correct technical operation as specified
+Note 1 to entry: The objective evidence needed for a verification can be the result of an inspection or of testing 
+other forms of determination, such as performing alternative calculations or reviewing documents
+3.1.7
+contaminant
+particle, chemical or microorganism that adversely affects the product or process
+3.1.8
+contaminant removal effectiveness
+CRE
+ratio of particle concentration in the air leaving the cleanroom to the average of particle concentration 
+in the working plane of the cleanroom, when particles entering from filtered supply air are ignored
+Note 1 to entry: If the air leaves the cleanroom at more than one point then the weighted average of the particle 
+concentrations based on the relative flowrates can be used.
+Note 2 to entry: The number and positioning of the sampling locations for determining the average particle 
+concentration in the working plane of the cleanroom can be based on the method given in 14644–1.
+Note 3 to entry: The local particle concentration is dependent on the airflow pattern in the cleanroom and may 
+vary significantly in the cleanroom. CRE in a sub-area of interest in the cleanroom may be calculated by selecting 
+a single sampling location considered to be representative of the characteristics of the sub-area of interest.
+Note 4 to entry: Particles may be replaced by another airborne contaminant.
+[SOURCE: ISO 14644-16:2019, 3.2.5, modified — Definition revised and notes to entry added].
+3.1.9
+customer
+person or organisation that could or does receive a product or a service that is intended for or required 
+by this person or organisation
+EXAMPLE Consumer, client, end-user, retailer, receiver of product or service from an internal process 
+beneficiary and purchaser.
+Note 1 to entry: A customer can be internal or external to the organization.
+[SOURCE: ISO 9000:2015, 3.2.4]
+3.1.10
+non-unidirectional 	airflow
+non-UDAF
+air distribution where the supply air entering the cleanroom or clean zone mixes with the internal air
+[SOURCE: ISO 14644-1:2015, 3.2.8 modified — Definition revised.]
+3.1.11
+particle
+minute piece of matter with defined physical boundaries
+[SOURCE: ISO 14644-1:2015, 3.2.1]
+3.1.12
+setting to work
+activities to bring a system from a static state into correct operation
+© ISO 2022 – All rights reserved   
+ 
+3
+iTeh STANDARD PREVIEW
+(standards.iteh.ai)
+ISO 14644-4:2022
+https://standards.iteh.ai/catalog/standards/sist/fa93b865-17f2-4fe8-97e1-497680624c6a/iso-
+14644-4-2022
+ISO 14644-4:2022(E)
+3.1.13
+source strength
+number of airborne particles or other airborne contaminants considered emitted per time unit 
+expressed as a rate
+Note 1 to entry: A source can be a person, equipment or an object.
+Note 2 to entry:  Each rate should be indicated with a specific particle size. Particles are often emitted in multiple 
+sizes and each size may have a different rate.
+3.1.14
+start-up
+period following the construction of an installation when the systems and installation are brought into 
+active service, including all commissioning activities, training and handover to the customer
+3.1.15
+supplier
+organisation that provides a product or a service
+EXAMPLE Producer, distributor, retailer or vendor of a product or service.
+Note 1 to entry: A supplier can be internal or external to the organization.
+Note 2 to entry: In a contractual situation, a supplier is sometimes called a “contractor”.
+[SOURCE: ISO 9000:2015, 3.2.5]
+3.1.16
+unidirectional 	airflow
+UDAF
+controlled airflow through the entire cross-section of a cleanroom or a clean zone with a steady velocity 
+and airstreams that are considered to be parallel
+Note 1 to entry: This type of airflow results in a directed transport of particles and other contaminants from the 
+clean zone.
+[SOURCE: ISO 14644-1:2015, 3.2.7, modified — Note 1 to entry added.]
+3.1.17
+ventilation effectiveness
+dimensionless index that relates to both the dilution and removal of indoor airborne contaminants as 
+it determines how effectively the filtered supply air is distributed to the critical areas in the occupied 
+space and the contamination removed by the air leaving the room
+Note 1 to entry: Ventilation effectiveness can be expressed in terms of air change effectiveness (ACE) or 
+contaminant removal effectiveness (CRE). In cleanrooms, mostly ACE is used.
+3.1.18
+verification
+confirmation, through the provision of objective evidence, that specified requirements have been 
+fulfilled
+Note 1 to entry: The objective evidence needed for a verification can be the result of an inspection, testing or 
+other forms of determination, such as performing alternative calculations or reviewing documents.
+Note 2 to entry: The activities carried out for verification are sometimes called a qualification process.
+Note 3 to entry: The word “verified” is used to designate the corresponding status.
+[SOURCE: ISO 9000:2015, 3.8.12]
+   © ISO 2022 – All rights reserved
+  
+4
+iTeh STANDARD PREVIEW
+(standards.iteh.ai)
+ISO 14644-4:2022
+https://standards.iteh.ai/catalog/standards/sist/fa93b865-17f2-4fe8-97e1-497680624c6a/iso-
+14644-4-2022
+ISO 14644-4:2022(E)
+3.2  Installation
+3.2.1
+air-handling unit
+AHU
+unit or plant comprising fan, filtration, heating, cooling, humidification or dehumidification and mixing 
+of fresh air and recirculated air, that provides conditioned air to a room or facility
+3.2.2
+air diffuser
+device placed at the outlet of a room air supply terminal to improve distribution and mixing of supply 
+air with room air
+Note 1 to entry: A mesh grille or a perforated screen is not considered to be a diffuser.
+3.2.3
+installation
+cleanroom or one or more clean zones, together with all associated structures, air-treatment systems, 
+services and utilities
+[SOURCE: ISO 14644-1:2015, 3.1.3]
+3.2.4
+filter	system
+assembly composed of filter, frame and other support mechanism or other housing
+[SOURCE: ISO 14644-3:2019, 3.3.4]
+3.2.5
+final	filter
+last high-efficiency air filter in the system before the air enters the cleanroom or clean zone
+Note 1 to entry: Terminal filter is a final filter located at the point where the air enters the cleanroom
+[SOURCE: ISO 14644-3:2019, 3.3.5, modified — Definition revised and Note 1 to entry added.]
+3.2.6
+turn-down
+controlled reduction of airflow velocity in unidirectional airflow cleanrooms and clean air devices or 
+airflow rates in non-UDAF cleanrooms in order to save energy during periods when the cleanroom is 
+not in operation
+[SOURCE: ISO 14644-16:2019, 3.2.8]
+4  Abbreviated terms
+ACE air change effectiveness
+AHU air-handling unit
+CRE contaminant removal effectiveness
+ESD electrostatic discharge
+HEPA high-efficiency particulate air (filter)
+HVAC heating, ventilation and air conditioning
+MCP microbe-carrying particle
+© ISO 2022 – All rights reserved   
+ 
+5
+iTeh STANDARD PREVIEW
+(standards.iteh.ai)
+ISO 14644-4:2022
+https://standards.iteh.ai/catalog/standards/sist/fa93b865-17f2-4fe8-97e1-497680624c6a/iso-
+14644-4-2022
+ISO 14644-4:2022(E)
+non-UDAF non-unidirectional airflow
+UDAF unidirectional airflow
+ULPA ultra-low penetration air (filter)
+URS user requirement specification
+5  General
+A cleanroom or clean zone can be used to protect products and processes that are sensitive to airborne 
+particles and other types of contaminants. A cleanroom installation can be new or the expansion or 
+modification of an existing installation.
+The life cycle of the cleanroom shall be considered from the outset. This includes its design, construction, 
+start-up, occupation, operation, renovation, expansion, repair and demolition and consequent recycling 
+or disposal.
+An analysis of the need for a cleanroom and its justification shall be performed. This analysis shall 
+address, but is not limited to:
+a) contamination risk to product, processes, people and environment ( 6.1);
+b) statutory requirements;
+c) relevant regulations;
+d) business-related aspects (financial viability and resource capability);
+e) future needs.
+The flowchart in Figure 1 is intended to guide the user through this document with a logical sequence of 
+the work. The annexes are aligned with the clauses in the main text (requirements, design, construction 
+and start-up).
+There shall be a review after each step based on the requirements and previous steps. In a small project 
+these steps may be simplified.
+This document can also be used for non-classified clean controlled environment and controlled zones.
+   © ISO 2022 – All rights reserved
+  
+6
+iTeh STANDARD PREVIEW
+(standards.iteh.ai)
+ISO 14644-4:2022
+https://standards.iteh.ai/catalog/standards/sist/fa93b865-17f2-4fe8-97e1-497680624c6a/iso-
+14644-4-2022
+ISO 14644-4:2022(E)
+Figure 1 — Flowchart: from requirements to design, construction and start-up
+6  Requirements
+6.1  Cleanroom requirements
+Cleanroom features and contamination control requirements are established as necessary to reliably 
+and repeatably create environments of desired quality to protect patients, products, processes, 
+personnel or the environment. An assessment can be carried out in order to identify potential risks of 
+the facility to be designed.
+© ISO 2022 – All rights reserved   
+ 
+7
+iTeh STANDARD PREVIEW
+(standards.iteh.ai)
+ISO 14644-4:2022
+https://standards.iteh.ai/catalog/standards/sist/fa93b865-17f2-4fe8-97e1-497680624c6a/iso-
+14644-4-2022
+ISO 14644-4:2022(E)
+The following items shall be considered and defined as appropriate by the customer and designer:
+a) the intended use of the installation and the operations to be carried out therein;
+b) regulatory requirements;
+c) the relevant parts of ISO 14644 that will be used, including number, edition and year of publication;
+d) the air cleanliness class at the designated particle size(s) and the defined occupancy states in 
+accordance with ISO 14644-1;
+e) any other requirements with respect to particles or other contaminants in air or on surfaces (e.g. 
+particle number concentration and particle deposition rate) (see Clause A.4);
+f) considerations of any other performance requirements such as ESD or vibration;
+g) temperature, humidity, processes and operator comfort considerations;
+h) performance parameters and their acceptance criteria, with any specific requirements for alert 
+and action limits and their management;
+i) entry and exit of personnel, equipment and materials, in terms of quantity, movement and controls 
+applied, such as decontamination and gowning;
+j) sources of contamination and their source strength data;
+k) methods of testing, measurement and monitoring to meet the acceptance criteria;
+l) cleanroom environmental control by stand-alone systems or integrated into building management 
+system (BMS);
+m) requirements for monitoring of environmental conditions and other parameters;
+NOTE Guidance for monitoring to provide evidence of cleanroom performance related to air cleanliness 
+by particle concentration can be found in ISO 14644-2.
+n) intended life cycle of the installation;
+o) intended operational cycles and turn-down periods;
+p) changes of the installation anticipated over time to be provided for in the design;
+q) the intended location of the installation and any site constraints;
+r) the identification of external environmental influences;
+s) critical dimensions and weight restrictions, including those related to available space;
+t) process and product requirements that affect the installation, including cleaning and disinfection;
+u) the process equipment list with utility requirements;
+v) the preferred contamination control concepts and overall strategy for contamination control;
+w) environmental and energy efficiency targets;
+x) process hazards;
+y) internal cleanroom surface and finish requirements (including the need for smooth, impervious 
+finishes which are cleanable and resistant to cleaning and decontamination agents and free of gaps 
+or pathways to uncontrolled areas);
+z) required availability in terms of acceptable downtime and back-up strategy in the event of failure;
+   © ISO 2022 – All rights reserved
+  
+8
+iTeh STANDARD PREVIEW
+(standards.iteh.ai)
+ISO 14644-4:2022
+https://standards.iteh.ai/catalog/standards/sist/fa93b865-17f2-4fe8-97e1-497680624c6a/iso-
+14644-4-2022
+ISO 14644-4:2022(E)
+aa) strategy of maintenance operations, space and time needed to maintain the installations during 
+the process cycle;
+ab) any other factors or constraints, not listed above, imposed by the operating requirements over the 
+life cycle of the cleanroom;
+ac) specific industry guidance.
+Additional information on mechanisms of contamination and cleanliness attributes is given in Annex A, 
+together with a comprehensive checklist regarding requirements.
+6.2  Other requirements
+The following items shall be considered and defined as appropriate:
+a) roles and responsibilities of all involved parties during execution of the project;
+b) project budget;
+c) a time schedule, including milestones for provision of necessary information and documentation;
+d) procedure for managing changes;
+e) verifications to be carried out at each stage of the project and related documentation;
+f) acceptance criteria for the various project stages, if applicable;
+g) scope of documentation at designated project stages, its data format and approval procedures (see 
+9.5);
+h) training for cleanroom personnel and technical staff who will manage, use, clean, test and maintain 
+the installation;
+i) any other approvals (e.g. management, financial, quality, process, regulatory, statutory);
+j) competence and experience of designers, installers, constructors, commissioners and testers or 
+verifiers, specifically in relation to cleanrooms and cleanroom technology;
+k) required experience, roles and responsibilities for approvals.
+6.3  Documentation
+The requirements shall be agreed and documented to form a basis for subsequent anticipated design 
+and allow changes to be managed in a traceable manner.
+NOTE In some industries this is documented in a URS.
+7  Design
+7.1  General
+The output of the requirements (Clause 6) is the input for the design. The design of the cleanroom shall 
+take into account an effective contamination control strategy for all aspects of its construction, testing, 
+operation, maintenance and life cycle. There are typically three stages in the overall design process: 
+conceptual design, basic design and detailed design.
+Depending on the nature and scale of the project, these stages can be executed in one or more steps 
+with appropriate design iterations and reviews.
+The design process shall progress in an agreed manner, shall take into account all the agreed 
+requirements and shall be documented.
+© ISO 2022 – All rights reserved   
+ 
+9
+iTeh STANDARD PREVIEW
+(standards.iteh.ai)
+ISO 14644-4:2022
+https://standards.iteh.ai/catalog/standards/sist/fa93b865-17f2-4fe8-97e1-497680624c6a/iso-
+14644-4-2022

@@ -1,0 +1,565 @@
+
+ASHRAE \267 
+180 Technology Parkway \267 Peachtree Corners, GA 30092 \267 www.ashrae.orgAbout ASHRAE
+Founded in 1894, ASHRAE is a global professional society committed to serve humanity by advancing the arts and
+sciences of heating, ventilation, air conditio
+ning, refrigeration, and their allied fields. 
+As an industry leader in re
+search, standards writing, pu
+blishing, certification, and continuing education, ASHRAE
+and its members are dedicated to promot
+ing a healthy and sustainable built en
+vironment for all, through strategic
+partnerships with organizations in the HVAC&R community and across related industries. 
+To stay current with this 
+and other ASHRAE St
+andards and Guidelines, visit 
+www.ashrae.org/standards, and
+connect on LinkedIn, Facebo
+ok, Twitter, and YouTube.
+Visit the ASHRAE Bookstore
+ASHRAE offers its Standards and Guidel
+ines in print, as immediately downlo
+adable PDFs, and via ASHRAE Digital
+Collections, which provides online access with automatic updates as well as hi
+storical versions 
+of publications.
+Selected Standards and Guidelin
+es are also offered in redline versions th
+at indicate the changes made between the
+active Standard or Guideline and its 
+previous version. For more informatio
+n, visit the Standards and Guidelines
+section of the ASHRAE Bookstor
+e at www.ashrae.org/bookstore.
+IMPORTANT NOTICES ABOUT THIS STANDARD
+To ensure that you have all of the approved
+ addenda, errata, and 
+interpretations for this
+Standard, visit www.ashrae.o
+rg/standards to download
+ them free of charge.
+Addenda, errata, and interpretations for ASHR
+AE Standards and Guid
+elines are no longer
+distributed with copies of th
+e Standards and Guidelines. AS
+HRAE provides these addenda,
+errata, and interpretations on
+ly in electronic form to promote more sustainable use of
+resources.
+10/23
+\251 
+ASHRAE. 
+Per 
+international 
+copyright 
+law, 
+additional 
+reproduction, 
+distribution, 
+or 
+transmission 
+in 
+either 
+print 
+or 
+digital 
+form 
+is 
+not 
+permitted 
+without 
+ASHRAE's 
+prior 
+written 
+permission.
+POLICY STATEMENT DEFINING ASHRAE\222S CONCERN
+FOR THE ENVIRONMENTAL IMPACT OF ITS ACTIVITIES
+ASHRAE is concerned with the impact 
+of its members\222 activities on both
+ the indoor and outdoor environment.
+ASHRAE\222s members will strive to minimize
+ any possible deleterious effect on 
+the indoor and outdoor environment of
+the systems and components in their responsibility while maximizing the bene
+ficial effects thes
+e systems provide,
+consistent with accepted
+ Standards and the practical state of the art.
+ASHRAE\222s short-range goal is to en
+sure that the systems and components
+ within its scope do not impact the
+indoor and outdoor environment to a greater extent than 
+specified by the Standards and Guidelines as established by
+itself and other responsible bodies.
+As an ongoing goal, ASHRAE will, th
+rough its Standards Committee and extensive Technical Committee structure,
+continue to generate up-to-date Standards and Guidelin
+es where appropriate and adopt, recommend, and promote
+those new and revised Standards develope
+d by other responsible organizations.
+Through its 
+Handbook
+, appropriate chapters will contain up-to-date
+ Standards and design considerations as the
+material is systematically revised.
+ASHRAE will take the lead with respect 
+to dissemination of environmental information of its primary interest and
+will seek out and disseminate information 
+from other responsibl
+e organizations that is pert
+inent, as guides
+ to updating
+Standards and Guidelines.
+The effects of the design and select
+ion of equipment and systems will be 
+considered within the scope of the
+system\222s intended use and expected mi
+suse. The disposal of hazardous materi
+als, if any, will also be considered.
+ASHRAE\222s primary concern for environmental impact will be at the site
+ where equipment within ASHRAE\222s scope
+operates. However, energy source selection and the possible environmental im
+pact due to the energy source and
+energy transportation 
+will be considered where possi
+ble. Recommendations concerni
+ng energy source selection
+should be made 
+by its members.
+\251 
+ASHRAE. 
+Per 
+international 
+copyright 
+law, 
+additional 
+reproduction, 
+distribution, 
+or 
+transmission 
+in 
+either 
+print 
+or 
+digital 
+form 
+is 
+not 
+permitted 
+without 
+ASHRAE's 
+prior 
+written 
+permission.
+ANSI/ASHRAE Addendum b to ANS
+I/ASHRAE Standard 62.1-20223
+Modify Table M-1 as shown below. The remainder of Table M-1 is unchanged.Table M-1Check Table for the Vent
+ilation Rate Procedure \(VRP\)Occupancy Category
+Combined Outdoor Air Rate \(
+Rc\)
+cfm/ft2L/s\267 m2
+Food and Beverage Service, 
+General
+Break rooms0.251.23
+Coffee stations0.211.07
+Conference/meeting0.412.07
+Corridors0.080.40
+Occupiable storage rooms fo
+r liquids or gels0.170.87
+Office Buildings
+Breakrooms
+0.49
+2.47
+\251 
+ASHRAE. 
+Per 
+international 
+copyright 
+law, 
+additional 
+reproduction, 
+distribution, 
+or 
+transmission 
+in 
+either 
+print 
+or 
+digital 
+form 
+is 
+not 
+permitted 
+without 
+ASHRAE's 
+prior 
+written 
+permission.
+2
+ANSI/ASHRAE Addendum b to 
+ANSI/ASHRAE Standard 62.1-2022
+Modify Table J-1 as shown. The remainder of Table J-1 is unchanged.Table J-1Rate Rationale \(see Table 6-1\)
+Occupancy CategoryDescription/Rationale
+People
+Outdoor
+Air Rate,
+cfm/person
+People 
+Outdoor
+Air Rate,
+L/s/person
+Area
+Outdoor
+Air Rate,
+cfm/ft2Area
+Outdoor
+Air Rate, 
+L/s\267m2Air
+Class
+Food and Beverage Service, 
+General
+Office Buildings
+Breakrooms
+Occupant activity is primarily sedentary \(seat
+ed\). There are limited space-related contaminants. 
+5
+2.5
+0.06
+0.3
+1
+\251 
+ASHRAE. 
+Per 
+international 
+copyright 
+law, 
+additional 
+reproduction, 
+distribution, 
+or 
+transmission 
+in 
+either 
+print 
+or 
+digital 
+form 
+is 
+not 
+permitted 
+without 
+ASHRAE's 
+prior 
+written 
+permission.
+ANSI/ASHRAE Addendum b to ANS
+I/ASHRAE Standard 62.1-20221
+\(This foreword is not part of this standard. It is
+ merely informative and does not contain requirements
+necessary for conformance to the st
+andard. It has not been
+ processed according to the ANSI require-
+ments for a standard and may contain material that ha
+s not been subject to publ
+ic review or a consen-
+sus process. Unresolved objectors on informative material are no
+t offered the right to appeal at
+ASHRAE or ANSI.\)
+FOREWORD
+In Table 6-1, a general break room is listed as having an area outdoor air rate of 0.06 cfm/ft2 \(0.3 L/s\267m2\)
+and an occupant density of 25 #/1000 ft2 \(#100 m2\). An office building breakroom has an area outdoor air
+rate of 0.12 cfm/ft2 \(0.6 L/s\267m2\) and an occupant density of 50 #/1000 ft2 \(#100 m2\). The rate rationales for
+both types of break rooms are identical in Informative Appendix J, and the area outdoor rate is listed as
+0.06 cfm/ft2 \(0.3 L/s\267m2\) for both break rooms in that appendix. Addendum b corrects the discrepancy by
+deleting the office building break room from Table 6-1,
+ \223Minimum Ventilation Rates in Breathing Zone.\224 It
+also revises Tables G-1, J-1, and M-1 for consistency.
+Informative Note:
+In this addendum, changes to the current standa
+rd are indicated in the text by underlining
+\(for additions\) and strikethrough
+ \(for deletions\) unless the instructions specifically mention some other
+means of indicating the changes.  
+Modify Table 6-1 as shown. The re
+mainder of Table 6-1 is unchanged.
+Modify Table G-1 as shown.
+Addendum b to Standard 62.1-2022
+Table 6-1Minimum Ventilation Rates in Breathing ZoneOccupancy Category
+People Outdoor 
+Air Rate RpArea Outdoor 
+Air Rate RaDefault Values
+Air 
+Class
+OS
+\(6.2.6.1.4\)
+Occupant Density
+cfm/
+person
+L/s\267
+personcfm/ft2L/s\267m2#/1000 ft2or #/100 m2
+Office Buildings
+Breakrooms
+5
+2.5
+0.12
+0.6
+50
+1
+Table G-1Minimum Outdoor and Primary Airflow RatesOccupancy Category
+Zone Minimum Airflow
+Outdoor 
+Airflow Rate 
+RsMinimum Primary
+Airflow Rate, 
+Rpzcfm/ft2L/s\267m2cfm/ft2L/s\267m2[ . . . ]
+General
+Break rooms
+0.43
+2.4
+0.74
+4.13
+Conference/meeting 0.44
+2.20
+0.76
+3.80
+Corridors 0.11
+0.55
+0.19
+0.95
+Office Buildings
+Breakrooms
+0.65
+3.25
+1.12
+5.60
+Main entry lobbies 
+0.19
+0.95
+0.33
+1.65
+[ . . . ]
+0.30
+1.50
+0.52
+2.60
+\251 
+ASHRAE. 
+Per 
+international 
+copyright 
+law, 
+additional 
+reproduction, 
+distribution, 
+or 
+transmission 
+in 
+either 
+print 
+or 
+digital 
+form 
+is 
+not 
+permitted 
+without 
+ASHRAE's 
+prior 
+written 
+permission.
+ASHRAE is a registered trademark of the 
+American Society of Heating, Refrigerating and Air-Conditioning Engineers, Inc.
+ANSI is a registered trademark of the American National Standards Institute.SPECIAL NOTE
+This American National Standard \(ANS\) is
+ a national voluntary consensus Standard 
+developed under the auspices of ASHRAE. Consensus
+ is defined
+by the American National Standards Institute \(ANSI\), of which ASHRAE is a member and which has approved this Standard as an ANS
+, as
+\223substantial agreement reached by directly and materially affected interest categories
+. This signifies the concurrence of more 
+than a simple majority,
+but not necessarily unanimity. Consensus requires that all views an
+d objections be considered, and that an effort be made towar
+d their resolution.\224
+Compliance with this Standard is voluntary until and unless a legal jurisdiction makes compliance mandatory through legislation
+. 
+ASHRAE obtains consensus through participatio
+n of its national and international member
+s, associated societies, and public revi
+ew.
+ASHRAE Standards are prepared by a Project Committee appointed 
+specifically for the purpose of 
+writing the Standard. The Projec
+t
+Committee Chair and Vice-Chair must be members of ASHRAE; while other committee members may or may not be ASHRAE members, all
+must be technically qualified in the subject area of the Standard
+. Every effort is made to bala
+nce the concerned interests on all Project Committees. 
+The Senior Manager of Standards of ASHRAE sh
+ould be contacted for
+a. interpretation of the contents of this Standard,
+b. participation in the next
+ review of the Standard,
+c. offering constructive critic
+ism for improving the Standard, or
+d. permission to reprint 
+portions of the Standard.
+DISCLAIMER
+ASHRAE uses its best efforts to promulgate
+ Standards and Guidelines for the benefit of
+ the public in light of available informa
+tion and accepted
+industry practices. However, ASHRAE does not guarantee, certify, or assure the safety or performance of any products, component
+s, or systems
+tested, installed, or operated in accordance with ASHRAE\222s Stan
+dards or Guidelines or that any tests conducted under its Standa
+rds or Guidelines
+will be nonhazardous or free from risk.
+ASHRAE INDUSTRIAL ADVERTIS
+ING POLICY ON STANDARDS
+ASHRAE Standards and Guidelines are establis
+hed to assist industry and the public by 
+offering a uniform method of testing for r
+ating purposes, by
+suggesting safe practices in designing and installing equipment, by providing proper definitions of this equipment, and by prov
+iding other information
+that may serve to guide the industry. The cr
+eation of ASHRAE Standards and Guidelines 
+is determined by the need for them, and c
+onformance
+to them is completely voluntary.
+In referring to this Standard or Guideline 
+and in marking of equipment and in advertis
+ing, no claim shall be made, either state
+d or implied,
+that the product has been approved by ASHRAE.
+ASHRAE Standing Standard Project Committee 62.1
+Cognizant TC: 4.3, Ventilation Requirements and Infiltration
+SPLS Liaison: Lawr
+ence C. Markel \267 ASHRAE Staff Liaison: Mark Weber
+Brendon J. Burley*, 
+Chair
+Mark DavidsonZalmie HusseinBenjamin C. Seeley
+Wayne R. Thomann*, Co
+-
+Vice-Chair
+Darryl W. DeAngelisIlona JohnsonMichael S. Sherber*
+Marwa Zaatari*, 
+Co
+-
+Vice-Chair
+James E. Dennison*Meghan K. McNulty*Jeffrey K. Smith*
+Anthony M. AbateTaylor Duran*Kashif NawazDrayton P. Stott
+Nick H. AgopianE. Curtis Eichelbe
+rger, Jr.*Lisa C. NgEric Sturm
+Hugo AguilarHenry W. Ernst, Jr.Andrew K. PersilyRichard Taft*
+Wayne A. BakerRichard B. FoxSara PersilyDean T. Tompkins
+Elizabeth C. Balke*Fred Grable*J
+oseph J. PessaDonald Weekes, Jr.*
+Scott D. Barr*Brian J. Hafendorfer*Heather Platt GulledgeJeffrey G. Whitelaw
+Tina M. Brueckner*Roger L. Hedric
+kGary H. PomerantzScott D. Williams
+Anthony G. BuschurBenjamin L. HeyserStephen Ray*Buzz Wright
+LaToya CarrawayElliott Horner*Kevin A. Scarlett
+Abdel K. Darwich*Eli P. Howard, IIISteven C. Sill
+* Denotes members of voting status when the document was approved for publication
+ASHRAE STANDARDS 
+COMMITTEE 2023\2262024
+Jonathan Humble, 
+Chair
+Phillip A. JohnsonKenneth A. MonroeChristopher J. Seeton
+Douglas D. Fick, 
+Vice-Chair
+Gerald J. KettlerDaniel 
+H. NallPaolo M. Tronville
+Kelley P. CrammJay A. KohlerPhilip J. NaughtonDouglas Tucker
+Abdel K. DarwichPaul A. Lindahl, Jr.Kathleen OwenWilliam F. Walter
+Drake H. ErbeJames D. LutzGwelen PaliagaSusanna S. Hanson,
+ BOD ExO
+Patricia GraefJulie MajurinKarl L. PetermanAshish Rakheja, 
+CO
+Jaap HogelingLawrence C. MarkelJustin M. Prosser
+Jennifer A. IsenbeckMargaret M. MathisonDavid Robin
+Ryan Shanley,
+ Senior Manager of Standards
+\251 
+ASHRAE. 
+Per 
+international 
+copyright 
+law, 
+additional 
+reproduction, 
+distribution, 
+or 
+transmission 
+in 
+either 
+print 
+or 
+digital 
+form 
+is 
+not 
+permitted 
+without 
+ASHRAE's 
+prior 
+written 
+permission.
+ANSI/ASHRAE Addendum b to
+ANSI/ASHRAE Standard 62.1-2022Ventilation and
+Acceptable Indoor
+Air QualityApproved by ASHRAE and the American Nation
+al Standards Institute 
+on October 31, 2023.
+This addendum was approved by a Standing
+ 
+Standard Project Committee \(SSPC\) for which the Standards Committee has
+established a documented program for regular publication of addenda 
+or revisions, including pr
+ocedures for timely, docu-
+mented, consensus action on
+ requests for change to any part of the standard. Instructions for how to submit a change can
+be found on the ASHRAE\256 website \(www.ashrae.org/c
+ontinuous-maintenance\). 
+The latest edition of an ASHRAE Standard may be purc
+hased on the ASHRAE website \(www.ashrae.org\) or from
+ASHRAE Customer Service, 180 Technolo
+gy Parkway, Peachtree Corners, GA 
+30092. E-mail: orders@ashrae.org. Fax:
+678-539-2129. Telephone: 404-636-8400 \(worldwide\), or toll 
+free 1-800-527-4723 \(for orde
+rs in US and Canada\). For
+reprint permission, go to
+ www.ashrae.org/permissions.
+\251 2023 ASHRAE                  ISSN 1041-2336
+\251 
+ASHRAE. 
+Per 
+international 
+copyright 
+law, 
+additional 
+reproduction, 
+distribution, 
+or 
+transmission 
+in 
+either 
+print 
+or 
+digital 
+form 
+is 
+not 
+permitted 
+without 
+ASHRAE's 
+prior 
+written 
+permission.
+

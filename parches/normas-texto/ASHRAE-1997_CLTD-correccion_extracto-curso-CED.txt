@@ -1,0 +1,42 @@
+                                                                         Page 17 of 61
+Step # 5                                                                                 HVAC COOLING LOAD CALCULATIONS AND PRINCIPLES
+Step #6
+          b. Indoor temperature of 78°F
+          c. Outdoor maximum temperature of 95°F with mean daily temperature of 85°F and daily range
+
+               of 21°F
+               CLTD ROOF Corrected= [CLTD Roof+ (78 - TR) +(TM - 85)]
+               Where
+               o (78 - TR) = indoor design temperature correction
+               o (TM - 85) = outdoor design temperature correction
+               o TR = Indoor room temperature
+               o Tm = Mean outdoor temperature
+               o Tmax = Maximum outdoor temperature
+               o Tm = Tmax - (Daily Range) / 2
+          Calculate roof area (A) from architectural plans
+          Q Roof = U * A * CLTD Roof Corrected
+
+What is Sol-air temperature?
+
+The sol-air temperature is a fictitious number that defines the value of the outside air temperature which would, in
+          a. Four latitudes on July or August
+          b. Indoor temperature of 78°F
+          c. Outdoor maximum temperature of 95°F with mean daily temperature of 85°F and daily range
+
+               of 21°F
+               CLTD Wall Corrected= [CLTD Wall+ (78 - TR) +(TM - 85)]
+               Where
+               o (78 - TR) = indoor design temperature correction
+               o (TM - 85) = outdoor design temperature correction
+               o TR = Indoor room temperature
+
+                                                                  Page 19 of 61
+Step #5                                                                                 HVAC COOLING LOAD CALCULATIONS AND PRINCIPLES
+Step #6
+              o Tm = Mean outdoor temperature
+              o Tmax = Maximum outdoor temperature
+              o Tm = Tmax - (Daily Range) / 2
+         Calculate walls area (A). Use the architectural drawings to determine how much wall area you
+         have. Since you will be finding window and door losses separately, exclude windows and door
+         and count only wall area.
+         Q Wall = U * A * CLTD Wall Corrected

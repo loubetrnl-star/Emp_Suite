@@ -1,0 +1,509 @@
+INTERNATIONAL    ISO
+STANDARD        7183
+
+               Second edition
+                   2007-12-15
+
+              Compressed-air dryers -- Specifications
+              and testing
+
+                       Sécheurs à air comprimé -- Spécifications et essais
+
+ iTeh STANDARD PREVIEW
+        (standards.iteh.ai)
+
+                           ISO 7183:2007
+https://standards.iteh.ai/catalog/standards/sist/3b262cf8-94f3-4758-b935-
+
+                    42d1a512d5b2/iso-7183-2007
+
+               Reference number
+               ISO 7183:2007(E)
+
+                        © ISO 2007
+ISO 7183:2007(E)
+
+                                                                       PDF disclaimer
+  This PDF file may contain embedded typefaces. In accordance with Adobe's licensing policy, this file may be printed or viewed but
+  shall not be edited unless the typefaces which are embedded are licensed to and installed on the computer performing the editing. In
+  downloading this file, parties accept therein the responsibility of not infringing Adobe's licensing policy. The ISO Central Secretariat
+  accepts no liability in this area.
+  Adobe is a trademark of Adobe Systems Incorporated.
+  Details of the software products used to create this PDF file can be found in the General Info relative to the file; the PDF-creation
+  parameters were optimized for printing. Every care has been taken to ensure that the file is suitable for use by ISO member bodies. In
+  the unlikely event that a problem relating to it is found, please inform the Central Secretariat at the address given below.
+
+     iTeh STANDARD PREVIEW
+            (standards.iteh.ai)
+
+                               ISO 7183:2007
+    https://standards.iteh.ai/catalog/standards/sist/3b262cf8-94f3-4758-b935-
+
+                        42d1a512d5b2/iso-7183-2007
+
+               COPYRIGHT PROTECTED DOCUMENT
+
+© ISO 2007
+
+All rights reserved. Unless otherwise specified, no part of this publication may be reproduced or utilized in any form or by any means,
+electronic or mechanical, including photocopying and microfilm, without permission in writing from either ISO at the address below or
+ISO's member body in the country of the requester.
+
+    ISO copyright office
+    Case postale 56 · CH-1211 Geneva 20
+    Tel. + 41 22 749 01 11
+    Fax + 41 22 749 09 47
+    E-mail copyright@iso.org
+    Web www.iso.org
+
+Published in Switzerland
+
+ii  © ISO 2007 - All rights reserved
+                                  ISO 7183:2007(E)
+
+Contents                          Page
+
+Foreword............................................................................................................................................................ iv
+
+Introduction ........................................................................................................................................................ v
+
+1  Scope ..................................................................................................................................................... 1
+
+2  Normative references ........................................................................................................................... 2
+
+3  Terms and definitions........................................................................................................................... 2
+
+4  Symbols ................................................................................................................................................. 4
+
+4.1 Figure symbols ..................................................................................................................................... 4
+
+4.2 Symbols and units ................................................................................................................................ 4
+
+4.3 Subscripts ............................................................................................................................................. 5
+
+5  Reference conditions ........................................................................................................................... 5
+
+6  Standard rating parameters................................................................................................................. 5
+
+7  Performance tests................................................................................................................................. 6
+
+7.1 Key performance parameters .............................................................................................................. 6
+
+iTeh STANDARD PREVIEW 7.2 Pressure dew point, flow rate and outlet temperature...................................................................... 6
+
+7.3 Differential pressure drop .................................................................................................................... 8
+
+(standards.iteh.ai) 7.4 Power consumption.............................................................................................................................. 8
+
+7.5 System air loss...................................................................................................................................... 9
+
+7.6 Dealing with in-cycle variations ........................................................................................................ 12
+
+7.7 Noise ................................................I.S..O....7.1..8..3..:2..0..0.7................................................................................. 13
+7.8 Tests for enhetrtpgsy://sstaanvdianrgds.diteehv.aici/ceasta.l.o..g./.s.t.a..n.d..a.r.d..s../s..is..t./3..b..2..6.2..c..f8..-..9.4..f.3..-.4..7.5..8..-.b..9..3.5..-.......................................... 13
+7.9 Instrument accuracy.............4..2.d..1..a.5..1..2..d.5..b..2./.i.s.o..-.7..1..8..3.-..2.0..0..7...................................................................... 13
+
+8  Uncertainties ....................................................................................................................................... 14
+
+9  Test report ........................................................................................................................................... 14
+
+9.1 Statement............................................................................................................................................. 14
+
+9.2 Technical data ..................................................................................................................................... 15
+
+Annex A (informative) Types of compressed-air dryers .............................................................................. 16
+
+Annex B (informative) Report form for dryer performance.......................................................................... 17
+
+Annex C (normative) Noise measurement..................................................................................................... 18
+
+Annex D (informative) Pressure-measuring tubes........................................................................................ 19
+
+Bibliography ..................................................................................................................................................... 21
+
+© ISO 2007 - All rights reserved  iii
+ISO 7183:2007(E)
+
+Foreword
+
+ISO (the International Organization for Standardization) is a worldwide federation of national standards bodies
+(ISO member bodies). The work of preparing International Standards is normally carried out through ISO
+technical committees. Each member body interested in a subject for which a technical committee has been
+established has the right to be represented on that committee. International organizations, governmental and
+non-governmental, in liaison with ISO, also take part in the work. ISO collaborates closely with the
+International Electrotechnical Commission (IEC) on all matters of electrotechnical standardization.
+
+International Standards are drafted in accordance with the rules given in the ISO/IEC Directives, Part 2.
+
+The main task of technical committees is to prepare International Standards. Draft International Standards
+adopted by the technical committees are circulated to the member bodies for voting. Publication as an
+International Standard requires approval by at least 75 % of the member bodies casting a vote.
+
+Attention is drawn to the possibility that some of the elements of this document may be the subject of patent
+rights. ISO shall not be held responsible for identifying any or all such patent rights.
+
+ISO 7183 was prepared by Technical Committee ISO/TC 118, Compressors and pneumatic tools, machines
+and equipment, Subcommittee SC 4, Quality of compressed air.
+
+                   iTeh STANDARD PREVIEW
+
+This second edition of ISO 7183 revises and replaces the first edition (ISO 7183:1986), together with
+
+ISO 7183-2:1996, which have been techni(casltlyarenvisdeda. rds.iteh.ai)
+
+                                                             ISO 7183:2007
+                                 https://standards.iteh.ai/catalog/standards/sist/3b262cf8-94f3-4758-b935-
+
+                                                     42d1a512d5b2/iso-7183-2007
+
+iv  © ISO 2007 - All rights reserved
+                                                                                                             ISO 7183:2007(E)
+
+Introduction
+
+The scope has been expanded to cover most current types of dryers but also to allow the use of this
+International Standard and its test methods for any emerging technologies. Any new technologies can then be
+incorporated at a later revision.
+Exclusions to this International Standard are generally identified by reference to the definition of a dryer.
+Specific exclusions have been identified, however, for absorption dryers and dryer processes involving "over-
+compression" as the means of removing water from compressed air.
+The process of over-compression employs the principle that water can be removed by compressing the air to
+a pressure higher than the intended working pressure thereby forcing out the water from the compressed air
+and then subsequently expanding the air back to the working pressure.
+Absorption dryers are now considered to be of minor importance as a drying technique and are, therefore, not
+considered in this International Standard.
+
+              iTeh STANDARD PREVIEW
+                     (standards.iteh.ai)
+
+                                                    ISO 7183:2007
+                        https://standards.iteh.ai/catalog/standards/sist/3b262cf8-94f3-4758-b935-
+
+                                            42d1a512d5b2/iso-7183-2007
+
+© ISO 2007 - All rights reserved  v
+ iTeh STANDARD PREVIEW
+        (standards.iteh.ai)
+
+                           ISO 7183:2007
+https://standards.iteh.ai/catalog/standards/sist/3b262cf8-94f3-4758-b935-
+
+                    42d1a512d5b2/iso-7183-2007
+INTERNATIONAL STANDARD                                                                        ISO 7183:2007(E)
+
+Compressed-air dryers -- Specifications and testing
+
+1 Scope
+
+This International Standard specifies the performance data that are necessary to state and applicable test
+methods for different types of compressed air dryers. It is applicable to compressed air dryers working with an
+effective (gauge) pressure of more than 50 kPa (0,5 bar), but less than or equal to 1 600 kPa (16 bar) and
+include the following:
+
+ adsorption dryers;
+
+ membrane dryers;
+
+ refrigeration dryers (including drying by cooling);
+
+ or a combination of these.
+
+NOTE         A description of the principles of operation of the dryers within the Scope of this International Standard is given
+                     iTeh STANDARD PREVIEW
+in Annex A.
+
+This International Standard identifi(esstteastnmdethaodrsdfosr .mietaeshuri.nag id)ryer parameters that include the following:
+
+ pressure dew point;              ISO 7183:2007
+
+                   https://standards.iteh.ai/catalog/standards/sist/3b262cf8-94f3-4758-b935-
+
+ flow rate;                       42d1a512d5b2/iso-7183-2007
+
+ pressure drop;
+
+ compressed-air loss;
+
+ power consumption;
+
+ noise emission.
+
+This International Standard also provides partial-load tests for determining the performance of energy saving
+devices or measures.
+
+The mounting, operating and loading conditions of dryers for the measurement of noise are given in Annex C.
+
+This International Standard is not applicable to the following types of dryers or drying processes:
+
+ absorption dryers;
+
+ drying by over-compression;
+
+ integral dryers.
+
+© ISO 2007 - All rights reserved                                                                                                1
+ISO 7183:2007(E)
+
+2 Normative references
+
+The following referenced documents are indispensable for the application of this International Standard. For
+dated references, only the edition cited applies. For undated references, the latest edition of the referenced
+document (including any amendments) applies.
+
+ISO 261, ISO general purpose metric screw threads -- General plan
+
+ISO 228-1, Pipe threads where pressure-tight joints are not made on the threads -- Part 1: Dimensions,
+tolerances and designation
+
+ISO 1179 (all parts), Connections for general use and fluid power -- Ports and stud ends with ISO 228-1
+threads with elastomeric or metal-to-metal sealing
+
+ISO 1219-1, Fluid power systems and components -- Graphic symbols and circuit diagrams -- Part 1:
+Graphic symbols for conventional use and data-processing applications
+
+ISO 2602, Statistical interpretation of test results -- Estimation of the mean -- Confidence interval
+
+ISO 2854, Statistical interpretation of data -- Techniques of estimation and tests relating to means and
+variances
+
+ISO 3744, Acoustics -- Determination of sound power levels and sound energy levels of noise sources using
+sound pressure -- Engineering method for an essentially free field over a reflecting plane 1)
+
+ISO 8573-1:2001, CompressediaTir --ehParSt 1T: CAonNtamDinaAntsRanDd puPritRy clEassVesIEW
+ISO 8573-3, Compressed air -- Part 3: Te(sst mtaethnoddsaforr mdesas.uirteemhen.taofih)umidity
+
+ISO 9614-2, Acoustics -- Determination of sound power levels of noise sources using sound intensity --
+                                               ISO 7183:2007
+Part 2: Measurement by scanning
+                  https://standards.iteh.ai/catalog/standards/sist/3b262cf8-94f3-4758-b935-
+
+                                               42d1a512d5b2/iso-7183-2007
+
+3 Terms and definitions
+
+For the purposes of this document, the following terms and definitions apply.
+
+3.1
+absorption
+chemical process of attracting one substance into the mass of another, so that the absorbed substance
+combines with the absorbent
+
+3.2
+actual vapour pressure
+partial pressure exerted by the water vapour under the actual temperature condition of the environment
+
+3.3
+adsorption
+physical process in which the molecules of a gas or a vapour adhere to the surface of a solid
+
+3.4
+ambient
+area surrounding the dryer under test
+
+1) To be published. Revision of ISO 3744:1994                                  © ISO 2007 - All rights reserved
+
+2
+                                                                                               ISO 7183:2007(E)
+
+3.5
+integral
+equipment which is either physically integrated and/or functionally interlinked with the compressor
+
+NOTE 1 Interlinking can be in terms of energy exchange, controls or sharing of other components.
+
+NOTE 2 Typically, some of the performance characteristics, such as energy consumption or pressure drop, deviate
+substantially from those of free-standing air-treatment equipment.
+
+3.6
+desiccant
+adsorbent substance with the ability to retain water without change of state
+
+EXAMPLES Silica gel, activated alumina or molecular sieves.
+
+NOTE   The term excludes deliquescent substances.
+
+3.7
+dew point
+temperature at which the vapour pressure of the vapour in a humid gas is equal to the saturation vapour
+pressure over the pure liquid and at which condensate forms as a liquid on cooling the gas
+
+3.7.1
+pressure dew point
+pdp
+
+dew point measured at tihTe aechtualSprTessAureNDARD PREVIEW
+
+3.8                               (standards.iteh.ai)
+dryer
+
+device which lowers absolute moisture content of compressed air by reducing water vapour content such that
+
+the exit relative humidity is lower than 100 %ISO 7183:2007
+
+       https://standards.iteh.ai/catalog/standards/sist/3b262cf8-94f3-4758-b935-
+
+NOTE "Separating" devices that remo4v2ed1oan5ly12bdu5lkb2w/aistoe-r7,1s8u3c-h20a0s7a cyclone separator, are not dryers.
+
+3.9
+peak
+point at which the measured parameter takes its highest, instantaneous value
+
+3.10
+permeate
+compressed air and water vapour that diffuses through a membrane
+
+NOTE   The greater the selectivity of the membrane for moisture, the lower the permeate loss.
+
+3.11
+purge air flow
+volume-flow of compressed air entering the dryer minus the compressed air leaving the dryer during
+regeneration cycle
+
+NOTE 1 Typically, purge air is expanded to atmospheric pressure.
+
+NOTE 2 For membrane dryers, purge air flow is the sum of "sweep-gas" plus permeate.
+
+3.12
+regeneration
+process of preparation of drying media to enable it to enter a new period of operation
+
+© ISO 2007 - All rights reserved                                                                                         3
+ISO 7183:2007(E)
+
+3.13
+relative humidity
+ratio of the actual vapour pressure to the saturation vapour pressure over a plane liquid water surface at the
+same temperature
+
+3.14
+saturation vapour pressure
+partial pressure of water vapour that is in neutral equilibrium with a plane surface of pure, condensed-phase
+water or ice at a given temperature
+
+3.15
+sweep gas
+compressed air used in a membrane dryer to carry away moisture from the region outside the membrane
+
+3.16
+stabilization period
+time taken to reach a steady state condition of an average value
+
+3.17
+test time
+time taken after the stabilization period to record dryer performance
+
+4 Symbols
+
+4.1 Figure symbols iTeh STANDARD PREVIEW
+The symbols used in Figures 1 to 3 are in (ascctoardnandceawrithdISsO.i1t2e1h9-1..ai)
+
+                                                             ISO 7183:2007
+4.2 Symbols and unitshttps://standards.iteh.ai/catalog/standards/sist/3b262cf8-94f3-4758-b935-
+
+                                       42d1a512d5b2/iso-7183-2007
+Symbol Term                                 SI unit          Other practical units
+
+d     actual internal diameter of the tube                   millimetres
+
+l     thread length                                          millimetres
+
+m     mass                                  kilogram         gram, milligram
+
+P     power                                 watt             megawatt, kilowatt
+
+p     pressure                              kilopascal       bar
+
+q     flow rate                             cubic metres     cubic metres per hour
+                                            per second       cubic metres per minute
+                                                             litres per second
+
+L     latent heat                           joules           megajoules, kilojoules
+
+n     number                                (dimensionless)
+
+t     time                                  second           minute, hour, day
+
+V     volume                                cubic metre      cubic decimetre, cubic centimetre,
+                                                             cubic millimetre
+
+W     work                                  joule            megajoule, kilojoule, kilowatt-hour
+
+   X  average of a series of measured
+
+      values, xi of a parameter
+
+4                                                                         © ISO 2007 - All rights reserved
+                                                                                                             ISO 7183:2007(E)
+
+4.3 Subscripts
+
+Subscript  Term
+AL         air loss
+Av         average
+BL         blow-down loss
+sum        sum
+DC         dryer cycle
+i          interval number
+PF         purge flow
+PL         purge air loss
+E          electrical energy
+v          vessel
+ref        reference
+regn       regeneration
+S          steam energy
+s          system
+TOT        total
+
+5 Reference conditions
+
+Reference conditions for volume statements shall be as given in Table 1.
+
+                                          Table 1 -- Reference conditions
+                         iTeh STANDARD PREVIEW
+                         air temperature                      20 °C
+                         absolute air p(resstsuarendards.ite10h0 .kaPai[)1 bar (a)]
+
+                         relative water vapour pressure       0
+
+                         NOTE     Bar(e) is usedItSoOind7i1c8a3te:2e0ff0e7ctive pressure above atmospheric.
+
+                         https://standards.iteh.ai/catalog/standards/sist/3b262cf8-94f3-4758-b935-
+
+6 Standard rating parameter4s2d1a512d5b2/iso-7183-2007
+
+Standard rating parameters are necessary in defining the performance of an air dryer and in comparing one
+dryer with another. The standard rating parameters are given in Table 2.
+
+The standard rating parameters are assumed to be 100 % rated flow operating at 24 hours per day and seven
+days per week.
+
+                                  Table 2 -- Standard rating parameters
+
+                     Quantity                                                                Value a                  Tolerance b
+                                                         Unit
+                                                                                                                            ± 2
+                                                                       Option A1 c Option A2 c Option B               ± 14 (0,14)
+
+Inlet temperature                                        °C          35              38                      45                0
+                                                                                                                             - 5
+Inlet pressure                                    kPa gauge      700 (7)   700 (7)                           700 (7)
+                                                    [bar(e)]                                                                ± 3
+                                                                                                                            ± 3
+Inlet relative humidity                                  %           100             100                     100            ± 3
+                                                                                                                            ± 3
+Cooling air inlet temperature (where applicable)         °C          25              38                      35
+
+Cooling water inlet temperature (where                   °C          25              29                      25
+applicable)
+
+Ambient air temperature                                  °C          25              38                      35
+
+Flow of dryer inlet                               % of rated 100 100 100
+                                                      flow
+
+a Maintain within actual gauge value.
+b The choice between options A and B is influenced by the intended geographical location of the equipment.
+c Option A1 applies to a temperate climate zone and Option A2 applies to a sub-tropical zone.
+
+© ISO 2007 - All rights reserved                                                                                      5
+

@@ -1,0 +1,2279 @@
+
+ASHRAE · 1791 Tullie Circle NE · Atlanta, GA 30329 · www.ashrae.org About ASHRAE
+ASHRAE, founded in 1894, is a global society advancing human well-being through sustainable technology for the
+built environment. The Society and its members focus on building systems, energy efficiency, indoor air quality,
+refrigeration, and sustainability. Through research, Standards writing, publishing, certification and continuing
+education, ASHRAE shapes tomorrows built environment today. 
+For more information or to become a member of ASHRAE, visit www.ashrae.org.
+To stay current with this and other ASHRAE Standards and Guidelines, visit www.ashrae.org/standards.
+Visit the ASHRAE Bookstore
+ASHRAE offers its Standards and Guidelines in print, as immediately downloadable PDFs, and via ASHRAE Digital
+Collections, which provides online access with automatic updates as well as historical versions of publications.
+Selected Standards and Guidelines are also offered in redline versions that indicate the changes made between the
+active Standard or Guideline and its previous version. For more information, visit the Standards and Guidelines
+section of the ASHRAE Bookstore at www.ashrae.org/bookstore.IMPORTANT NOTICES ABOUT THIS STANDARD
+To ensure that you have all of the approved addenda, errata, and interpretations for this
+Standard, visit www.ashrae.org/standards to download them free of charge.
+Addenda, errata, and interpretations for ASHRAE Standards and Guidelines are no longer
+distributed with copies of the Standards and Guidelines. ASHRAE provides these addenda,
+errata, and interpretations only in electronic form to promote more sustainable use of
+resources.
+7/19
+ANSI/ASHRAE Addendum s to ANSI/ASHRAE Standard 62.1-2016
+3TABLE6.2.2.1MinimumVentilationRatesinBreathingZone
+\(Table6.2.2.1shallbeusedinconjunctionwiththeaccompanyingnotes.\)Occupancy Category
+People Outdoor 
+Air Rate
+RpArea Outdoor 
+Air Rate 
+Ra
+Notes
+Default Values
+Air 
+Class
+OS
+\(6.2.7.1.3\)
+Occupant
+Density
+\(see Note 4\)
+Combined 
+Outdoor 
+Air Rate
+\(see Note 5\)
+cfm/
+person
+L/s\267
+personcfm/ft2L/s\267m2#/1000 ft2or #/100 m2
+cfm/
+person
+L/s\267
+person
+Correctional Facilities
+Cell
+5
+2.5
+0.12
+0.6
+25
+10
+4.9
+2
+Dayroom
+52.50.060.3
+30
+7
+3.51
+Guard stations
+5
+2.5
+0.06
+0.3
+15
+9
+4.5
+1
+Booking/waiting
+7.53.80.060.3
+50
+9
+4.42
+Educational Facilities
+Daycare \(through age 4\)
+10
+5
+0.18
+0.9
+25
+17
+8.6
+2
+Daycare sickroom
+10
+5
+0.18
+0.9
+25
+17
+8.6
+3
+Classrooms \(ages 5\2268\)
+10
+5
+0.12
+0.6
+25
+15
+7.4
+1
+Classrooms \(age 9 plus\)
+10
+5
+0.12
+0.6
+35
+13
+6.7
+1
+Lecture classroom
+7.5
+3.8
+0.06
+0.3
+H
+65
+8
+4.3
+1
+X
+Lecture hall \(fixed seats\)
+7.5
+3.8
+0.06
+0.3
+H
+150
+8
+4.0
+1
+X
+Art classroom
+10
+5
+0.18
+0.9
+20
+19
+9.5
+2
+Science laboratories
+10
+5
+0.18
+0.9
+25
+17
+8.6
+2
+University/college 
+laboratories
+10
+5
+0.18
+0.9
+25
+17
+8.6
+2
+Wood/metal shop
+10
+5
+0.18
+0.9
+20
+19
+9.5
+2
+Computer lab
+10
+5
+0.12
+0.6
+25
+15
+7.4
+1
+Libraries
+5
+2.5
+0.12
+0.6
+10
+1
+Media center
+10
+5
+0.12
+0.6
+A
+25
+15
+7.4
+1
+Music/theater/dance
+10
+5
+0.06
+0.3
+H
+35
+12
+5.9
+1
+X
+Multiuse assembly
+7.5
+3.8
+0.06
+0.3
+H
+100
+8
+4.1
+1
+X
+Food and Beverage Service
+Restaurant dining rooms
+7.5
+3.8
+0.18
+0.9
+70
+10
+5.1
+2
+Cafeteria/fast-food dining7.53.80.180.9
+100
+9
+4.72
+Bars, cocktail lounges
+7.5
+3.8
+0.18
+0.9
+100
+9
+4.7
+2
+Kitchen \(cooking\)
+7.53.80.120.6
+20
+14
+7.02
+GENERAL NOTES FOR TABLE 6.2.2.1
+1
+Related requirements:
+2
+Environmental Tobacco Smoke:
+3
+Air 
+density: 
+Volumetric 
+airflow 
+rates 
+are 
+based 
+on 
+dry 
+air 
+density 
+of 
+0.075 
+lb
+da
+/ft
+3
+ 
+\(1.2 
+kg
+da
+/m
+3
+\) 
+at 
+a 
+barometric 
+pressure 
+of 
+1 
+atm 
+\(101.3 
+kPa\) 
+and 
+an 
+air 
+temperature 
+of 
+70\260F 
+\(21\260C\).
+Rates shall be permitted to be adjusted for actual density.
+4
+Default occupant density:
+5
+Default combined outdoor air rate \(per person\):
+ Rate is based on the default occupant density.
+6
+Unlisted 
+occupancies:
+ 
+Where 
+the 
+occupancy 
+category 
+for 
+a 
+proposed 
+space 
+or 
+zone 
+is 
+not 
+listed, 
+the 
+requirements 
+for 
+the 
+listed 
+occupancy 
+category 
+that 
+is 
+most 
+similar 
+in 
+terms 
+of
+occupant density, activities, and building construction shall be used.
+ITEM-SPECIFIC NOTES FOR TABLE 6.2.2.1
+A
+B
+C
+Rate 
+does 
+not 
+allow 
+for 
+humidity 
+control. 
+\223Deck 
+area\224 
+refers 
+to 
+the 
+area 
+surrounding 
+the 
+pool 
+that 
+is 
+capable 
+of 
+being 
+wetted 
+during 
+pool 
+use 
+or 
+when 
+the 
+pool 
+is 
+occupied. 
+Deck 
+area
+D
+E
+F
+G
+H
+\251 
+ASHRAE 
+\050www.ashrae.org\051. 
+For 
+personal 
+use 
+only. 
+Additional 
+reproduction, 
+distribution, 
+or 
+transmission 
+in 
+either 
+print 
+or 
+digital 
+form 
+is 
+not 
+permitted 
+without 
+ASHRAE's 
+prior 
+written 
+permission.
+4
+ANSI/ASHRAE Addendum s to ANSI/ASHRAE Standard 62.1-2016
+General
+Break rooms
+5
+2.5
+0.06
+0.3
+H
+25
+7
+3.5
+1
+X
+Coffee stations52.50.060.3
+H20
+8
+41
+X
+Conference/meeting
+5
+2.5
+0.06
+0.3
+H
+50
+6
+3.1
+1
+X
+Corridors
+\227
+\227
+0.06
+0.3
+H
+\227
+1
+X
+Occupiable storage rooms for 
+liquids or gels
+5
+2.5
+0.12
+0.6
+B
+2
+65
+32.5
+2
+Hotels, Motels, Resorts, Dormitories
+Bedroom/living room
+5
+2.5
+0.06
+0.3
+H
+10
+11
+5.5
+1
+X
+Barracks sleeping areas
+5
+2.5
+0.06
+0.3
+H
+20
+8
+4.0
+1
+X
+Laundry rooms, central
+5
+2.5
+0.12
+0.6
+10
+17
+8.5
+2
+Laundry rooms within
+dwelling units
+5
+2.5
+0.12
+0.6
+10
+17
+8.5
+1
+Lobbies/prefunction
+7.5
+3.8
+0.06
+0.3
+H
+30
+10
+4.8
+1
+X
+Multipurpose assembly
+5
+2.5
+0.06
+0.3
+H
+120
+6
+2.8
+1
+X
+Office Buildings
+Breakrooms
+5
+2.5
+0.12
+0.6
+50
+7
+3.5
+1
+Main entry lobbies
+52.50.060.3
+H10
+11
+5.51
+X
+Occupiable storage rooms for 
+dry materials
+5
+2.5
+0.06
+0.3
+2
+35
+17.5
+1
+Office space
+52.50.060.3
+H5
+17
+8.51
+X
+Reception areas
+5
+2.5
+0.06
+0.3
+H
+30
+7
+3.5
+1
+X
+Telephone/data entry52.50.060.3
+H60
+6
+3.01
+XTABLE6.2.2.1MinimumVentilationRatesinBreathingZone\(Continued\)
+\(Table6.2.2.1shallbeusedinconjunctionwiththeaccompanyingnotes.\)Occupancy Category
+People Outdoor 
+Air Rate
+RpArea Outdoor 
+Air Rate 
+Ra
+Notes
+Default Values
+Air 
+Class
+OS
+\(6.2.7.1.3\)
+Occupant
+Density
+\(see Note 4\)
+Combined 
+Outdoor 
+Air Rate
+\(see Note 5\)
+cfm/
+person
+L/s\267
+personcfm/ft2L/s\267m2#/1000 ft2or #/100 m2
+cfm/
+person
+L/s\267
+person
+GENERAL NOTES FOR TABLE 6.2.2.1
+1
+Related requirements:
+2
+Environmental Tobacco Smoke:
+3
+Air 
+density: 
+Volumetric 
+airflow 
+rates 
+are 
+based 
+on 
+dry 
+air 
+density 
+of 
+0.075 
+lb
+da
+/ft
+3
+ 
+\(1.2 
+kg
+da
+/m
+3
+\) 
+at 
+a 
+barometric 
+pressure 
+of 
+1 
+atm 
+\(101.3 
+kPa\) 
+and 
+an 
+air 
+temperature 
+of 
+70\260F 
+\(21\260C\).
+Rates shall be permitted to be adjusted for actual density.
+4
+Default occupant density:
+5
+Default combined outdoor air rate \(per person\):
+ Rate is based on the default occupant density.
+6
+Unlisted 
+occupancies:
+ 
+Where 
+the 
+occupancy 
+category 
+for 
+a 
+proposed 
+space 
+or 
+zone 
+is 
+not 
+listed, 
+the 
+requirements 
+for 
+the 
+listed 
+occupancy 
+category 
+that 
+is 
+most 
+similar 
+in 
+terms 
+of
+occupant density, activities, and building construction shall be used.
+ITEM-SPECIFIC NOTES FOR TABLE 6.2.2.1
+A
+B
+C
+Rate 
+does 
+not 
+allow 
+for 
+humidity 
+control. 
+\223Deck 
+area\224 
+refers 
+to 
+the 
+area 
+surrounding 
+the 
+pool 
+that 
+is 
+capable 
+of 
+being 
+wetted 
+during 
+pool 
+use 
+or 
+when 
+the 
+pool 
+is 
+occupied. 
+Deck 
+area
+D
+E
+F
+G
+H
+\251 
+ASHRAE 
+\050www.ashrae.org\051. 
+For 
+personal 
+use 
+only. 
+Additional 
+reproduction, 
+distribution, 
+or 
+transmission 
+in 
+either 
+print 
+or 
+digital 
+form 
+is 
+not 
+permitted 
+without 
+ASHRAE's 
+prior 
+written 
+permission.
+ANSI/ASHRAE Addendum s to ANSI/ASHRAE Standard 62.1-2016
+5
+Miscellaneous Spaces
+Bank vaults/safe deposit
+5
+2.5
+0.06
+0.3
+H
+5
+17
+8.5
+2
+X
+Banks or bank lobbies
+7.5
+3.8
+0.06
+0.3
+H
+15
+12
+6.0
+1
+X
+Computer \(not printing\)
+5
+2.5
+0.06
+0.3
+H
+4
+20
+10.0
+1
+X
+Freezer and refrigerated 
+spaces \(<50\260F\)
+10500
+E0
+0
+02
+General manufacturing 
+\(excludes heavy industrial and 
+processes using chemicals\)
+10
+5.0
+0.18
+0.9
+7
+36
+18
+3
+Pharmacy \(prep. area\)
+5
+2.5
+0.18
+0.9
+10
+23
+11.5
+2
+Photo studios
+5
+2.5
+0.12
+0.6
+10
+17
+8.5
+1
+Shipping/receiving
+10
+5
+0.12
+0.6
+B
+2
+70
+35
+2
+Sorting, packing, light 
+assembly
+7.5
+3.8
+0.12
+0.6
+7
+25
+12.5
+2
+Telephone closets
+\227
+\227
+0.00
+0.0
+\227
+1
+Transportation waiting
+7.5
+3.8
+0.06
+0.3
+H
+100
+8
+4.1
+1
+X
+Warehouses
+10
+5
+0.06
+0.3
+B
+\227
+2
+Public Assembly Spaces
+Auditorium seating area
+5
+2.5
+0.06
+0.3
+H
+150
+5
+2.7
+1
+X
+Places of religious 
+worship
+52.50.060.3
+H120
+6
+2.81
+X
+Courtrooms
+5
+2.5
+0.06
+0.3
+H
+70
+6
+2.9
+1
+X
+Legislative chambers52.50.060.3
+H50
+6
+3.11
+X
+Libraries
+5
+2.5
+0.12
+0.6
+10
+17
+8.5
+1
+Lobbies
+52.50.060.3
+H150
+5
+2.71
+X
+Museums \(children\222s\)
+7.5
+3.8
+0.12
+0.6
+40
+11
+5.3
+1
+Museums/galleries
+7.53.80.060.3
+H40
+9
+4.61
+XTABLE6.2.2.1MinimumVentilationRatesinBreathingZone\(Continued\)
+\(Table6.2.2.1shallbeusedinconjunctionwiththeaccompanyingnotes.\)Occupancy Category
+People Outdoor 
+Air Rate
+RpArea Outdoor 
+Air Rate 
+Ra
+Notes
+Default Values
+Air 
+Class
+OS
+\(6.2.7.1.3\)
+Occupant
+Density
+\(see Note 4\)
+Combined 
+Outdoor 
+Air Rate
+\(see Note 5\)
+cfm/
+person
+L/s\267
+personcfm/ft2L/s\267m2#/1000 ft2or #/100 m2
+cfm/
+person
+L/s\267
+person
+GENERAL NOTES FOR TABLE 6.2.2.1
+1
+Related requirements:
+2
+Environmental Tobacco Smoke:
+3
+Air 
+density: 
+Volumetric 
+airflow 
+rates 
+are 
+based 
+on 
+dry 
+air 
+density 
+of 
+0.075 
+lb
+da
+/ft
+3
+ 
+\(1.2 
+kg
+da
+/m
+3
+\) 
+at 
+a 
+barometric 
+pressure 
+of 
+1 
+atm 
+\(101.3 
+kPa\) 
+and 
+an 
+air 
+temperature 
+of 
+70\260F 
+\(21\260C\).
+Rates shall be permitted to be adjusted for actual density.
+4
+Default occupant density:
+5
+Default combined outdoor air rate \(per person\):
+ Rate is based on the default occupant density.
+6
+Unlisted 
+occupancies:
+ 
+Where 
+the 
+occupancy 
+category 
+for 
+a 
+proposed 
+space 
+or 
+zone 
+is 
+not 
+listed, 
+the 
+requirements 
+for 
+the 
+listed 
+occupancy 
+category 
+that 
+is 
+most 
+similar 
+in 
+terms 
+of
+occupant density, activities, and building construction shall be used.
+ITEM-SPECIFIC NOTES FOR TABLE 6.2.2.1
+A
+B
+C
+Rate 
+does 
+not 
+allow 
+for 
+humidity 
+control. 
+\223Deck 
+area\224 
+refers 
+to 
+the 
+area 
+surrounding 
+the 
+pool 
+that 
+is 
+capable 
+of 
+being 
+wetted 
+during 
+pool 
+use 
+or 
+when 
+the 
+pool 
+is 
+occupied. 
+Deck 
+area
+D
+E
+F
+G
+H
+\251 
+ASHRAE 
+\050www.ashrae.org\051. 
+For 
+personal 
+use 
+only. 
+Additional 
+reproduction, 
+distribution, 
+or 
+transmission 
+in 
+either 
+print 
+or 
+digital 
+form 
+is 
+not 
+permitted 
+without 
+ASHRAE's 
+prior 
+written 
+permission.
+6
+ANSI/ASHRAE Addendum s to ANSI/ASHRAE Standard 62.1-2016
+Transient Residential
+Dwelling unit
+5
+2.5
+0.06
+0.3
+F,G, H
+F
+1
+X
+Common corridors
+\227
+\227
+0.06
+0.3
+H
+1
+X
+Retail
+Sales \(except as below\)
+7.5
+3.8
+0.12
+0.6
+15
+16
+7.8
+2
+Mall common areas7.53.80.060.3
+H40
+9
+4.61
+X
+Barbershop
+7.5
+3.8
+0.06
+0.3
+H
+25
+10
+5.0
+2
+X
+Beauty and nail salons20100.120.625
+25
+12.42
+Pet shops \(animal areas\)
+7.5
+3.8
+0.18
+0.9
+10
+26
+12.8
+2
+Supermarket
+7.53.80.060.3
+H8
+15
+7.61
+X
+Coin-operated laundries
+7.5
+3.8
+0.12
+0.6
+20
+14
+7.0
+2
+Sports and Entertainment
+Gym, sports arena
+\(play area\)
+20
+10
+0.18
+0.9
+E
+7
+45
+23
+2
+Spectator areas
+7.53.80.060.3
+H150
+8
+4.01
+X
+Swimming \(pool & deck\)
+\227
+\227
+0.48
+2.4
+C
+\227
+2
+Disco/dance floors
+20100.060.3
+H100
+21
+10.32
+X
+Health club/aerobics room
+20
+10
+0.06
+0.3
+40
+22
+10.8
+2
+Health club/weight rooms20100.060.3
+10
+26
+13.02
+Bowling alley \(seating\)
+10
+5
+0.12
+0.6
+40
+13
+6.5
+1
+Gambling casinos
+7.53.80.180.9
+120
+9
+4.61
+Game arcades
+7.5
+3.8
+0.18
+0.9
+20
+17
+8.3
+1
+Stages, studios
+1050.060.3
+D, H70
+11
+5.41
+XTABLE6.2.2.1MinimumVentilationRatesinBreathingZone\(Continued\)
+\(Table6.2.2.1shallbeusedinconjunctionwiththeaccompanyingnotes.\)Occupancy Category
+People Outdoor 
+Air Rate
+RpArea Outdoor 
+Air Rate 
+Ra
+Notes
+Default Values
+Air 
+Class
+OS
+\(6.2.7.1.3\)
+Occupant
+Density
+\(see Note 4\)
+Combined 
+Outdoor 
+Air Rate
+\(see Note 5\)
+cfm/
+person
+L/s\267
+personcfm/ft2L/s\267m2#/1000 ft2or #/100 m2
+cfm/
+person
+L/s\267
+person
+GENERAL NOTES FOR TABLE 6.2.2.1
+1
+Related requirements:
+2
+Environmental Tobacco Smoke:
+3
+Air 
+density: 
+Volumetric 
+airflow 
+rates 
+are 
+based 
+on 
+dry 
+air 
+density 
+of 
+0.075 
+lb
+da
+/ft
+3
+ 
+\(1.2 
+kg
+da
+/m
+3
+\) 
+at 
+a 
+barometric 
+pressure 
+of 
+1 
+atm 
+\(101.3 
+kPa\) 
+and 
+an 
+air 
+temperature 
+of 
+70\260F 
+\(21\260C\).
+Rates shall be permitted to be adjusted for actual density.
+4
+Default occupant density:
+5
+Default combined outdoor air rate \(per person\):
+ Rate is based on the default occupant density.
+6
+Unlisted 
+occupancies:
+ 
+Where 
+the 
+occupancy 
+category 
+for 
+a 
+proposed 
+space 
+or 
+zone 
+is 
+not 
+listed, 
+the 
+requirements 
+for 
+the 
+listed 
+occupancy 
+category 
+that 
+is 
+most 
+similar 
+in 
+terms 
+of
+occupant density, activities, and building construction shall be used.
+ITEM-SPECIFIC NOTES FOR TABLE 6.2.2.1
+A
+B
+C
+Rate 
+does 
+not 
+allow 
+for 
+humidity 
+control. 
+\223Deck 
+area\224 
+refers 
+to 
+the 
+area 
+surrounding 
+the 
+pool 
+that 
+is 
+capable 
+of 
+being 
+wetted 
+during 
+pool 
+use 
+or 
+when 
+the 
+pool 
+is 
+occupied. 
+Deck 
+area
+D
+E
+F
+G
+H
+\251 
+ASHRAE 
+\050www.ashrae.org\051. 
+For 
+personal 
+use 
+only. 
+Additional 
+reproduction, 
+distribution, 
+or 
+transmission 
+in 
+either 
+print 
+or 
+digital 
+form 
+is 
+not 
+permitted 
+without 
+ASHRAE's 
+prior 
+written 
+permission.
+ANSI/ASHRAE Addendum s to ANSI/ASHRAE Standard 62.1-2016
+1\(This foreword is not part of this standard. It is merely
+informative and does not contain requirements necessary
+for conformance to the standard. It has not been pro-
+cessed according to the ANSI requirements for a standard
+and may contain material that has not been subject to
+public review or a consensus process. Unresolved objec-
+tors on informative material are not offered the right to
+appeal at ASHRAE or ANSI.\)
+FOREWORD
+The ventilation rate procedure in Standard 62.1-2016 contains
+requirements in notes. This addendum relocates requirements
+to the body of the standard. Another change clarifies that in the
+presence of unusual sources, the rates in the VRP must be sup-
+plemented by additional ventilation to be determined by the
+IAQ procedure or an EHS professional. The default values per
+person in Table 6.2.2.1, \223Minimum Ventilation Rates in Breath-
+ing Zone,\224 do not contain any adjustments for Ev and, in many
+cases, are taken out of context. They are not used in the ventila-
+tion calculations. These values are deleted.
+Note: 
+In this addendum, changes to the current standard
+are indicated in the text by 
+underlining \(for additions\) and
+strikethrough \(for deletions\) unless the instructions specifi-
+cally mention some other means of indicating the changes. 
+3.DEFINITIONS\(SEEFIGURE3.1\)
+unusual 
+source: 
+an 
+item 
+or 
+activity 
+that 
+could 
+create 
+or 
+emit
+contaminants 
+that 
+occurs 
+rarely 
+within 
+an 
+occupancy 
+category.
+6.1.1 Ventilation Rate
+ Procedure. 
+The prescriptive design
+procedure presented in 
+Section 6.2, 
+in which outdoor air
+intake rates are determined
+ based on 
+space type/application,
+occupancy level, and floor area, 
+shall be permitted
+ to be used
+for any zone or system.
+Informative 
+Note: 
+The
+ 
+Ventilation
+ 
+Rate
+ 
+Procedure
+ 
+mini-
+mum
+ 
+rates
+ 
+are
+ 
+based
+ 
+on
+ 
+contaminant
+ 
+sources
+ 
+and
+ 
+source
+strengths
+ 
+that
+ 
+are
+ 
+typical
+ 
+for
+ 
+the
+ 
+listed
+ 
+occupancy
+ 
+categories.
+6.2.2.1 Breathing Zone 
+Outdoor Airflow. 
+The outdoor
+airflow required in the breathing zone \(
+Vbz\) of the occupiable
+space or spaces in a 
+ventilation zone shall be
+ not less than the
+value determined in accordance with Equation 6.2.2.1.
+Vbz = Rp \327 Pz + Ra \327 Az\(6.2.2.1\)
+where
+Az=zone floor area, the net occupiable floor area of the 
+ventilation zone, ft2 \(m2\)
+Pz=zone population, the number of people in the ventilation 
+zone during use
+Rp=outdoor airflow rate required per person as determined 
+from Table 6.2.2.1
+Informative Note: 
+These values are based on adapted
+occupants.
+Ra 
+=outdoor airflow rate required per unit area as 
+determined from Table 6.2.2.1
+Informative Note
+s: 
+1.Equation 6.2.2.1 accounts for people-related
+sources and area-related 
+sources 
+independently in
+the determination of the outdoor air rate required
+at the breathing zone. The use of Equation 6.2.2.1
+in the context of this standard does not necessarily
+imply that simple 
+addition of outdoor airflow
+rates for different sources can be applied to any
+other aspect of indoor air quality.
+2.
+The 
+rates 
+in 
+Table 
+6.2.2.1 
+are 
+based 
+on 
+all 
+other
+applicable 
+requirements 
+of 
+this 
+standard 
+being 
+met.
+If 
+other 
+requirements 
+of 
+the 
+standard 
+are 
+not 
+met,
+then the rates do not apply. 
+6.2.2.1.1 
+Unlisted 
+Occupancy. 
+Where 
+the 
+occupancy
+category 
+for 
+a 
+proposed 
+space 
+or 
+zone 
+is 
+not 
+listed, 
+the
+requirements 
+for 
+the 
+listed 
+occupancy 
+category 
+that 
+is 
+most
+similar 
+in 
+terms 
+of 
+occupant 
+density, 
+activities, 
+and 
+building
+construction shall be used.
+6.2.2.1.2 
+Source 
+Strengths.
+ 
+The 
+Ventilation 
+Rate 
+Pro-
+cedure 
+minimum 
+rates 
+are 
+based 
+on 
+contaminant 
+sources 
+and
+source
+ 
+strengths 
+that 
+are 
+typical 
+for 
+the 
+listed 
+occupancy 
+cate-
+gories. 
+Where 
+unusual 
+sources 
+are 
+expected, 
+the 
+additional
+ventilation 
+or 
+air 
+cleaning 
+required 
+shall 
+be 
+calculated 
+using
+Section 
+6.3.6 
+of 
+the 
+IAQ 
+procedure 
+or 
+criteria 
+established 
+by
+the 
+Environmental 
+Health 
+and 
+Safety 
+\(EHS\) 
+professional
+responsible to the owner. 
+Informative Note: 
+1.
+Zones 
+where 
+emissions 
+are 
+expected 
+from 
+stored
+hazardous 
+materials 
+are 
+not 
+typical 
+for 
+any 
+listed
+occupancy category. 
+2.
+Dry 
+ice, 
+theatrical 
+smoke, 
+and 
+smoke-producing
+activities 
+are 
+not 
+typical 
+for 
+any 
+listed 
+occupancy
+categories.
+6.2.2.1.3 
+Air 
+density. 
+Volumetric 
+airflow 
+rates 
+are
+based 
+on 
+dry 
+air 
+density 
+of 
+0.075 
+lb
+da
+/ft
+3
+ 
+\(1.2 
+kg
+da
+/m
+3
+\) 
+at 
+a
+barometric 
+pressure 
+of 
+1 
+atm 
+\(101.3 
+kPa\) 
+and 
+an 
+air 
+tempera-
+ture 
+of 
+70\260F 
+\(21\260C\).
+ 
+Rates 
+shall 
+be 
+permitted 
+to 
+be 
+adjusted
+for actual density.
+6.2.2.1.4 
+Dwelling 
+Units 
+with 
+Transient 
+Occupancy.
+Air
+ 
+from
+ 
+one
+ 
+residential
+ 
+dwelling
+ 
+shall
+ 
+not
+ 
+be
+ 
+recirculated
+ 
+or
+transferred
+ 
+to
+ 
+any
+ 
+other
+ 
+space
+ 
+outside
+ 
+of
+ 
+that
+ 
+dwelling.
+6.2.2.1.
+1.2
+5 
+Laboratories. Laboratory spaces that com-
+ply with all requirements of ANSI/AIHA Z9.56 are not
+required to comply with the rates in Table 6.2.2.1.
+AddendumstoStandard62.1-2016
+Add a new definition in Section 3 as shown. The remain-
+der of Section 3 is unchanged.
+Modify Section 6.1.1 as shown.
+Modify Section 6.2.2.1 as shown. The current Section
+6.2.2.1.1.2, \223Laboratories,\224 was added by Addendum w to
+62.1-2016. Published addenda are free to downloaded at
+https://www.ashrae.org/technical-resources/standards-and-
+guidelines/standards-addenda. 
+\251 
+ASHRAE 
+\050www.ashrae.org\051. 
+For 
+personal 
+use 
+only. 
+Additional 
+reproduction, 
+distribution, 
+or 
+transmission 
+in 
+either 
+print 
+or 
+digital 
+form 
+is 
+not 
+permitted 
+without 
+ASHRAE's 
+prior 
+written 
+permission.
+2
+ANSI/ASHRAE Addendum s to ANSI/ASHRAE Standard 62.1-20166.2.2.1.
+1
+6 Design 
+Zone Population. 
+Design zone popu-
+lation \(
+Pz\) shall equal the largest
+ \(peak\) number of people
+expected to occupy the ventilation zone during typical use.
+Exceptions
+ to 6.2.2.1.6:
+1.Where the number of people expected to occupy
+the ventilation zone fluctuates, zone population
+equal to the average 
+number of people shall be
+permitted, provided such average is determined
+in accordance with Section
+ 6.2.6.2.
+2.Where the largest or average number of people
+expected to occupy the ventilation zone cannot
+be established for a specific design, 
+an estimated
+value for zone population 
+shall be permitted, pro-
+vided such value is the product of the net occupi-
+able area of the ventilation zone and the default
+occupant density listed in Table 6.2.2.1.
+6.2.2.1.6.1 
+Design
+ 
+Zone
+ 
+Population 
+for 
+Dwelling
+Units 
+with 
+Transient 
+Occupancy. 
+Default
+ 
+occupancy
+ 
+for
+dwelling
+ 
+units
+ 
+shall
+ 
+be
+ 
+two
+ 
+persons
+ 
+for
+ 
+studio
+ 
+and
+ 
+one-bedroom
+units,
+ 
+with
+ 
+one
+ 
+additional
+ 
+person
+ 
+for
+ 
+each
+ 
+additional
+ 
+bedroom.
+6.2.5.1.3 
+Other 
+Ventilation 
+Requirements. 
+When
+ 
+a
+zone
+ 
+ventilation 
+rate 
+is 
+obtained 
+from 
+criteria 
+other 
+than 
+this
+standard, 
+the 
+ventilation 
+rate 
+shall 
+be 
+converted 
+to 
+cfm 
+or 
+L/s
+and 
+the 
+value 
+added 
+to 
+V
+ou
+ 
+for 
+use 
+in 
+system 
+design 
+calcula-
+tions. 
+6.2.7.1 Demand 
+Control Ventilation
+ \(DCV\). DCV shall
+be permitted as an optional means of dynamic reset.
+Exception
+ 
+to 
+6.2.7.1: 
+CO2-based DCV shall not be
+applied in zones with indoor sources of CO2 
+other than
+occupants or with CO2 
+removal mechanisms, 
+such as gaseous
+air cleaners.
+6.2.7.1.1 
+For DCV zones in the occupied mode, breath-
+ing zone outdoor airflow \(
+Vbz\) shall be reset in response to
+current population. 
+Current 
+population 
+estimates 
+used 
+in 
+DCV
+control 
+calculations 
+shall 
+not 
+result 
+in 
+ventilation 
+rates 
+that
+are 
+less 
+than 
+those 
+required 
+by 
+the 
+actual 
+population 
+during
+any one-hour time period.
+6.2.7.1.2 
+For DCV zones in the occupied mode, breath-
+ing zone outdoor airflow \(
+Vbz\) shall be not less than the build-
+ing component \(Ra 
+\327 
+Az\) for the zone.
+Exception: 
+6.2.7.1.3 
+For
+ 
+DCV 
+zones 
+in 
+the 
+occupied
+stand-by 
+mode, 
+B
+breathing zone outdoor airflow
+shall be permitted to be reduced to zero
+ 
+for
+ 
+zones
+in
+ 
+occupied
+ 
+standby
+ 
+mode for the occupancy cat-
+egories indicated \223
+OS\224 in Table 6.2.2.1, provided
+that airflow is restored to 
+Vbz 
+whenever 
+occupancy
+is detected. 
+Add new Section 6.2.5.1.3 as shown.
+Modify Section 6.2.7.1 as shown. The remainder of Sec-
+tion 6.2.7.1 is unchanged.
+Modify Table 6.2.2.1 as shown.
+\251 
+ASHRAE 
+\050www.ashrae.org\051. 
+For 
+personal 
+use 
+only. 
+Additional 
+reproduction, 
+distribution, 
+or 
+transmission 
+in 
+either 
+print 
+or 
+digital 
+form 
+is 
+not 
+permitted 
+without 
+ASHRAE's 
+prior 
+written 
+permission.
+POLICY STATEMENT DEFINING ASHRAE\222S CONCERN
+FOR THE ENVIRONMENTAL IMPACT OF ITS ACTIVITIES
+consistent with accepted Standards and the practical state of the art.
+itself and other responsible bodies.
+Through its Handbook
+material is systematically revised.
+Standards and Guidelines.
+should be made by its members.
+\251 
+ASHRAE 
+\050www.ashrae.org\051. 
+For 
+personal 
+use 
+only. 
+Additional 
+reproduction, 
+distribution, 
+or 
+transmission 
+in 
+either 
+print 
+or 
+digital 
+form 
+is 
+not 
+permitted 
+without 
+ASHRAE's 
+prior 
+written 
+permission.
+SPECIAL NOTE
+Consensus is defined by the
+ubstantial agreement
+ but not necessarily unanimity.
+t Committee
+hnically
+The Senior Manager of Standards of ASHRAE should be contacted for
+a. interpretation of the contents of this Standard,
+b. participation in the next review of the Standard,
+c. offering constructive criticism for improving the Standard, or
+d. permission to reprint portions of the Standard.
+DISCLAIMER
+tems tested, installed,
+ill be nonhazardous or
+free from risk.
+ASHRAE INDUSTRIAL ADVERTISING POLICY ON STANDARDS
+ating purposes, by suggesting
+hem is completely
+voluntary.
+product has been approved by ASHRAE.
+ASHRAE Standing Standard Project Committee 62.1
+Cognizant TC: 4.3, Ventilation Requirements and Infiltration
+SPLS Liaison: Karl L. Peterman
+Hoy R. Bohanon, Jr.*, 
+Chair
+Enrica GalassoLisa C. Ng
+Jennifer A. Isenbeck*, Co-Vice-Chair
+Elliott Gall
+Daniel C. Pettway*
+Wayne R. Thomann*, Co-Vice-Chair
+Gregg Gress*
+Stephen Ray*
+Nick H. Agopian
+Brian J. Hafendorfer*
+Tom Rice
+Hugo Aguilar
+Nathan L. Ho*
+Daniel J. Redmond*
+Charlene W. Bayer
+Elliott Horner*
+Jeffrey K. Smith*
+Lance R. Brown*
+Eli P. Howard, III*
+Erica Stewart*
+Robin M. Bristol
+Zalmie Hussein*
+Drayton P. Stott
+Tina M. Brueckner*
+Jennifer Kane
+Dean T. Tompkins
+Brendon J. Burley*
+Lauren MacGowens*
+David Vigue
+Abdel K. Darwich*
+Stephany I. Mason
+Donald Weekes, Jr.
+James E. Dennison*
+Meghan K. McNulty
+Marwa Zaatari*
+Henry W. Ernst, Jr.
+Maria A. Menchaca Brandan
+Richard B. Fox
+John Nelson, Jr.*
+ASHRAE STANDARDS COMMITTEE 2019\2262020
+Wayne H. Stoppelmoor, Jr., Chair
+Susanna S. Hanson
+Lawrence J. Schoen
+Drury B. Crawley, Vice-Chair
+Rick M. Heiden
+Steven C. Sill
+Els Baert
+Jonathan Humble
+Richard T. Swierczyna
+Charles S. Barnaby
+Srinivas Katipamula
+Christian R. Taber
+Niels Bidstrup
+Essam E. Khalil
+Russell C. Tharp
+Robert B. Burkhead
+Kwang Woo Kim
+Adrienne G. Thomle
+Thomas E. Cappellin
+Larry Kouma
+Michael W. Woodford
+Douglas D. Fick
+Cesar L. Lim
+Craig P. Wray
+Michael W. Gallagher
+Karl L. Peterman
+Jaap Hogeling,
+ BOD ExO
+Walter T. Grondzik
+Erick A. Phelps
+Malcolm D. Knight, 
+CO
+Steven C. Ferguson, Senior Manager of Standards
+\251 
+ASHRAE 
+\050www.ashrae.org\051. 
+For 
+personal 
+use 
+only. 
+Additional 
+reproduction, 
+distribution, 
+or 
+transmission 
+in 
+either 
+print 
+or 
+digital 
+form 
+is 
+not 
+permitted 
+without 
+ASHRAE's 
+prior 
+written 
+permission.
+ANSI/ASHRAE Addendum s to
+ANSI/ASHRAE Standard 62.1-2016Ventilation for
+Acceptable Indoor
+Air QualityApproved by the ASHRAE Standards Committee on June 22, 2019; by the ASHRAE Board of Directors on June 26, 2019; and by
+the American National Standards Institute on July 24, 2019.
+This addendum was approved by a Standing Standard Project Committee \(SSPC\) for which the Standards Committee has estab-
+lished a documented program for regular publication of addenda or revisions, including procedures for timely, documented, con-
+sensus action on requests for change to any part of the standard. Instructions for how to submit a change can be found on the
+ASHRAE® website \(https://www.ashrae.org/continuous-maintenance\). The latest edition of an ASHRAE Standard may be pur
+chased on the ASHRAE website \(www.ashrae.org\)
+ or from ASHRAE Cus-
+tomer Service, 1791 Tullie Circle, NE, Atlanta, GA 30329-2305. E-mail: orders@ashrae.org. Fax: 678-539-2129. Telephone: 404-
+636-8400 \(worldwide\), or toll free 1-800-527-4723 \(for orders in US and Canada\). For reprint permission, go to
+www.ashrae.org/permissions.
+© 2019 ASHRAE                  ISSN 1041-2336
+

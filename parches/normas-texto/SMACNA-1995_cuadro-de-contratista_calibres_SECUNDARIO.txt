@@ -1,0 +1,1279 @@
+=== page 1
+ARTISAN SHEET METAL CORP. 1-01 27TH AVE. ASTORIA, NY 11101       FABIAN@ARTISANSM.COM 917-776-9458 
+DESIGN, ENGINEERING, FABRICATION AND SALES              
+     WWW.ARTISANSM.COM 
+TABLE 1-1 
+PRESSURE CLASSIFICATION 
+FOR DUCTWORK 
+STATIC 
+PRESSURE CLASS 
+(INCHES (Pa) W.G.) 
++1/2”
+-1/2”
++1”
+-1”
++2”
+-2”
++3”
+-3”
++4”
+-4”
++6”
+-6”
++10”
+-10”
+Rectangular Style
+A
+A
+STD
+STD
+STV
+A
+A
+A
+A
+A
+A
+A
+A
+A
+Round Style
+STV
+STD
+A
+A
+A
+A
+Flat Oval Style
+STD
+STV
+A
+A
+A
+Flexible Style
+A
+A
+STD
+STD
+STV
+A
+A
+A
+A
+NOTES FOR TABLE 1-1: 
+1.
+“STD” denotes standard (nonvariable volume) air
+duct construction requirements (regardless of actual
+velocity level) for compliance with this document
+for all cases in which the designer does not
+designate the pressure classification for the duct
+system independent of fan static rating. “STV”
+denotes the standard construction classification for
+variable volume ducts for compliance with this
+document when the designer does not designate a
+class for this application.
+See S1.4 on Page 1-8.
+2.
+“A” denotes other pressure classes for which
+construction or installation details are given in this
+document and are AVAILABLE for designation in
+contract documents prepared by designers.
+3.
+See Section S1.9 for sealing requirements related to
+duct pressure class.
+4.
+The pressure class number in Tables 1-1 and 1-1S
+denotes construction suitable for a maximum level
+not less than the maximum operating pressure in
+the portion of the system receiving the
+classification from the designer.
+Text references for ducts: 
+a) Rectangular……………………………...page 1-12
+b) Round……………………………………..page 3-2
+c) Flat oval………………………………….page 3-13 
+d) Flexible…………………………………..page 3-15
+e)   Duct liner………………………………...page 2-24 
+5.
+Designer selection of duct construction pressure
+class is acknowledgment of acceptable design
+velocity level and pressure level including any
+overpressure or underpressure conditions that may
+occur during normal and special modes of
+operation.
+6.
+The designation of a pressure class pertains to
+straight duct and duct fittings except for equipment
+and special components inserted into the ductwork
+systems; such items are governed by separate
+specifications in the contract documents.
+TABLE 1-1S 
+STATIC PRESSURE 
+Duct Pressure Class 
+Operating Pressure 
+(in.) 
+(Pa) 
+½” w.g. 
+125 
+Up to ½” w.g. 
+1” w.g. 
+250 
+Over ½” up to 1” w.g. 
+2” w.g. 
+500 
+Over 1” up to 2” w.g. 
+3” w.g. 
+750 
+Over 2” up to 3” w.g. 
+4” w.g. 
+1000 
+Over 3” up to 4” w.g. 
+6” w.g. 
+1500 
+Over 4” up to 6” w.g. 
+10” w.g. 
+2500 
+Over 6” up to 10” w.g. 
+=== page 2
+ARTISAN SHEET METAL CORP. 1-01 27TH AVE. ASTORIA, NY 11101       FABIAN@ARTISANSM.COM 917-776-9458 
+DESIGN, ENGINEERING, FABRICATION AND SALES              
+     WWW.ARTISANSM.COM 
+PRECAUTIONS FOR TABLE 1-1: 
+1.
+The construction is, as indicated elsewhere in this
+manual, qualified by freedom from structural
+failure; however, accidental overpressure that could
+occur must be provided for at the design stage by
+overpressure relief (such as fail sage features,
+replaceable relief panels, controlled failure points,
+etc.)
+2.
+Field tests (if ever used) to test structural adequacy
+should not exceed 125% of rated pressure. The
+assignment of a pressure class number less than
+The numerical value of the anticipated operating 
+pressure involves risk. 
+3.
+Leakage test pressure should not exceed duct
+pressure class level.
+4.
+Short-cycle pressure changes in duct systems can
+cause temporary noise. This is normally acceptable
+at system start-up and shutdown. To reduce or
+eliminate this noise, the designer must specify
+shorter-interval bracing, diagonal bracing, lagging,
+or other control means.
+=== page 3
+ARTISAN SHEET METAL CORP. 1-01 27TH AVE. ASTORIA, NY 11101       FABIAN@ARTISANSM.COM 917-776-9458 
+DESIGN, ENGINEERING, FABRICATION AND SALES              
+     WWW.ARTISANSM.COM 
+Duct Sealing Requirements Table 1-2 
+Seal Class 
+Sealing Required 
+Static Pressure 
+Construction Class 
+A 
+All Transverse Joints 
+Longitudinal Seams and 
+Duct Wall Penetrations 
+4”W.G. AND UP 
+B 
+All Transverse Joint and 
+Longitudinal Seams 
+3”W.G. 
+C 
+Transverse Joints 
+2”W.G. 
+IN ADDITION TO THE ABOVE, ANY VARIABLE AIR VOLUME SYSTEM DUCT OF 1½”W.G. 
+CONSTRUCTION CLASS THAT IS UPSTREAM OF THE VAV BOXES SHALL ALSO MEET SEAL 
+CLASS C. 
+=== page 4
+ARTISAN SHEET METAL CORP. 1-01 27TH AVE. ASTORIA, NY 11101       FABIAN@ARTISANSM.COM 917-776-9458 
+DESIGN, ENGINEERING, FABRICATION AND SALES              
+     WWW.ARTISANSM.COM 
+SHEET METAL STANDARDS 
+DUCT GUAGE AND ENFORCING FOR 1” ESS & DRIVE (+/-) 
+GAUGE OF METAL 
+DUCT 
+DIMENSION
+5’ 
+JOIN
+4’ 
+JOIN
+2.5’ 
+JOIN
+2’ 
+JOIN
+JOINT 
+CONSTRUCTIO
+REINFORCING 
+0-12”
+26 
+26 
+26 
+26 
+FLAT ESSES & DRIVE 
+NONE 
+13-30”
+26 
+26 
+26 
+26 
+1”st ESSES & DRIVE 
+NONE 
+31-48”
+24 
+24 
+24 
+26 
+1”st ESSES & DRIVE 
+NONE 
+49-60”
+22 
+22 
+24 
+24 
+1”st ESSES & DRIVE 
+NONE 
+61-72”
+22 
+22 
+22 no Cnt. 
+ref 
+22 no 
+Cnt. ref 
+TDF 
+NONE 
+73-96”
+22 
+22 
+22 no Cnt. 
+ref 
+22 no 
+Cnt. Ref 
+TDF CNT-JNT 
+NONE 
+97-up
+18 
+18 
+20 no Cnt. 
+ref 
+20 no 
+Cnt. ref 
+TDF CNT-JNT 48” 
+MAX SPACING 
+1 ½ WIDE X 1 ½ 
+HIGH 18GA V- 
+TYPE 
+STIFFENER 
+NOTES: 1. TDC DUCT CONSTRUCTED PER SMACNA STANDARDS-FIRST EDITION 1995 
+2. DUCT FABRICATED USING SNAPLOCK SEAMS.
+3. ALL DUCT STIFFENED BY MACHINE FORMED BEADS SPACED AT 12” O.C.
+4. DUCT WORK TO BE SEALED PER SMACNA HVAC TABLE 1-2
+5. TDC CNT-JNT-CONDU-LOC @ TDC CONNECTOR CENTER OF DUCT & @ TDC CONNECTOR
+=== page 5
+ARTISAN SHEET METAL CORP. 1-01 27TH AVE. ASTORIA, NY 11101       FABIAN@ARTISANSM.COM 917-776-9458 
+DESIGN, ENGINEERING, FABRICATION AND SALES              
+     WWW.ARTISANSM.COM 
+SHEET METAL STANDARDS 
+DUCT GUAGE AND ENFORCING FOR 1” ESS & DRIVE (+/-) HEAVY GA METAL 
+GAUGE OF METAL 
+DUCT 
+DIMENSIONS 
+5’ 
+JOINT 
+4’ 
+JOINT 
+2.5’ 
+JOINT 
+2’ 
+JOINT 
+JOINT 
+CONSTRUCTION 
+REINFORCI
+NG 
+0-12”
+26 
+26 
+26 
+26 
+FLAT ESSES & DRIVE 
+NONE 
+13-30”
+24 
+24 
+24 
+24 
+1”st ESSES & DRIVE 
+NONE 
+31-54”
+22 
+22 
+22 
+22 
+1”st ESSES & DRIVE 
+NONE 
+55-60”
+20 
+20 
+20 
+20 
+1”st ESSES & DRIVE 
+NONE 
+61-72”
+20 
+20 
+20 no Cnt. 
+ref 
+20 no 
+Cnt. ref 
+TDF 
+NONE 
+73-84”
+20 
+20 
+20 no Cnt. 
+ref 
+20 no 
+Cnt. Ref 
+TDF 
+NONE 
+85-up
+18 
+18 
+20 no Cnt. 
+ref 
+20 no 
+Cnt. ref 
+TDF CNT-JNT 48” MAX 
+SPACING 
+1 ½ WIDE X 
+1 ½ HIGH 
+18GA V- 
+TYPE 
+NOTES: 1. TDC DUCT CONSTRUCTED PER SMACNA STANDARDS-FIRST EDITION 1995 
+2. DUCT FABRICATED USING PITTSBURG SEAMS.
+3. ALL DUCT STIFFENED BY MACHINE FORMED BEADS SPACED AT 12” O.C.
+4. DUCT WORK TO BE SEALED PER SMACNA HVAC TABLE 1-2
+5. TDC CNT-JNT-CONDU-LOC @ TDC CONNECTOR CENTER OF DUCT & @ TDC CONNECTOR
+=== page 6
+ARTISAN SHEET METAL CORP. 1-01 27TH AVE. ASTORIA, NY 11101       FABIAN@ARTISANSM.COM 917-776-9458 
+DESIGN, ENGINEERING, FABRICATION AND SALES              
+     WWW.ARTISANSM.COM 
+SHEET METAL STANDARDS 
+DUCT GUAGE AND ENFORCING FOR 1” W. G. (+/-) TDF 
+GAUGE OF METAL 
+DUCT 
+DIMENSIONS 
+5’ 
+JOINT 
+4’ 
+JOINT 
+2.5’ 
+JOINT 
+2’ 
+JOINT 
+JOINT 
+CONSTRUCTION 
+REINFORCING 
+0-12”
+26 
+26 
+26 
+26 
+HEMMED “S” & DRIVE 
+NONE 
+12-36”
+26 
+26 
+26 
+26 
+TDF 
+NONE 
+37-48”
+24 
+24 
+24 
+26 
+TDF 
+NONE 
+49-60”
+22 
+22 
+24 
+24 
+TDF 
+NONE 
+61-72”
+22 
+22 
+22 no Cnt. 
+ref 
+22 no 
+Cnt. ref 
+TDF CNT-JNT 
+NONE 
+73-96”
+22 
+22 
+22 no Cnt. 
+ref 
+22 no 
+Cnt. Ref 
+TDF CNT-JNT 
+NONE 
+97-up
+18 
+18 
+20 no Cnt. 
+ref 
+20 no 
+Cnt. ref 
+TDF CNT-JNT 48” MAX 
+SPACING 
+1 ½ WIDE X 1 ½ 
+HIGH 18GA V- 
+TYPE 
+STIFFENER 
+NOTES: 1. TDC DUCT CONSTRUCTED PER SMACNA STANDARDS-FIRST EDITION 1995 
+2. DUCT FABRICATED USING PITTSBURG SEAMS.
+3. ALL DUCT STIFFENED BY MACHINE FORMED BEADS SPACED AT 12” O.C.
+4. DUCT WORK TO BE SEALED PER SMACNA HVAC TABLE 1-2
+5. TDC CNT-JNT-CONDU-LOC @ TDC CONNECTOR CENTER OF DUCT & @ TDC CONNECTOR
+=== page 7
+ARTISAN SHEET METAL CORP. 1-01 27TH AVE. ASTORIA, NY 11101        FABIAN@ARTISANSM.COM 917-776-9458          
+DESIGN, ENGINEERING, FABRICATION AND SALES                                                                    WWW.ARTISANSM.COM 
+  
+ 
+ 
+ 
+ 
+ 
+ 
+SHEET METAL STANDARDS 
+DUCT GUAGE AND ENFORCING FOR 2” W. G. (+/-) 
+ 
+GAUGE OF METAL 
+DUCT 
+DIMENSIONS 
+5’ 
+JOINT 
+4’ 
+JOINT 
+2.5’ 
+JOINT 
+2’ 
+JOINT 
+JOINT 
+CONSTRUCTION 
+REINFORCING 
+0-12 
+26 
+26 
+26 
+26 
+HEMMED “S” & DRIVE 
+NONE 
+13-24” 
+26 
+26 
+26 
+26 
+TDF 
+NONE 
+25-30” 
+24 
+24 
+26 
+26 
+TDF 
+NONE 
+31-36” 
+22 
+24 
+26 
+26 
+TDF 
+NONE 
+37-42” 
+20 
+24 
+24 
+24 
+TDF 
+NONE 
+43-48” 
+20 
+22 
+24 
+24 
+TDF 
+NONE 
+ 
+49-54 
+22 
+22 
+24 no 
+Cnt. ref 
+24 no 
+Cnt. ref 
+TDF CNT-JNT 
+1 ½ WIDE X 1 ½ 
+HIGH 18GA V- 
+TYPE STIFFENER 
+ 
+55-60” 
+22 
+22 
+22 no 
+Cnt. ref 
+22 no 
+Cnt. ref 
+TDF CNT-JNT 
+1 ½ WIDE X 1 ½ 
+HIGH 18GA V- 
+TYPE STIFFENER 
+ 
+61-84” 
+22 
+22 
+22 no 
+Cnt. ref 
+22 no 
+Cnt. ref 
+TDF CNT-JNT 
+1 ½ WIDE X 1 ½ 
+HIGH 18GA V- 
+TYPE STIFFENER 
+ 
+85-96” 
+20 
+20 
+20 no 
+Cnt. ref 
+20 no 
+Cnt. ref 
+TDF CNT-JNT 
+1 ½ WIDE X 1 ½ 
+HIGH 18GA V- 
+TYPE STIFFENER 
+ 
+97-up 
+18 
+18 
+18 no 
+Cnt. ref 
+18 no 
+Cnt. ref 
+TDF CNT-JNT 
+1 ½ WIDE X 1 ½ 
+HIGH 16GA V- 
+TYPE STIFFENER 
+ 
+NOTES: 1. TDC DUCT CONSTRUCTED PER SMACNA STANDARDS-FIRST EDITION 1995 
+2. DUCT FABRICATED USING PITTSBURG SEAMS. 
+3. ALL DUCT STIFFENED BY MACHINE FORMED BEADS SPACED AT 12” O.C. 
+4. DUCT WORK TO BE SEALED PER SMACNA HVAC TABLE 1-2 
+5. TDC CNT-JNT-CONDU-LOC @ TDC CONNECTOR CENTER OF DUCT & @ TDC CONNECTOR 
+=== page 8
+ARTISAN SHEET METAL CORP. 1-01 27TH AVE. ASTORIA, NY 11101       FABIAN@ARTISANSM.COM 917-776-9458 
+DESIGN, ENGINEERING, FABRICATION AND SALES              
+     WWW.ARTISANSM.COM 
+SHEET METAL STANDARDS 
+DUCT GUAGE AND ENFORCING FOR 3” W. G. (+/-) 
+GAUGE OF METAL 
+DUCT 
+DIMENSION
+5’ 
+JOINT 
+4’ 
+JOINT 
+2.5’ 
+JOINT 
+2’ 
+JOINT 
+JOINT 
+CONSTRUCTIONN
+REINFORCING 
+0-12”
+24 
+24 
+24 
+24 
+HEMMED “S” & DRIVE 
+NONE 
+13-26”
+24 
+24 
+24 
+24 
+TDF 
+NONE 
+27-30”
+22 
+24 
+24 
+24 
+TDF 
+NONE 
+31-42”
+20 
+22 
+24 
+24 
+TDF 
+NONE 
+43-48”
+24 
+24 
+24 no 
+Cnt. ref 
+24 no 
+Cnt. ref 
+TDF 
+1 ½ WIDE X 1 ½ 
+HIGH 18GA V- 
+TYPE STIFFENER 
+49-60”
+22 
+22 
+24 no 
+Cnt. ref 
+24 no 
+Cnt. ref 
+TDF CNT-JNT 
+1 ½ WIDE X 1 ½ 
+HIGH 18GA V- 
+TYPE STIFFENER 
+61-72”
+22 
+22 
+22 no 
+Cnt. ref 
+22 no 
+Cnt. ref 
+TDF CNT-JNT 
+1 ½ WIDE X 1 ½ 
+HIGH 18GA V- 
+TYPE STIFFENER 
+73-84”
+20 
+20 
+20 no 
+Cnt. ref 
+20 no 
+Cnt. ref 
+TDF CNT-JNT 
+1 ½ WIDE X 1 ½ 
+HIGH 18GA V- 
+TYPE STIFFENER 
+85-96”
+18 
+18 
+18 no 
+Cnt. ref 
+20 no 
+Cnt. ref 
+TDF CNT-JNT 
+1 ½ WIDE X 1 ½ 
+HIGH 18GA V- 
+TYPE STIFFENER 
+97-up
+18 
+18 
+18 no 
+Cnt. ref 
+18 no 
+Cnt. ref 
+TDF CNT-JNT 48” MAX 
+SPACING 
+1 ½ WIDE X 1 ½ 
+HIGH 16GA V- 
+TYPE STIFFENER 
+NOTES: 1. TDC DUCT CONSTRUCTED PER SMACNA STANDARDS-FIRST EDITION 1995 
+2. DUCT FABRICATED USING PITTSBURG SEAMS.
+3. ALL DUCT STIFFENED BY MACHINE FORMED BEADS SPACED AT 12” O.C.
+4. DUCT WORK TO BE SEALED PER SMACNA HVAC TABLE 1-2
+5. TDC CNT-JNT-CONDU-LOC @ TDC CONNECTOR CENTER OF DUCT & @ TDC CONNECTOR
+=== page 9
+ARTISAN SHEET METAL CORP. 1-01 27TH AVE. ASTORIA, NY 11101       FABIAN@ARTISANSM.COM 917-776-9458 
+DESIGN, ENGINEERING, FABRICATION AND SALES              
+     WWW.ARTISANSM.COM 
+SHEET METAL STANDARDS 
+DUCT GUAGE AND ENFORCING FOR 4” W. G. (+/-) 
+GAUGE OF METAL 
+DUCT 
+DIMENSIONS 
+5’ 
+JOINT 
+4’ 
+JOINT 
+2.5’ 
+JOINT 
+2’ 
+JOINT 
+JOINT 
+CONSTRUCTION 
+REINFORCING 
+0-8”
+24 
+24 
+24 
+24 
+HEMMED “S” & DRIVE 
+NONE 
+9-22”
+24 
+24 
+24 
+24 
+TDF 
+NONE 
+23-30”
+22 
+24 
+24 
+24 
+TDF 
+NONE 
+31-36”
+20 
+22 
+24 
+24 
+TDF 
+NONE 
+37-42”
+24 
+24 
+24 no 
+Cnt. ref 
+24 no 
+Cnt. ref 
+TDF 
+1 ½ WIDE X 1 ½ 
+HIGH 18GA V- 
+TYPE STIFFENER 
+43-48”
+22 
+22 
+22 no 
+Cnt. ref 
+22 no 
+Cnt. ref 
+TDF CNT-JNT 
+1 ½ WIDE X 1 ½ 
+HIGH 18GA V- 
+TYPE STIFFENER 
+49-60”
+22 
+22 
+22 no 
+Cnt. ref 
+22 no 
+Cnt. ref 
+TDF CNT-JNT 
+1 ½ WIDE X 1 ½ 
+HIGH 18GA V- 
+TYPE STIFFENER 
+61-72”
+20 
+20 
+20 no 
+Cnt. ref 
+20 no 
+Cnt. ref 
+TDF CNT-JNT 
+1 ½ WIDE X 1 ½ 
+HIGH 18GA V- 
+TYPE STIFFENER 
+73-84”
+18 
+18 
+18 no 
+Cnt. ref 
+20 no 
+Cnt. ref 
+TDF CNT-JNT 
+1 ½ WIDE X 1 ½ 
+HIGH 18GA V- 
+TYPE STIFFENER 
+85-96”
+20 2 
+SETS 
+Cnt. ref 
+20 
+20 
+20 no 
+Cnt. ref 
+TDF CNT-JNT 
+1 ½ WIDE X 1 ½ 
+HIGH 16GA V- 
+TYPE STIFFENER 
+97-up
+18 
+18 
+18 no 
+Cnt. ref 
+18 no 
+Cnt. ref 
+TDF CNT-JNT 48” MAX 
+SPACING 
+1 ½ WIDE X 1 ½ 
+HIGH 16GA V- 
+TYPE STIFFENER 
+NOTES: 1. TDC DUCT CONSTRUCTED PER SMACNA STANDARDS-FIRST EDITION 1995 
+2. DUCT FABRICATED USING PITTSBURG SEAMS.
+3. ALL DUCT STIFFENED BY MACHINE FORMED BEADS SPACED AT 12” O.C.
+4. DUCT WORK TO BE SEALED PER SMACNA HVAC TABLE 1-2
+5. TDC CNT-JNT-CONDU-LOC @ TDC CONNECTOR CENTER OF DUCT & @ TDC CONNECTOR
+=== page 10
+ARTISAN SHEET METAL CORP. 1-01 27TH AVE. ASTORIA, NY 11101        FABIAN@ARTISANSM.COM 917-776-9458          
+DESIGN, ENGINEERING, FABRICATION AND SALES                                                                    WWW.ARTISANSM.COM 
+  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+SHEET METAL STANDARDS 
+DUCT GUAGE AND ENFORCING FOR 6” W. G. (+/-) 
+ 
+GAUGE OF METAL 
+DUCT 
+DIMENSIONS 
+5’ 
+JOINT 
+4’ 
+JOINT 
+2.5’ 
+JOINT 
+2’ 
+JOINT 
+JOINT 
+CONSTRUCTION 
+REINFORCING 
+0-8” 
+24 
+24 
+24 
+24 
+HEMMED “S” & DRIVE 
+NONE 
+9-12” 
+24 
+24 
+24 
+24 
+TDF 
+NONE 
+13-22” 
+22 
+24 
+24 
+24 
+TDF 
+NONE 
+23-24” 
+22 
+22 
+24 
+24 
+TDF 
+NONE 
+25-28” 
+20 
+22 
+24 
+24 
+TDF 
+NONE 
+ 
+29-36” 
+24 
+24 
+24 no 
+Cnt. ref 
+24 no 
+Cnt. ref 
+TDF 
+1 ½ WIDE X 1 ½ 
+HIGH 18GA V- 
+TYPE STIFFENER 
+ 
+37-42” 
+22 
+22 
+22 no 
+Cnt. ref 
+22 no 
+Cnt. ref 
+TDF 
+1 ½ WIDE X 1 ½ 
+HIGH 18GA V- 
+TYPE STIFFENER 
+ 
+43-48” 
+20 
+20 
+20 no 
+Cnt. ref 
+20 no 
+Cnt. ref 
+TDF 
+1 ½ WIDE X 1 ½ 
+HIGH 18GA V- 
+TYPE STIFFENER 
+ 
+49-60” 
+20 
+20 
+20 no 
+Cnt. ref 
+22 no 
+Cnt. ref 
+TDF CNT-JNT 
+1 ½ WIDE X 1 ½ 
+HIGH 18GA V- 
+TYPE STIFFENER 
+ 
+61-72” 
+18 
+18 
+18 no 
+Cnt.ref 
+20 no 
+Cnt. ref 
+TDF CNT-JNT 
+1 ½ WIDE X 1 ½ 
+HIGH 18GA V- 
+TYPE STIFFENER 
+ 
+73-96” 
+18 2 
+SETS 
+Cnt. ref 
+18 
+18 
+20 no 
+Cnt. ref 
+TDF CNT-JNT 48” MAX 
+SPACING 
+1 ½ WIDE X 1 ½ 
+HIGH 16GA V- 
+TYPE STIFFENER 
+ 
+97-up 
+18 2 
+SETS 
+Cnt.ref 
+18 
+18 
+18 no 
+Cnt. Ref 
+TDF CNT-JNT 48” MAX 
+SPACING 
+1 ½ WIDE X 1 ½ 
+HIGH 16GA V- 
+TYPE STIFFENER 
+ 
+NOTES: 1. TDC DUCT CONSTRUCTED PER SMACNA STANDARDS-FIRST EDITION 1995 
+2. DUCT FABRICATED USING PITTSBURG SEAMS. 
+3. ALL DUCT STIFFENED BY MACHINE FORMED BEADS SPACED AT 12” O.C. 
+4. DUCT WORK TO BE SEALED PER SMACNA HVAC TABLE 1-2 
+5. TDC CNT-JNT-CONDU-LOC @ TDC CONNECTOR CENTER OF DUCT & @ TDC CONNECTOR 
+=== page 11
+KITCHEN EXHAUST DUCTS
+Single Wall Grease Ducts:
+Concealed Grease Ducts:  Grease ducts shall be constructed of black steel complying with ASTM A
+527, minimum 16 Gauge., constructed in accordance with SMACNA's HVAC Duct Construction 
+Standards-Metal and Flexible.  Provide fire resistant duct insulation for all grease ductwork, unless
+otherwise indicated.  Include all components to comply with NFPA 96, including cleanouts, transitions,
+adapters, and drain fitting.  Weld all joints to provide liquid-tight seal.
+Exposed Grease Ducts:  Grease ducts shall be constructed of minimum 19 Gauge Type 316L stainless
+steel with No. 4 finish complying with ASTM A 480, constructed in accordance with SMACNA's HVAC 
+Duct Construction Standards-Metal and Flexible.  Include all components to comply with NFPA 96,
+including cleanouts, transitions, adapters, and drain fitting.  Weld all joints to provide liquid-tight seal.
+=== page 12
+TECHNICAL DATA SHEET – STAINLESS SHEETS – T 304
+Below are typical chemistry ranges set forth in the ASTM Standard A240 
+Compositions, %-Heat Analysis Element, max.
+COMPOSITION WT. %: 
+Mn: 2.00 max 
+Cr: 17.5 min - 19.5 max 
+Ni: 8.0 min - 10.5 max 
+Si: 0.75 max 
+N: 0.10 max 
+P: 0.045 max 
+S: 0.030 max 
+Fe: balance 
+TYPICAL MECHANICAL PROPERTIES: 
+ Density lb/in3(g/cm3) 
+ Tensile Strength ksi (MPa):  0.2% Yield Strength ksi (MPa):   Elongation: 
+   Hardness: 
+.0285 (7.90) 
+75 min (515 min) 
+30 min (205 min) 
+40% min 
+92 HRB max 
+.0285 (7.90) 
+75 min (515 min) 
+30 min (205 min) 
+40% min 
+92 HRB max 
+.0285 (7.90) 
+75 min (515 min) 
+30 min (205 min) 
+40% min 
+92 HRB max 
+304 – Austenitic stainless steels.  The 300 series alloys contain chromium and nickel as their major alloying additions.  Type 304  
+(also known as 18-8) is the most widely used of all stainless steel alloys.  They also exhibit high hardness and high yield strength 
+as well as excellent ductility and are non magnetic in the annealed condition.  304 offers good corrosion resistance and superior 
+resistance to intergranular corrosion following welding or stress relieving.  304 stainless sheet is available in the common 2B 
+finish and # 4 finish polished to achieve “brushed” finish.  
+HB Steel Standard Surface: Dry – Silver Metallic 
+Product/Common Name: Stainless Sheet 
+Weldability – Excellent (specify 304L for heavy welded sections to avoid post weld annealing requirements) 
+Machinability – Excellent 
+Bending/forming/stamping - Good  
+Corrosion resistance – Good 
+We hereby certify that the foregoing data is typical of the data furnished us by the producing mill or the data resulting from tests performed in 
+the laboratory. 
+=== page 13
+ARTISAN SHEET METAL CORP. 1-01 27TH AVE. ASTORIA, NY 11101 
+FABIAN@ARTISANSM.COM 917-776-9458 
+  DESIGN, ENGINEERING, FABRICATION AND SALES             
+WWW.ARTISANSM.COM 
+LONGITUDINAL SEAMS 
+PITTSBURGH LOCK 
+BUTTON-PUNCH SNAP-LOCK 
+=== page 14
+ARTISAN SHEET METAL CORP. 1-01 27TH AVE. ASTORIA, NY 11101       FABIAN@ARTISANSM.COM 917-776-9458 
+DESIGN, ENGINEERING, FABRICATION AND SALES              
+     WWW.ARTISANSM.COM 
+NOTES
+=== page 15
+ARTISAN SHEET METAL CORP. 1-01 27TH AVE. ASTORIA, NY 11101        FABIAN@ARTISANSM.COM 917-776-9458          
+DESIGN, ENGINEERING, FABRICATION AND SALES                                                                    WWW.ARTISANSM.COM 
+  
+ 
+ 
+ 
+ 
+ 
+ 
+ELBOW CONSTRUCTION 
+ 
+NOTES: 
+1. All square elbows will have turning vanes installed. 
+2. All radius elbows will have a throat-radius equal to “W”. 
+3. Radius elbows will be used anywhere space permits. 
+=== page 16
+ARTISAN SHEET METAL CORP. 1-01 27TH AVE. ASTORIA, NY 11101        FABIAN@ARTISANSM.COM 917-776-9458          
+DESIGN, ENGINEERING, FABRICATION AND SALES                                                                    WWW.ARTISANSM.COM 
+  
+ 
+ 
+ 
+ 
+ 
+ 
+INTERIOR DUCT LINER (SOUND ABSORBERS) 
+REFERENCE SPECIFICATION SECTION 15895-2.4F 
+=== page 17
+ARTISAN SHEET METAL CORP. 1-01 27TH AVE. ASTORIA, NY 11101       FABIAN@ARTISANSM.COM 917-776-9458 
+DESIGN, ENGINEERING, FABRICATION AND SALES              
+     WWW.ARTISANSM.COM 
+SINGLE-BLADE VOLUME DAMPER 
+NOTES: 
+1.
+Over 12” High use multiple Blade Dampers.
+2.
+Quadrant to be Ventfabric No. 635.
+=== page 18
+ARTISAN SHEET METAL CORP. 1-01 27TH AVE. ASTORIA, NY 11101        FABIAN@ARTISANSM.COM 917-776-9458          
+DESIGN, ENGINEERING, FABRICATION AND SALES                                                                    WWW.ARTISANSM.COM 
+  
+ 
+ 
+ 
+ 
+ 
+2” ROLL-FORMED AIR TURNING VANES 
+Turning Vanes are non-adjustable 90˚ air turns 
+designed to reduce the pressure loss in square 
+duct elbows. The galvanized steel blades are 
+double walled and formed to assure that any 
+point on one blade is equidistant from the 
+same point on an adjacent blade. This precise 
+blade shape maintains constant duct area and 
+assures constant air velocity around the ell, 
+eliminates loss due to velocity changes and 
+results in low friction loss. The blade is rigid 
+and eliminates the need for cross bracing or 
+reinforcing rods. Roll-formed from coils of 
+sheet metal, surfaces and edges are smooth 
+and free from edge friction and blade 
+turbulence.  Blades assemble over precision- 
+formed tenons on the runners, which insures 
+precise blade alignment, and proper spacing, 
+and predictable engineering performance. The 
+complete unit is screwed or riveted into the 
+duct ell. 
+NOTE-TURNING VANES WILL BE TACK-WELDED TO 
+RUNNERS FOR H.P. APPLICATIONS 
+TYPE OF 
+ELL 
+DUCT VELOCITY IN FPM 
+500 
+1000 
+1500 
+2000 
+2500 
+3000 
+DUCTURNS 
+.01 
+.02 
+.04 
+.07 
+.11 
+.16 
+NO VANES 
+.02 
+.08 
+.19 
+.35 
+.52 
+.75 
+=== page 19
+ARTISAN SHEET METAL CORP. 1-01 27TH AVE. ASTORIA, NY 11101        FABIAN@ARTISANSM.COM 917-776-9458          
+DESIGN, ENGINEERING, FABRICATION AND SALES                                                                    WWW.ARTISANSM.COM 
+  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+SINGLE-BLADE VOLUME DAMPER 
+=== page 20
+ARTISAN SHEET METAL CORP. 1-01 27TH AVE. ASTORIA, NY 11101       FABIAN@ARTISANSM.COM 917-776-9458 
+DESIGN, ENGINEERING, FABRICATION AND SALES              
+     WWW.ARTISANSM.COM 
+18 GA WELDED STAINLESS STEEL DISHWASHER EXHAUST DUCT 
+ALL SEAMS, JOINTS, AND 
+PENETRATIONS TO HAVE 
+CONTINUOUS EXTERNAL 
+WELDS.  (TYPICAL) 
+REFERENCE SPECIFICATION SECTION 15890
+=== page 21
+ARTISAN SHEET METAL CORP. 1-01 27TH AVE. ASTORIA, NY 11101        FABIAN@ARTISANSM.COM 917-776-9458          
+DESIGN, ENGINEERING, FABRICATION AND SALES                                                                    WWW.ARTISANSM.COM 
+  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+16 GA WELDED BLACK IRON KITCHEN EXHAUST DUCT 
+ALL SEAMS, JOINTS, AND 
+PENETRATIONS TO HAVE 
+CONTINUOUS EXTERNAL 
+WELDS.  (TYPICAL) 
+REFERENCE SPECIFICATION SECTION 15872 
+=== page 22
+ARTISAN SHEET METAL CORP. 1-01 27TH AVE. ASTORIA, NY 11101        FABIAN@ARTISANSM.COM 917-776-9458          
+DESIGN, ENGINEERING, FABRICATION AND SALES                                                                    WWW.ARTISANSM.COM 
+  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+16 GA WELDED STAINLESS STEEL KITCHEN & DISHWASHER DUCT 
+ALL SEAMS, JOINTS, AND 
+PENETRATIONS TO HAVE 
+CONTINUOUS EXTERNAL 
+WELDS.  (TYPICAL) 
+=== page 23
+ARTISAN SHEET METAL CORP. 1-01 27TH AVE. ASTORIA, NY 11101       FABIAN@ARTISANSM.COM 917-776-9458 
+DESIGN, ENGINEERING, FABRICATION AND SALES              
+     WWW.ARTISANSM.COM 
+=== page 24
+ARTISAN SHEET METAL CORP. 1-01 27TH AVE. ASTORIA, NY 11101        FABIAN@ARTISANSM.COM 917-776-9458          
+DESIGN, ENGINEERING, FABRICATION AND SALES                                                                    WWW.ARTISANSM.COM 
+  
+ 
+ 
+ 
+=== page 25
+ARTISAN SHEET METAL CORP. 1-01 27TH AVE. ASTORIA, NY 11101       FABIAN@ARTISANSM.COM 917-776-9458 
+DESIGN, ENGINEERING, FABRICATION AND SALES              
+     WWW.ARTISANSM.COM 
+=== page 26
+ARTISAN SHEET METAL CORP. 1-01 27TH AVE. ASTORIA, NY 11101       FABIAN@ARTISANSM.COM 917-776-9458 
+DESIGN, ENGINEERING, FABRICATION AND SALES              
+     WWW.ARTISANSM.COM 
+=== page 27
+ARTISAN SHEET METAL CORP. 1-01 27TH AVE. ASTORIA, NY 11101        FABIAN@ARTISANSM.COM 917-776-9458          
+DESIGN, ENGINEERING, FABRICATION AND SALES                                                                    WWW.ARTISANSM.COM 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+=== page 28
+ARTISAN SHEET METAL CORP. 1-01 27TH AVE. ASTORIA, NY 11101        FABIAN@ARTISANSM.COM 917-776-9458          
+DESIGN, ENGINEERING, FABRICATION AND SALES                                                                    WWW.ARTISANSM.COM 
+ 
+ 
+ 
+ 
+=== page 29
+ARTISAN SHEET METAL CORP. 1-01 27TH AVE. ASTORIA, NY 11101       FABIAN@ARTISANSM.COM 917-776-9458 
+DESIGN, ENGINEERING, FABRICATION AND SALES              
+     WWW.ARTISANSM.COM 
+ 
+=== page 30
+ARTISAN SHEET METAL CORP. 1-01 27TH AVE. ASTORIA, NY 11101        FABIAN@ARTISANSM.COM 917-776-9458          
+DESIGN, ENGINEERING, FABRICATION AND SALES                                                                    WWW.ARTISANSM.COM 
+ 
+ 
+=== page 31
+ARTISAN SHEET METAL CORP. 1-01 27TH AVE. ASTORIA, NY 11101        FABIAN@ARTISANSM.COM 917-776-9458          
+DESIGN, ENGINEERING, FABRICATION AND SALES                                                                    WWW.ARTISANSM.COM 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+=== page 32
+ARTISAN SHEET METAL CORP. 1-01 27TH AVE. ASTORIA, NY 11101        FABIAN@ARTISANSM.COM 917-776-9458        
+DESIGN, ENGINEERING, FABRICATION AND SALES        
+         WWW.ARTISANSM.COM 
+=== page 33
+ARTISAN SHEET METAL CORP. 1-01 27TH AVE. ASTORIA, NY 11101  
+ FABIAN@ARTISANSM.COM 917-776-9458 
+  DESIGN, ENGINEERING, FABRICATION AND SALES  
+  WWW.ARTISANSM.COM 
+ TIE-ROD REINFORCEMENTS FOR RECTANGULAR DUCT 

@@ -1,0 +1,886 @@
+INTERNATIONAL                                                                ISO
+STANDARD                                                                   1217
+
+                                                                           Fourth edition
+                                                                              2009-07-01
+
+              Displacement compressors --
+              Acceptance tests
+
+                       Compresseurs volumétriques -- Essais de réception
+
+ iTeh STANDARD PREVIEW
+        (standards.iteh.ai)
+
+                            ISO 1217:2009
+https://standards.iteh.ai/catalog/standards/sist/d45abb6f-579b-4d1b-93ad-
+
+                     60c6f8500a5a/iso-1217-2009
+
+                                                                           Reference number
+                                                                           ISO 1217:2009(E)
+
+                                                                                    © ISO 2009
+ISO 1217:2009(E)
+
+                                                                       PDF disclaimer
+  This PDF file may contain embedded typefaces. In accordance with Adobe's licensing policy, this file may be printed or viewed but
+  shall not be edited unless the typefaces which are embedded are licensed to and installed on the computer performing the editing. In
+  downloading this file, parties accept therein the responsibility of not infringing Adobe's licensing policy. The ISO Central Secretariat
+  accepts no liability in this area.
+  Adobe is a trademark of Adobe Systems Incorporated.
+  Details of the software products used to create this PDF file can be found in the General Info relative to the file; the PDF-creation
+  parameters were optimized for printing. Every care has been taken to ensure that the file is suitable for use by ISO member bodies. In
+  the unlikely event that a problem relating to it is found, please inform the Central Secretariat at the address given below.
+
+     iTeh STANDARD PREVIEW
+            (standards.iteh.ai)
+
+                                ISO 1217:2009
+    https://standards.iteh.ai/catalog/standards/sist/d45abb6f-579b-4d1b-93ad-
+
+                         60c6f8500a5a/iso-1217-2009
+
+               COPYRIGHT PROTECTED DOCUMENT
+
+© ISO 2009
+
+All rights reserved. Unless otherwise specified, no part of this publication may be reproduced or utilized in any form or by any means,
+electronic or mechanical, including photocopying and microfilm, without permission in writing from either ISO at the address below or
+ISO's member body in the country of the requester.
+
+    ISO copyright office
+    Case postale 56 · CH-1211 Geneva 20
+    Tel. + 41 22 749 01 11
+    Fax + 41 22 749 09 47
+    E-mail copyright@iso.org
+    Web www.iso.org
+
+Published in Switzerland
+
+ii  © ISO 2009 - All rights reserved
+                                  ISO 1217:2009(E)
+
+Contents                          Page
+
+Foreword............................................................................................................................................................. v
+
+1  Scope ..................................................................................................................................................... 1
+
+2  Normative references ........................................................................................................................... 1
+
+3  Terms and definitions........................................................................................................................... 2
+
+3.1 General................................................................................................................................................... 2
+
+3.2 Pressure................................................................................................................................................. 5
+
+3.3 Temperature .......................................................................................................................................... 5
+
+3.4 Flow rate ................................................................................................................................................ 6
+
+3.5 Power ..................................................................................................................................................... 6
+
+3.6 Efficiency ............................................................................................................................................... 6
+
+3.7 Specific energy requirements ............................................................................................................. 7
+
+3.8 Gas properties....................................................................................................................................... 7
+
+4  Symbols ................................................................................................................................................. 7
+
+4.1 Symbols and units ................................................................................................................................ 7
+
+4.2 Subscripts ............................................................................................................................................. 9
+
+iTeh STANDARD PREVIEW 5
+   Measuring equipment, methods and accuracy ............................................................................... 10
+
+5.1 General................................................................................................................................................. 10
+
+(standards.iteh.ai) 5.2 Measurement of pressure .................................................................................................................. 10
+
+5.3 Measurement of temperature ............................................................................................................ 11
+
+5.4 Measurement of humidity .................................................................................................................. 11
+
+5.5 Measurement of rotational frequenIScOy..1.2..1..7..:2..0..0..9................................................................................ 11
+
+5.6 Measuremehnttpos:f//sftlaonwdardast.eite.h..a..i/.c..a.t.a..lo..g../.s.t.a.n..d..a.r.d..s./.s.i.s.t./.d..4..5.a..b..b.6..f.-.5..7..9.b..-.4..d..1..b.-..9.3..a..d.-.......................................... 11
+
+5.7 Measurement of power and e6n0ec6rfg8y50.0..a..5.a../.is..o.-..1.2..1..7..-.2..0.0..9....................................................................... 12
+
+5.8 Miscellaneous measurements........................................................................................................... 13
+
+5.9 Calibration of instruments ................................................................................................................. 13
+
+6  Test procedures .................................................................................................................................. 13
+
+6.1 General................................................................................................................................................. 13
+
+6.2 Test arrangements.............................................................................................................................. 14
+
+6.3 Evaluation of readings ....................................................................................................................... 15
+
+6.4 Computation of test results ............................................................................................................... 15
+
+6.5 Volume flow rate corrections ............................................................................................................ 16
+
+6.6 Corrected volume flow rate ............................................................................................................... 18
+
+6.7 Power corrections............................................................................................................................... 19
+
+6.8 Corrected power ................................................................................................................................. 20
+
+6.9 Corrected specific energy requirement............................................................................................ 21
+
+7  Uncertainty of measurement ............................................................................................................. 21
+
+8  Comparison of test results with specified values ........................................................................... 21
+
+8.1 General................................................................................................................................................. 21
+
+8.2 Comparison of measured performance curves with guarantee points ........................................ 21
+
+8.3 Comparison of single measuring points with single guarantee points ........................................ 23
+
+8.4 Uncertainties and manufacturing tolerances .................................................................................. 26
+
+8.5 Special information............................................................................................................................. 26
+
+9  Test report ........................................................................................................................................... 28
+
+Annex A (normative) Acceptance test for liquid-ring compressors ........................................................... 29
+
+Annex B (normative) Simplified acceptance test for bare displacement compressors ........................... 32
+
+© ISO 2009 - All rights reserved  iii
+ISO 1217:2009(E)
+
+Annex C (normative) Simplified acceptance test for electrically driven packaged displacement
+          compressors........................................................................................................................................ 39
+
+Annex D (normative) Simplified acceptance test for internal combustion engine-driven packaged
+          displacement compressors................................................................................................................ 45
+
+Annex E (normative) Acceptance test for electrically driven packaged displacement variable
+          speed drive compressors................................................................................................................... 52
+
+Annex F (informative) Reference conditions ................................................................................................. 54
+Annex G (normative) Uncertainty of measurement ...................................................................................... 55
+Bibliography ..................................................................................................................................................... 65
+
+                   iTeh STANDARD PREVIEW
+                         (standards.iteh.ai)
+
+                                                             ISO 1217:2009
+                                 https://standards.iteh.ai/catalog/standards/sist/d45abb6f-579b-4d1b-93ad-
+
+                                                      60c6f8500a5a/iso-1217-2009
+
+iv  © ISO 2009 - All rights reserved
+                                                                                                             ISO 1217:2009(E)
+
+Foreword
+
+ISO (the International Organization for Standardization) is a worldwide federation of national standards bodies
+(ISO member bodies). The work of preparing International Standards is normally carried out through ISO
+technical committees. Each member body interested in a subject for which a technical committee has been
+established has the right to be represented on that committee. International organizations, governmental and
+non-governmental, in liaison with ISO, also take part in the work. ISO collaborates closely with the
+International Electrotechnical Commission (IEC) on all matters of electrotechnical standardization.
+
+International Standards are drafted in accordance with the rules given in the ISO/IEC Directives, Part 2.
+
+The main task of technical committees is to prepare International Standards. Draft International Standards
+adopted by the technical committees are circulated to the member bodies for voting. Publication as an
+International Standard requires approval by at least 75 % of the member bodies casting a vote.
+
+Attention is drawn to the possibility that some of the elements of this document may be the subject of patent
+rights. ISO shall not be held responsible for identifying any or all such patent rights.
+
+ISO 1217 was prepared by Technical Committee ISO/TC 118, Compressors and pneumatic tools, machines
+and equipment, Subcommittee SC 6, Air compressors and compressed air systems.
+
+              iTeh STANDARD PREVIEW
+
+This fourth edition cancels and replaces the third edition (ISO 1217:1996), which has been technically revised.
+
+                     (standards.iteh.ai)
+
+                                                    ISO 1217:2009
+                        https://standards.iteh.ai/catalog/standards/sist/d45abb6f-579b-4d1b-93ad-
+
+                                             60c6f8500a5a/iso-1217-2009
+
+© ISO 2009 - All rights reserved  v
+ iTeh STANDARD PREVIEW
+        (standards.iteh.ai)
+
+                            ISO 1217:2009
+https://standards.iteh.ai/catalog/standards/sist/d45abb6f-579b-4d1b-93ad-
+
+                     60c6f8500a5a/iso-1217-2009
+INTERNATIONAL STANDARD                        ISO 1217:2009(E)
+
+Displacement compressors -- Acceptance tests
+
+1 Scope
+
+This International Standard specifies methods for acceptance tests regarding volume rate of flow and power
+requirements of displacement compressors. It also specifies methods for testing liquid-ring type compressors
+(see Annex A).
+
+This International Standard specifies the operating and testing conditions which apply when a full performance
+test is specified.
+
+For compressors manufactured in batches or in continuous production quantities and supplied against
+specified data, the tests described in Annexes B, C and D are considered equivalent alternatives.
+
+Annex E, which is normative, applies to any electrically driven compressor manufactured in batches or in
+continuous production quantities and supplied against specified data having variable speed drive (e.g. variable
+frequency drive, direct current drive and switched reluctance), which incorporates a displacement compressor
+of any type driven by an electric motor.
+
+              iTeh STANDARD PREVIEW
+
+Detailed instructions are given for a full performance test, including the measurement of volume flow rate and
+
+power requirement, the correction(osftmaenasduraedrvdaluse.sittoeshpe.caifiie)d conditions and means of comparing the
+
+corrected values with the guarantee conditions. This International Standard specifies methods for determining
+
+the value of the tolerances to be applied to thIeSOm1e2a1s7u:2r0e0m9ent of flow, power and specific power.
+NOTE The toleranhcttepss:/t/ostabnedaarpdps.liiteedh.taoi/ctahtealomge/satasnudraermdse/nsitsto/df4fl5oawb,b6pfo-w57e9r,b-s4pde1cbif-ic93paodw- er, etc. for all acceptance tests
+carried out in accordance with this Interna6t0iocn6af8l 5S0t0aan5daa/irsdo-a1r2e17a-g2r0e0e9d on by the manufacturer and the purchaser at the
+
+contractual stage or prior to the execution of the tests.
+
+Annex F specifies standard inlet conditions for reference purposes. Annex G, which is normative, indicates the
+uncertainty of measurement.
+
+This International Standard is not applicable to noise statements, which are identified in ISO 2151.
+
+2 Normative references
+
+The following referenced documents are indispensable for the application of this document. For dated
+references, only the edition cited applies. For undated references, the latest edition of the referenced
+document (including any amendments) applies.
+
+ISO 3046-1, Reciprocating internal combustion engines -- Performance -- Part 1: Declarations of power, fuel
+and lubricating oil consumptions, and test methods -- Additional requirements for engines for general use
+
+ISO 5167-1, Measurement of fluid flow by means of pressure differential devices inserted in circular cross-
+section conduits running full -- Part 1: General principles and requirements
+
+ISO 9300, Measurement of gas flow by means of critical flow Venturi nozzles
+
+IEC 60584-1, Thermocouples -- Part 1: Reference tables
+
+IEC 60584-2, Thermocouples -- Part 2: Tolerances
+
+IEC 60584-3, Thermocouples -- Part 3: Extension and compensating cables -- Tolerances and identification
+system
+
+© ISO 2009 - All rights reserved              1
+ISO 1217:2009(E)
+
+IEC 60953-2, Rules for steam turbine thermal acceptance tests -- Part 2: Method B -- Wide range of
+accuracy for various types and sizes of turbines
+
+3 Terms and definitions
+
+For the purposes of this document, the following terms and definitions apply.
+
+3.1 General
+
+3.1.1
+acceptance test
+performance test carried out in accordance with this International Standard, i.e. ISO 1217:2009
+
+3.1.2
+aftercooling
+removal of heat from a gas after the compression is completed
+
+3.1.3
+batch
+two or more compressors manufactured at the same time in one operation
+
+3.1.4
+clearance volume
+volume inside the compression space, which contains gas trapped at the end of the compression cycle
+
+                   iTeh STANDARD PREVIEW
+
+3.1.5                    (standards.iteh.ai)
+displacement compressor
+
+machine that creates a static pressure rise by allowing successive volumes of gas to be aspirated into and
+
+exhausted out of a closed space by means of the disIpSlOac1e2m17e:2n0t0o9f a moving member
+                                 https://standards.iteh.ai/catalog/standards/sist/d45abb6f-579b-4d1b-93ad-
+
+3.1.6                                      60c6f8500a5a/iso-1217-2009
+
+displacement of a displacement compressor
+
+volume swept by the compressing element(s) of the compressor's first stage per unit of time
+
+3.1.7
+external coolant
+medium externally supplied to the compressor to which the generated heat is finally rejected
+
+NOTE   This is usually ambient air or cooling water.
+
+3.1.8
+fuel consumption
+total mass of fuel consumed by the engine per unit time while the compressor is running on test at the
+specified conditions of inlet and discharge pressure and speed, with all engine ancillary equipment such as
+alternator and water pump connected and operating normally
+
+See Annex D.
+
+3.1.9
+ideal multi-stage compression
+process by which a perfect gas is isentropically compressed and the gas inlet temperature as well as the
+amount of work spent are the same for each stage
+
+3.1.10
+intercooling
+removal of heat from a gas between stages
+
+2                                                                              © ISO 2009 - All rights reserved
+                                                                                                    ISO 1217:2009(E)
+
+3.1.11
+liquid-injected rotary compressors
+rotary compressor in which a liquid is injected into the gas stream before or in the compressor
+
+3.1.12
+liquid-ring compressor
+machine with a rotating impeller with protruding blades eccentrically mounted in a stationary round housing or
+centrally mounted in a stationary elliptical housing
+
+See Annex A.
+
+NOTE 1 A working liquid creating a liquid ring rotating together with the bladed impeller creates either one or two
+crescent-shaped working spaces.
+
+NOTE 2 The volumes trapped between each pair of blades, the hub and the liquid ring will vary periodically, thereby
+creating a change in pressure that will generate a flow from the suction to the discharge side of the compressor.
+
+3.1.13
+packaged compressor
+compressor with prime mover, transmission, fully piped and wired internally, including ancillary and auxiliary
+items of equipment and being stationary or mobile (portable unit) where these are within the scope of supply
+
+3.1.14
+polytropic process
+compression or expansion process of an ideal gas, in which the relationship between pressure and volume is:
+
+  pV n = constant iTeh STANDARD PREVIEW
+NOTE 1 The exponent n can have (vasritouasnvadlueas.rFodr esx.aimtpeleh: .ai)
+
+pV = constant                     ISO 1217:2009
+
+                 https://standards.iteh.ai/catalog/standards/sist/d45abb6f-579b-4d1b-93ad-
+
+describes an isothermal process, i.e. the ga6s0cte6mf8p5e00raat5uar/eisore-m12a1in7-s2c0o0n9stant.
+
+pV k = constant
+
+describes an isentropic process, i.e. the gas entropy remains constant.
+
+NOTE 2 Sometimes this process is called adiabatic, but to avoid confusion between adiabatic (no heat exchange with
+the surroundings) and reversible adiabatic (isentropic) process, the expression isentropic is preferred.
+
+3.1.15
+relative clearance volume
+ratio of clearance volume of the stage under consideration to the swept volume of the compressing element of
+this stage
+
+3.1.16
+rotary compressor
+displacement compressor in which the element is one or more rotors operating in a casing, the displacement
+being effected by vanes, meshing elements or by displacement of the rotor itself
+
+3.1.17
+shaft-driven reciprocating compressor
+displacement compressor in which gas intake and compression are achieved by the straightforward
+alternating movement of a moving element in a space constituting a compression chamber due to a shaft
+rotation
+
+3.1.18
+shaft rotational speed
+number of revolutions of the compressor drive shaft per unit of time
+
+© ISO 2009 - All rights reserved                                                                    3
+ISO 1217:2009(E)
+
+3.1.19
+shaft-speed irregularity
+dimensionless number obtained when the difference between maximum and minimum instantaneous shaft
+speeds during one period is divided by the arithmetic mean of both
+
+   Shaft-speed irregularity = 2 N max. - N min. (1)
+                                         N max. + N min.
+
+3.1.20
+specific fuel consumption
+mass per unit time divided by the compressor volume flow rate, both measurements being corrected to
+standard conditions by the methods given in Annex D
+
+3.1.21
+standard discharge condition
+condition of the compressed gas at the standard discharge point of the compressor
+
+3.1.22
+standard discharge point
+discharge point considered representative of each compressor
+
+NOTE  This point varies with compressor design and type of installation:
+
+a) for a bare compressor, it is generally at the compressor discharge flange:
+
+  1) reciprocating type comprieTssoersh: diSschTargAe fNlangDe oAf thRe lDast (Por RonlyE) sVtagIe EcylWinder or any chamber fitted as
+     (standards.iteh.ai) standard to that cylinder to reduce pulsations in the delivered compressed gas and so indicated by the
+
+             manufacturer in the sales data for the particular type of compressor;
+
+     2) rotary type compressors: discharge flange of theISlaOst1(2o1r7o:2n0ly0)9rotor casing;
+                                 https://standards.iteh.ai/catalog/standards/sist/d45abb6f-579b-4d1b-93ad-
+
+b) for a packaged compressor, it is the terminal outlet of the package.
+
+                                                      60c6f8500a5a/iso-1217-2009
+
+3.1.23
+standard inlet condition
+condition of the aspirated gas at the standard inlet point of the compressor
+
+3.1.24
+standard inlet point
+inlet point considered representative of each compressor and which varies with compressor design and type
+of installation
+
+NOTE 1 For a bare compressor, it is generally the inlet flange to the first (or only) stage cylinder or rotor casing, i.e.
+after any inlet filter or silencing equipment which can normally be used for test purposes, unless otherwise identified.
+
+NOTE 2 The standard inlet point of a packaged air compressor, unless otherwise indicated by the manufacturer, is the
+point at which ambient air enters the package or, in the case of a non-enclosed package, where air first enters the
+confines of the machine, probably the air inlet filter.
+
+3.1.25
+swept volume of a displacement compressor
+volume swept in one revolution by the compressing element(s) of the compressor's first stage
+
+3.1.26
+turn-down ratio
+ratio expressed in percentage of the difference between maximum and minimum speed divided by the
+maximum speed of the main driver
+
+4                                                                                  © ISO 2009 - All rights reserved
+                                                                                                   ISO 1217:2009(E)
+
+3.2 Pressure
+
+3.2.1
+absolute pressure
+pressure measured from absolute zero, i.e. from an absolute vacuum, equal to the algebraic sum of
+atmospheric pressure and effective pressure
+
+3.2.2
+ambient pressure
+absolute pressure of the atmospheric air measured in the vicinity of the compressor
+
+3.2.3
+atmospheric pressure
+absolute pressure of the atmospheric air measured at the test place
+
+3.2.4
+discharge pressure
+total mean absolute pressure at the standard discharge point
+
+NOTE   The total absolute pressure can be replaced by the static absolute pressure, provided that the dynamic
+
+pressure is less than 0,5 % of the static pressure.
+
+3.2.5
+
+dynamic pressure
+
+velocity pressure
+
+total pressure minus theisTtaetichpreSssTureANDARD PREVIEW
+
+3.2.6                             (standards.iteh.ai)
+effective pressure
+
+gauge pressure
+
+pressure measured above the atmospheric pIrSeOss1u2r1e7:2009
+                        https://standards.iteh.ai/catalog/standards/sist/d45abb6f-579b-4d1b-93ad-
+
+3.2.7                             60c6f8500a5a/iso-1217-2009
+
+inlet pressure
+
+total mean absolute pressure at the standard inlet point
+
+3.2.8
+static pressure
+pressure measured in a gas in such a manner that no effect on measurement is produced by the gas velocity
+and which, in stationary gas, is numerically equal to the total pressure
+
+3.2.9
+total pressure
+pressure measured at the stagnation point when a gas stream is brought to rest and its kinetic energy is
+converted by an isentropic compression from the flow condition to the stagnation condition
+
+3.3 Temperature
+
+3.3.1
+ambient temperature
+total temperature of the atmospheric air in the vicinity of the compressor, but unaffected by it
+
+3.3.2
+discharge temperature
+total temperature at the standard discharge point of the compressor
+
+3.3.3
+inlet temperature
+total temperature at the standard inlet point of the compressor
+
+© ISO 2009 - All rights reserved                                                                   5
+ISO 1217:2009(E)
+
+3.3.4
+total temperature
+temperature that would be measured at the stagnation point if a gas stream were brought to rest and its
+kinetic energy converted by an isentropic compression from the flow condition to the stagnation condition
+
+3.4 Flow rate
+
+3.4.1
+actual volume flow rate of a compressor
+actual volume flow rate of gas, compressed and delivered at the standard discharge point, referred to
+conditions of total temperature, total pressure and composition prevailing at the standard inlet point
+
+NOTE   Composition can refer to humidity, for instance.
+
+3.4.2
+free air
+air at the ambient conditions of the compressor, but unaffected by it
+
+3.4.3
+standard volume flow rate
+actual volume flow rate of compressed gas as delivered at the standard discharge point but referred to
+standard inlet conditions (for temperature, pressure and inlet gas composition)
+
+3.5 Power
+
+3.5.1             iTeh STANDARD PREVIEW
+
+power that is theoretically required to co isentropic power (msptraesns danaidredalsg.aisteunhde.racio)nstant entropy, from a given inlet
+
+pressure to a given discharge pressure, in multi-stage compression
+
+                                                             ISO 1217:2009
+
+NOTE The theoretical isenhttrtopps:i/c/sptaonwdeardrse.iqteuhir.aeid/caistatlhoeg/stuamndaorfdtsh/esisits/de4n5traobpbic6fp-5o7w9ebr-r4edq1ubi-r9e3daadt-all the stages.
+
+                  60c6f8500a5a/iso-1217-2009
+
+3.5.2
+
+isothermal power
+
+power that is theoretically required to compress an ideal gas under constant temperature, in a compressor
+
+free from losses, from a given inlet pressure to a given discharge pressure
+
+3.5.3
+packaged compressor power input
+electrically driven machines sum of the electrical power inputs to the prime mover and any ancillaries and
+auxiliaries driven from the compressor shaft or by a separate prime mover at rated supply conditions,
+including the effect of all equipment included in the package
+
+NOTE 1 Auxiliaries include oil pump, cooling fan and integral compressed air dryer.
+
+NOTE 2 Rated supply conditions refer to phase, voltage, frequency and ampere capability.
+
+3.5.4
+shaft power
+power required at the compressor drive-shaft, equal to the sum of mechanical losses and the internal power,
+not including losses in external transmissions such as gear drives or belt drives unless part of the scope of
+supply
+
+3.6 Efficiency
+
+3.6.1
+isentropic efficiency
+ratio of the required isentropic power to shaft power
+
+6                                                                                    © ISO 2009 - All rights reserved
+                                                                                               ISO 1217:2009(E)
+
+3.6.2
+isothermal efficiency
+ratio of the required isothermal power to shaft power
+
+3.6.3
+volumetric efficiency
+ratio of the actual volume flow rate to the displacement of the compressor
+
+3.7 Specific energy requirements
+
+3.7.1
+specific energy requirements of a bare compressor
+shaft input power per unit of compressor actual volume flow rate
+
+3.7.2
+specific energy requirements of a packaged compressor
+packaged compressor power input per unit of compressor actual volume flow rate
+
+3.7.3
+specific fuel consumption
+specific steam consumption
+fuel or steam mass flow per unit of compressor actual volume flow rate
+
+3.8 Gas properties
+
+3.8.1                   iTeh STANDARD PREVIEW
+
+compressibility factor            (standards.iteh.ai)
+
+expression of the deviation of the real gas from an ideal gas
+
+3.8.2                                     ISO 1217:2009
+mixing ratio  https://standards.iteh.ai/catalog/standards/sist/d45abb6f-579b-4d1b-93ad-
+
+ratio of mass of moisture contained in t6h0ec6gfa85s0t0oa5tha/eisom-1a2s1s7-o2f0t0h9e dry gas
+
+3.8.3
+relative vapour pressure
+ratio of the partial pressure of a vapour to its saturation pressure at the same temperature
+
+4 Symbols
+
+4.1 Symbols and units
+
+Symbol                             Term                            SI unit                     Other practical unit
+    A                               Area                              m2                                 mm2
+    b                 Specific fuel consumption                                                            --
+    c                             Velocity                          kg/m3                                  --
+   em           Mass-specific energy requirement                     m/s                                 kJ/kg
+    eV         Volume-specific energy requirement                    J/kg
+    E                Relative clearance volume                       J/m3                            J/I, kWh/m3
+     f        Parameter for uncertainty calculations                  --                                   --
+    F                      Fuel consumption                    unit of symbol                              --
+    G                         Quality class                          kg/s
+    h                   Level for liquid column                        %                               kg/h, g/s
+   H1                   Absolute inlet humidity                        m                                   --
+                                                                      --                                  mm
+                                                                                                           --
+
+© ISO 2009 - All rights reserved                                                                                     7
+ISO 1217:2009(E)
+
+   K              Correction factor                             --              --
+
+   K1             Correction factor for shaft speed
+
+   K2   Correction factor for tests where polytropic exponents
+
+        for specified conditions and test conditions are
+
+                  different
+
+   K3   Correction factor for external coolant temperature
+
+   K4   Correction factor for shaft speed (= K1)
+
+   K5   Correction factor for inlet pressure, polytropic
+
+                  exponent and pressure ratio
+
+   K6   Correction factor for isentropic exponent
+
+   K7   Correction factor for humidity in multi-stage
+
+                  compressors
+
+   K8   Correction factor for external coolant inlet
+
+                  temperature
+
+   K9             Correction factor for pressure ratio
+
+   K10  Correction factor for working liquid temperature
+
+   K11  Correction factor for gas inlet temperature
+
+   K12            Correction factor for shaft speed
+
+   K13  Correction factor for condensate formation
+
+   m              Manufacturing tolerance
+
+   M              Torque                                        N·m             --
+
+   n    Exponent for poliytTropeichproScesTs iAn pVNdiaDgraAm RD PR1EVIEW       --
+
+   N              Rotational frequency (shaft speed)            s-1             min-1
+                  Pressure (standards.iteh.Paai)
+   p                                                                            MPa (bara, mbar)
+
+   P Power ISO 1217:2009 W MW, kW
+                  httpsR://asttaenodfarfldosw.iteh.ai/catalog/standards/sist/d4k5ga/sbbo6rfm-537/9sb-4d1b-9k3ga/hd-or m3/h, m3/min, L/s
+   q
+
+   qm             Mass rate of flow 60c6f8500a5a/iso-1217-200k9g/s              kg/h
+
+   qV             Volume rate of flow                           m3/s            m3/h, m3/min, L/s
+
+   r              Pressure ratio                                1               --
+
+   R              Gas constant                                  J/(kg·K)        --
+
+   t              Celsius temperature                           °C              --
+
+   T              Thermodynamic temperature                     K               --
+
+   V              Volume                                        m3              L
+
+   V              Absolute uncertainty                          unit of symbol  --
+
+   W              Work                                          J               MJ, kJ, kWh
+
+   x              Mixing ratio                                  kg/kg           g/kg
+
+   z              Number of stages                              1               --
+
+   Z              Compressibility factor                        1               --
+
+                  Difference of quantity                                        --
+
+                  Efficiency                                    1               --
+
+                  Isentropic exponent                           1               --
+
+   µ              Dynamic viscosity                             Pa·s            kg/(m·s)
+                                                                kg/m3             kg/L
+                  Mass density
+
+                  Relative uncertainty                          1               --
+
+                  Relative vapour pressure                      1               --
+
+                  Angular velocity                              rad/s           --
+
+a 1 bar = 0,1 MPa = 0,1 N/mm2 = 105 N/m2.
+
+8                                                                               © ISO 2009 - All rights reserved
+                                                                                                 ISO 1217:2009(E)
+
+4.2 Subscripts
+
+Subscript       Term                                              Remark
+      0
+      1    ambient condition
+
+      2         inlet                Indicates the quantities measured at the standard inlet point of the
+
+      a                              compressor
+     ab
+     ap         discharge            Indicates the quantities measured at the standard discharge point of the
+     av                              compressor
+     air
+      b         absolute
+     C
+     cd         absorbed
+     co
+   comb         approximate
+    corr
+  corr, C       average
+
+     cr         dry air
+      d
+      e         atmospheric          Characterizes the atmospheric pressure and temperature
+      E
+     el         contractual          Indicates the quantities specified in the contract
+      f
+      g         condensate
+      i
+                coupling
+     in
+     int        combination
+
+      L         corrected
+     m
+    me     corrected to contractual
+     M           requirements
+      n
+                critical             Characterizes the critical pressure and temperature
+     N
+      P         dynamic              Characterizes the dynamic pressure and properties
+    pol         eifTfecteivhe STANDARD PREVIEW
+      r
+     R          full-scale value (standards.iteh.ai)
+                     electric
+    res
+      s    flow measuring device     Without condensate
+      S                              ISO 1217:2009
+      t         httpds:r/y/stgaandsards.iteh.ai/catalog/standards/sist/d45abb6f-579b-4d1b-93ad-
+      T
+     th    individual measurement in a60c6f8500a5a/iso-1217-2009
+      v
+      V     series of n measurements
+     w
+                internal
+
+           intercooler temperature   Absolute temperature of air or gas leaving the intercooler under
+                                     observation
+
+                working liquid
+
+                mass                 Characterizes the mass-specific rates of flow, energies and volumes
+
+                mechanical
+
+                motor
+
+           number of measurements
+                    in the series
+
+                normal
+
+                package
+
+                polytropic           Characterizes a polytropic process
+
+                reduced              Characterizes the reduced pressures and temperatures
+
+                reading              Indicates the quantities read during the test or predetermined as test
+                                     conditions
+
+                resulting
+
+                saturated
+
+                isentropic           Characterizes an isentropic process
+
+                total
+
+                isothermal           Characterizes an isothermal process
+
+                theoretical
+
+                vapour
+
+                volume               Characterizes the volume-specific rates of flow and energy
+
+                coolant
+
+© ISO 2009 - All rights reserved                                                                          9
+
