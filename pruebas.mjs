@@ -5687,7 +5687,8 @@ t("S.35 (rev 2.9.19, revisión adversarial de 2.9.16–2.9.18) pendientes en Exc
 t("S.36 (rev 2.9.20, decisión del dueño) versión por motor en el sello: sólo se desactualiza la disciplina cuyo motor cambió; aviso al abrir con vX → vY y el cambio; nada se recalcula solo; la memoria muestra antes y después", () => {
   llenarTodoS();
   const MV = G("MOTOR_VER");
-  eq(MV.elec, "4", "eléctrico v4:"); eq(MV.hidro, "4", "hidro v4:"); eq(MV.load, "2", "carga v2:"); eq(MV.duct, "1", "ductos sin cambio de lógica: v1:");
+  /* H-107: carga v3 = lógica de la rev 2.9.21 (declarada en la 2.9.24). */
+  eq(MV.elec, "4", "eléctrico v4:"); eq(MV.hidro, "4", "hidro v4:"); eq(MV.load, "3", "carga v3:"); eq(MV.duct, "1", "ductos sin cambio de lógica: v1:");
   Object.keys(MV).forEach((id) => { const c = G("MOTOR_CAMBIOS")[id] || []; if (MV[id] !== "1" && !c.some((x) => x.ver === MV[id])) throw new Error(`${id}: la versión ${MV[id]} no tiene hallazgo registrado`); });
   const s0 = JSON.stringify(S.sellos || {});
   try {
@@ -5920,6 +5921,39 @@ t("R.2 abrir un proyecto viejo nunca recalcula solo: los sellos quedan como ven�
     eq(w.document.querySelector("#view .accsello").dataset.sello, "desactualizado", "la barra dice Desactualizado hasta que el usuario calcule:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
+/* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió la lógica de carga térmica sin subir MOTOR_VER.load. R.1 no lo ve porque
+   compara contra un esperado que se regenera a mano. R.3 compara el MISMO proyecto fijo contra la revisión base (--base): un motor
+   sólo puede dar cifras distintas si subió su versión, o si subió la de un motor del que se alimenta (dependencias leídas de ENTRADAS). */
+if (baseFile) {
+  const wb3 = await cargar(baseFile);
+  t("R.3 (H-107) ningún motor cambia de cifras respecto a la revisión base sin subir MOTOR_VER, propia o de un motor del que se alimenta", () => {
+    const Gb = (e) => wb3.eval(e);
+    const html = fs.readFileSync(file, "utf8");
+    const src = html.slice(html.indexOf("function cifrasMotor(id)"), html.indexOf("const resumenTexto ="));
+    if (!src.startsWith("function cifrasMotor")) throw new Error("no se encontró cifrasMotor en index.html");
+    if (Gb("typeof cifrasMotor") !== "function") Gb(src.replace("function cifrasMotor(id)", "window.cifrasMotor = function (id)"));
+    const arma = "S.tab = \"tablero\"; if (typeof KZ_CACHE !== \"undefined\") KZ_CACHE.key = null; if (typeof VZ_CACHE !== \"undefined\") VZ_CACHE.key = null; recompute();";
+    Gb(`importarRespaldo(${JSON.stringify(REG_PROY)}); ${arma}`);
+    const MVb = Gb("typeof MOTOR_VER !== 'undefined' ? JSON.parse(JSON.stringify(MOTOR_VER)) : {}");
+    const guardado = JSON.stringify(S);
+    try {
+      G("importarRespaldo")(REG_PROY); G(arma);
+      const MV = G("MOTOR_VER"), E = G("ENTRADAS");
+      /* Dependencias de resultado: lo que cada motor lee de otros (ENTRADAS.x() dentro de su función). Valor lee además las
+         oportunidades calculadas por Kaizen. */
+      const DEP = Object.fromEntries(Object.keys(E).map((id) => [id, [...E[id].toString().matchAll(/ENTRADAS\.(\w+)\(\)/g)].map((m) => m[1]).filter((d) => d !== id)]));
+      DEP.valor = [...new Set([...(DEP.valor || []), "kaizen"])];
+      const ver = (mv, id) => String((mv && mv[id]) || "1");
+      const subio = (id, vis = new Set()) => { if (vis.has(id)) return false; vis.add(id); return ver(MVb, id) !== ver(MV, id) || (DEP[id] || []).some((d) => subio(d, vis)); };
+      const fallas = [];
+      Object.keys(MV).forEach((id) => {
+        const a = JSON.stringify(G("cifrasMotor")(id)), b = Gb(`JSON.stringify(cifrasMotor(${JSON.stringify(id)}))`);
+        if (a !== b && !subio(id)) fallas.push(`${id}: cifras distintas a la base con la misma versión v${ver(MV, id)} y sin cambio de versión en los motores de los que se alimenta (${(DEP[id] || []).join(", ") || "ninguno"}). Sube MOTOR_VER.${id} con su hallazgo`);
+      });
+      if (fallas.length) throw new Error(fallas.join("\n   "));
+    } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+  });
+}
 
 /* ===== Instalación limpia (rev 2.9.22, decisión del dueño): la suite se entrega en vacío ===== */
 const wLimpia = await cargar(file);
