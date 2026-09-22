@@ -47,3 +47,12 @@ Pruebas de humo sobre la rev actual (no se rehízo nada):
 - Laboratorio con HR especificada en Tijuana: dos casos (enfriamiento 32.8 °C / 6.42 g/kg = 5.99 kW SHF 0.94; deshumidificación 22.8 °C / DP 19.2 °C, 14.2 g/kg = 6.11 kW SHF 0.682), rige deshumidificación; memoria y PDF lo dicen.
 
 **Hallazgo (brecha corregida):** el PDF de carga térmica y la memoria integral no citaban la fuente climática del sitio (ASHRAE Handbook—Fundamentals 2021, estación, WMO, 0.4 %) cuando el sitio trae dato propio; sólo la pantalla lo mostraba. Se agrega la línea «Fuente climatica: …» después de las condiciones exteriores en ambos PDF (documento, no lógica: `MOTOR_VER` no cambia; cifras de regresión sin cambio). Prueba S.37 ampliada. Banco 350/350 y 355/355 con base.
+
+## 8. Corrección del dueño (22-sep-2026): «los de USA» no era IUSA
+- Lo que el dueño quiso decir: precios de **Estados Unidos, únicamente California**, como fuente única para todos los componentes. El commit `fd267a0` (nueve precios de la lista de distribuidor IUSA) fue una interpretación equivocada.
+- Se revirtió con `git revert` limpio (commit `3c5f235`); `fd267a0` queda en la historia. Las referencias de cobre vuelven a como estaban en `205c40a` (tres de menudeo con IVA + seis de lista IUSA, MXN) hasta que se apruebe la fuente de California y se sustituyan.
+- Tags: los existentes (`rev-2.9.23-candidata`) no se mueven; esta candidata lleva tag nuevo.
+- Fuente de California: propuesta en `PLAN.md`, sin cargar precios hasta aprobación.
+- Moneda: `S.quote.fxFecha` y `S.quote.fxFuente` capturables; `fxVigente()` sólo con tipo > 0 y fecha AAAA-MM-DD. Un precio en USD sin tipo de cambio fechado no se convierte: sale «Por cotizar» (motivo «tipo de cambio sin capturar») y bloquea la formal. El tipo de cambio con su fecha y fuente se imprime en la cotización técnica, la propuesta (PDF y Excel) y las condiciones. Motor `quote` 4 → 5 con hallazgo.
+- Etiqueta de cada precio: fuente, ubicación, fecha, moneda, impuestos incluidos/antes de impuestos, lista bruta/neta (renglón, CSV con columnas `ubicacion` y `lista`, pantalla, leyenda del Budget).
+- Regresión: el proyecto fijo pasa a cobre tipo L (1/2" con precio numérico de proveedor local; el resto por referencia de mercado) para que el golden ejercite ambas rutas; tipo de cambio fechado en el fixture. Se regeneraron `hidro` y `quote` a propósito (cambio de fixture, no de lógica de hidro).
