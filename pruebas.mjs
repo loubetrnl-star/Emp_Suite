@@ -6708,6 +6708,51 @@ t("GC.5 Cotización conserva la ayuda propia de sus campos, el aviso de IVA y lo
   });
 });
 
+/* ===== CM · casos calculados a mano por motor (Fase 1, rev 2.9.24) =====
+   Cada motor tiene su módulo en pruebas-motores/<motor>.mjs y su hoja en parches/casos-a-mano/<motor>.csv. El módulo
+   recibe el arnés (t, eq, cerca, contiene, G, S, w, …) y las filas de su hoja; compara NÚMEROS con tolerancia, no textos.
+   Filas con estado «fase2:H-nnn» son el valor correcto según norma que hoy la suite no da: sólo se exigen con CM_FASE2=1
+   (al cerrar el hallazgo se cambia el estado a «vigente»). Ver pruebas-motores/LEEME.md. */
+const CM = {
+  leerCsv(texto) {
+    const parse = (l) => { const out = []; let cur = "", q = false; for (let i = 0; i < l.length; i++) { const ch = l[i]; if (q) { if (ch === '"' && l[i + 1] === '"') { cur += '"'; i++; } else if (ch === '"') q = false; else cur += ch; } else if (ch === '"' && cur === "") q = true; else if (ch === ",") { out.push(cur); cur = ""; } else cur += ch; } out.push(cur); return out.map((x) => x.trim()); };
+    const lineas = String(texto).replace(/^﻿/, "").split(/\r?\n/).filter((l) => l.trim());
+    const cab = parse(lineas[0]);
+    return lineas.slice(1).map((l) => { const c = parse(l); return Object.fromEntries(cab.map((k, i) => [k, c[i] ?? ""])); });
+  },
+  casos(motor) {
+    const f = `parches/casos-a-mano/${motor}.csv`;
+    if (!fs.existsSync(f)) throw new Error(`falta la hoja de casos a mano ${f}`);
+    const filas = CM.leerCsv(fs.readFileSync(f, "utf8"));
+    const obligatorias = ["id", "descripcion", "entradas", "formula", "fuente", "caracter", "expresion", "esperado", "tolerancia", "estado", "calculado_por"];
+    const faltan = obligatorias.filter((k) => !(k in (filas[0] || {})));
+    if (faltan.length) throw new Error(`${f}: faltan columnas ${faltan.join(", ")}`);
+    return filas;
+  },
+  /* Compara una fila: expresion (JS evaluado en la suite, sobre el estado que el módulo ya armó) contra esperado ± tolerancia
+     (absoluta, o relativa si termina en %). Las filas fase2 sólo se exigen con CM_FASE2=1; si no, cuentan como pendientes. */
+  comprobar(fila, valor) {
+    const esperado = Number(fila.esperado), tolTxt = String(fila.tolerancia || "0").trim();
+    const tol = /%$/.test(tolTxt) ? Math.abs(esperado) * Number(tolTxt.slice(0, -1)) / 100 : Number(tolTxt);
+    if (!Number.isFinite(esperado) || !Number.isFinite(tol)) throw new Error(`${fila.id}: esperado o tolerancia no numéricos`);
+    const v = valor !== undefined ? valor : G(fila.expresion);
+    if (!Number.isFinite(Number(v))) throw new Error(`${fila.id} (${fila.descripcion}): la suite no dio número para «${fila.expresion}»: ${JSON.stringify(v)}`);
+    if (Math.abs(Number(v) - esperado) > tol) throw new Error(`${fila.id} (${fila.descripcion}): esperado ${esperado} ± ${tol} [${fila.fuente}; ${fila.caracter}], suite ${v}`);
+    return Number(v);
+  },
+  esFase2: (fila) => /^fase2/i.test(String(fila.estado || "")),
+  exigirFase2: !!process.env.CM_FASE2,
+};
+{
+  const dir = new URL("./pruebas-motores/", import.meta.url);
+  const ctx = { t, eq, cerca, contiene, G, S, w, fs, file, baseFile, cargar, REG_PROY, CM, llenarTodoS, proyectoDePrueba };
+  const mods = fs.existsSync(dir) ? fs.readdirSync(dir).filter((x) => /^[a-z]+\.mjs$/.test(x)).sort() : [];
+  for (const f of mods) {
+    try { const m = await import(new URL(f, dir).href); await m.default(ctx); }
+    catch (e) { t(`CM.${f.replace(/\.mjs$/, "")} el módulo de casos a mano carga y corre`, () => { throw e; }); }
+  }
+}
+
 const total = ok + fail;
 console.log(`\nSuiteEmp rev ${G("REV")} · banco de comprobaciones de la rev 2.9.3`);
 console.log(`${ok} de ${total} comprobaciones correctas`);
