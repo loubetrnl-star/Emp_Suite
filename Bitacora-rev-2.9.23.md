@@ -40,3 +40,10 @@ Observaciones (no se corrigió nada; se cargó tal cual):
 - `MOTOR_VER.quote` 3 → 4 (hallazgo en `MOTOR_CAMBIOS` y CHANGELOG-motores.md). Cifras del proyecto de regresión sin cambio (CPVC con precio numérico); esperado regenerado sólo por la versión.
 - Pruebas actualizadas: 22.11 (saneado deja las referencias), S.35 (caso sin precio con CPVC; la formal truena sin precio), S.39 (encabezado nuevo, Budget sin bloqueo), S.40 (instalación limpia trae sólo referencias, sin bitácora). Nueva **S.41**: las dos rutas (referencia → Budget con leyenda; proveedor local por pantalla y por CSV con antes/después), Por cotizar con contador, formal bloqueada, compatibilidad con precio numérico viejo.
 - Banco: 350/350 sin base; 355/355 con `--base respaldo-rev-2.9.8/index-2.9.21-inicio-20260921-221100.html`.
+
+## 6. Verificación del dueño (22-sep-2026): sello por motor y dos casos ASHRAE
+Pruebas de humo sobre la rev actual (no se rehízo nada):
+- Proyecto sellado con `load` v1 e `hidro` v1 (motores actuales v2 y v4): al abrir, los sellos quedan byte a byte como venían, nada se guarda solo, sólo Carga térmica e Hidráulico marcan «Desactualizado» con aviso v1 → v2 / v1 → v4 y el hallazgo de cada versión; las otras 12 disciplinas siguen «Calculado».
+- Laboratorio con HR especificada en Tijuana: dos casos (enfriamiento 32.8 °C / 6.42 g/kg = 5.99 kW SHF 0.94; deshumidificación 22.8 °C / DP 19.2 °C, 14.2 g/kg = 6.11 kW SHF 0.682), rige deshumidificación; memoria y PDF lo dicen.
+
+**Hallazgo (brecha corregida):** el PDF de carga térmica y la memoria integral no citaban la fuente climática del sitio (ASHRAE Handbook—Fundamentals 2021, estación, WMO, 0.4 %) cuando el sitio trae dato propio; sólo la pantalla lo mostraba. Se agrega la línea «Fuente climatica: …» después de las condiciones exteriores en ambos PDF (documento, no lógica: `MOTOR_VER` no cambia; cifras de regresión sin cambio). Prueba S.37 ampliada. Banco 350/350 y 355/355 con base.

@@ -5732,6 +5732,10 @@ t("S.37 (rev 2.9.20, decisión del dueño) control de humedad: dos casos de dise
     G("recompute")();
     const [of, cl, lab] = G("LOADS");
     eq(of.casos, null, "confort: un solo caso:");
+    /* rev 2.9.23 · el PDF cita la fuente climática con estación y año (ASHRAE 2021, WMO). */
+    const txtPdf = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");
+    const pdfClima = txtPdf(G("buildCargaPdf")()); contiene(pdfClima, "Fuente climatica: ASHRAE Handbook", "PDF cita ASHRAE:"); contiene(pdfClima, "Fundamentals 2021", "con año:"); contiene(pdfClima, "WMO 760013", "y estación:");
+    contiene(txtPdf(G("buildMemoriaIntegralPdf")()), "WMO 760013", "memoria integral también:");
     if (!cl.casos || cl.casos.faltante) throw new Error("el cuarto limpio debía traer los dos casos");
     if (!lab.casos || lab.casos.faltante) throw new Error("la zona con HR especificada debía traer los dos casos");
     ["enf", "des"].forEach((c) => { if (!(cl.casos[c].grand > 0 && cl.casos[c].tons > 0)) throw new Error(`caso ${c} sin carga`); });

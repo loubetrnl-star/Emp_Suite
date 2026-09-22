@@ -1456,6 +1456,8 @@ function buildMemoriaPdf() {
   pdfHeading(d, "2. Bases de diseño");
   pdfParagraph(d, `Metodo por hora: la carga de cada zona se calcula de las 8 a las 18 horas solares y se reporta la hora de mayor demanda, como lo hace HAP. El punto de rocio del aparato (ADP) se resuelve donde la recta del factor de calor sensible efectivo corta la curva de saturacion, de modo que la temperatura de suministro responde a la carga latente real en lugar de asumir un salto fijo.`);
   pdfParagraph(d, `Exterior ${SITE.db} °C de bulbo seco y ${SITE.wb} °C de bulbo húmedo · interior ${P.T_IN_DB} °C con ${P.RH_IN * 100} % de humedad relativa · latitud ${P.LAT}° · mes de julio, ${S.peakScan === false ? `hora solar ${P.HOUR}` : `barrido de ${HOURS[0]} a ${HOURS[HOURS.length - 1]} h solares, se reporta la hora pico de cada zona`} · diversidad de edificio ${S.bldDiv}. Método Carrier HAP: DET por orientación con color b = ${P.COLOR_B}, factores de almacenamiento de tablas 7 a 13, aire exterior por el mayor entre ASHRAE 62.1 y tabla 45, y selección de aparato con factor de bypass ${HAP.BF}.`);
+  /* rev 2.9.23 · hallazgo (prueba de humo del dueño): el PDF no citaba la fuente climática del sitio (ASHRAE, estación, año); sólo la pantalla. */
+  pdfParagraph(d, `Fuente climatica: ${SITE.src}${SITE.deshum && SITE.deshum.fuente && SITE.deshum.fuente !== SITE.src ? ` · punto de rocio: ${SITE.deshum.fuente}` : ""}`);
   /* H-11 · Las tablas horarias que son estimación propia se declaran en la
      memoria, con su rango de validez. H-16 · Y el criterio de los K del catálogo.
      H-22 · Y la fuente real de los cambios de aire de cuarto limpio. */
@@ -1793,6 +1795,8 @@ function buildCargaPdf() {
   ]);
   if (S.peakScan !== false) pdfParagraph(d, `Metodo por hora: la carga de cada zona se calcula de las 8 a las 18 horas solares y se reporta la hora de mayor demanda, como lo hace HAP. El punto de rocio del aparato (ADP) se resuelve donde la recta del factor de calor sensible efectivo corta la curva de saturacion, de modo que la temperatura de suministro responde a la carga latente real en lugar de asumir un salto fijo.`);
   pdfParagraph(d, `Exterior ${SITE.db} °C de bulbo seco y ${SITE.wb} °C de bulbo húmedo · interior ${P.T_IN_DB} °C con ${P.RH_IN * 100} % de humedad relativa · latitud ${P.LAT}° · mes de julio, ${S.peakScan === false ? `hora solar ${P.HOUR}` : `barrido de ${HOURS[0]} a ${HOURS[HOURS.length - 1]} h solares, se reporta la hora pico de cada zona`} · diversidad de edificio ${S.bldDiv}. Método Carrier HAP: DET por orientación con color b = ${P.COLOR_B}, factores de almacenamiento de tablas 7 a 13, aire exterior por el mayor entre ASHRAE 62.1 y tabla 45, y selección de aparato con factor de bypass ${HAP.BF}.`);
+  /* rev 2.9.23 · hallazgo (prueba de humo del dueño): el PDF no citaba la fuente climática del sitio (ASHRAE, estación, año); sólo la pantalla. */
+  pdfParagraph(d, `Fuente climatica: ${SITE.src}${SITE.deshum && SITE.deshum.fuente && SITE.deshum.fuente !== SITE.src ? ` · punto de rocio: ${SITE.deshum.fuente}` : ""}`);
   pdfHeading(d, "2.1 Criterios de calculo");
   pdfRows(d, [
     ["Ocupantes", `${P.OCC_S} W sensibles y ${P.OCC_L} W latentes por persona, con almacenamiento y diversidad del tipo de espacio`],
