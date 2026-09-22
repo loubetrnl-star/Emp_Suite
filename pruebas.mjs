@@ -5796,6 +5796,40 @@ t("S.37 (rev 2.9.20, decisión del dueño) control de humedad: dos casos de dise
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+
+t("S.38 (rev 2.9.22, decisión del dueño) sitio sin punto de rocío: marca roja en el PDF, captura manual sólo con fuente, estaciones ASHRAE de referencia que el usuario adopta", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.38";
+    S.zones = [{ ...G("defaultZone")("Limpio"), spaceType: "cleanroom", iso: "iso7", achClean: 45, area: 120, height: 3, occ: 2 }];
+    ["tecate", "ensenada", "mexicali"].forEach((k) => { if (!(G("SITES")[k].ref || []).length) throw new Error(`${k}: sin estaciones de referencia`); if (G("SITES")[k].dp) throw new Error(`${k}: no debe traer DP como dato`); });
+    S.site = { key: "tecate" }; G("recompute")();
+    eq(G("SITE").deshum, null, "Tecate sin DP:"); eq(G("LOADS")[0].casos.faltante, true, "faltante:");
+    const pdf = Buffer.from(G("buildCargaPdf")()).toString("latin1");
+    contiene(pdf, "DESHUMIDIFICACION NO EVALUADA: FALTA DATO CLIMATICO", "PDF marca la falta:");
+    contiene(pdf, "0.941 0.337 0.114 rg", "en rojo (color de señal):");
+    /* Captura manual sin fuente: no cuenta. Con fuente: cuenta y se imprime. */
+    S.site = { key: "tecate", dp: 18, dpHR: 13, dpDB: 24 }; G("recompute")();
+    eq(G("SITE").deshum, null, "DP manual sin fuente no se usa:"); eq(G("SITE").dpPendiente, true, "y se marca pendiente de fuente:");
+    S.site.dpFuente = "ASHRAE 2021, estación X, cotejo del cliente"; G("recompute")();
+    if (!G("SITE").deshum) throw new Error("con fuente el DP manual debía usarse");
+    eq(G("LOADS")[0].casos.faltante, undefined, "ya se evalúan los dos casos:");
+    contiene(Buffer.from(G("buildCargaPdf")()).toString("latin1"), "capturado a mano", "PDF dice que es manual:");
+    /* Adoptar una estación de referencia: rellena DP, HR, BS coincidente y fuente. */
+    S.site = { key: "ensenada" }; G("recompute")(); S.tab = "proyecto"; G("render")();
+    const btn = w.document.querySelector('#view [data-act="site-ref-dp"][data-i="0"]');
+    if (!btn) throw new Error("falta el botón para adoptar la estación de referencia");
+    clicS(btn);
+    const ref = G("SITES").ensenada.ref[0];
+    eq(S.site.dp, ref.dp, "DP adoptado:"); eq(S.site.dpHR, ref.dpHR, "HR adoptada:"); eq(S.site.dpDB, ref.dpDB, "BS coincidente adoptada:");
+    contiene(S.site.dpFuente, "WMO " + ref.wmo, "fuente declarada:"); contiene(S.site.dpFuente, "referencia adoptada", "marcada como referencia:");
+    if (!G("SITE").deshum) throw new Error("tras adoptar, el sitio debía tener caso de deshumidificación");
+    /* Saneado: DP no numérico se descarta; la fuente se acota. */
+    const sucio = JSON.parse(JSON.stringify(S)); sucio.site.dp = "x"; sucio.site.dpFuente = "f".repeat(500);
+    const sv = G("sanearEstado")(sucio).site; eq(sv.dp, undefined, "DP no numérico fuera:"); eq(sv.dpFuente.length, 200, "fuente acotada:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 /* ============================== resultado =============================== */
 t("R.7 H-95 la licitación, la propuesta, la cotización y la memoria integral ya traen bloque de firma (Revisado por / Aprobado por)", () => {
   const g = { perms: JSON.parse(JSON.stringify(S.perms)) };
