@@ -7235,7 +7235,7 @@ const espSoporte = (dmm0, fam) => {
   const e = t[DN_NPS[dmm]];
   return e === undefined ? null : e;
 };
-const famSoporteAgua = (m) => m === "acero" ? "acero" : (m === "cpvc" || m === "pead" || m === "plastico") ? "plastico" : "cobre";
+const famSoporteAgua = (m) => m === "acero" ? "acero" : (m === "cpvc" || m === "pead" || m === "ppr" || m === "plastico") ? "plastico" : "cobre";
 
 /* -------------------------------------------------------------------------
    DIMENSIONAMIENTO DE LA VARILLA POR CARGA — MSS SP-58 tabla 4
@@ -9580,6 +9580,8 @@ const TUB_AGUA = {
   cpvc:   { C: 150, label: "CPVC CTS SDR-11", labelEn: "CPVC CTS SDR-11", d: [[11.91, "1/2\""], [17.65, "3/4\""], [22.89, "1\""], [28.07, "1 1/4\""], [33.25, "1 1/2\""], [43.59, "2\""], [63, "2 1/2\" · SIN VERIFICAR, CTS/SDR-11 no llega aquí"], [75, "3\" · SIN VERIFICAR, CTS/SDR-11 no llega aquí"], [100, "4\" · SIN VERIFICAR, CTS/SDR-11 no llega aquí"]] },
   acero:  { C: 120, label: "Acero cédula 40", labelEn: "Schedule 40 steel", d: [[15.80, "1/2\""], [20.93, "3/4\""], [26.64, "1\""], [35.05, "1 1/4\""], [40.89, "1 1/2\""], [52.50, "2\""], [62.71, "2 1/2\""], [77.93, "3\""], [102.26, "4\""]] },
   pead:   { C: 150, label: "PEAD",         labelEn: "HDPE", d: [[19, "3/4\""], [25, "1\""], [32, "1 1/4\""], [38, "1 1/2\""], [50, "2\""], [63, "2 1/2\""], [75, "3\""], [100, "4\""], [150, "6\""]] },
+  /* rev 2.9.22 · PP-R PN20 (SDR 7.4), diámetro interior según DIN 8077 (exterior 20–110 mm). C 150 (Hazen-Williams, tubería lisa). */
+  ppr:    { C: 150, label: "PP-R PN20 (SDR 7.4)", labelEn: "PP-R PN20 (SDR 7.4)", d: [[13.2, "20 mm"], [16.6, "25 mm"], [21.2, "32 mm"], [26.6, "40 mm"], [33.2, "50 mm"], [42.0, "63 mm"], [50.0, "75 mm"], [60.0, "90 mm"], [73.2, "110 mm"]] },
 };
 /* Hazen-Williams en unidades SI: hf en metros de columna de agua por metro de
    tubería, Q en m³/s, D en metros.
@@ -17400,6 +17402,7 @@ function accEstado(id) {
   } else {
     const link = `${M.cot}>quote`;
     if (LINKS[link] && !linkAllowed(link)) R.cot = { ok: false, razon: "El cruce hacia la cotización no está autorizado", autorizar: link };
+    else if (M.cot === "hidro" && hidroDiametrosSinPrecio().length) R.cot = { ok: false, razon: `Falta el precio por metro de ${hidroDiametrosSinPrecio().join(", ")} (Cotización › Tubería hidráulica)` };
     else R.cot = (!falta || MOTORES_CAPTURA.some(capturaReal)) && seguro(() => cotizacionDeMotor(M.cot).partidas.length, 0) > 0 ? { ok: true }
       : { ok: false, razon: falta ? aca : "Todavía no hay partidas de esta disciplina" };
   }
@@ -17475,6 +17478,7 @@ function cruceCotSinAutorizar() { return Object.keys(LINKS).filter((k) => /^[a-z
 function cotUnificadaEstado() {
   const c = seguro(() => catalogoConceptos(), null);
   if (!capturaReal("quote")) return { ok: false, razon: "todavía no hay captura en ninguna disciplina" };
+  if (linkAllowed("hidro>quote") && hidroDiametrosSinPrecio().length) return { ok: false, razon: `la tubería hidráulica no tiene precio en ${hidroDiametrosSinPrecio().join(", ")} (Cotización › Tubería hidráulica)` };
   if (!c || !c.secciones.length) {
     const sin = cruceCotSinAutorizar();
     return { ok: false, razon: sin ? `todavía no hay partidas y ${sin} cruce(s) hacia la cotización están sin autorizar (se autorizan en Proyecto)` : "todavía no hay partidas: se arman con lo que calculan las disciplinas" };
@@ -18485,12 +18489,48 @@ function buildMemoriaIntegralPdf() {
 /* rev 2.9.14 · Guías repetidas: la nota de precios semilla, el subtítulo de la propuesta de licitación y los dos párrafos de la
    propuesta integral viven en GUIA.cotizacion. La vista conserva la ayuda propia de cada campo, los avisos con cifras y el IVA. */
 /* rev 2.9.16 · Precio por diámetro de la red hidráulica: sólo los diámetros que salieron del cálculo, del material elegido. */
+/* rev 2.9.22 · Diámetros calculados que no tienen precio capturado (los que la cotización necesita). */
+function hidroDiametrosSinPrecio() {
+  if (!HIDRO || !(HIDRO.umTotal > 0)) return [];
+  const pu = (S.quote && S.quote.hidroPU && typeof S.quote.hidroPU === "object") ? S.quote.hidroPU : {};
+  const noms = [...new Set(HIDRO.tramos.filter((t) => t.Lcap > 0 && t.um > 0).map((t) => String(t.nom).split(" ·")[0]))];
+  return noms.filter((nom) => !(num(pu[claveHidroPU(HIDRO.mat, nom)], 0) > 0));
+}
+/* Plantilla CSV: material,clave,diametro,precio_por_metro,moneda,fuente — una fila por cada diámetro que el motor puede producir. */
+function hidroPUPlantillaCsv() {
+  const filas = [["material", "clave", "diametro", "precio_por_metro", "moneda", "fuente"]];
+  Object.entries(TUB_AGUA).forEach(([mat, T]) => T.d.forEach(([, nom]) => { const d = String(nom).split(" ·")[0]; filas.push([mat, claveHidroPU(mat, d), d, "", "MXN", ""]); }));
+  return filas.map((f) => f.map((c) => /[",\n]/.test(String(c)) ? `"${String(c).replace(/"/g, '""')}"` : String(c)).join(",")).join("\n");
+}
+/* Importa un CSV con las columnas de la plantilla. USD se convierte con el tipo de cambio del proyecto. Devuelve el resumen. */
+function hidroPUImportarCsv(texto) {
+  const lineas = String(texto || "").replace(/^\uFEFF/, "").split(/\r?\n/).filter((l) => l.trim());
+  if (!lineas.length) return { ok: 0, malas: ["archivo vacío"] };
+  const parse = (l) => { const out = []; let cur = "", q = false; for (let i = 0; i < l.length; i++) { const ch = l[i]; if (q) { if (ch === '"' && l[i + 1] === '"') { cur += '"'; i++; } else if (ch === '"') q = false; else cur += ch; } else if (ch === '"' && cur === "") q = true; else if (ch === ",") { out.push(cur); cur = ""; } else cur += ch; } out.push(cur); return out.map((x) => x.trim()); };
+  const cab = parse(lineas[0]).map((h) => h.toLowerCase());
+  const ix = (k) => cab.indexOf(k);
+  if (ix("material") < 0 || ix("diametro") < 0 || ix("precio_por_metro") < 0) return { ok: 0, malas: ["faltan columnas: material, diametro, precio_por_metro"] };
+  const fx = Math.max(.01, num(S.quote.fx, 18.5));
+  if (!S.quote.hidroPU || typeof S.quote.hidroPU !== "object") S.quote.hidroPU = {};
+  let ok = 0; const malas = [];
+  lineas.slice(1).forEach((l, i) => {
+    const c = parse(l); const mat = (c[ix("material")] || "").toLowerCase(), d = c[ix("diametro")] || "", precio = num(c[ix("precio_por_metro")], 0), mon = ((ix("moneda") >= 0 ? c[ix("moneda")] : "") || "MXN").toUpperCase();
+    if (!TUB_AGUA[mat]) { malas.push(`fila ${i + 2}: material «${mat}» desconocido`); return; }
+    if (!TUB_AGUA[mat].d.some(([, nom]) => String(nom).split(" ·")[0] === d)) { malas.push(`fila ${i + 2}: diámetro «${d}» no existe en ${TUB_AGUA[mat].label}`); return; }
+    if (!(precio > 0)) return; /* fila sin precio: se deja pendiente, no es error */
+    S.quote.hidroPU[claveHidroPU(mat, d)] = +(mon === "USD" ? precio * fx : precio).toFixed(2); ok++;
+  });
+  return { ok, malas };
+}
 function hidroPUHtml() {
   if (!HIDRO || !(HIDRO.umTotal > 0) || !HIDRO.tramos.length) return "";
   const T = TUB_AGUA[HIDRO.mat] || TUB_AGUA.cobre;
   const noms = [...new Set(HIDRO.tramos.map((t) => t.nom))];
   if (!S.quote.hidroPU || typeof S.quote.hidroPU !== "object") S.quote.hidroPU = {};
-  return `<div class="hint" style="margin:10px 0"><b>Tubería hidráulica · ${esc(T.label)}</b> · precio por metro instalado y probado, por diámetro. Sin precio, el diámetro queda pendiente y no se cotiza.</div>
+  const sin = hidroDiametrosSinPrecio();
+  return `<div class="hint" style="margin:10px 0"><b>Tubería hidráulica · ${esc(T.label)}</b> · precio por metro instalado y probado, por diámetro. Sin precio, el diámetro queda pendiente y no se cotiza.
+      <button type="button" class="toolbtn mini" data-act="hidro-pu-csv">Importar CSV de precios</button> <button type="button" class="toolbtn mini" data-act="hidro-pu-plantilla">Descargar plantilla CSV</button></div>
+    ${sin.length ? `<div class="hint" style="color:var(--warn)"><b>No se puede cotizar la tubería:</b> sin precio en ${sin.join(", ")}.</div>` : ""}
     <div class="row">${noms.map((nom) => inp(`${nom.split(" ·")[0]} (MXN/m)`, `quote.hidroPU.${claveHidroPU(HIDRO.mat, nom)}`, "number", "1")).join("")}</div>`;
 }
 function viewCotizacion() {
@@ -20666,6 +20706,10 @@ document.addEventListener("click", (e) => {
     case "vmode": S.vent.mode = b.dataset.mode; render(); break;
     case "seg": openSegIndex = +b.dataset.i; openModal(segmentSheet(openSegIndex)); break;
     case "seg-add": S.duct.segments.push(defaultSegment(`TR-${S.duct.segments.length + 1}`)); render(); break;
+    case "hidro-pu-plantilla": { const csv = hidroPUPlantillaCsv(); const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["\uFEFF" + csv], { type: "text/csv" })); a.download = "plantilla-precios-tuberia-hidraulica.csv"; document.body.appendChild(a); a.click(); a.remove(); break; }
+    case "hidro-pu-csv": { let inp = document.getElementById("hidro-pu-file"); if (!inp) { inp = document.createElement("input"); inp.type = "file"; inp.id = "hidro-pu-file"; inp.accept = ".csv,text/csv"; inp.hidden = true; document.body.appendChild(inp);
+        inp.addEventListener("change", () => { const f = inp.files && inp.files[0]; if (!f) return; cxLeerArchivo(f).then((R) => { if (!R.bytes) { toast("No se pudo leer el CSV"); return; } const r = hidroPUImportarCsv(new TextDecoder("utf-8").decode(R.bytes)); recompute(); render(); toast(`${r.ok} precio(s) importados${r.malas.length ? ` · ${r.malas.length} fila(s) rechazadas: ${r.malas.slice(0, 3).join("; ")}` : ""}`, 7000); }); }); }
+      inp.value = ""; inp.click(); break; }
     case "site-ref-dp": { /* rev 2.9.22 · adopta el DP de una estación de referencia, con su fuente declarada */
       const r = (SITE.ref || [])[+b.dataset.i]; if (!r) break;
       S.site = { ...S.site, dp: r.dp, dpHR: r.dpHR, dpDB: r.dpDB, dpFuente: `ASHRAE Handbook—Fundamentals 2021, estación ${r.nombre} WMO ${r.wmo} (referencia adoptada por el usuario; ${r.dist})` };

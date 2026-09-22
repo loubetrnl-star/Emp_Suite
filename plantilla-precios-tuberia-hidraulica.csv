@@ -1,0 +1,46 @@
+﻿material,clave,diametro,precio_por_metro,moneda,fuente
+cobre,cobre_1_2_,"1/2""",,MXN,
+cobre,cobre_3_4_,"3/4""",,MXN,
+cobre,cobre_1_,"1""",,MXN,
+cobre,cobre_1_1_4_,"1 1/4""",,MXN,
+cobre,cobre_1_1_2_,"1 1/2""",,MXN,
+cobre,cobre_2_,"2""",,MXN,
+cobre,cobre_2_1_2_,"2 1/2""",,MXN,
+cobre,cobre_3_,"3""",,MXN,
+cobre,cobre_4_,"4""",,MXN,
+cpvc,cpvc_1_2_,"1/2""",7.12,USD,"QMX_Cleanroom_Quotation_RevI E-008, CPVC CTS 1/2 in en plafón (en muro 9.38)"
+cpvc,cpvc_3_4_,"3/4""",8.38,USD,"QMX RevI E-007"
+cpvc,cpvc_1_,"1""",10.11,USD,"QMX RevI E-006"
+cpvc,cpvc_1_1_4_,"1 1/4""",12.37,USD,"QMX RevI E-005"
+cpvc,cpvc_1_1_2_,"1 1/2""",,MXN,
+cpvc,cpvc_2_,"2""",,MXN,
+cpvc,cpvc_2_1_2_,"2 1/2""",,MXN,
+cpvc,cpvc_3_,"3""",,MXN,
+cpvc,cpvc_4_,"4""",,MXN,
+acero,acero_1_2_,"1/2""",,MXN,
+acero,acero_3_4_,"3/4""",,MXN,
+acero,acero_1_,"1""",14.81,USD,"QMX RevI F-019 galvanizado ced. 40 roscado (red contra incendio; referencia)"
+acero,acero_1_1_4_,"1 1/4""",17.72,USD,"QMX RevI F-018 (referencia)"
+acero,acero_1_1_2_,"1 1/2""",20.5,USD,"QMX RevI F-017 (referencia)"
+acero,acero_2_,"2""",24.32,USD,"QMX RevI F-016 (referencia)"
+acero,acero_2_1_2_,"2 1/2""",,MXN,
+acero,acero_3_,"3""",,MXN,
+acero,acero_4_,"4""",,MXN,
+pead,pead_3_4_,"3/4""",,MXN,
+pead,pead_1_,"1""",,MXN,
+pead,pead_1_1_4_,"1 1/4""",,MXN,
+pead,pead_1_1_2_,"1 1/2""",,MXN,
+pead,pead_2_,"2""",,MXN,
+pead,pead_2_1_2_,"2 1/2""",,MXN,
+pead,pead_3_,"3""",,MXN,
+pead,pead_4_,"4""",,MXN,
+pead,pead_6_,"6""",,MXN,
+ppr,ppr_20_mm,20 mm,10.7,USD,"QMX RevI E-008 precio PP-R antes de VE-02"
+ppr,ppr_25_mm,25 mm,12.6,USD,"QMX RevI E-007 precio PP-R antes de VE-02"
+ppr,ppr_32_mm,32 mm,15.2,USD,"QMX RevI E-006 precio PP-R antes de VE-02"
+ppr,ppr_40_mm,40 mm,18.6,USD,"QMX RevI E-005 precio PP-R antes de VE-02"
+ppr,ppr_50_mm,50 mm,,MXN,
+ppr,ppr_63_mm,63 mm,,MXN,
+ppr,ppr_75_mm,75 mm,,MXN,
+ppr,ppr_90_mm,90 mm,,MXN,
+ppr,ppr_110_mm,110 mm,,MXN,

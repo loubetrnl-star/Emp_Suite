@@ -5830,6 +5830,42 @@ t("S.38 (rev 2.9.22, decisión del dueño) sitio sin punto de rocío: marca roja
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+
+t("S.39 (rev 2.9.22, decisión del dueño) precios de tubería hidráulica: PP-R en el catálogo, plantilla CSV por material y diámetro, importación con moneda y validación de que ningún diámetro quede en cero antes de cotizar", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    const T = G("TUB_AGUA");
+    ["cpvc", "cobre", "ppr", "acero"].forEach((m) => { if (!T[m]) throw new Error(`falta ${m} en TUB_AGUA`); });
+    eq(T.ppr.d.length, 9, "PP-R con 9 diámetros (20–110 mm, DIN 8077 PN20):"); eq(T.ppr.d[0][0], 13.2, "PP-R 20 mm: interior 13.2 mm:");
+    eq(G("famSoporteAgua")("ppr"), "plastico", "PP-R se soporta como termoplástico:");
+    const csv = G("hidroPUPlantillaCsv")();
+    contiene(csv, "material,clave,diametro,precio_por_metro,moneda,fuente", "encabezado:");
+    eq(csv.split("\n").length - 1, Object.values(T).reduce((a, t) => a + t.d.length, 0), "una fila por diámetro y material:");
+    contiene(csv, "cpvc,cpvc_1_1_4_,\"1 1/4\"\"\",,MXN,", "fila CPVC 1 1/4 (el diámetro lleva comillas):");
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.39"; Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.39" }; });
+    S.zones[0].area = 100; S.zones[0].height = 3;
+    S.hidro = { ...G("defaultHidro")(), material: "cpvc", tramos: [{ ...G("defaultTramoAgua")("AF-1"), um: 40, L: 25, alt: 0 }, { ...G("defaultTramoAgua")("AF-2"), um: 12, L: 12, alt: 0 }],
+      muebles: [{ id: "wc_flux", cant: 4 }, { id: "lavabo", cant: 4 }] };
+    S.quote.hidroPU = {}; S.quote.fx = 18; G("recompute")();
+    const sin = G("hidroDiametrosSinPrecio")();
+    if (sin.length < 1) throw new Error("debía haber diámetros sin precio");
+    eq(G("accEstado")("hidro").cot.ok, false, "cotización de hidro bloqueada sin precios:"); contiene(G("accEstado")("hidro").cot.razon, "Falta el precio", "razón:");
+    eq(G("cotUnificadaEstado")().ok, false, "unificada bloqueada:"); contiene(G("cotUnificadaEstado")().razon, "tubería hidráulica no tiene precio", "razón unificada:");
+    /* Importación: USD se convierte con el tipo de cambio; fila con material o diámetro inválido se rechaza; sin precio se ignora. */
+    const filas = ["material,clave,diametro,precio_por_metro,moneda,fuente"].concat(sin.map((d) => `cpvc,,${d},10,USD,"cotización de prueba, 2026"`)).concat(["cobre,,1/2\",,MXN,", "madera,,1/2\",5,MXN,", "cpvc,,9\",5,MXN,"]);
+    const r = G("hidroPUImportarCsv")(filas.join("\r\n"));
+    eq(r.ok, sin.length, "precios importados:"); eq(r.malas.length, 2, "filas rechazadas (material y diámetro inválidos):");
+    sin.forEach((d) => eq(S.quote.hidroPU[G("claveHidroPU")("cpvc", d)], 180, `${d}: 10 USD × 18 = 180 MXN/m:`));
+    G("recompute")();
+    eq(G("hidroDiametrosSinPrecio")().length, 0, "ya no falta ningún diámetro:");
+    eq(G("accEstado")("hidro").cot.ok, true, "cotización de hidro disponible:"); eq(G("cotUnificadaEstado")().ok, true, "unificada disponible:");
+    eq((G("QUOTE").aux || []).filter((a) => a.mot === "hidro" && a.un === "ML").length, sin.length, "un renglón por diámetro:");
+    /* PP-R calcula y cotiza igual que los demás materiales. */
+    S.hidro.material = "ppr"; G("recompute")();
+    eq(G("HIDRO").mat, "ppr", "material PP-R:"); if (!G("HIDRO").tramos.every((t) => /mm$/.test(t.nom))) throw new Error("los diámetros de PP-R deben ser en mm");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 /* ============================== resultado =============================== */
 t("R.7 H-95 la licitación, la propuesta, la cotización y la memoria integral ya traen bloque de firma (Revisado por / Aprobado por)", () => {
   const g = { perms: JSON.parse(JSON.stringify(S.perms)) };
