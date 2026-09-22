@@ -354,31 +354,31 @@
  "her": {
   "vent.area": {
    "modo": "heredado",
-   "ts": 1790056901970,
+   "ts": 1790060420862,
    "valor": 700,
    "origen": "load"
   },
   "vent.height": {
    "modo": "heredado",
-   "ts": 1790056901970,
+   "ts": 1790060420863,
    "valor": 4.71,
    "origen": "load"
   },
   "vent.occ": {
    "modo": "heredado",
-   "ts": 1790056901970,
+   "ts": 1790060420863,
    "valor": 46,
    "origen": "load"
   },
   "fuego.area": {
    "modo": "heredado",
-   "ts": 1790056901970,
+   "ts": 1790060420863,
    "valor": 700,
    "origen": "load"
   },
   "fuego.altura": {
    "modo": "heredado",
-   "ts": 1790056901970,
+   "ts": 1790060420863,
    "valor": 4.71,
    "origen": "load"
   }
@@ -435,7 +435,7 @@
   },
   "segments": [
    {
-    "id": "s7oypgc",
+    "id": "snz40p9",
     "tag": "TR-1",
     "service": "supply",
     "shape": "rect",
@@ -459,7 +459,7 @@
     ]
    },
    {
-    "id": "s61uzx9",
+    "id": "sbk3wdh",
     "tag": "TR-2",
     "service": "supply",
     "shape": "rect",
@@ -483,7 +483,7 @@
     ]
    },
    {
-    "id": "stpl9eu",
+    "id": "sc3ck3i",
     "tag": "RT-1",
     "service": "return",
     "shape": "rect",
@@ -566,6 +566,7 @@
    "cpvc_2_1_2_": 410,
    "cpvc_3_": 520
   },
+  "hidroPUlog": [],
   "cisternaM3": 9500,
   "bombaHP": 14500,
   "compresorMXN": 0,
@@ -670,7 +671,7 @@
   "fpObjetivo": 0.95,
   "cargas": [
    {
-    "id": "c51hy9u",
+    "id": "c8758o5",
     "nombre": "Compresor de proceso",
     "tipo": "motor",
     "kW": 15,
@@ -682,7 +683,7 @@
     "fija": false
    },
    {
-    "id": "cvrxa4c",
+    "id": "c4uej6w",
     "nombre": "Alumbrado",
     "tipo": "alumbrado",
     "kW": 9.5,
@@ -724,7 +725,7 @@
   "presRed": 0,
   "tramos": [
    {
-    "id": "hguk5rn",
+    "id": "hrnnmju",
     "tag": "AF-GENERAL",
     "servicio": "fria",
     "um": 72,
@@ -733,7 +734,7 @@
     "tipoUM": "auto"
    },
    {
-    "id": "hsa932z",
+    "id": "h7eul85",
     "tag": "AF-RAMAL BAÑOS",
     "servicio": "fria",
     "um": 20,
@@ -788,7 +789,7 @@
   "redundancia": "ninguna",
   "consumos": [
    {
-    "id": "akz9r8g",
+    "id": "afu9wac",
     "tipo": "generico",
     "nombre": "Sopleteo",
     "cant": 2,
@@ -797,7 +798,7 @@
     "uso": 0.5
    },
    {
-    "id": "a2cnot1",
+    "id": "arrme9z",
     "tipo": "generico",
     "nombre": "Actuadores",
     "cant": 4,

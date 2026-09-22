@@ -3399,7 +3399,9 @@ t("22.11 3.3 (rev 2.9.16, decisión del dueño) la red hidráulica se cotiza por
     R.forEach((r) => { cerca(r.total, r.qty * r.unit, 1e-9, "importe:"); contiene(r.desc, "de los tramos calculados", "descripción:"); if (/supuesto/.test(r.desc)) throw new Error("un renglón dice supuesto"); });
     /* Un precio basura del respaldo se descarta al abrir. */
     const sucio = JSON.parse(JSON.stringify(S)); sucio.quote.hidroPU = { "cobre_1_": -5, "x.y": 9, cobre_3_4_: "abc" };
-    eq(JSON.stringify(G("sanearEstado")(sucio).quote.hidroPU), "{}", "precios inválidos descartados:");
+    const san = G("sanearEstado")(sucio).quote.hidroPU; /* rev 2.9.23: la basura se descarta y entran sólo las referencias de mercado */
+    eq(JSON.stringify(Object.keys(san).sort()), JSON.stringify(Object.keys(G("HIDRO_PU_REFERENCIA")).sort()), "precios inválidos descartados; quedan las referencias:");
+    Object.values(san).forEach((e) => eq(e.origen, "referencia", "todo lo cargado es Referencia Budget:"));
   } finally {
     S.hidro = hidro0; S.quote.hidroPU = pu0;
     if (perms0 === null) delete S.perms; else S.perms = perms0;
@@ -5642,8 +5644,8 @@ t("S.35 (rev 2.9.19, revisión adversarial de 2.9.16–2.9.18) pendientes en Exc
   try {
     G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.35"; Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.35" }; });
     /* Hidro con longitudes y sin precio: el pendiente sale en el Excel de la propuesta y en la licitación. */
-    S.hidro = { ...G("defaultHidro")(), tramos: [{ ...G("defaultTramoAgua")("AF-1"), um: 40, L: 25, alt: 0 }, { ...G("defaultTramoAgua")("AF-2"), um: 0, L: 12, alt: 0 }],
-      muebles: [{ id: "wc_flux", cant: 4 }, { id: "lavabo", cant: 4 }] };
+    S.hidro = { ...G("defaultHidro")(), material: "cpvc", tramos: [{ ...G("defaultTramoAgua")("AF-1"), um: 40, L: 25, alt: 0 }, { ...G("defaultTramoAgua")("AF-2"), um: 0, L: 12, alt: 0 }],
+      muebles: [{ id: "wc_flux", cant: 4 }, { id: "lavabo", cant: 4 }] }; /* rev 2.9.23: CPVC, sin referencias de mercado */
     S.zones[0].area = 100; S.zones[0].height = 3; G("recompute")();
     const pend = (G("QUOTE").pendientes || []).filter((p) => p.mot === "hidro").map((p) => p.motivo);
     contiene(pend.join("|"), "pendiente de precio unitario", "sin precio:"); contiene(pend.join("|"), "pendiente de unidades mueble", "tramo con longitud y sin UM:");
@@ -5652,6 +5654,10 @@ t("S.35 (rev 2.9.19, revisión adversarial de 2.9.16–2.9.18) pendientes en Exc
     contiene(xl, "PENDIENTE, sin cotizar:", "matriz de alcance del Excel:");
     contiene(Buffer.from(G("buildPropuestaXlsx")({ lang: "en", mon: "USD" })).toString("utf8"), "PENDING, not priced:", "Excel en inglés:");
     S.quote.modo = "licitacion"; G("recompute")();
+    /* rev 2.9.23: la cotización formal no sale con tubería sin precio; con precio sí, y el tramo sin UM sigue pendiente. */
+    let tiro = ""; try { G("buildLicitacionPdf")(); } catch (e) { tiro = String(e.message); }
+    contiene(tiro, "La cotización formal no sale con tubería sin precio", "licitación bloqueada sin precio:");
+    G("hidroDiametrosSinPrecio")().forEach((d) => { S.quote.hidroPU[G("claveHidroPU")("cpvc", d)] = 100; }); G("recompute")();
     const lic = Buffer.from(G("buildLicitacionPdf")()).toString("latin1");
     contiene(lic, "PARTIDAS PENDIENTES, NO COTIZADAS", "licitación:");
     S.quote.modo = "privada";
@@ -5845,9 +5851,10 @@ t("S.39 (rev 2.9.22, decisión del dueño) precios de tubería hidráulica: PP-R
     eq(T.ppr.d.length, 9, "PP-R con 9 diámetros (20–110 mm, DIN 8077 PN20):"); eq(T.ppr.d[0][0], 13.2, "PP-R 20 mm: interior 13.2 mm:");
     eq(G("famSoporteAgua")("ppr"), "plastico", "PP-R se soporta como termoplástico:");
     const csv = G("hidroPUPlantillaCsv")();
-    contiene(csv, "material,clave,diametro,precio_por_metro,moneda,fuente", "encabezado:");
+    contiene(csv, "material,clave,diametro,precio,por_tramo_m,iva_incluido,moneda,origen,fuente,url,fecha", "encabezado (rev 2.9.23):");
     eq(csv.split("\n").length - 1, Object.values(T).reduce((a, t) => a + t.d.length, 0), "una fila por diámetro y material:");
-    contiene(csv, "cpvc,cpvc_1_1_4_,\"1 1/4\"\"\",,MXN,", "fila CPVC 1 1/4 (el diámetro lleva comillas):");
+    contiene(csv, "cpvc,cpvc_1_1_4_,\"1 1/4\"\"\",,1,no,MXN,proveedor,,,", "fila CPVC 1 1/4 (el diámetro lleva comillas):");
+    contiene(csv, "cobre,cobre_2_,\"2\"\"\",12851.2,6.1,no,MXN,referencia,\"IUSA lista de precios distribuidor", "la plantilla trae la referencia de mercado del cobre 2\":");
     G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.39"; Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.39" }; });
     S.zones[0].area = 100; S.zones[0].height = 3;
     S.hidro = { ...G("defaultHidro")(), material: "cpvc", tramos: [{ ...G("defaultTramoAgua")("AF-1"), um: 40, L: 25, alt: 0 }, { ...G("defaultTramoAgua")("AF-2"), um: 12, L: 12, alt: 0 }],
@@ -5856,12 +5863,12 @@ t("S.39 (rev 2.9.22, decisión del dueño) precios de tubería hidráulica: PP-R
     const sin = G("hidroDiametrosSinPrecio")();
     if (sin.length < 1) throw new Error("debía haber diámetros sin precio");
     eq(G("accEstado")("hidro").cot.ok, false, "cotización de hidro bloqueada sin precios:"); contiene(G("accEstado")("hidro").cot.razon, "Falta el precio", "razón:");
-    eq(G("cotUnificadaEstado")().ok, false, "unificada bloqueada:"); contiene(G("cotUnificadaEstado")().razon, "tubería hidráulica no tiene precio", "razón unificada:");
+    eq(G("cotUnificadaEstado")().ok, true, "rev 2.9.23: el Budget Proposal sale aunque falten precios:"); eq((G("QUOTE").porCotizar || []).length, sin.length, "y lleva una partida Por cotizar por diámetro:");
     /* Importación: USD se convierte con el tipo de cambio; fila con material o diámetro inválido se rechaza; sin precio se ignora. */
     const filas = ["material,clave,diametro,precio_por_metro,moneda,fuente"].concat(sin.map((d) => `cpvc,,${d},10,USD,"cotización de prueba, 2026"`)).concat(["cobre,,1/2\",,MXN,", "madera,,1/2\",5,MXN,", "cpvc,,9\",5,MXN,"]);
     const r = G("hidroPUImportarCsv")(filas.join("\r\n"));
     eq(r.ok, sin.length, "precios importados:"); eq(r.malas.length, 2, "filas rechazadas (material y diámetro inválidos):");
-    sin.forEach((d) => eq(S.quote.hidroPU[G("claveHidroPU")("cpvc", d)], 180, `${d}: 10 USD × 18 = 180 MXN/m:`));
+    sin.forEach((d) => cerca(G("hidroPUEntrada")(G("claveHidroPU")("cpvc", d)).precioM, 180, 1e-9, `${d}: 10 USD × 18 = 180 MXN/m:`));
     G("recompute")();
     eq(G("hidroDiametrosSinPrecio")().length, 0, "ya no falta ningún diámetro:");
     eq(G("accEstado")("hidro").cot.ok, true, "cotización de hidro disponible:"); eq(G("cotUnificadaEstado")().ok, true, "unificada disponible:");
@@ -5923,7 +5930,7 @@ t("S.40 una instalación limpia abre con todo en cero: sin proyectos, sin cuarto
   eq(SL.hidro.muebles.length + SL.hidro.tramos.length, 0, "sin muebles ni tramos de agua:"); eq(num(SL.fuego.area), 0, "sin área contra incendio:");
   eq(SL.aire.consumos.length, 0, "sin consumos de aire:"); eq(num(SL.civil.firmeM2) + num(SL.civil.puertasSimples) + num(SL.civil.puertasLimpias), 0, "civil en ceros:");
   eq(num(SL.soporte.rielM) + num(SL.soporte.basesEquipo), 0, "soportería en ceros:");
-  eq(SL.quote.items.length, 0, "sin equipos elegidos:"); eq(JSON.stringify(SL.quote.hidroPU), "{}", "sin precios de tubería:"); eq(SL.kaizen.items.length, 0, "sin mejoras:");
+  eq(SL.quote.items.length, 0, "sin equipos elegidos:"); eq(JSON.stringify(SL.quote.hidroPU), JSON.stringify(GL("HIDRO_PU_REFERENCIA")), "sólo referencias de mercado de tubería, ningún precio de proveedor:"); eq((SL.quote.hidroPUlog || []).length, 0, "sin bitácora de precios:"); eq(SL.kaizen.items.length, 0, "sin mejoras:");
   eq(Object.keys(SL.sellos).length, 0, "sin sellos:"); eq(Object.keys(SL.perms).length, 0, "sin cruces autorizados:");
   GL("recompute()");
   eq(GL("QUOTE").tot, 0, "cotización en cero:"); eq(GL("totals()").tons, 0, "carga en cero:"); eq(GL("HIDRO").Qtotal, 0, "hidro en cero:"); eq(GL("FUEGO").qTotal, 0, "incendio en cero:"); eq(GL("AIRE").fadRequerido, 0, "aire en cero:"); eq(GL("CIVIL").total + GL("SOPORTE").total, 0, "civil y soportería en cero:");
@@ -5932,6 +5939,79 @@ t("S.40 una instalación limpia abre con todo en cero: sin proyectos, sin cuarto
   const html = fs.readFileSync(file, "utf8");
   if (/regresion-motores\.emp|proyecto-formato-1_rev|fetch\(|XMLHttpRequest/.test(html)) throw new Error("index.html carga o referencia un fixture de prueba");
   ["parches/regresion-motores/regresion-motores.emp.json", "parches/fixtures-formato/proyecto-formato-1_rev-2.9.13.emp.json"].forEach((f) => { if (!fs.existsSync(f)) throw new Error(`falta el fixture ${f}`); });
+});
+
+/* ===== Precios de cobre tipo L (rev 2.9.23, decisión del dueño): referencia de mercado vs proveedor local; Budget vs formal ===== */
+t("S.41 (rev 2.9.23) cobre tipo L: referencias de mercado con fuente y fecha, IVA desglosado y por metro; Budget sale con leyenda y «Por cotizar»; la formal se bloquea; capturar o importar un precio de proveedor sustituye la referencia con antes/después", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    const REF = G("HIDRO_PU_REFERENCIA"), IUSA = "https://www.iusa.com.mx/assets/descargables/listas/construccion/lista-de-precios-plomeria-cobre.pdf";
+    eq(Object.keys(REF).join(","), "cobre_1_2_,cobre_3_4_,cobre_1_,cobre_1_1_4_,cobre_1_1_2_,cobre_2_,cobre_2_1_2_,cobre_3_,cobre_4_", "nueve diámetros de cobre tipo L, 1/2\" a 4\":");
+    /* Los tres del dueño (menudeo, con IVA) y los seis de la lista de distribuidor (sin IVA), tal como se publican, por tramo de 6.10 m. */
+    eq([REF.cobre_1_2_.precio, REF.cobre_3_4_.precio, REF.cobre_1_.precio].join(","), "1105,1762,2924.99", "Tienda IUSA 21-sep-2026:"); ["cobre_1_2_", "cobre_3_4_", "cobre_1_"].forEach((k) => { eq(REF[k].iva, true, k + " con IVA:"); eq(REF[k].porTramo, 6.1, k + " por tramo:"); });
+    eq([REF.cobre_1_1_4_.precio, REF.cobre_1_1_2_.precio, REF.cobre_2_.precio, REF.cobre_2_1_2_.precio, REF.cobre_3_.precio, REF.cobre_4_.precio].join(","), "6172.11,8045.11,12851.2,22748.07,30821.54,57438.08", "lista distribuidor IUSA vigente 11-ago-2026:");
+    ["cobre_1_1_4_", "cobre_1_1_2_", "cobre_2_", "cobre_2_1_2_", "cobre_3_", "cobre_4_"].forEach((k) => { eq(REF[k].iva, false, k + " sin IVA:"); eq(REF[k].url, IUSA, k + " URL:"); contiene(REF[k].fuente, "vigente 11-ago-2026", k + " vigencia:"); });
+    Object.values(REF).forEach((e) => { eq(e.origen, "referencia", "origen:"); eq(e.moneda, "MXN", "moneda:"); eq(e.fecha, "2026-09-21", "fecha:"); if (!e.fuente) throw new Error("referencia sin fuente"); });
+    /* El motor trabaja por metro y antes de IVA. */
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.41"; Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.41" }; });
+    cerca(G("hidroPUEntrada")("cobre_1_2_").precioM, 1105 / 6.1 / 1.16, 1e-9, "1/2\": 1,105.00 ÷ 6.10 m ÷ 1.16 = MXN/m antes de IVA:");
+    cerca(G("hidroPUEntrada")("cobre_2_").precioM, 12851.2 / 6.1, 1e-9, "2\": 12,851.20 ÷ 6.10 m, ya sin IVA:");
+    eq(G("hidroPUetiqueta")("referencia"), "Referencia Budget", "etiqueta:"); eq(G("hidroPUetiqueta")("proveedor"), "Proveedor local", "etiqueta:");
+    /* Ruta 1 · Budget Proposal con referencias: sale, con leyenda y fuente/fecha; el Excel igual. */
+    S.zones[0].area = 100; S.zones[0].height = 3;
+    S.hidro = { ...G("defaultHidro")(), material: "cobre", tramos: [{ ...G("defaultTramoAgua")("AF-1"), um: 40, L: 25, alt: 0 }, { ...G("defaultTramoAgua")("AF-2"), um: 12, L: 12, alt: 0 }], muebles: [{ id: "wc_flux", cant: 4 }, { id: "lavabo", cant: 4 }] };
+    G("recompute")();
+    const noms = [...new Set(G("HIDRO").tramos.filter((x) => x.Lcap > 0 && x.um > 0).map((x) => String(x.nom).split(" ·")[0]))];
+    eq(G("hidroDiametrosSinPrecio")().length, 0, "todos los diámetros de cobre tienen referencia:");
+    const R1 = (G("QUOTE").aux || []).filter((a) => a.mot === "hidro" && a.un === "ML");
+    eq(R1.length, noms.length, "un renglón por diámetro:"); R1.forEach((r) => { eq(r.origen, "referencia", "renglón con origen referencia:"); if (!r.fuente || !r.fecha) throw new Error("renglón sin fuente o fecha"); cerca(r.unit, G("hidroPUEntrada")(G("claveHidroPU")("cobre", noms.find((nm) => r.desc.includes(nm)))).precioM, 1e-9, "P.U. = referencia por metro antes de IVA:"); });
+    eq((G("QUOTE").referencias || []).length, noms.length, "referencias usadas:"); eq((G("QUOTE").porCotizar || []).length, 0, "nada por cotizar:");
+    eq(G("cotUnificadaEstado")().ok, true, "Budget disponible:");
+    const pdf = Buffer.from(G("buildPropuestaPdf")({ lang: "es", mon: "MXN" })).toString("latin1");
+    contiene(pdf, "PRECIOS DE REFERENCIA DE MERCADO, SUJETOS A COTIZACION DE PROVEEDOR", "leyenda en el Budget:"); contiene(pdf, "2026-09-21", "fecha de la referencia:"); contiene(pdf, "IUSA", "fuente:");
+    if (/PARTIDAS POR COTIZAR/.test(pdf)) throw new Error("no debía haber partidas por cotizar");
+    contiene(Buffer.from(G("buildPropuestaPdf")({ lang: "en", mon: "USD" })).toString("latin1"), "MARKET REFERENCE PRICES, SUBJECT TO SUPPLIER QUOTATION", "leyenda en inglés:");
+    contiene(Buffer.from(G("buildPropuestaXlsx")({ lang: "es", mon: "MXN" })).toString("utf8"), "PRECIOS DE REFERENCIA DE MERCADO, SUJETOS A COTIZACION DE PROVEEDOR", "leyenda en el Excel:");
+    /* Ruta 1b · diámetros sin precio vigente (CPVC): el Budget sale con «Por cotizar» sin importe y contador; la formal no sale. */
+    S.hidro.material = "cpvc"; G("recompute")();
+    const sin = G("hidroDiametrosSinPrecio")(); if (!sin.length) throw new Error("CPVC debía quedar sin precio");
+    eq((G("QUOTE").porCotizar || []).length, sin.length, "partidas por cotizar:"); (G("QUOTE").porCotizar || []).forEach((p) => { eq(p.sec, "F", "sección F:"); if ("total" in p || "unit" in p) throw new Error("por cotizar no lleva importe"); });
+    eq(G("cotUnificadaEstado")().ok, true, "Budget sale aunque falten precios:");
+    eq(G("accEstado")("hidro").cot.ok, false, "la cotización formal de hidro sigue bloqueada:");
+    const pdf2 = Buffer.from(G("buildPropuestaPdf")({ lang: "es", mon: "MXN" })).toString("latin1");
+    contiene(pdf2, `PARTIDAS POR COTIZAR: ${sin.length}`, "contador en la primera hoja:"); contiene(pdf2, "POR COTIZAR", "renglón por cotizar en su sección:");
+    if (/PRECIOS DE REFERENCIA DE MERCADO/.test(pdf2)) throw new Error("sin referencias usadas no va la leyenda");
+    const xl2 = Buffer.from(G("buildPropuestaXlsx")({ lang: "es", mon: "MXN" })).toString("utf8");
+    contiene(xl2, "PARTIDAS POR COTIZAR", "contador en la portada del Excel:"); contiene(xl2, "POR COTIZAR", "renglón en el Excel:");
+    S.quote.modo = "licitacion"; G("recompute")();
+    let tiro = ""; try { G("buildLicitacionPdf")(); } catch (e) { tiro = String(e.message); }
+    contiene(tiro, "La cotización formal no sale con tubería sin precio", "formal bloqueada:"); S.quote.modo = "privada";
+    /* Ruta 2 · captura en pantalla de costo de proveedor local: sustituye la referencia y deja antes/después. */
+    S.hidro.material = "cobre"; G("recompute")();
+    const k0 = G("claveHidroPU")("cobre", noms[0]), antes = G("hidroPUEntrada")(k0).precioM;
+    G("setPath")(`quote.hidroPU.${k0}`, 250); G("recompute")();
+    const e2 = G("hidroPUEntrada")(k0); eq(e2.origen, "proveedor", "pasa a Proveedor local:"); cerca(e2.precioM, 250, 1e-9, "precio capturado por metro antes de IVA:");
+    eq((S.quote.hidroPUlog || []).length, 1, "una entrada en la bitácora:"); const lg = S.quote.hidroPUlog[0];
+    eq(lg.clave, k0, "clave:"); eq(lg.via, "pantalla", "vía:"); cerca(lg.antes.precioM, +antes.toFixed(2), 1e-9, "antes = referencia:"); cerca(lg.despues.precioM, 250, 1e-9, "después = proveedor:"); contiene(lg.antes.fuente, "IUSA", "fuente anterior:");
+    eq((G("QUOTE").referencias || []).length, noms.length - 1, "una referencia menos en uso:");
+    const pdf3 = Buffer.from(G("buildPropuestaPdf")({ lang: "es", mon: "MXN" })).toString("latin1");
+    contiene(pdf3, "Bitacora de precios de tuberia", "el Budget imprime la bitácora:"); contiene(pdf3, "proveedor local 250 MXN/m", "con el después:");
+    /* Ruta 2b · CSV de proveedor local: sustituye y registra; una referencia sin fuente se rechaza; el formato viejo sigue entrando. */
+    const k1 = G("claveHidroPU")("cobre", noms[noms.length - 1]);
+    const r = G("hidroPUImportarCsv")(["material,clave,diametro,precio,por_tramo_m,iva_incluido,moneda,origen,fuente,url,fecha", `cobre,,${noms[noms.length - 1]},1830,6.10,si,MXN,proveedor,"Proveedor local de prueba",,2026-09-21`, `cobre,,1/2",999,1,no,MXN,referencia,,,`].join("\n"));
+    eq(r.ok, 1, "una fila importada:"); eq(r.malas.length, 1, "la referencia sin fuente se rechaza:"); contiene(r.malas[0], "necesita fuente", "motivo:");
+    const e3 = G("hidroPUEntrada")(k1); eq(e3.origen, "proveedor", "CSV = Proveedor local:"); cerca(e3.precioM, 1830 / 6.1 / 1.16, 1e-9, "por tramo con IVA → por metro antes de IVA:");
+    eq(S.quote.hidroPUlog.length, noms.length > 1 ? 2 : 1, "bitácora con la sustitución por CSV:"); eq(S.quote.hidroPUlog[S.quote.hidroPUlog.length - 1].via, "csv", "vía csv:");
+    eq(G("hidroPUImportarCsv")("material,clave,diametro,precio_por_metro,moneda,fuente\ncpvc,,1/2\",120,MXN,x").ok, 1, "el CSV viejo (precio_por_metro) sigue entrando:"); cerca(G("hidroPUEntrada")("cpvc_1_2_").precioM, 120, 1e-9, "por metro sin IVA:");
+    /* Compatibilidad: un proyecto viejo con precio numérico es Proveedor local; al abrir, los diámetros sin precio propio toman la referencia y el proveedor se respeta. */
+    const viejo = JSON.parse(guardado); viejo.quote.hidroPU = { cobre_1_: 333 }; viejo.quote.hidroPUlog = "basura";
+    const sv = G("sanearEstado")(viejo).quote;
+    eq(sv.hidroPU.cobre_1_, 333, "el numérico viejo se conserva:"); eq(sv.hidroPU.cobre_2_.origen, "referencia", "los demás toman la referencia:"); eq(JSON.stringify(sv.hidroPUlog), "[]", "bitácora saneada:");
+    G("reemplazarEstado")(G("sanearEstado")(viejo)); eq(G("hidroPUEntrada")("cobre_1_").origen, "proveedor", "numérico = Proveedor local:"); cerca(G("hidroPUEntrada")("cobre_1_").precioM, 333, 1e-9, "por metro:");
+    /* Pantalla: cada renglón dice su origen. */
+    S.hidro = { ...G("defaultHidro")(), material: "cobre", tramos: [{ ...G("defaultTramoAgua")("AF-1"), um: 40, L: 25, alt: 0 }], muebles: [{ id: "wc_flux", cant: 4 }] }; G("recompute")();
+    const html = G("hidroPUHtml")(); contiene(html, "Referencia Budget", "pantalla marca la referencia:"); contiene(html, "IUSA", "con su fuente:"); contiene(html, "Por cotizar", "y explica Por cotizar:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
 /* ============================== resultado =============================== */

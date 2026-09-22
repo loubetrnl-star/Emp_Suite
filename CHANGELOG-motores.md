@@ -2,7 +2,7 @@
 
 Cada motor lleva su propia versión (`MOTOR_VER`); sólo sube cuando cambia su lógica de cálculo. Los cambios de interfaz, textos y documentos no la tocan y viven en las bitácoras de cada revisión (`Bitacora-rev-*.md`). Un proyecto sellado con una versión anterior de un motor abre «Desactualizado» sólo en esa disciplina, con el hallazgo que lo movió; al recalcular, la memoria muestra el antes y el después.
 
-Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.21).
+Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 
 ## Carga térmica (`load`) · v2
 
@@ -36,13 +36,14 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.21).
 |---|---|---|
 | 1 | 2.9.15 | lógica de partida |
 
-## Cotización (`quote`) · v3
+## Cotización (`quote`) · v4
 
 | Versión | Rev | Hallazgo / cambio de lógica |
 |---|---|---|
 | 1 | 2.9.15 | lógica de partida |
 | 2 | 2.9.16 | red hidráulica por diámetro con precio capturado; sin 50 m supuestos; partidas pendientes |
 | 3 | 2.9.19 | tramo con longitud y sin unidades mueble queda pendiente |
+| 4 | 2.9.23 | precio de tubería por renglón con origen (referencia de mercado o proveedor local), IVA desglosado y por metro; sin precio: partida Por cotizar en el Budget, bloqueo sólo en la formal |
 
 ## Ingeniería de valor (`valor`) · v1
 
