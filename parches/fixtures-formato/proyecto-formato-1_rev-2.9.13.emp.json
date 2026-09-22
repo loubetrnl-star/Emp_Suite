@@ -1,0 +1,560 @@
+{
+ "v": 1,
+ "units": "SI",
+ "tab": "tablero",
+ "meta": {
+  "name": "Proyecto guardado con formato 1",
+  "client": "Cliente de prueba",
+  "location": "Tijuana, B.C.",
+  "engineer": "Ing. Fixture",
+  "date": "2026-09-20"
+ },
+ "zones": [
+  {
+   "name": "Producción",
+   "area": 400,
+   "height": 6,
+   "walls": {
+    "N": 40,
+    "S": 40,
+    "E": 30,
+    "O": 30
+   },
+   "wallMat": "light_block_20",
+   "roof": 400,
+   "roofMat": "roof_concrete_insul",
+   "glass": {
+    "N": 0,
+    "NE": 0,
+    "E": 0,
+    "SE": 0,
+    "S": 0,
+    "SW": 0,
+    "W": 0,
+    "NW": 0
+   },
+   "glassMat": "glass_dgu",
+   "occ": 30,
+   "lights": 8000,
+   "equip": 12000,
+   "ach": 0.4,
+   "oaFraction": 0,
+   "oaFixed": 3000,
+   "iso": "iso8",
+   "achClean": 15,
+   "ffuHeat": 0,
+   "runHours": 16,
+   "spaceType": "office",
+   "lightType": "fluorescent",
+   "plenum": false,
+   "swing": 0
+  },
+  {
+   "name": "Oficinas",
+   "area": 100,
+   "height": 3,
+   "walls": {
+    "N": 12,
+    "S": 12,
+    "E": 10,
+    "O": 10
+   },
+   "wallMat": "light_block_20",
+   "roof": 100,
+   "roofMat": "roof_concrete_insul",
+   "glass": {
+    "N": 0,
+    "NE": 0,
+    "E": 0,
+    "SE": 0,
+    "S": 0,
+    "SW": 0,
+    "W": 0,
+    "NW": 0
+   },
+   "glassMat": "glass_dgu",
+   "occ": 10,
+   "lights": 1500,
+   "equip": 2000,
+   "ach": 0.4,
+   "oaFraction": 0,
+   "oaFixed": 0,
+   "iso": "iso8",
+   "achClean": 15,
+   "ffuHeat": 0,
+   "runHours": 16,
+   "spaceType": "office",
+   "lightType": "led",
+   "plenum": false,
+   "swing": 0
+  }
+ ],
+ "zi": 0,
+ "bldDiv": 1,
+ "forceTech": null,
+ "peakScan": true,
+ "perms": {
+  "load>duct": {
+   "ts": 1,
+   "via": "prueba"
+  },
+  "load>vent": {
+   "ts": 1,
+   "via": "prueba"
+  },
+  "equip>quote": {
+   "ts": 1,
+   "via": "prueba"
+  },
+  "load>quote": {
+   "ts": 1,
+   "via": "prueba"
+  },
+  "load>kaizen": {
+   "ts": 1,
+   "via": "prueba"
+  },
+  "duct>kaizen": {
+   "ts": 1,
+   "via": "prueba"
+  },
+  "quote>kaizen": {
+   "ts": 1,
+   "via": "prueba"
+  },
+  "vent>quote": {
+   "ts": 1,
+   "via": "prueba"
+  },
+  "clean>quote": {
+   "ts": 1,
+   "via": "prueba"
+  },
+  "equip>elec": {
+   "ts": 1,
+   "via": "prueba"
+  },
+  "vent>elec": {
+   "ts": 1,
+   "via": "prueba"
+  },
+  "aire>elec": {
+   "ts": 1,
+   "via": "prueba"
+  },
+  "hidro>elec": {
+   "ts": 1,
+   "via": "prueba"
+  },
+  "fuego>elec": {
+   "ts": 1,
+   "via": "prueba"
+  },
+  "clean>elec": {
+   "ts": 1,
+   "via": "prueba"
+  },
+  "fuego>hidro": {
+   "ts": 1,
+   "via": "prueba"
+  },
+  "load>fuego": {
+   "ts": 1,
+   "via": "prueba"
+  },
+  "elec>quote": {
+   "ts": 1,
+   "via": "prueba"
+  },
+  "hidro>quote": {
+   "ts": 1,
+   "via": "prueba"
+  },
+  "civil>quote": {
+   "ts": 1,
+   "via": "prueba"
+  },
+  "soporte>quote": {
+   "ts": 1,
+   "via": "prueba"
+  },
+  "aire>quote": {
+   "ts": 1,
+   "via": "prueba"
+  },
+  "aire>kaizen": {
+   "ts": 1,
+   "via": "prueba"
+  },
+  "fuego>quote": {
+   "ts": 1,
+   "via": "prueba"
+  },
+  "duct>equip": {
+   "ts": 1,
+   "via": "prueba"
+  },
+  "duct>load": {
+   "ts": 1,
+   "via": "prueba"
+  },
+  "duct>soporte": {
+   "ts": 1,
+   "via": "prueba"
+  },
+  "hidro>soporte": {
+   "ts": 1,
+   "via": "prueba"
+  },
+  "fuego>soporte": {
+   "ts": 1,
+   "via": "prueba"
+  },
+  "aire>soporte": {
+   "ts": 1,
+   "via": "prueba"
+  },
+  "load>civil": {
+   "ts": 1,
+   "via": "prueba"
+  },
+  "clean>civil": {
+   "ts": 1,
+   "via": "prueba"
+  }
+ },
+ "her": {
+  "vent.area": {
+   "modo": "heredado",
+   "ts": 1789871816873,
+   "valor": 500,
+   "origen": "load"
+  },
+  "vent.height": {
+   "modo": "heredado",
+   "ts": 1789871816873,
+   "valor": 5.4,
+   "origen": "load"
+  },
+  "vent.occ": {
+   "modo": "heredado",
+   "ts": 1789871816873,
+   "valor": 40,
+   "origen": "load"
+  },
+  "fuego.area": {
+   "modo": "heredado",
+   "ts": 1789871816873,
+   "valor": 500,
+   "origen": "load"
+  },
+  "fuego.altura": {
+   "modo": "heredado",
+   "ts": 1789871816873,
+   "valor": 5.4,
+   "origen": "load"
+  }
+ },
+ "vinculos": {},
+ "advOpen": false,
+ "guia": true,
+ "kaizen": {
+  "items": [],
+  "ve": {},
+  "desv": []
+ },
+ "site": {
+  "key": "tijuana",
+  "db": 35,
+  "wb": 24,
+  "alt": 0
+ },
+ "vent": {
+  "name": "Extracción general",
+  "mode": "general",
+  "spaceType": "office",
+  "area": 500,
+  "height": 5.4,
+  "ach": 6,
+  "occ": 40,
+  "hoodL": 0,
+  "hoodW": 0,
+  "hoodType": "wall",
+  "duty": "medium",
+  "processCFM": 0,
+  "freeArea": 0,
+  "faceVel": 400,
+  "louverW": 0,
+  "louverH": 0,
+  "ductLoss": 0.5,
+  "filterLoss": 0.25
+ },
+ "duct": {
+  "meta": {
+   "material": "galvanized",
+   "pc": "2",
+   "eps": 0.09,
+   "rho": 1.2,
+   "mu": 0.000018,
+   "largoEspiro": 3.048,
+   "hoja": 0
+  },
+  "segments": [
+   {
+    "id": "sfix01",
+    "tag": "TR-F",
+    "service": "supply",
+    "shape": "rect",
+    "flow": 2500,
+    "method": "equal_friction",
+    "targetF": 0.8,
+    "targetV": 6,
+    "length": 20,
+    "lock": false,
+    "d": null,
+    "w": null,
+    "h": null,
+    "aspect": 3,
+    "hmax": 0,
+    "fittings": [
+     {
+      "type": "elbow_90_rect",
+      "qty": 2,
+      "C": 0.28
+     }
+    ]
+   }
+  ]
+ },
+ "cat": {
+  "q": "",
+  "src": "carrier",
+  "tech": "all",
+  "vista": "arbol",
+  "abierto": {}
+ },
+ "sysForce": null,
+ "sel": {
+  "sistema": null,
+  "motivo": "",
+  "ts": null,
+  "recAlElegir": null,
+  "modelos": {}
+ },
+ "quote": {
+  "currency": "MXN",
+  "fx": 18.5,
+  "plaza": "tijuana",
+  "basePrecio": "casa",
+  "fasar": 1.45,
+  "refBase": "",
+  "finPct": 1.5,
+  "indirectPct": 18,
+  "profitPct": 12,
+  "modo": "privada",
+  "plazaFactor": 0,
+  "price": {
+   "chiller": 34500,
+   "ahu": 70100,
+   "vrf_out": 45000,
+   "vrf_in": 26000,
+   "rtu": 41000,
+   "split_duct": 52800,
+   "mini": 31000,
+   "fcu": 21000,
+   "ptac": 24000
+  },
+  "scaleExp": 0.85,
+  "priceFactor": 1,
+  "instPct": 0.35,
+  "ductKg": 165,
+  "diffuser": 6850,
+  "pipeTR": 9500,
+  "controls": 68500,
+  "alimM": 1350,
+  "tablero": 68000,
+  "circuito": 4200,
+  "hidroM": 780,
+  "cisternaM3": 9500,
+  "bombaHP": 14500,
+  "compresorMXN": 0,
+  "tanqueL": 195,
+  "secadorM3min": 0,
+  "filtroAire": 38500,
+  "aireM": 0,
+  "puntoUso": 4850,
+  "rociador": 2850,
+  "bombaFuego": 385000,
+  "ffu": 42000,
+  "hepaSpare": 9800,
+  "grille": 3200,
+  "fanCFM": 145,
+  "freight": 0.025,
+  "bond": 0.015,
+  "financing": 0,
+  "indirect": 0.18,
+  "utility": 0.12,
+  "contingencia": 0.15,
+  "iva": 0.16,
+  "tarifaKWh": 2.85,
+  "horasAno": 3500,
+  "items": [],
+  "prop": null
+ },
+ "qfam": "chiller",
+ "clean": {
+  "rooms": [
+   {
+    "name": "Cuarto limpio 1",
+    "iso": "iso7",
+    "level": "med",
+    "achSet": 0,
+    "area": 60,
+    "height": 3,
+    "dp": 12.5,
+    "crackLen": 6,
+    "oaFrac": 0.1,
+    "occ": 4,
+    "procW": 0
+   }
+  ],
+  "ci": 0
+ },
+ "elec": {
+  "sistema": "3F4H-220",
+  "material": "cobre",
+  "tempAmb": 40,
+  "nCond": 3,
+  "dvRamal": 3,
+  "dvTotal": 5,
+  "trafoKVA": 150,
+  "trafoZ": 4,
+  "Ltablero": 30,
+  "fpObjetivo": 0.95,
+  "cargas": [
+   {
+    "id": "cfix01",
+    "nombre": "Motor",
+    "tipo": "proceso",
+    "kW": 7.5,
+    "V": 220,
+    "ph": 3,
+    "cant": 1,
+    "L": 20,
+    "fp": null,
+    "fija": false
+   }
+  ],
+  "tomarHVAC": false
+ },
+ "hidro": {
+  "uso": "publico",
+  "material": "cobre",
+  "muebles": [
+   {
+    "id": "wc_flux",
+    "cant": 6
+   },
+   {
+    "id": "wc_tanque",
+    "cant": 6
+   }
+  ],
+  "presRed": 0,
+  "tramos": [],
+  "pendiente": 2,
+  "calentador": "paso",
+  "tempEntrada": 18,
+  "tempSalida": 45,
+  "dot": "industria",
+  "habitantes": 0,
+  "diasReserva": 1,
+  "alturaEdificio": 0,
+  "presResidual": 15
+ },
+ "fuego": {
+  "riesgo": "ord2",
+  "area": 500,
+  "altura": 5.4,
+  "rociador": "k80",
+  "material": "acero_neg",
+  "areaDiseno": 0,
+  "Lramal": 0,
+  "Lmontante": 0,
+  "presFuente": 0,
+  "fuente": "cisterna",
+  "tomarArea": false
+ },
+ "cx": {
+  "lotes": [],
+  "archivos": []
+ },
+ "linaje": null,
+ "pid": null,
+ "aire": {
+  "clase": "2.4.2",
+  "presionUso": 6,
+  "fugas": 0.1,
+  "reserva": 0.2,
+  "simultaneidad": 0,
+  "material": "aluminio",
+  "Lprincipal": 0,
+  "Lramales": 0,
+  "arranquesHora": 15,
+  "dPtanque": 1,
+  "tempEntrada": 35,
+  "horas": 3500,
+  "tarifaKWh": 2.85,
+  "redundancia": "ninguna",
+  "consumos": [
+   {
+    "id": "afix01",
+    "tipo": "generico",
+    "nombre": "Herramienta",
+    "cant": 4,
+    "lmin": 200,
+    "bar": 6,
+    "uso": 0.5
+   }
+  ]
+ },
+ "civil": {
+  "usarZonas": true,
+  "areaManual": 0,
+  "alturaManual": 0,
+  "murosManual": 0,
+  "muro": "panel_mgo",
+  "plafon": "panel_mgo",
+  "piso": "epoxi_esd",
+  "muroNoLimpio": "tablaroca",
+  "pisoNoLimpio": "pulido",
+  "demoler": false,
+  "demolMuroM2": 0,
+  "demolPlafonM2": 0,
+  "demolPisoM2": 0,
+  "firmeM2": 0,
+  "azulejoM2": 0,
+  "pinturaM2": 0,
+  "puertasLimpias": 0,
+  "puertasSimples": 0,
+  "visores": 0,
+  "passbox": 0,
+  "mediaCanaDoble": true
+ },
+ "soporte": {
+  "usarMotores": true,
+  "sismico": true,
+  "alturaTrabajo": 0,
+  "mesesElevacion": 3,
+  "basesEquipo": 0,
+  "rielM": 0,
+  "ductoM": 0,
+  "tubHidroM": 0,
+  "tubFuegoM": 0,
+  "tubAireM": 0,
+  "sismoSDS": 1,
+  "estructuraTipo": "losa_concreto",
+  "estructuraFc": 250,
+  "alturaColgadoM": 0
+ }
+}

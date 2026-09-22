@@ -1,0 +1,1336 @@
+  1/56 vacio                           2/56 prueba                          3/56 lleno-sin-cruces                4/56 lleno                           5/56 lleno-cruces-parciales          6/56 zonas-oaFixed-fluorescent       7/56 sys-chiller                     8/56 sys-vrf                         9/56 sys-rooftop                     10/56 sys-split                       11/56 tech-VRF                        12/56 tech-DX_split                   13/56 tech-paquete                    14/56 tech-chiller_fancoil            15/56 tech-AHU                        16/56 tech-PTAC                       17/56 barra-calcular-vacio            18/56 zonas-materiales                19/56 peakScan-false                  20/56 barra-calcular-todos            21/56 bldDiv-08                       22/56 cotiz-USD                       23/56 cotiz-sin-items                 24/56 plaza-mexicali                  25/56 plaza-otra-factor               26/56 sitio-custom                    27/56 cotiz-licitacion                28/56 ductos-accesorios               29/56 soporte-sismico-viga            30/56 soporte-sin-sismico-manual      31/56 soporte-losa-fc                 32/56 civil-demolicion                33/56 civil-manual                    34/56 vent-kitchen                    35/56 vent-industrial                 36/56 vent-louver                     37/56 vent-mua                        38/56 cuartos-limpios                 39/56 instalaciones-variantes         40/56 propuestas-aceptadas            41/56 propuestas-propio               42/56 herencia-propio                 43/56 valor-decisiones                44/56 kaizen-items                    45/56 sin-zonas-con-datos             46/56 unidades-IP                     47/56 parcial-fuego                   48/56 parcial-civil-directas          49/56 parcial-soporte-riel            50/56 parcial-vent-cocina-sin-medidas  51/56 parcial-vent-cocina             52/56 parcial-ductos-sin-caudal       53/56 parcial-ductos-con-caudal       54/56 parcial-limpio                  55/56 parcial-equipo-manual           56/56 parcial-zona-sola             
+====================================================================================================
+COMPARADOR DE ESTADOS DE LOS 15 MOTORES · 56 escenarios · modos: nativo + guardado · 86.3 s
+  base : respaldo-rev-2.9.8/index-2.9.16-inicio-20260921-080932.html
+  nuevo: index.html
+  igualdad exacta (Object.is en números), cero tolerancia
+====================================================================================================
+
+--- Resumen «motor x escenario» · modo nativo ---   (= iguales   X difieren   t sólo texto   - no aplica   r reubicado   i informativo   ? no comparable   E error)
+                      1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56   iguales/difieren
+load                  =  X  X  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  =  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X    5/51
+clean                 X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X    0/56
+equip                 =  X  X  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  =  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X    5/51
+duct                  =  X  X  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  =  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X    5/51
+vent                  =  X  X  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  =  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X    5/51
+quote                 X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X    0/56
+valor                 =  X  X  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  =  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X    5/51
+kaizen                =  X  X  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  =  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X    5/51
+elec                  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X    0/56
+hidro                 =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X    2/54
+fuego                 X  X  X  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  =  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X    3/53
+aire                  X  X  X  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  =  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X    3/53
+civil                 X  X  X  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  =  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X    3/53
+soporte               X  X  X  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  =  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X    3/53
+estr (externo)        -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -   56/0
+valid (cruzada)       X  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  X  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  X  X  X  X  X  X  X  =  X  X   45/11
+xlsx propuesta es     X  X  X  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  =  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X    3/53
+xlsx propuesta en     X  X  X  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  =  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X    3/53
+pdf (números)         X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X    0/56
+semáforo (info)       =  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  =  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i    2/0
+
+--- Resumen «motor x escenario» · modo guardado ---   (= iguales   X difieren   t sólo texto   - no aplica   r reubicado   i informativo   ? no comparable   E error)
+                      1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56   iguales/difieren
+load                  =  X  X  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  =  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X    5/51
+clean                 X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X    0/56
+equip                 =  X  X  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  =  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X    5/51
+duct                  =  X  X  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  =  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X    5/51
+vent                  =  X  X  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  =  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X    5/51
+quote                 X  X  X  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  =  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X    3/53
+valor                 =  X  X  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  =  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X    5/51
+kaizen                =  X  X  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  =  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X    5/51
+elec                  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X    0/56
+hidro                 =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X    2/54
+fuego                 X  X  X  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  =  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X    3/53
+aire                  X  X  X  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  =  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X    3/53
+civil                 X  X  X  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  =  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X    3/53
+soporte               X  X  X  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  =  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X    3/53
+estr (externo)        -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -   56/0
+valid (cruzada)       X  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  X  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  X  X  X  X  X  X  X  =  X  X   45/11
+xlsx propuesta es     X  X  X  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  =  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X    3/53
+xlsx propuesta en     X  X  X  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  =  =  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X    3/53
+pdf (números)         X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X    0/56
+semáforo (info)       i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i  i    0/0
+
+Escenarios (número de columna):
+   1  vacio                        Proyecto vacío recién abierto
+   2  prueba                       Proyecto de prueba del arnés (2 zonas, todos los cruces autorizados)
+   3  lleno                        Proyecto lleno: 4 zonas, cargas, muebles, aire, ductos, cuartos limpios, partidas
+   4  lleno-sin-cruces             Proyecto lleno con TODOS los cruces sin autorizar
+   5  lleno-cruces-parciales       Proyecto lleno con sólo algunos cruces autorizados
+   6  zonas-oaFixed-fluorescent    Zonas con oaFixed y lightType fluorescent (y una LED sin oaFixed)
+   7  sys-chiller                  Arquitectura forzada (sysForce) = chiller
+   8  sys-vrf                      Arquitectura forzada (sysForce) = vrf
+   9  sys-rooftop                  Arquitectura forzada (sysForce) = rooftop
+  10  sys-split                    Arquitectura forzada (sysForce) = split
+  11  tech-VRF                     Tecnología forzada (forceTech) = VRF
+  12  tech-DX_split                Tecnología forzada (forceTech) = DX_split
+  13  tech-paquete                 Tecnología forzada (forceTech) = paquete
+  14  tech-chiller_fancoil         Tecnología forzada (forceTech) = chiller_fancoil
+  15  tech-AHU                     Tecnología forzada (forceTech) = AHU
+  16  tech-PTAC                    Tecnología forzada (forceTech) = PTAC
+  17  zonas-materiales             Envolvente: otros muros, techos y vidrios en cada zona (paneles, tilt-up, lámina, low-e, policarbonato)
+  18  barra-calcular-todos         SÓLO NUEVA · botón Calcular de la barra pulsado en cada motor (la base corre lo mismo sin el botón)  [SOLO EN LA NUEVA]
+  19  barra-calcular-vacio         SÓLO NUEVA · botón Calcular pulsado en un proyecto vacío (debe avisar y no mover nada)  [SOLO EN LA NUEVA]
+  20  peakScan-false               peakScan = false (carga a la hora de diseño, sin barrido)
+  21  bldDiv-08                    Diversidad de edificio 0.8
+  22  cotiz-USD                    Cotización en USD (tipo de cambio 17.9)
+  23  cotiz-sin-items              Cotización sin partidas de equipo agregadas
+  24  plaza-mexicali               Plaza y sitio Mexicali
+  25  plaza-otra-factor            Plaza «otra» con factor manual 1.09
+  26  sitio-custom                 Sitio personalizado (db 41, wb 22, 300 m)
+  27  cotiz-licitacion             Cotización en modo licitación, base CMIC, IVA 8 %
+  28  ductos-accesorios            Ductos con todos los accesorios, redondo/rectangular, métodos y candados
+  29  soporte-sismico-viga         Soportería con sísmico, SDS 1.5, estructura de viga de acero
+  30  soporte-sin-sismico-manual   Soportería sin sísmico y con metros capturados (sin usar motores)
+  31  soporte-losa-fc              Soportería sísmica sobre losa f'c 300
+  32  civil-demolicion             Obra civil con demolición y acabados por m²
+  33  civil-manual                 Obra civil con geometría capturada (sin usar zonas)
+  34  vent-kitchen                 Ventilación: campana de cocina
+  35  vent-industrial              Ventilación: extracción industrial de proceso (rige el caudal de proceso)
+  36  vent-louver                  Ventilación: persiana
+  37  vent-mua                     Ventilación: aire de reposición
+  38  cuartos-limpios              Cuartos limpios ISO 5 a 8, niveles bajo/medio/alto y achSet manual
+  39  instalaciones-variantes      Eléctrico 440 V aluminio, hidráulico privado, fuego extra 1 con red, aire ISO 1.2.1 inox N+1
+  40  propuestas-aceptadas         Todas las propuestas entre disciplinas aceptadas (propAceptar)
+  41  propuestas-propio            Todas las propuestas marcadas «capturo lo mío» (propPropio)
+  42  herencia-propio              Campos heredables capturados a mano (regla 1 rota a propósito)
+  43  valor-decisiones             Ingeniería de valor: primera medida aceptada, segunda descartada
+  44  kaizen-items                 Kaizen con mejoras capturadas en distintas etapas del ciclo PDCA
+  45  unidades-IP                  Unidades imperiales (S.units = IP): los motores no deben notarlo
+  46  sin-zonas-con-datos          Sin zonas pero con datos capturados en las demás disciplinas
+  47  parcial-fuego                Captura parcial · sólo contra incendio (300 m²)
+  48  parcial-civil-directas       Captura parcial · sólo cantidades directas de obra civil (firme y puertas, sin área)
+  49  parcial-soporte-riel         Captura parcial · sólo riel de soportería (60 m)
+  50  parcial-vent-cocina-sin-medidas Captura parcial · ventilación en modo cocina sin medidas de campana
+  51  parcial-vent-cocina          Captura parcial · ventilación en modo cocina con campana de 2.5 × 1.1 m
+  52  parcial-ductos-sin-caudal    Captura parcial · un tramo de ducto capturado sin caudal
+  53  parcial-ductos-con-caudal    Captura parcial · un tramo de ducto de 3,400 m³/h
+  54  parcial-limpio               Captura parcial · sólo un cuarto limpio de 60 m² × 3 m
+  55  parcial-equipo-manual        Captura parcial · sólo un equipo elegido a mano en la cotización
+  56  parcial-zona-sola            Captura parcial · una zona de 120 m² × 3 m y nada más
+
+COBERTURA · lo que cada escenario calcula de verdad (valores de la BASE; si fueran todos cero el escenario «empataría» sin probar nada)
+   # escenario                        arq      TR  zon  tram  vent cfm   FFU     kVA    L/s   roc   HP   directo MXN  part      civil   soporte  kz  vz        tecnología por zona
+   1 vacio                            vrf       0    1     0         0     1       0      0     1   10             0     0      4,100    44,000   0   0                   DX_split
+   2 prueba                           vrf   13.72    2     0     9,535     1       0      0    42   10     4,888,037    18  1,429,766   114,500   2   2                    VRF/VRF
+   3 lleno                        chiller   63.97    4     5    24,523    81   306.9   5.03   103   30    25,730,733    53  6,990,119   905,790   8   9 chiller_fancoil/VRF/VRF/VRF
+   4 lleno-sin-cruces             chiller   63.97    4     5    24,523    81     130   5.03   103   30     5,215,733     9  6,990,119   905,790   1   2 chiller_fancoil/VRF/VRF/VRF
+   5 lleno-cruces-parciales       chiller   63.97    4     5    24,523    81   135.6   5.03   103   30     5,642,283    13  6,990,119   905,790   1   2 chiller_fancoil/VRF/VRF/VRF
+   6 zonas-oaFixed-fluorescent    chiller   70.41    4     5    24,523    81   313.6   5.03   103   30    25,737,583    53  6,990,119   905,790  11  12 chiller_fancoil/VRF/VRF/VRF
+   7 sys-chiller                  chiller   63.97    4     5    24,523    81   306.9   5.03   103   30    25,730,733    53  6,990,119   905,790   8   9 chiller_fancoil/VRF/VRF/VRF
+   8 sys-vrf                          vrf   63.97    4     5    24,523    81   367.1   5.03   103   30    25,739,133    53  6,990,119   905,790   7   7 chiller_fancoil/VRF/VRF/VRF
+   9 sys-rooftop                  rooftop   63.97    4     5    24,523    81   308.9   5.03   103   30    25,734,933    53  6,990,119   905,790   8  10 chiller_fancoil/VRF/VRF/VRF
+  10 sys-split                      split   63.97    4     5    24,523    81   316.6   5.03   103   30    25,734,933    53  6,990,119   905,790   8  11 chiller_fancoil/VRF/VRF/VRF
+  11 tech-VRF                     chiller   63.97    4     5    24,523    81   306.9   5.03   103   30    25,730,733    53  6,990,119   905,790   8   9            VRF/VRF/VRF/VRF
+  12 tech-DX_split                chiller   63.97    4     5    24,523    81   306.9   5.03   103   30    25,730,733    53  6,990,119   905,790   8   9 DX_split/DX_split/DX_split/DX_split
+  13 tech-paquete                 chiller   63.97    4     5    24,523    81   306.9   5.03   103   30    25,730,733    53  6,990,119   905,790   8   9 paquete/paquete/paquete/paquete
+  14 tech-chiller_fancoil         chiller   63.97    4     5    24,523    81   306.9   5.03   103   30    25,730,733    53  6,990,119   905,790   8   9 chiller_fancoil/chiller_fancoil/chiller_fancoil/chiller_fancoil
+  15 tech-AHU                     chiller   63.97    4     5    24,523    81   306.9   5.03   103   30    25,730,733    53  6,990,119   905,790   8   9            AHU/AHU/AHU/AHU
+  16 tech-PTAC                    chiller   63.97    4     5    24,523    81   306.9   5.03   103   30    25,730,733    53  6,990,119   905,790   8   9        PTAC/PTAC/PTAC/PTAC
+  17 zonas-materiales             chiller   62.82    4     5    24,523    81   300.1   5.03   103   30    25,723,883    53  6,990,119   905,790   6   6 chiller_fancoil/VRF/VRF/VRF
+  18 barra-calcular-todos         chiller   63.97    4     5    24,523    81   306.9   5.03   103   30    25,730,733    53  6,990,119   905,790   8   9 chiller_fancoil/VRF/VRF/VRF
+  19 barra-calcular-vacio             vrf       0    1     0         0     1       0      0     1   10             0     0      4,100    44,000   0   0                   DX_split
+  20 peakScan-false               chiller   62.79    4     5    24,523    81   300.1   5.03   103   30    25,717,033    53  6,990,119   905,790   9   9 chiller_fancoil/VRF/VRF/VRF
+  21 bldDiv-08                    chiller   56.56    4     5    24,523    81     273   5.03   103   30    25,662,233    53  6,990,119   905,790   8   8 chiller_fancoil/VRF/VRF/VRF
+  22 cotiz-USD                    chiller   63.97    4     5    24,523    81   306.9   5.03   103   30    25,730,733    53  6,990,119   905,790   8   9 chiller_fancoil/VRF/VRF/VRF
+  23 cotiz-sin-items              chiller   63.97    4     5    24,523    81   306.9   5.03   103   30    22,022,005    46  6,990,119   720,790   8   9 chiller_fancoil/VRF/VRF/VRF
+  24 plaza-mexicali               chiller   64.96    4     5    24,523    81   327.2   5.03   103   30    27,877,967    53  6,990,119   905,790   8   8 chiller_fancoil/VRF/VRF/VRF
+  25 plaza-otra-factor            chiller   63.97    4     5    24,523    81   306.9   5.03   103   30    28,046,499    53  6,990,119   905,790   8   9 chiller_fancoil/VRF/VRF/VRF
+  26 sitio-custom                 chiller   60.22    4     5    24,523    81   306.9   5.03   103   30    25,806,083    53  6,990,119   905,790   7   7 chiller_fancoil/VRF/VRF/VRF
+  27 cotiz-licitacion             chiller   63.97    4     5    24,523    81   306.9   5.03   103   30    25,965,485    53  6,990,119   905,790   8   9 chiller_fancoil/VRF/VRF/VRF
+  28 ductos-accesorios            chiller   63.97    4     6    24,523    81   306.9   5.03   103   30    25,874,356    52  6,990,119   942,815   8   9 chiller_fancoil/VRF/VRF/VRF
+  29 soporte-sismico-viga         chiller   63.97    4     5    24,523    81   306.9   5.03   103   30    25,537,921    52  6,990,119   712,978   8   9 chiller_fancoil/VRF/VRF/VRF
+  30 soporte-sin-sismico-manual   chiller   63.97    4     5    24,523    81   306.9   5.03   103   30    25,460,763    50  6,990,119   635,820   8   9 chiller_fancoil/VRF/VRF/VRF
+  31 soporte-losa-fc              chiller   63.97    4     5    24,523    81   306.9   5.03   103   30    25,730,733    53  6,990,119   905,790   8   9 chiller_fancoil/VRF/VRF/VRF
+  32 civil-demolicion             chiller   63.97    4     5    24,523    81   306.9   5.03   103   30    30,180,497    53 11,439,883   905,790   8   9 chiller_fancoil/VRF/VRF/VRF
+  33 civil-manual                 chiller   63.97    4     5    24,523    81   306.9   5.03   103   30    23,854,298    53  5,113,684   905,790   8   9 chiller_fancoil/VRF/VRF/VRF
+  34 vent-kitchen                 chiller   63.97    4     5     5,906    81   302.6   5.03   103   30    23,716,248    54  6,990,119   905,790   8   9 chiller_fancoil/VRF/VRF/VRF
+  35 vent-industrial              chiller   63.97    4     5    30,000    81   308.1   5.03   103   30    26,524,898    53  6,990,119   905,790   8   9 chiller_fancoil/VRF/VRF/VRF
+  36 vent-louver                  chiller   63.97    4     5     1,046    81   301.5   5.03   103   30    22,326,568    53  6,990,119   905,790   8   9 chiller_fancoil/VRF/VRF/VRF
+  37 vent-mua                     chiller   63.97    4     5    49,045    81   312.5   5.03   103   30    36,397,948    54  6,990,119   905,790   8   9 chiller_fancoil/VRF/VRF/VRF
+  38 cuartos-limpios              chiller   67.79    4     5    24,523   170   326.2   5.03   103   30    32,863,549    53  7,994,935   905,790   8   9 chiller_fancoil/VRF/VRF/VRF
+  39 instalaciones-variantes      chiller   63.97    4     5    24,523    81   331.6   4.21   134   50    33,715,893    53  6,990,119   947,604   9  10 chiller_fancoil/VRF/VRF/VRF
+  40 propuestas-aceptadas         chiller   63.97    4     6     3,265    81     302   5.03   103   30     4,673,293     9  6,990,119   809,833   1   2 chiller_fancoil/VRF/VRF/VRF
+  41 propuestas-propio            chiller   63.97    4     5    24,523    81     130   5.03   103   30     5,215,733     9  6,990,119   354,600   1   2 chiller_fancoil/VRF/VRF/VRF
+  42 herencia-propio              chiller   63.97    4     5     1,955    81   301.6   5.03   103   30    22,458,373    53  6,990,119   905,790   8   9 chiller_fancoil/VRF/VRF/VRF
+  43 valor-decisiones             chiller   63.97    4     5    24,523    81   306.9   5.03   103   30    25,730,733    53  6,990,119   905,790   8   9 chiller_fancoil/VRF/VRF/VRF
+  44 kaizen-items                 chiller   63.97    4     5    24,523    81   306.9   5.03   103   30    25,730,733    53  6,990,119   905,790   8   9 chiller_fancoil/VRF/VRF/VRF
+  45 unidades-IP                  chiller   63.97    4     5    24,523    81   306.9   5.03   103   30    25,730,733    53  6,990,119   905,790   8   9 chiller_fancoil/VRF/VRF/VRF
+  46 sin-zonas-con-datos             none       0    0     5    19,776    81   206.1   5.03   124   30    21,146,808    45  3,848,065   733,634   3   3                           
+  47 parcial-fuego                    vrf       0    1     0         0     1       0      0    25   10     1,871,797     9      4,100    44,000   1   1                   DX_split
+  48 parcial-civil-directas           vrf       0    1     0         0     1       0      0     1   10     2,114,625    11    315,329    44,000   1   1                   DX_split
+  49 parcial-soporte-riel             vrf       0    1     0         0     1       0      0     1   10     1,826,497    10      4,100    67,100   1   1                   DX_split
+  50 parcial-vent-cocina-sin-medidas     vrf       0    1     0        30     1       0      0     1   10     1,811,227    11      4,100    44,000   1   1                   DX_split
+  51 parcial-vent-cocina              vrf       0    1     0     2,461     1       0      0     1   10     2,445,747    11      4,100    44,000   1   1                   DX_split
+  52 parcial-ductos-sin-caudal        vrf       0    1     1         0     1       0      0     1   10     1,803,397     9      4,100    44,000   1   1                   DX_split
+  53 parcial-ductos-con-caudal        vrf       0    1     1         0     1       0      0     1   10     1,803,397     9      4,100    44,000   1   1                   DX_split
+  54 parcial-limpio                   vrf       0    1     0         0    14       0      0     1   10     2,747,497     9    246,000    44,000   1   1                   DX_split
+  55 parcial-equipo-manual            vrf       0    1     0         0     1       0      0     1   10     2,643,286    13      4,100    62,500   1   1                   DX_split
+  56 parcial-zona-sola                vrf    0.86    1     0     1,271     1       0      0    10   10     2,530,773    18    514,681    44,000   3   4                        VRF
+
+IDA Y VUELTA · el mismo archivo, escenario construido (nativo) contra proyecto guardado y abierto (guardado): salida y cotización
+  escenario                      base  nuevo  sólo nuevo  (diferencias numéricas/estructurales entre construir y reabrir)
+  vacio                             0      0           0
+  prueba                            0      0           0
+  lleno                             0      0           0
+  lleno-sin-cruces                  0      0           0
+  lleno-cruces-parciales            0      0           0
+  zonas-oaFixed-fluorescent         0      0           0
+  sys-chiller                       0      0           0
+  sys-vrf                           0      0           0
+  sys-rooftop                       0      0           0
+  sys-split                         0      0           0
+  tech-VRF                          0      0           0
+  tech-DX_split                     0      0           0
+  tech-paquete                      0      0           0
+  tech-chiller_fancoil              0      0           0
+  tech-AHU                          0      0           0
+  tech-PTAC                         0      0           0
+  zonas-materiales                  0      0           0
+  barra-calcular-todos              0      0           0
+  barra-calcular-vacio              0      0           0
+  peakScan-false                    0      0           0
+  bldDiv-08                         0      0           0
+  cotiz-USD                         0      0           0
+  cotiz-sin-items                   0      0           0
+  plaza-mexicali                    0      0           0
+  plaza-otra-factor                 0      0           0
+  sitio-custom                      0      0           0
+  cotiz-licitacion                  0      0           0
+  ductos-accesorios                 0      0           0
+  soporte-sismico-viga              0      0           0
+  soporte-sin-sismico-manual        0      0           0
+  soporte-losa-fc                   0      0           0
+  civil-demolicion                  0      0           0
+  civil-manual                      0      0           0
+  vent-kitchen                      0      0           0
+  vent-industrial                   0      0           0
+  vent-louver                       0      0           0
+  vent-mua                          0      0           0
+  cuartos-limpios                  19     19           0
+  instalaciones-variantes           0      0           0
+  propuestas-aceptadas              0      0           0
+  propuestas-propio                 0      0           0
+  herencia-propio                   0      0           0
+  valor-decisiones                150    150           0
+  kaizen-items                      0      0           0
+  unidades-IP                       0      0           0
+  sin-zonas-con-datos             622    622           0
+  parcial-fuego                     0      0           0
+  parcial-civil-directas            0      0           0
+  parcial-soporte-riel              0      0           0
+  parcial-vent-cocina-sin-medidas      0      0           0
+  parcial-vent-cocina               0      0           0
+  parcial-ductos-sin-caudal         0      0           0
+  parcial-ductos-con-caudal         0      0           0
+  parcial-limpio                    0      0           0
+  parcial-equipo-manual             0      0           0
+  parcial-zona-sola                 0      0           0
+  totales: base 791, nuevo 791, sólo en nuevo 0. (Una diferencia que existe igual en las dos versiones es propia del escenario —p. ej. la memoria de la casa vive en localStorage, no en el proyecto—; sólo cuenta lo que aparece SOLO en la nueva.)
+
+====================================================================================================
+DIFERENCIAS AGRUPADAS por (fila, modo, ruta con índices [*], clase) · con un ejemplo por grupo
+====================================================================================================
+* [quote/nativo] salida.QUOTE.aux[*].total  (numerica) · 1456 apariciones en 47 escenario(s)
+    ej. salida.QUOTE.aux[2].total
+        base : 42000   nuevo: 119700
+* [quote/nativo] salida.QUOTE.aux[*].unit  (numerica) · 1456 apariciones en 47 escenario(s)
+    ej. salida.QUOTE.aux[2].unit
+        base : 42000   nuevo: 2850
+* [quote/guardado] salida.QUOTE.aux[*].total  (numerica) · 1456 apariciones en 47 escenario(s)
+    ej. salida.QUOTE.aux[2].total
+        base : 42000   nuevo: 119700
+* [quote/guardado] salida.QUOTE.aux[*].unit  (numerica) · 1456 apariciones en 47 escenario(s)
+    ej. salida.QUOTE.aux[2].unit
+        base : 42000   nuevo: 2850
+* [quote/nativo] salida.QUOTE.aux[*].qty  (numerica) · 1413 apariciones en 47 escenario(s)
+    ej. salida.QUOTE.aux[2].qty
+        base : 1   nuevo: 42
+* [quote/guardado] salida.QUOTE.aux[*].qty  (numerica) · 1413 apariciones en 47 escenario(s)
+    ej. salida.QUOTE.aux[2].qty
+        base : 1   nuevo: 42
+* [elec/nativo] salida.ELEC.calc[*].cond.tubo.ocupado  (numerica) · 502 apariciones en 43 escenario(s)
+    ej. salida.ELEC.calc[0].cond.tubo.ocupado
+        base : 456.36   nuevo: 553.17
+* [elec/nativo] salida.ELEC.calc[*].cond.tubo.pct  (numerica) · 502 apariciones en 43 escenario(s)
+    ej. salida.ELEC.calc[0].cond.tubo.pct
+        base : 34.730593607305934   nuevo: 25.55057736720554
+* [elec/nativo] salida.ELEC.calc[*].cond.aislamiento  (solo-nuevo) · 502 apariciones en 43 escenario(s)
+    ej. salida.ELEC.calc[0].cond.aislamiento
+        base : (no existe)   nuevo: "thw-ls"
+* [elec/guardado] salida.ELEC.calc[*].cond.tubo.ocupado  (numerica) · 502 apariciones en 43 escenario(s)
+    ej. salida.ELEC.calc[0].cond.tubo.ocupado
+        base : 456.36   nuevo: 553.17
+* [elec/guardado] salida.ELEC.calc[*].cond.tubo.pct  (numerica) · 502 apariciones en 43 escenario(s)
+    ej. salida.ELEC.calc[0].cond.tubo.pct
+        base : 34.730593607305934   nuevo: 25.55057736720554
+* [elec/guardado] salida.ELEC.calc[*].cond.aislamiento  (solo-nuevo) · 502 apariciones en 43 escenario(s)
+    ej. salida.ELEC.calc[0].cond.aislamiento
+        base : (no existe)   nuevo: "thw-ls"
+* [elec/nativo] salida.ELEC.calc[*].cond.tubo.area  (numerica) · 162 apariciones en 43 escenario(s)
+    ej. salida.ELEC.calc[0].cond.tubo.area
+        base : 1314   nuevo: 2165
+* [elec/nativo] salida.ELEC.calc[*].cond.tubo.mm  (numerica) · 162 apariciones en 43 escenario(s)
+    ej. salida.ELEC.calc[0].cond.tubo.mm
+        base : 41   nuevo: 53
+* [elec/guardado] salida.ELEC.calc[*].cond.tubo.area  (numerica) · 162 apariciones en 43 escenario(s)
+    ej. salida.ELEC.calc[0].cond.tubo.area
+        base : 1314   nuevo: 2165
+* [elec/guardado] salida.ELEC.calc[*].cond.tubo.mm  (numerica) · 162 apariciones en 43 escenario(s)
+    ej. salida.ELEC.calc[0].cond.tubo.mm
+        base : 41   nuevo: 53
+* [clean/nativo] salida.CLEAN.list[*].pisoDP  (solo-nuevo) · 143 apariciones en 56 escenario(s)
+    ej. salida.CLEAN.list[0].pisoDP
+        base : (no existe)   nuevo: false
+* [clean/nativo] salida.CLEAN.list[*].vacio  (solo-nuevo) · 143 apariciones en 56 escenario(s)
+    ej. salida.CLEAN.list[0].vacio
+        base : (no existe)   nuevo: true
+* [clean/guardado] salida.CLEAN.list[*].pisoDP  (solo-nuevo) · 143 apariciones en 56 escenario(s)
+    ej. salida.CLEAN.list[0].pisoDP
+        base : (no existe)   nuevo: false
+* [clean/guardado] salida.CLEAN.list[*].vacio  (solo-nuevo) · 143 apariciones en 56 escenario(s)
+    ej. salida.CLEAN.list[0].vacio
+        base : (no existe)   nuevo: true
+* [quote/nativo] salida.catalogoConceptos.secciones[*].partidas[*].clave  (solo-base) · 131 apariciones en 51 escenario(s)
+    ej. salida.catalogoConceptos.secciones[0].partidas[5].clave
+        base : "A106"   nuevo: (no existe)
+* [quote/nativo] salida.catalogoConceptos.secciones[*].partidas[*].desc  (solo-base) · 131 apariciones en 51 escenario(s)
+    ej. salida.catalogoConceptos.secciones[0].partidas[5].desc
+        base : "Piso epóxico disipativo ESD, 3 mm en área clasificada"   nuevo: (no existe)
+* [quote/nativo] salida.catalogoConceptos.secciones[*].partidas[*].descEn  (solo-base) · 131 apariciones en 51 escenario(s)
+    ej. salida.catalogoConceptos.secciones[0].partidas[5].descEn
+        base : "3 mm ESD dissipative epoxy floor in classified area"   nuevo: (no existe)
+* [quote/nativo] salida.catalogoConceptos.secciones[*].partidas[*].mot  (solo-base) · 131 apariciones en 51 escenario(s)
+    ej. salida.catalogoConceptos.secciones[0].partidas[5].mot
+        base : "civil"   nuevo: (no existe)
+* [quote/nativo] salida.catalogoConceptos.secciones[*].partidas[*].qty  (solo-base) · 131 apariciones en 51 escenario(s)
+    ej. salida.catalogoConceptos.secciones[0].partidas[5].qty
+        base : 1   nuevo: (no existe)
+* [quote/nativo] salida.catalogoConceptos.secciones[*].partidas[*].sec  (solo-base) · 131 apariciones en 51 escenario(s)
+    ej. salida.catalogoConceptos.secciones[0].partidas[5].sec
+        base : "A"   nuevo: (no existe)
+* [quote/nativo] salida.catalogoConceptos.secciones[*].partidas[*].total  (solo-base) · 131 apariciones en 51 escenario(s)
+    ej. salida.catalogoConceptos.secciones[0].partidas[5].total
+        base : 1650   nuevo: (no existe)
+* [quote/nativo] salida.catalogoConceptos.secciones[*].partidas[*].un  (solo-base) · 131 apariciones en 51 escenario(s)
+    ej. salida.catalogoConceptos.secciones[0].partidas[5].un
+        base : "M2"   nuevo: (no existe)
+* [quote/nativo] salida.catalogoConceptos.secciones[*].partidas[*].unit  (solo-base) · 131 apariciones en 51 escenario(s)
+    ej. salida.catalogoConceptos.secciones[0].partidas[5].unit
+        base : 1650   nuevo: (no existe)
+* [quote/guardado] salida.catalogoConceptos.secciones[*].partidas[*].clave  (solo-base) · 131 apariciones en 51 escenario(s)
+    ej. salida.catalogoConceptos.secciones[0].partidas[5].clave
+        base : "A106"   nuevo: (no existe)
+* [quote/guardado] salida.catalogoConceptos.secciones[*].partidas[*].desc  (solo-base) · 131 apariciones en 51 escenario(s)
+    ej. salida.catalogoConceptos.secciones[0].partidas[5].desc
+        base : "Piso epóxico disipativo ESD, 3 mm en área clasificada"   nuevo: (no existe)
+* [quote/guardado] salida.catalogoConceptos.secciones[*].partidas[*].descEn  (solo-base) · 131 apariciones en 51 escenario(s)
+    ej. salida.catalogoConceptos.secciones[0].partidas[5].descEn
+        base : "3 mm ESD dissipative epoxy floor in classified area"   nuevo: (no existe)
+* [quote/guardado] salida.catalogoConceptos.secciones[*].partidas[*].mot  (solo-base) · 131 apariciones en 51 escenario(s)
+    ej. salida.catalogoConceptos.secciones[0].partidas[5].mot
+        base : "civil"   nuevo: (no existe)
+* [quote/guardado] salida.catalogoConceptos.secciones[*].partidas[*].qty  (solo-base) · 131 apariciones en 51 escenario(s)
+    ej. salida.catalogoConceptos.secciones[0].partidas[5].qty
+        base : 1   nuevo: (no existe)
+* [quote/guardado] salida.catalogoConceptos.secciones[*].partidas[*].sec  (solo-base) · 131 apariciones en 51 escenario(s)
+    ej. salida.catalogoConceptos.secciones[0].partidas[5].sec
+        base : "A"   nuevo: (no existe)
+* [quote/guardado] salida.catalogoConceptos.secciones[*].partidas[*].total  (solo-base) · 131 apariciones en 51 escenario(s)
+    ej. salida.catalogoConceptos.secciones[0].partidas[5].total
+        base : 1650   nuevo: (no existe)
+* [quote/guardado] salida.catalogoConceptos.secciones[*].partidas[*].un  (solo-base) · 131 apariciones en 51 escenario(s)
+    ej. salida.catalogoConceptos.secciones[0].partidas[5].un
+        base : "M2"   nuevo: (no existe)
+* [quote/guardado] salida.catalogoConceptos.secciones[*].partidas[*].unit  (solo-base) · 131 apariciones en 51 escenario(s)
+    ej. salida.catalogoConceptos.secciones[0].partidas[5].unit
+        base : 1650   nuevo: (no existe)
+* [quote/nativo] salida.QUOTE.aux[*].desc  (solo-base) · 129 apariciones en 51 escenario(s)
+    ej. salida.QUOTE.aux[9].desc
+        base : "Muro de metal stud con tablaroca ambas caras en área no clasificada"   nuevo: (no existe)
+* [quote/nativo] salida.QUOTE.aux[*].descEn  (solo-base) · 129 apariciones en 51 escenario(s)
+    ej. salida.QUOTE.aux[9].descEn
+        base : "Metal stud wall with drywall both faces in unclassified area"   nuevo: (no existe)
+* [quote/nativo] salida.QUOTE.aux[*].mot  (solo-base) · 129 apariciones en 51 escenario(s)
+    ej. salida.QUOTE.aux[9].mot
+        base : "civil"   nuevo: (no existe)
+* [quote/nativo] salida.QUOTE.aux[*].qty  (solo-base) · 129 apariciones en 51 escenario(s)
+    ej. salida.QUOTE.aux[9].qty
+        base : 143.71   nuevo: (no existe)
+* [quote/nativo] salida.QUOTE.aux[*].sec  (solo-base) · 129 apariciones en 51 escenario(s)
+    ej. salida.QUOTE.aux[9].sec
+        base : "A"   nuevo: (no existe)
+* [quote/nativo] salida.QUOTE.aux[*].total  (solo-base) · 129 apariciones en 51 escenario(s)
+    ej. salida.QUOTE.aux[9].total
+        base : 242154.71999999997   nuevo: (no existe)
+* [quote/nativo] salida.QUOTE.aux[*].un  (solo-base) · 129 apariciones en 51 escenario(s)
+    ej. salida.QUOTE.aux[9].un
+        base : "M2"   nuevo: (no existe)
+* [quote/nativo] salida.QUOTE.aux[*].unit  (solo-base) · 129 apariciones en 51 escenario(s)
+    ej. salida.QUOTE.aux[9].unit
+        base : 1685   nuevo: (no existe)
+* [hidro/nativo] salida.HIDRO.tramos[*].Lcap  (solo-nuevo) · 129 apariciones en 43 escenario(s)
+    ej. salida.HIDRO.tramos[0].Lcap
+        base : (no existe)   nuevo: 60
+* [hidro/nativo] salida.HIDRO.tramos[*].sinL  (solo-nuevo) · 129 apariciones en 43 escenario(s)
+    ej. salida.HIDRO.tramos[0].sinL
+        base : (no existe)   nuevo: false
+* [quote/guardado] salida.QUOTE.aux[*].desc  (solo-base) · 129 apariciones en 51 escenario(s)
+    ej. salida.QUOTE.aux[9].desc
+        base : "Muro de metal stud con tablaroca ambas caras en área no clasificada"   nuevo: (no existe)
+* [quote/guardado] salida.QUOTE.aux[*].descEn  (solo-base) · 129 apariciones en 51 escenario(s)
+    ej. salida.QUOTE.aux[9].descEn
+        base : "Metal stud wall with drywall both faces in unclassified area"   nuevo: (no existe)
+* [quote/guardado] salida.QUOTE.aux[*].mot  (solo-base) · 129 apariciones en 51 escenario(s)
+    ej. salida.QUOTE.aux[9].mot
+        base : "civil"   nuevo: (no existe)
+* [quote/guardado] salida.QUOTE.aux[*].qty  (solo-base) · 129 apariciones en 51 escenario(s)
+    ej. salida.QUOTE.aux[9].qty
+        base : 143.71   nuevo: (no existe)
+* [quote/guardado] salida.QUOTE.aux[*].sec  (solo-base) · 129 apariciones en 51 escenario(s)
+    ej. salida.QUOTE.aux[9].sec
+        base : "A"   nuevo: (no existe)
+* [quote/guardado] salida.QUOTE.aux[*].total  (solo-base) · 129 apariciones en 51 escenario(s)
+    ej. salida.QUOTE.aux[9].total
+        base : 242154.71999999997   nuevo: (no existe)
+* [quote/guardado] salida.QUOTE.aux[*].un  (solo-base) · 129 apariciones en 51 escenario(s)
+    ej. salida.QUOTE.aux[9].un
+        base : "M2"   nuevo: (no existe)
+* [quote/guardado] salida.QUOTE.aux[*].unit  (solo-base) · 129 apariciones en 51 escenario(s)
+    ej. salida.QUOTE.aux[9].unit
+        base : 1685   nuevo: (no existe)
+* [hidro/guardado] salida.HIDRO.tramos[*].Lcap  (solo-nuevo) · 129 apariciones en 43 escenario(s)
+    ej. salida.HIDRO.tramos[0].Lcap
+        base : (no existe)   nuevo: 60
+* [hidro/guardado] salida.HIDRO.tramos[*].sinL  (solo-nuevo) · 129 apariciones en 43 escenario(s)
+    ej. salida.HIDRO.tramos[0].sinL
+        base : (no existe)   nuevo: false
+* [quote/nativo] salida.QUOTE.pendientes[*].desc  (solo-nuevo) · 80 apariciones en 40 escenario(s)
+    ej. salida.QUOTE.pendientes[0].desc
+        base : (no existe)   nuevo: "Tubería de Cobre tipo L de 2 1/2\" (60 m)"
+* [quote/nativo] salida.QUOTE.pendientes[*].descEn  (solo-nuevo) · 80 apariciones en 40 escenario(s)
+    ej. salida.QUOTE.pendientes[0].descEn
+        base : (no existe)   nuevo: "Type L copper 2 1/2\" water piping (60 m)"
+* [quote/nativo] salida.QUOTE.pendientes[*].mot  (solo-nuevo) · 80 apariciones en 40 escenario(s)
+    ej. salida.QUOTE.pendientes[0].mot
+        base : (no existe)   nuevo: "hidro"
+* [quote/nativo] salida.QUOTE.pendientes[*].motivo  (solo-nuevo) · 80 apariciones en 40 escenario(s)
+    ej. salida.QUOTE.pendientes[0].motivo
+        base : (no existe)   nuevo: "pendiente de precio unitario"
+* [quote/nativo] salida.QUOTE.pendientes[*].motivoEn  (solo-nuevo) · 80 apariciones en 40 escenario(s)
+    ej. salida.QUOTE.pendientes[0].motivoEn
+        base : (no existe)   nuevo: "unit price pending"
+* [quote/guardado] salida.QUOTE.pendientes[*].desc  (solo-nuevo) · 80 apariciones en 40 escenario(s)
+    ej. salida.QUOTE.pendientes[0].desc
+        base : (no existe)   nuevo: "Tubería de Cobre tipo L de 2 1/2\" (60 m)"
+* [quote/guardado] salida.QUOTE.pendientes[*].descEn  (solo-nuevo) · 80 apariciones en 40 escenario(s)
+    ej. salida.QUOTE.pendientes[0].descEn
+        base : (no existe)   nuevo: "Type L copper 2 1/2\" water piping (60 m)"
+* [quote/guardado] salida.QUOTE.pendientes[*].mot  (solo-nuevo) · 80 apariciones en 40 escenario(s)
+    ej. salida.QUOTE.pendientes[0].mot
+        base : (no existe)   nuevo: "hidro"
+* [quote/guardado] salida.QUOTE.pendientes[*].motivo  (solo-nuevo) · 80 apariciones en 40 escenario(s)
+    ej. salida.QUOTE.pendientes[0].motivo
+        base : (no existe)   nuevo: "pendiente de precio unitario"
+* [quote/guardado] salida.QUOTE.pendientes[*].motivoEn  (solo-nuevo) · 80 apariciones en 40 escenario(s)
+    ej. salida.QUOTE.pendientes[0].motivoEn
+        base : (no existe)   nuevo: "unit price pending"
+* [clean/nativo] salida.CLEAN.cur.memo[*]  (solo-base) · 72 apariciones en 12 escenario(s)
+    ej. salida.CLEAN.cur.memo[1]
+        base : "Cambios de aire 45 1/h, nivel medio del rango ISO 30–60."   nuevo: (no existe)
+* [clean/nativo] salida.CLEAN.list[*].memo[*]  (solo-base) · 72 apariciones en 12 escenario(s)
+    ej. salida.CLEAN.list[0].memo[1]
+        base : "Cambios de aire 45 1/h, nivel medio del rango ISO 30–60."   nuevo: (no existe)
+* [clean/guardado] salida.CLEAN.cur.memo[*]  (solo-base) · 72 apariciones en 12 escenario(s)
+    ej. salida.CLEAN.cur.memo[1]
+        base : "Cambios de aire 45 1/h, nivel medio del rango ISO 30–60."   nuevo: (no existe)
+* [clean/guardado] salida.CLEAN.list[*].memo[*]  (solo-base) · 72 apariciones en 12 escenario(s)
+    ej. salida.CLEAN.list[0].memo[1]
+        base : "Cambios de aire 45 1/h, nivel medio del rango ISO 30–60."   nuevo: (no existe)
+* [quote/nativo] salida.catalogoConceptos.secciones[*].partidas[*].total  (numerica) · 61 apariciones en 48 escenario(s)
+    ej. salida.catalogoConceptos.secciones[0].partidas[1].total
+        base : 936.0000000000001   nuevo: 242640
+* [quote/nativo] salida.catalogoConceptos.secciones[*].partidas[*].unit  (numerica) · 61 apariciones en 48 escenario(s)
+    ej. salida.catalogoConceptos.secciones[0].partidas[1].unit
+        base : 3250   nuevo: 1685
+* [quote/guardado] salida.catalogoConceptos.secciones[*].partidas[*].total  (numerica) · 61 apariciones en 48 escenario(s)
+    ej. salida.catalogoConceptos.secciones[0].partidas[1].total
+        base : 936.0000000000001   nuevo: 242640
+* [quote/guardado] salida.catalogoConceptos.secciones[*].partidas[*].unit  (numerica) · 61 apariciones en 48 escenario(s)
+    ej. salida.catalogoConceptos.secciones[0].partidas[1].unit
+        base : 3250   nuevo: 1685
+* [quote/nativo] salida.catalogoConceptos.secciones[*].partidas[*].qty  (numerica) · 57 apariciones en 48 escenario(s)
+    ej. salida.catalogoConceptos.secciones[0].partidas[1].qty
+        base : 0.29   nuevo: 144
+* [quote/guardado] salida.catalogoConceptos.secciones[*].partidas[*].qty  (numerica) · 57 apariciones en 48 escenario(s)
+    ej. salida.catalogoConceptos.secciones[0].partidas[1].qty
+        base : 0.29   nuevo: 144
+* [clean/nativo] salida.CLEAN.cur.pisoDP  (solo-nuevo) · 56 apariciones en 56 escenario(s)
+    ej. salida.CLEAN.cur.pisoDP
+        base : (no existe)   nuevo: false
+* [clean/nativo] salida.CLEAN.cur.vacio  (solo-nuevo) · 56 apariciones en 56 escenario(s)
+    ej. salida.CLEAN.cur.vacio
+        base : (no existe)   nuevo: true
+* [quote/nativo] estado.hidroM  (solo-base) · 56 apariciones en 56 escenario(s)
+    ej. estado.hidroM
+        base : 780   nuevo: (no existe)
+* [elec/nativo] salida.ELEC.alim.tubo.ocupado  (numerica) · 56 apariciones en 56 escenario(s)
+    ej. salida.ELEC.alim.tubo.ocupado
+        base : 31.29   nuevo: 44.84
+* [elec/nativo] salida.ELEC.alim.tubo.pct  (numerica) · 56 apariciones en 56 escenario(s)
+    ej. salida.ELEC.alim.tubo.pct
+        base : 15.964285714285714   nuevo: 22.877551020408166
+* [elec/nativo] salida.ELEC.alim.aislamiento  (solo-nuevo) · 56 apariciones en 56 escenario(s)
+    ej. salida.ELEC.alim.aislamiento
+        base : (no existe)   nuevo: "thw-ls"
+* [elec/nativo] estado.aislamiento  (solo-nuevo) · 56 apariciones en 56 escenario(s)
+    ej. estado.aislamiento
+        base : (no existe)   nuevo: "thw-ls"
+* [pdf/nativo] memoria-elec#21  (numerica) · 56 apariciones en 56 escenario(s)
+    ej. memoria-elec#21
+        base : "-2 ‹10-15(b)(16)) · canalizacion con areas THHN/THWN-2 (Tabla 5 del cap. 9) Temp›"   nuevo: "-001 ‹zacion con las areas de ese mismo conductor (NOM-001-SEDE, Cap. 10, Tabla 5)›"
+* [pdf/nativo] memoria-elec#22  (solo-nuevo) · 56 apariciones en 56 escenario(s)
+    ej. memoria-elec#22
+        base : (no existe)   nuevo: "10 ‹reas de ese mismo conductor (NOM-001-SEDE, Cap. 10, Tabla 5) Temperatura amb›"
+* [pdf/nativo] memoria-elec#23  (solo-base) · 56 apariciones en 56 escenario(s)
+    ej. memoria-elec#23
+        base : "9 ‹izacion con areas THHN/THWN-2 (Tabla 5 del cap. 9) Temperatura ambiente 40 C›"   nuevo: (no existe)
+* [clean/guardado] salida.CLEAN.cur.pisoDP  (solo-nuevo) · 56 apariciones en 56 escenario(s)
+    ej. salida.CLEAN.cur.pisoDP
+        base : (no existe)   nuevo: false
+* [clean/guardado] salida.CLEAN.cur.vacio  (solo-nuevo) · 56 apariciones en 56 escenario(s)
+    ej. salida.CLEAN.cur.vacio
+        base : (no existe)   nuevo: true
+* [elec/guardado] salida.ELEC.alim.tubo.ocupado  (numerica) · 56 apariciones en 56 escenario(s)
+    ej. salida.ELEC.alim.tubo.ocupado
+        base : 31.29   nuevo: 44.84
+* [elec/guardado] salida.ELEC.alim.tubo.pct  (numerica) · 56 apariciones en 56 escenario(s)
+    ej. salida.ELEC.alim.tubo.pct
+        base : 15.964285714285714   nuevo: 22.877551020408166
+* [elec/guardado] salida.ELEC.alim.aislamiento  (solo-nuevo) · 56 apariciones en 56 escenario(s)
+    ej. salida.ELEC.alim.aislamiento
+        base : (no existe)   nuevo: "thw-ls"
+* [elec/guardado] estado.aislamiento  (solo-nuevo) · 56 apariciones en 56 escenario(s)
+    ej. estado.aislamiento
+        base : (no existe)   nuevo: "thw-ls"
+* [pdf/guardado] memoria-elec#21  (numerica) · 56 apariciones en 56 escenario(s)
+    ej. memoria-elec#21
+        base : "-2 ‹10-15(b)(16)) · canalizacion con areas THHN/THWN-2 (Tabla 5 del cap. 9) Temp›"   nuevo: "-001 ‹zacion con las areas de ese mismo conductor (NOM-001-SEDE, Cap. 10, Tabla 5)›"
+* [pdf/guardado] memoria-elec#22  (solo-nuevo) · 56 apariciones en 56 escenario(s)
+    ej. memoria-elec#22
+        base : (no existe)   nuevo: "10 ‹reas de ese mismo conductor (NOM-001-SEDE, Cap. 10, Tabla 5) Temperatura amb›"
+* [pdf/guardado] memoria-elec#23  (solo-base) · 56 apariciones en 56 escenario(s)
+    ej. memoria-elec#23
+        base : "9 ‹izacion con areas THHN/THWN-2 (Tabla 5 del cap. 9) Temperatura ambiente 40 C›"   nuevo: (no existe)
+* [load/nativo] cotizacion.directo  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. cotizacion.directo
+        base : 4888037.480799999   nuevo: 4716121.66
+* [clean/nativo] cotizacion.directo  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. cotizacion.directo
+        base : 4888037.480799999   nuevo: 4716121.66
+* [equip/nativo] cotizacion.directo  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. cotizacion.directo
+        base : 4888037.480799999   nuevo: 4716121.66
+* [duct/nativo] cotizacion.directo  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. cotizacion.directo
+        base : 4888037.480799999   nuevo: 4716121.66
+* [vent/nativo] cotizacion.directo  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. cotizacion.directo
+        base : 4888037.480799999   nuevo: 4716121.66
+* [quote/nativo] salida.QUOTE.auxTotal  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. salida.QUOTE.auxTotal
+        base : 4888037.4808   nuevo: 4716121.66
+* [quote/nativo] salida.QUOTE.cont  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. salida.QUOTE.cont
+        base : 733205.62212   nuevo: 707418.249
+* [quote/nativo] salida.QUOTE.direct  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. salida.QUOTE.direct
+        base : 4888037.4808   nuevo: 4716121.66
+* [quote/nativo] salida.QUOTE.fianza  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. salida.QUOTE.fianza
+        base : 73320.562212   nuevo: 70741.8249
+* [quote/nativo] salida.QUOTE.flete  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. salida.QUOTE.flete
+        base : 122200.93702000001   nuevo: 117903.0415
+* [quote/nativo] salida.QUOTE.ind  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. salida.QUOTE.ind
+        base : 879846.746544   nuevo: 848901.8988
+* [quote/nativo] salida.QUOTE.iva  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. salida.QUOTE.iva
+        base : 1182201.1929563647   nuevo: 1140622.3202009602
+* [quote/nativo] salida.QUOTE.sub  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. salida.QUOTE.sub
+        base : 7388757.45597728   nuevo: 7128889.501256
+* [quote/nativo] salida.QUOTE.tot  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. salida.QUOTE.tot
+        base : 8570958.648933645   nuevo: 8269511.82145696
+* [quote/nativo] salida.QUOTE.uti  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. salida.QUOTE.uti
+        base : 692146.10728128   nuevo: 667802.8270559999
+* [quote/nativo] salida.catalogoConceptos.secciones[*].subtotal  (numerica) · 51 apariciones en 48 escenario(s)
+    ej. salida.catalogoConceptos.secciones[0].subtotal
+        base : 1429765.8207999999   nuevo: 1427350
+* [quote/nativo] salida.catalogoConceptos.subtotal  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. salida.catalogoConceptos.subtotal
+        base : 4888037.480799999   nuevo: 4716121.66
+* [quote/nativo] cotizacion.directo  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. cotizacion.directo
+        base : 4888037.480799999   nuevo: 4716121.66
+* [valor/nativo] cotizacion.directo  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. cotizacion.directo
+        base : 4888037.480799999   nuevo: 4716121.66
+* [kaizen/nativo] cotizacion.directo  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. cotizacion.directo
+        base : 4888037.480799999   nuevo: 4716121.66
+* [elec/nativo] cotizacion.directo  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. cotizacion.directo
+        base : 4888037.480799999   nuevo: 4716121.66
+* [hidro/nativo] cotizacion.directo  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. cotizacion.directo
+        base : 4888037.480799999   nuevo: 4716121.66
+* [fuego/nativo] cotizacion.directo  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. cotizacion.directo
+        base : 4888037.480799999   nuevo: 4716121.66
+* [aire/nativo] cotizacion.directo  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. cotizacion.directo
+        base : 4888037.480799999   nuevo: 4716121.66
+* [civil/nativo] cotizacion.directo  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. cotizacion.directo
+        base : 4888037.480799999   nuevo: 4716121.66
+* [soporte/nativo] cotizacion.directo  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. cotizacion.directo
+        base : 4888037.480799999   nuevo: 4716121.66
+* [xlsx-es/nativo] CRONOGRAMA!C6  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. CRONOGRAMA!C6
+        base : 0.2925   nuevo: 0.3027
+* [xlsx-en/nativo] SCHEDULE!C6  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. SCHEDULE!C6
+        base : 0.2925   nuevo: 0.3027
+* [pdf/nativo] propuesta-es#28  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. propuesta-es#28
+        base : "879,846.75 ‹Costo directo $ 4,888,037.48 Indirectos 18 % $ 879,846.75 Utilidad 12 % $ 6›"   nuevo: "848,901.9 ‹Costo directo $ 4,716,121.66 Indirectos 18 % $ 848,901.9 Utilidad 12 % $ 66›"
+* [pdf/nativo] propuesta-es#32  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. propuesta-es#32
+        base : "733,205.62 ‹,146.11 Contingencia sobre costo directo 15 % $ 733,205.62 Flete y maniobras›"   nuevo: "707,418.25 ‹,802.83 Contingencia sobre costo directo 15 % $ 707,418.25 Flete y maniobras›"
+* [pdf/nativo] propuesta-es#34  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. propuesta-es#34
+        base : "122,200.94 ‹cto 15 % $ 733,205.62 Flete y maniobras 2.5 % $ 122,200.94 Fianzas 1.5 % $ 7›"   nuevo: "117,903.04 ‹cto 15 % $ 707,418.25 Flete y maniobras 2.5 % $ 117,903.04 Fianzas 1.5 % $ 7›"
+* [pdf/nativo] propuesta-es#40  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. propuesta-es#40
+        base : "8,570,958.65 ‹IVA 16 % $ 1,182,201.19 TOTAL DE LA PROPUESTA $ 8,570,958.65 Indicadores: $›"   nuevo: "8,269,511.82 ‹IVA 16 % $ 1,140,622.32 TOTAL DE LA PROPUESTA $ 8,269,511.82 Indicadores: $›"
+* [load/guardado] cotizacion.directo  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. cotizacion.directo
+        base : 4888037.480799999   nuevo: 4716121.66
+* [clean/guardado] cotizacion.directo  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. cotizacion.directo
+        base : 4888037.480799999   nuevo: 4716121.66
+* [equip/guardado] cotizacion.directo  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. cotizacion.directo
+        base : 4888037.480799999   nuevo: 4716121.66
+* [duct/guardado] cotizacion.directo  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. cotizacion.directo
+        base : 4888037.480799999   nuevo: 4716121.66
+* [vent/guardado] cotizacion.directo  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. cotizacion.directo
+        base : 4888037.480799999   nuevo: 4716121.66
+* [quote/guardado] salida.QUOTE.auxTotal  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. salida.QUOTE.auxTotal
+        base : 4888037.4808   nuevo: 4716121.66
+* [quote/guardado] salida.QUOTE.cont  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. salida.QUOTE.cont
+        base : 733205.62212   nuevo: 707418.249
+* [quote/guardado] salida.QUOTE.direct  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. salida.QUOTE.direct
+        base : 4888037.4808   nuevo: 4716121.66
+* [quote/guardado] salida.QUOTE.fianza  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. salida.QUOTE.fianza
+        base : 73320.562212   nuevo: 70741.8249
+* [quote/guardado] salida.QUOTE.flete  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. salida.QUOTE.flete
+        base : 122200.93702000001   nuevo: 117903.0415
+* [quote/guardado] salida.QUOTE.ind  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. salida.QUOTE.ind
+        base : 879846.746544   nuevo: 848901.8988
+* [quote/guardado] salida.QUOTE.iva  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. salida.QUOTE.iva
+        base : 1182201.1929563647   nuevo: 1140622.3202009602
+* [quote/guardado] salida.QUOTE.sub  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. salida.QUOTE.sub
+        base : 7388757.45597728   nuevo: 7128889.501256
+* [quote/guardado] salida.QUOTE.tot  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. salida.QUOTE.tot
+        base : 8570958.648933645   nuevo: 8269511.82145696
+* [quote/guardado] salida.QUOTE.uti  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. salida.QUOTE.uti
+        base : 692146.10728128   nuevo: 667802.8270559999
+* [quote/guardado] salida.catalogoConceptos.secciones[*].subtotal  (numerica) · 51 apariciones en 48 escenario(s)
+    ej. salida.catalogoConceptos.secciones[0].subtotal
+        base : 1429765.8207999999   nuevo: 1427350
+* [quote/guardado] salida.catalogoConceptos.subtotal  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. salida.catalogoConceptos.subtotal
+        base : 4888037.480799999   nuevo: 4716121.66
+* [quote/guardado] cotizacion.directo  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. cotizacion.directo
+        base : 4888037.480799999   nuevo: 4716121.66
+* [valor/guardado] cotizacion.directo  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. cotizacion.directo
+        base : 4888037.480799999   nuevo: 4716121.66
+* [kaizen/guardado] cotizacion.directo  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. cotizacion.directo
+        base : 4888037.480799999   nuevo: 4716121.66
+* [elec/guardado] cotizacion.directo  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. cotizacion.directo
+        base : 4888037.480799999   nuevo: 4716121.66
+* [hidro/guardado] cotizacion.directo  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. cotizacion.directo
+        base : 4888037.480799999   nuevo: 4716121.66
+* [fuego/guardado] cotizacion.directo  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. cotizacion.directo
+        base : 4888037.480799999   nuevo: 4716121.66
+* [aire/guardado] cotizacion.directo  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. cotizacion.directo
+        base : 4888037.480799999   nuevo: 4716121.66
+* [civil/guardado] cotizacion.directo  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. cotizacion.directo
+        base : 4888037.480799999   nuevo: 4716121.66
+* [soporte/guardado] cotizacion.directo  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. cotizacion.directo
+        base : 4888037.480799999   nuevo: 4716121.66
+* [xlsx-es/guardado] CRONOGRAMA!C6  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. CRONOGRAMA!C6
+        base : 0.2925   nuevo: 0.3027
+* [xlsx-en/guardado] SCHEDULE!C6  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. SCHEDULE!C6
+        base : 0.2925   nuevo: 0.3027
+* [pdf/guardado] propuesta-es#28  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. propuesta-es#28
+        base : "879,846.75 ‹Costo directo $ 4,888,037.48 Indirectos 18 % $ 879,846.75 Utilidad 12 % $ 6›"   nuevo: "848,901.9 ‹Costo directo $ 4,716,121.66 Indirectos 18 % $ 848,901.9 Utilidad 12 % $ 66›"
+* [pdf/guardado] propuesta-es#32  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. propuesta-es#32
+        base : "733,205.62 ‹,146.11 Contingencia sobre costo directo 15 % $ 733,205.62 Flete y maniobras›"   nuevo: "707,418.25 ‹,802.83 Contingencia sobre costo directo 15 % $ 707,418.25 Flete y maniobras›"
+* [pdf/guardado] propuesta-es#34  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. propuesta-es#34
+        base : "122,200.94 ‹cto 15 % $ 733,205.62 Flete y maniobras 2.5 % $ 122,200.94 Fianzas 1.5 % $ 7›"   nuevo: "117,903.04 ‹cto 15 % $ 707,418.25 Flete y maniobras 2.5 % $ 117,903.04 Fianzas 1.5 % $ 7›"
+* [pdf/guardado] propuesta-es#40  (numerica) · 51 apariciones en 51 escenario(s)
+    ej. propuesta-es#40
+        base : "8,570,958.65 ‹IVA 16 % $ 1,182,201.19 TOTAL DE LA PROPUESTA $ 8,570,958.65 Indicadores: $›"   nuevo: "8,269,511.82 ‹IVA 16 % $ 1,140,622.32 TOTAL DE LA PROPUESTA $ 8,269,511.82 Indicadores: $›"
+* [clean/nativo] cotizacion.pct  (numerica) · 50 apariciones en 50 escenario(s)
+    ej. cotizacion.pct
+        base : 0.011251959547372056   nuevo: 0
+* [fuego/nativo] cotizacion.pct  (numerica) · 50 apariciones en 50 escenario(s)
+    ej. cotizacion.pct
+        base : 0.37175383109022253   nuevo: 0.3853052976585001
+* [civil/nativo] cotizacion.pct  (numerica) · 50 apariciones en 50 escenario(s)
+    ej. cotizacion.pct
+        base : 0.2925030395973964   nuevo: 0.30265334588505927
+* [soporte/nativo] cotizacion.pct  (numerica) · 50 apariciones en 50 escenario(s)
+    ej. cotizacion.pct
+        base : 0.023424533966801823   nuevo: 0
+* [xlsx-es/nativo] RESUMEN_EJECUTIVO!C10  (formula) · 50 apariciones en 50 escenario(s)
+    ej. RESUMEN_EJECUTIVO!C10
+        base : "C9*0.18"   nuevo: "(C8+C9)*0.12"
+* [xlsx-es/nativo] RESUMEN_EJECUTIVO!C11  (formula) · 50 apariciones en 50 escenario(s)
+    ej. RESUMEN_EJECUTIVO!C11
+        base : "(C9+C10)*0.12"   nuevo: "C8*0.15"
+* [xlsx-es/nativo] RESUMEN_EJECUTIVO!C12  (formula) · 50 apariciones en 50 escenario(s)
+    ej. RESUMEN_EJECUTIVO!C12
+        base : "C9*0.15"   nuevo: "C8*0.025"
+* [xlsx-en/nativo] EXECUTIVE_SUMMARY!C10  (formula) · 50 apariciones en 50 escenario(s)
+    ej. EXECUTIVE_SUMMARY!C10
+        base : "C9*0.18"   nuevo: "(C8+C9)*0.12"
+* [xlsx-en/nativo] EXECUTIVE_SUMMARY!C11  (formula) · 50 apariciones en 50 escenario(s)
+    ej. EXECUTIVE_SUMMARY!C11
+        base : "(C9+C10)*0.12"   nuevo: "C8*0.15"
+* [xlsx-en/nativo] EXECUTIVE_SUMMARY!C12  (formula) · 50 apariciones en 50 escenario(s)
+    ej. EXECUTIVE_SUMMARY!C12
+        base : "C9*0.15"   nuevo: "C8*0.025"
+* [pdf/nativo] propuesta-es#36  (numerica) · 50 apariciones en 50 escenario(s)
+    ej. propuesta-es#36
+        base : "73,320.56 ‹y maniobras 2.5 % $ 122,200.94 Fianzas 1.5 % $ 73,320.56 SUBTOTAL antes de›"   nuevo: "70,741.82 ‹y maniobras 2.5 % $ 117,903.04 Fianzas 1.5 % $ 70,741.82 SUBTOTAL antes de›"
+* [pdf/nativo] propuesta-en#29  (numerica) · 50 apariciones en 50 escenario(s)
+    ej. propuesta-en#29
+        base : "47,559.28 ‹nt Direct cost US$ 264,218.24 Overhead 18 % US$ 47,559.28 Fee 12 % US$ 37,41›"   nuevo: "45,886.59 ‹unt Direct cost US$ 254,925.5 Overhead 18 % US$ 45,886.59 Fee 12 % US$ 36,09›"
+* [pdf/nativo] propuesta-en#33  (numerica) · 50 apariciones en 50 escenario(s)
+    ej. propuesta-en#33
+        base : "39,632.74 ‹S$ 37,413.3 Contingency on direct cost 15 % US$ 39,632.74 Freight and handli›"   nuevo: "38,238.82 ‹$ 36,097.45 Contingency on direct cost 15 % US$ 38,238.82 Freight and handli›"
+* [pdf/nativo] propuesta-en#35  (numerica) · 50 apariciones en 50 escenario(s)
+    ej. propuesta-en#35
+        base : "6,605.46 ‹% US$ 39,632.74 Freight and handling 2.5 % US$ 6,605.46 Bonds 1.5 % US$ 3,9›"   nuevo: "6,373.14 ‹% US$ 38,238.82 Freight and handling 2.5 % US$ 6,373.14 Bonds 1.5 % US$ 3,8›"
+* [clean/guardado] cotizacion.pct  (numerica) · 50 apariciones en 50 escenario(s)
+    ej. cotizacion.pct
+        base : 0.011251959547372056   nuevo: 0
+* [fuego/guardado] cotizacion.pct  (numerica) · 50 apariciones en 50 escenario(s)
+    ej. cotizacion.pct
+        base : 0.37175383109022253   nuevo: 0.3853052976585001
+* [civil/guardado] cotizacion.pct  (numerica) · 50 apariciones en 50 escenario(s)
+    ej. cotizacion.pct
+        base : 0.2925030395973964   nuevo: 0.30265334588505927
+* [soporte/guardado] cotizacion.pct  (numerica) · 50 apariciones en 50 escenario(s)
+    ej. cotizacion.pct
+        base : 0.023424533966801823   nuevo: 0
+* [xlsx-es/guardado] RESUMEN_EJECUTIVO!C10  (formula) · 50 apariciones en 50 escenario(s)
+    ej. RESUMEN_EJECUTIVO!C10
+        base : "C9*0.18"   nuevo: "(C8+C9)*0.12"
+* [xlsx-es/guardado] RESUMEN_EJECUTIVO!C11  (formula) · 50 apariciones en 50 escenario(s)
+    ej. RESUMEN_EJECUTIVO!C11
+        base : "(C9+C10)*0.12"   nuevo: "C8*0.15"
+* [xlsx-es/guardado] RESUMEN_EJECUTIVO!C12  (formula) · 50 apariciones en 50 escenario(s)
+    ej. RESUMEN_EJECUTIVO!C12
+        base : "C9*0.15"   nuevo: "C8*0.025"
+* [xlsx-en/guardado] EXECUTIVE_SUMMARY!C10  (formula) · 50 apariciones en 50 escenario(s)
+    ej. EXECUTIVE_SUMMARY!C10
+        base : "C9*0.18"   nuevo: "(C8+C9)*0.12"
+* [xlsx-en/guardado] EXECUTIVE_SUMMARY!C11  (formula) · 50 apariciones en 50 escenario(s)
+    ej. EXECUTIVE_SUMMARY!C11
+        base : "(C9+C10)*0.12"   nuevo: "C8*0.15"
+* [xlsx-en/guardado] EXECUTIVE_SUMMARY!C12  (formula) · 50 apariciones en 50 escenario(s)
+    ej. EXECUTIVE_SUMMARY!C12
+        base : "C9*0.15"   nuevo: "C8*0.025"
+* [pdf/guardado] propuesta-es#36  (numerica) · 50 apariciones en 50 escenario(s)
+    ej. propuesta-es#36
+        base : "73,320.56 ‹y maniobras 2.5 % $ 122,200.94 Fianzas 1.5 % $ 73,320.56 SUBTOTAL antes de›"   nuevo: "70,741.82 ‹y maniobras 2.5 % $ 117,903.04 Fianzas 1.5 % $ 70,741.82 SUBTOTAL antes de›"
+* [pdf/guardado] propuesta-en#29  (numerica) · 50 apariciones en 50 escenario(s)
+    ej. propuesta-en#29
+        base : "47,559.28 ‹nt Direct cost US$ 264,218.24 Overhead 18 % US$ 47,559.28 Fee 12 % US$ 37,41›"   nuevo: "45,886.59 ‹unt Direct cost US$ 254,925.5 Overhead 18 % US$ 45,886.59 Fee 12 % US$ 36,09›"
+* [pdf/guardado] propuesta-en#33  (numerica) · 50 apariciones en 50 escenario(s)
+    ej. propuesta-en#33
+        base : "39,632.74 ‹S$ 37,413.3 Contingency on direct cost 15 % US$ 39,632.74 Freight and handli›"   nuevo: "38,238.82 ‹$ 36,097.45 Contingency on direct cost 15 % US$ 38,238.82 Freight and handli›"
+* [pdf/guardado] propuesta-en#35  (numerica) · 50 apariciones en 50 escenario(s)
+    ej. propuesta-en#35
+        base : "6,605.46 ‹% US$ 39,632.74 Freight and handling 2.5 % US$ 6,605.46 Bonds 1.5 % US$ 3,9›"   nuevo: "6,373.14 ‹% US$ 38,238.82 Freight and handling 2.5 % US$ 6,373.14 Bonds 1.5 % US$ 3,8›"
+* [xlsx-es/nativo] CRONOGRAMA!C7  (numerica) · 49 apariciones en 49 escenario(s)
+    ej. CRONOGRAMA!C7
+        base : 0.3123   nuevo: 0.312
+* [xlsx-en/nativo] SCHEDULE!C7  (numerica) · 49 apariciones en 49 escenario(s)
+    ej. SCHEDULE!C7
+        base : 0.3123   nuevo: 0.312
+* [pdf/nativo] licitacion#9  (solo-base) · 49 apariciones en 49 escenario(s)
+    ej. licitacion#9
+        base : "780 ‹ario nominal FASAR Salario real Cabo de oficios 780 1.45 1,131 Oficial alban›"   nuevo: (no existe)
+* [pdf/nativo] licitacion#10  (solo-base) · 49 apariciones en 49 escenario(s)
+    ej. licitacion#10
+        base : "1.45 ‹nominal FASAR Salario real Cabo de oficios 780 1.45 1,131 Oficial albanil 6›"   nuevo: (no existe)
+* [pdf/nativo] licitacion#11  (solo-base) · 49 apariciones en 49 escenario(s)
+    ej. licitacion#11
+        base : "1,131 ‹nal FASAR Salario real Cabo de oficios 780 1.45 1,131 Oficial albanil 620 1.›"   nuevo: (no existe)
+* [pdf/nativo] licitacion#15  (solo-base) · 49 apariciones en 49 escenario(s)
+    ej. licitacion#15
+        base : "680 ‹l albanil 620 1.45 899 Oficial ductero / lamina 680 1.45 986 Oficial tubero›"   nuevo: (no existe)
+* [pdf/nativo] licitacion#16  (solo-base) · 49 apariciones en 49 escenario(s)
+    ej. licitacion#16
+        base : "1.45 ‹banil 620 1.45 899 Oficial ductero / lamina 680 1.45 986 Oficial tubero / so›"   nuevo: (no existe)
+* [pdf/nativo] licitacion#17  (solo-base) · 49 apariciones en 49 escenario(s)
+    ej. licitacion#17
+        base : "986 ‹620 1.45 899 Oficial ductero / lamina 680 1.45 986 Oficial tubero / soldado›"   nuevo: (no existe)
+* [pdf/nativo] propuesta-en#41  (numerica) · 49 apariciones en 49 escenario(s)
+    ej. propuesta-en#41
+        base : "463,295.06 ‹92.29 VAT 16 % US$ 63,902.77 PROPOSAL TOTAL US$ 463,295.06 Benchmarks: US$ 3›"   nuevo: "447,000.64 ‹45.38 VAT 16 % US$ 61,655.26 PROPOSAL TOTAL US$ 447,000.64 Benchmarks: US$ 3›"
+* [xlsx-es/guardado] CRONOGRAMA!C7  (numerica) · 49 apariciones en 49 escenario(s)
+    ej. CRONOGRAMA!C7
+        base : 0.3123   nuevo: 0.312
+* [xlsx-en/guardado] SCHEDULE!C7  (numerica) · 49 apariciones en 49 escenario(s)
+    ej. SCHEDULE!C7
+        base : 0.3123   nuevo: 0.312
+* [pdf/guardado] licitacion#9  (solo-base) · 49 apariciones en 49 escenario(s)
+    ej. licitacion#9
+        base : "780 ‹ario nominal FASAR Salario real Cabo de oficios 780 1.45 1,131 Oficial alban›"   nuevo: (no existe)
+* [pdf/guardado] licitacion#10  (solo-base) · 49 apariciones en 49 escenario(s)
+    ej. licitacion#10
+        base : "1.45 ‹nominal FASAR Salario real Cabo de oficios 780 1.45 1,131 Oficial albanil 6›"   nuevo: (no existe)
+* [pdf/guardado] licitacion#11  (solo-base) · 49 apariciones en 49 escenario(s)
+    ej. licitacion#11
+        base : "1,131 ‹nal FASAR Salario real Cabo de oficios 780 1.45 1,131 Oficial albanil 620 1.›"   nuevo: (no existe)
+* [pdf/guardado] licitacion#15  (solo-base) · 49 apariciones en 49 escenario(s)
+    ej. licitacion#15
+        base : "680 ‹l albanil 620 1.45 899 Oficial ductero / lamina 680 1.45 986 Oficial tubero›"   nuevo: (no existe)
+* [pdf/guardado] licitacion#16  (solo-base) · 49 apariciones en 49 escenario(s)
+    ej. licitacion#16
+        base : "1.45 ‹banil 620 1.45 899 Oficial ductero / lamina 680 1.45 986 Oficial tubero / so›"   nuevo: (no existe)
+* [pdf/guardado] licitacion#17  (solo-base) · 49 apariciones en 49 escenario(s)
+    ej. licitacion#17
+        base : "986 ‹620 1.45 899 Oficial ductero / lamina 680 1.45 986 Oficial tubero / soldado›"   nuevo: (no existe)
+* [pdf/guardado] propuesta-en#41  (numerica) · 49 apariciones en 49 escenario(s)
+    ej. propuesta-en#41
+        base : "463,295.06 ‹92.29 VAT 16 % US$ 63,902.77 PROPOSAL TOTAL US$ 463,295.06 Benchmarks: US$ 3›"   nuevo: "447,000.64 ‹45.38 VAT 16 % US$ 61,655.26 PROPOSAL TOTAL US$ 447,000.64 Benchmarks: US$ 3›"
+* [pdf/nativo] propuesta-en#37  (numerica) · 48 apariciones en 48 escenario(s)
+    ej. propuesta-en#37
+        base : "3,963.27 ‹and handling 2.5 % US$ 6,605.46 Bonds 1.5 % US$ 3,963.27 SUBTOTAL before tax›"   nuevo: "3,823.88 ‹and handling 2.5 % US$ 6,373.14 Bonds 1.5 % US$ 3,823.88 SUBTOTAL before tax›"
+* [pdf/guardado] propuesta-en#37  (numerica) · 48 apariciones en 48 escenario(s)
+    ej. propuesta-en#37
+        base : "3,963.27 ‹and handling 2.5 % US$ 6,605.46 Bonds 1.5 % US$ 3,963.27 SUBTOTAL before tax›"   nuevo: "3,823.88 ‹and handling 2.5 % US$ 6,373.14 Bonds 1.5 % US$ 3,823.88 SUBTOTAL before tax›"
+* [pdf/nativo] propuesta-es#19  (numerica) · 47 apariciones en 47 escenario(s)
+    ej. propuesta-es#19
+        base : "29.3 ‹irecto A Obra civil y estructura $ 1,429,765.82 29.3 % B HVAC, cuartos limpi›"   nuevo: "30.3 ‹l directo A Obra civil y estructura $ 1,427,350 30.3 % B HVAC, cuartos limpi›"
+* [pdf/nativo] propuesta-en#20  (numerica) · 47 apariciones en 47 escenario(s)
+    ej. propuesta-en#20
+        base : "29.3 ‹irect A Civil works and structure US$ 77,284.64 29.3 % B HVAC, cleanrooms an›"   nuevo: "30.3 ‹irect A Civil works and structure US$ 77,154.05 30.3 % B HVAC, cleanrooms an›"
+* [pdf/guardado] propuesta-es#19  (numerica) · 47 apariciones en 47 escenario(s)
+    ej. propuesta-es#19
+        base : "29.3 ‹irecto A Obra civil y estructura $ 1,429,765.82 29.3 % B HVAC, cuartos limpi›"   nuevo: "30.3 ‹l directo A Obra civil y estructura $ 1,427,350 30.3 % B HVAC, cuartos limpi›"
+* [pdf/guardado] propuesta-en#20  (numerica) · 47 apariciones en 47 escenario(s)
+    ej. propuesta-en#20
+        base : "29.3 ‹irect A Civil works and structure US$ 77,284.64 29.3 % B HVAC, cleanrooms an›"   nuevo: "30.3 ‹irect A Civil works and structure US$ 77,154.05 30.3 % B HVAC, cleanrooms an›"
+* [pdf/nativo] licitacion#8  (numerica) · 44 apariciones en 44 escenario(s)
+    ej. licitacion#8
+        base : "53 ‹igatoria en licitacion Conceptos en el catalogo 53 Analisis del factor de sa›"   nuevo: "52 ‹igatoria en licitacion Conceptos en el catalogo 52 Analisis del factor de sa›"
+* [pdf/guardado] licitacion#8  (numerica) · 44 apariciones en 44 escenario(s)
+    ej. licitacion#8
+        base : "53 ‹igatoria en licitacion Conceptos en el catalogo 53 Analisis del factor de sa›"   nuevo: "52 ‹igatoria en licitacion Conceptos en el catalogo 52 Analisis del factor de sa›"
+* [vent/nativo] cotizacion.pct  (numerica) · 43 apariciones en 43 escenario(s)
+    ej. cotizacion.pct
+        base : 0.2828486903855985   nuevo: 0.29315931599610173
+* [quote/nativo] salida.QUOTE.perTon  (numerica) · 43 apariciones en 43 escenario(s)
+    ej. salida.QUOTE.perTon
+        base : 538679.306446004   nuevo: 519733.5648310107
+* [pdf/nativo] propuesta-es#21  (numerica) · 43 apariciones en 43 escenario(s)
+    ej. propuesta-es#21
+        base : "51.4 ‹limpios y distribución de aire $ 13,216,967.51 51.4 % C Instalaciones eléct›"   nuevo: "51.5 ‹limpios y distribución de aire $ 13,216,967.51 51.5 % C Instalaciones eléct›"
+* [pdf/nativo] propuesta-en#22  (numerica) · 43 apariciones en 43 escenario(s)
+    ej. propuesta-en#22
+        base : "51.4 ‹cleanrooms and air distribution US$ 714,430.68 51.4 % C Electrical installa›"   nuevo: "51.5 ‹cleanrooms and air distribution US$ 714,430.68 51.5 % C Electrical installa›"
+* [pdf/nativo] licitacion#27  (numerica) · 43 apariciones en 43 escenario(s)
+    ej. licitacion#27
+        base : "25,730,732.76 ‹n Base % Importe Costo directo del catalogo   25,730,732.76 Costo indirect›"   nuevo: "25,641,032.76 ‹n Base % Importe Costo directo del catalogo   25,641,032.76 Costo indirect›"
+* [pdf/nativo] licitacion#29  (numerica) · 43 apariciones en 43 escenario(s)
+    ej. licitacion#29
+        base : "4,631,531.9 ‹25,730,732.76 Costo indirecto sobre directo 18 4,631,531.9 Costo por financ›"   nuevo: "4,615,385.9 ‹25,641,032.76 Costo indirecto sobre directo 18 4,615,385.9 Costo por financ›"
+* [vent/guardado] cotizacion.pct  (numerica) · 43 apariciones en 43 escenario(s)
+    ej. cotizacion.pct
+        base : 0.2828486903855985   nuevo: 0.29315931599610173
+* [quote/guardado] salida.QUOTE.perTon  (numerica) · 43 apariciones en 43 escenario(s)
+    ej. salida.QUOTE.perTon
+        base : 538679.306446004   nuevo: 519733.5648310107
+* [pdf/guardado] propuesta-es#21  (numerica) · 43 apariciones en 43 escenario(s)
+    ej. propuesta-es#21
+        base : "51.4 ‹limpios y distribución de aire $ 13,216,967.51 51.4 % C Instalaciones eléct›"   nuevo: "51.5 ‹limpios y distribución de aire $ 13,216,967.51 51.5 % C Instalaciones eléct›"
+* [pdf/guardado] propuesta-en#22  (numerica) · 43 apariciones en 43 escenario(s)
+    ej. propuesta-en#22
+        base : "51.4 ‹cleanrooms and air distribution US$ 714,430.68 51.4 % C Electrical installa›"   nuevo: "51.5 ‹cleanrooms and air distribution US$ 714,430.68 51.5 % C Electrical installa›"
+* [pdf/guardado] licitacion#27  (numerica) · 43 apariciones en 43 escenario(s)
+    ej. licitacion#27
+        base : "25,730,732.76 ‹n Base % Importe Costo directo del catalogo   25,730,732.76 Costo indirect›"   nuevo: "25,641,032.76 ‹n Base % Importe Costo directo del catalogo   25,641,032.76 Costo indirect›"
+* [pdf/guardado] licitacion#29  (numerica) · 43 apariciones en 43 escenario(s)
+    ej. licitacion#29
+        base : "4,631,531.9 ‹25,730,732.76 Costo indirecto sobre directo 18 4,631,531.9 Costo por financ›"   nuevo: "4,615,385.9 ‹25,641,032.76 Costo indirecto sobre directo 18 4,615,385.9 Costo por financ›"
+* [duct/nativo] cotizacion.pct  (numerica) · 42 apariciones en 42 escenario(s)
+    ej. cotizacion.pct
+        base : 0.018217945412608755   nuevo: 0.01888204046033876
+* [pdf/nativo] licitacion#31  (numerica) · 42 apariciones en 42 escenario(s)
+    ej. licitacion#31
+        base : "455,433.97 ‹or financiamiento sobre directo + indirecto 1.5 455,433.97 Cargo por utilida›"   nuevo: "453,846.28 ‹or financiamiento sobre directo + indirecto 1.5 453,846.28 Cargo por utilida›"
+* [pdf/nativo] licitacion#33  (numerica) · 42 apariciones en 42 escenario(s)
+    ej. licitacion#33
+        base : "3,698,123.83 ‹3.97 Cargo por utilidad sobre los anteriores 12 3,698,123.83 Contingencia so›"   nuevo: "3,685,231.79 ‹6.28 Cargo por utilidad sobre los anteriores 12 3,685,231.79 Contingencia so›"
+* [pdf/nativo] licitacion#35  (numerica) · 42 apariciones en 42 escenario(s)
+    ej. licitacion#35
+        base : "3,859,609.91 ‹s 12 3,698,123.83 Contingencia sobre directo 15 3,859,609.91 Cargos adiciona›"   nuevo: "3,846,154.91 ‹s 12 3,685,231.79 Contingencia sobre directo 15 3,846,154.91 Cargos adiciona›"
+* [duct/guardado] cotizacion.pct  (numerica) · 42 apariciones en 42 escenario(s)
+    ej. cotizacion.pct
+        base : 0.018217945412608755   nuevo: 0.01888204046033876
+* [pdf/guardado] licitacion#31  (numerica) · 42 apariciones en 42 escenario(s)
+    ej. licitacion#31
+        base : "455,433.97 ‹or financiamiento sobre directo + indirecto 1.5 455,433.97 Cargo por utilida›"   nuevo: "453,846.28 ‹or financiamiento sobre directo + indirecto 1.5 453,846.28 Cargo por utilida›"
+* [pdf/guardado] licitacion#33  (numerica) · 42 apariciones en 42 escenario(s)
+    ej. licitacion#33
+        base : "3,698,123.83 ‹3.97 Cargo por utilidad sobre los anteriores 12 3,698,123.83 Contingencia so›"   nuevo: "3,685,231.79 ‹6.28 Cargo por utilidad sobre los anteriores 12 3,685,231.79 Contingencia so›"
+* [pdf/guardado] licitacion#35  (numerica) · 42 apariciones en 42 escenario(s)
+    ej. licitacion#35
+        base : "3,859,609.91 ‹s 12 3,698,123.83 Contingencia sobre directo 15 3,859,609.91 Cargos adiciona›"   nuevo: "3,846,154.91 ‹s 12 3,685,231.79 Contingencia sobre directo 15 3,846,154.91 Cargos adiciona›"
+* [quote/nativo] salida.QUOTE.perM2  (numerica) · 41 apariciones en 41 escenario(s)
+    ej. salida.QUOTE.perM2
+        base : 14777.514911954559   nuevo: 14257.779002512001
+* [xlsx-es/nativo] CRONOGRAMA!C9  (numerica) · 41 apariciones en 41 escenario(s)
+    ej. CRONOGRAMA!C9
+        base : 0.0234   nuevo: 0
+* [xlsx-en/nativo] SCHEDULE!C9  (numerica) · 41 apariciones en 41 escenario(s)
+    ej. SCHEDULE!C9
+        base : 0.0234   nuevo: 0
+* [pdf/nativo] propuesta-es#42  (numerica) · 41 apariciones en 41 escenario(s)
+    ej. propuesta-es#42
+        base : "17,141.92 ‹es: $ 624,868 por tonelada de refrigeracion y $ 17,141.92 por metro cuadrado›"   nuevo: "16,539.02 ‹$ 602,890.94 por tonelada de refrigeracion y $ 16,539.02 por metro cuadrado›"
+* [pdf/nativo] licitacion#39  (numerica) · 41 apariciones en 41 escenario(s)
+    ej. licitacion#39
+        base : "268,628.03 ‹on + 2 al millar CMIC) sobre los anteriores 0.7 268,628.03 IMPORTE DE LA PRO›"   nuevo: "267,691.56 ‹on + 2 al millar CMIC) sobre los anteriores 0.7 267,691.56 IMPORTE DE LA PRO›"
+* [pdf/nativo] licitacion#40  (numerica) · 41 apariciones en 41 escenario(s)
+    ej. licitacion#40
+        base : "38,644,060.4 ‹riores 0.7 268,628.03 IMPORTE DE LA PROPUESTA 38,644,060.4 Tarjetas de ana›"   nuevo: "38,509,343.2 ‹riores 0.7 267,691.56 IMPORTE DE LA PROPUESTA 38,509,343.2 Tarjetas de ana›"
+* [quote/guardado] salida.QUOTE.perM2  (numerica) · 41 apariciones en 41 escenario(s)
+    ej. salida.QUOTE.perM2
+        base : 14777.514911954559   nuevo: 14257.779002512001
+* [xlsx-es/guardado] CRONOGRAMA!C9  (numerica) · 41 apariciones en 41 escenario(s)
+    ej. CRONOGRAMA!C9
+        base : 0.0234   nuevo: 0
+* [xlsx-en/guardado] SCHEDULE!C9  (numerica) · 41 apariciones en 41 escenario(s)
+    ej. SCHEDULE!C9
+        base : 0.0234   nuevo: 0
+* [pdf/guardado] propuesta-es#42  (numerica) · 41 apariciones en 41 escenario(s)
+    ej. propuesta-es#42
+        base : "17,141.92 ‹es: $ 624,868 por tonelada de refrigeracion y $ 17,141.92 por metro cuadrado›"   nuevo: "16,539.02 ‹$ 602,890.94 por tonelada de refrigeracion y $ 16,539.02 por metro cuadrado›"
+* [pdf/guardado] licitacion#39  (numerica) · 41 apariciones en 41 escenario(s)
+    ej. licitacion#39
+        base : "268,628.03 ‹on + 2 al millar CMIC) sobre los anteriores 0.7 268,628.03 IMPORTE DE LA PRO›"   nuevo: "267,691.56 ‹on + 2 al millar CMIC) sobre los anteriores 0.7 267,691.56 IMPORTE DE LA PRO›"
+* [pdf/guardado] licitacion#40  (numerica) · 41 apariciones en 41 escenario(s)
+    ej. licitacion#40
+        base : "38,644,060.4 ‹riores 0.7 268,628.03 IMPORTE DE LA PROPUESTA 38,644,060.4 Tarjetas de ana›"   nuevo: "38,509,343.2 ‹riores 0.7 267,691.56 IMPORTE DE LA PROPUESTA 38,509,343.2 Tarjetas de ana›"
+* [equip/nativo] cotizacion.pct  (numerica) · 40 apariciones en 40 escenario(s)
+    ej. cotizacion.pct
+        base : 0.1369462626904289   nuevo: 0.13742534166823198
+* [elec/nativo] cotizacion.pct  (numerica) · 40 apariciones en 40 escenario(s)
+    ej. cotizacion.pct
+        base : 0.006175494553414932   nuevo: 0.006197098280015099
+* [hidro/nativo] cotizacion.partidas[*].qty  (numerica) · 40 apariciones en 40 escenario(s)
+    ej. cotizacion.partidas[0].qty
+        base : 115   nuevo: 1
+* [hidro/nativo] cotizacion.partidas[*].total  (numerica) · 40 apariciones en 40 escenario(s)
+    ej. cotizacion.partidas[0].total
+        base : 89700   nuevo: 198950
+* [hidro/nativo] cotizacion.partidas[*].unit  (numerica) · 40 apariciones en 40 escenario(s)
+    ej. cotizacion.partidas[0].unit
+        base : 780   nuevo: 198950
+* [hidro/nativo] cotizacion.partidas[*].clave  (solo-base) · 40 apariciones en 40 escenario(s)
+    ej. cotizacion.partidas[1].clave
+        base : "F102"   nuevo: (no existe)
+* [hidro/nativo] cotizacion.partidas[*].desc  (solo-base) · 40 apariciones en 40 escenario(s)
+    ej. cotizacion.partidas[1].desc
+        base : "Cisterna de 15.6 m³ y equipo de bombeo de 3.5 HP"   nuevo: (no existe)
+* [hidro/nativo] cotizacion.partidas[*].descEn  (solo-base) · 40 apariciones en 40 escenario(s)
+    ej. cotizacion.partidas[1].descEn
+        base : "15.6 m³ cistern and 3.5 HP pumping equipment"   nuevo: (no existe)
+* [hidro/nativo] cotizacion.partidas[*].mot  (solo-base) · 40 apariciones en 40 escenario(s)
+    ej. cotizacion.partidas[1].mot
+        base : "hidro"   nuevo: (no existe)
+* [hidro/nativo] cotizacion.partidas[*].qty  (solo-base) · 40 apariciones en 40 escenario(s)
+    ej. cotizacion.partidas[1].qty
+        base : 1   nuevo: (no existe)
+* [hidro/nativo] cotizacion.partidas[*].sec  (solo-base) · 40 apariciones en 40 escenario(s)
+    ej. cotizacion.partidas[1].sec
+        base : "F"   nuevo: (no existe)
+* [hidro/nativo] cotizacion.partidas[*].total  (solo-base) · 40 apariciones en 40 escenario(s)
+    ej. cotizacion.partidas[1].total
+        base : 198950   nuevo: (no existe)
+* [hidro/nativo] cotizacion.partidas[*].un  (solo-base) · 40 apariciones en 40 escenario(s)
+    ej. cotizacion.partidas[1].un
+        base : "LOTE"   nuevo: (no existe)
+* [hidro/nativo] cotizacion.partidas[*].unit  (solo-base) · 40 apariciones en 40 escenario(s)
+    ej. cotizacion.partidas[1].unit
+        base : 198950   nuevo: (no existe)
+* [hidro/nativo] cotizacion.pct  (numerica) · 40 apariciones en 40 escenario(s)
+    ej. cotizacion.pct
+        base : 0.011218102598132286   nuevo: 0.007759047846500968
+* [hidro/nativo] cotizacion.sub  (numerica) · 40 apariciones en 40 escenario(s)
+    ej. cotizacion.sub
+        base : 288650   nuevo: 198950
+* [pdf/nativo] propuesta-en#43  (numerica) · 40 apariciones en 40 escenario(s)
+    ej. propuesta-en#43
+        base : "926.59 ‹US$ 33,776.65 per ton of refrigeration and US$ 926.59 per square metre. Pro›"   nuevo: "894 ‹: US$ 32,588.7 per ton of refrigeration and US$ 894 per square metre. Projec›"
+* [pdf/nativo] cotizacion-hidro#7  (solo-base) · 40 apariciones en 40 escenario(s)
+    ej. cotizacion-hidro#7
+        base : "780 ‹probada (115 m de los tramos calculados) ML 115 780 89,700 F102 Cisterna de›"   nuevo: (no existe)
+* [pdf/nativo] cotizacion-hidro#8  (solo-base) · 40 apariciones en 40 escenario(s)
+    ej. cotizacion-hidro#8
+        base : "89,700 ‹ada (115 m de los tramos calculados) ML 115 780 89,700 F102 Cisterna de 15.6›"   nuevo: (no existe)
+* [pdf/nativo] cotizacion-hidro#9  (solo-base) · 40 apariciones en 40 escenario(s)
+    ej. cotizacion-hidro#9
+        base : "102 ‹m de los tramos calculados) ML 115 780 89,700 F102 Cisterna de 15.6 m³ y eq›"   nuevo: (no existe)
+* [pdf/nativo] cotizacion-hidro#15  (solo-nuevo) · 40 apariciones en 40 escenario(s)
+    ej. cotizacion-hidro#15
+        base : (no existe)   nuevo: "2 ‹; no se supone): Tubería de Cobre tipo L de 2 1/2\" (60 m): pendiente de prec›"
+* [pdf/nativo] cotizacion-hidro#16  (solo-nuevo) · 40 apariciones en 40 escenario(s)
+    ej. cotizacion-hidro#16
+        base : (no existe)   nuevo: "60 ‹se supone): Tubería de Cobre tipo L de 2 1/2\" (60 m): pendiente de precio u›"
+* [pdf/nativo] cotizacion-hidro#17  (solo-nuevo) · 40 apariciones en 40 escenario(s)
+    ej. cotizacion-hidro#17
+        base : (no existe)   nuevo: "2 ‹de precio unitario · Tubería de Cobre tipo L de 2\" (55 m): pendiente de prec›"
+* [pdf/nativo] cotizacion-hidro#18  (solo-nuevo) · 40 apariciones en 40 escenario(s)
+    ej. cotizacion-hidro#18
+        base : (no existe)   nuevo: "55 ‹recio unitario · Tubería de Cobre tipo L de 2\" (55 m): pendiente de precio u›"
+* [pdf/nativo] propuesta-es#38  (numerica) · 40 apariciones en 40 escenario(s)
+    ej. propuesta-es#38
+        base : "3,859,609.91 ‹,471.76 Contingencia sobre costo directo 15 % $ 3,859,609.91 Flete y maniobr›"   nuevo: "3,846,154.91 ‹,770.24 Contingencia sobre costo directo 15 % $ 3,846,154.91 Flete y maniobr›"
+* [pdf/nativo] propuesta-en#39  (numerica) · 40 apariciones en 40 escenario(s)
+    ej. propuesta-en#39
+        base : "208,627.56 ‹196,944.42 Contingency on direct cost 15 % US$ 208,627.56 Freight and handl›"   nuevo: "207,900.27 ‹196,257.85 Contingency on direct cost 15 % US$ 207,900.27 Freight and handl›"
+* [equip/guardado] cotizacion.pct  (numerica) · 40 apariciones en 40 escenario(s)
+    ej. cotizacion.pct
+        base : 0.1369462626904289   nuevo: 0.13742534166823198
+* [elec/guardado] cotizacion.pct  (numerica) · 40 apariciones en 40 escenario(s)
+    ej. cotizacion.pct
+        base : 0.006175494553414932   nuevo: 0.006197098280015099
+* [hidro/guardado] cotizacion.partidas[*].qty  (numerica) · 40 apariciones en 40 escenario(s)
+    ej. cotizacion.partidas[0].qty
+        base : 115   nuevo: 1
+* [hidro/guardado] cotizacion.partidas[*].total  (numerica) · 40 apariciones en 40 escenario(s)
+    ej. cotizacion.partidas[0].total
+        base : 89700   nuevo: 198950
+* [hidro/guardado] cotizacion.partidas[*].unit  (numerica) · 40 apariciones en 40 escenario(s)
+    ej. cotizacion.partidas[0].unit
+        base : 780   nuevo: 198950
+* [hidro/guardado] cotizacion.partidas[*].clave  (solo-base) · 40 apariciones en 40 escenario(s)
+    ej. cotizacion.partidas[1].clave
+        base : "F102"   nuevo: (no existe)
+* [hidro/guardado] cotizacion.partidas[*].desc  (solo-base) · 40 apariciones en 40 escenario(s)
+    ej. cotizacion.partidas[1].desc
+        base : "Cisterna de 15.6 m³ y equipo de bombeo de 3.5 HP"   nuevo: (no existe)
+* [hidro/guardado] cotizacion.partidas[*].descEn  (solo-base) · 40 apariciones en 40 escenario(s)
+    ej. cotizacion.partidas[1].descEn
+        base : "15.6 m³ cistern and 3.5 HP pumping equipment"   nuevo: (no existe)
+* [hidro/guardado] cotizacion.partidas[*].mot  (solo-base) · 40 apariciones en 40 escenario(s)
+    ej. cotizacion.partidas[1].mot
+        base : "hidro"   nuevo: (no existe)
+* [hidro/guardado] cotizacion.partidas[*].qty  (solo-base) · 40 apariciones en 40 escenario(s)
+    ej. cotizacion.partidas[1].qty
+        base : 1   nuevo: (no existe)
+* [hidro/guardado] cotizacion.partidas[*].sec  (solo-base) · 40 apariciones en 40 escenario(s)
+    ej. cotizacion.partidas[1].sec
+        base : "F"   nuevo: (no existe)
+* [hidro/guardado] cotizacion.partidas[*].total  (solo-base) · 40 apariciones en 40 escenario(s)
+    ej. cotizacion.partidas[1].total
+        base : 198950   nuevo: (no existe)
+* [hidro/guardado] cotizacion.partidas[*].un  (solo-base) · 40 apariciones en 40 escenario(s)
+    ej. cotizacion.partidas[1].un
+        base : "LOTE"   nuevo: (no existe)
+* [hidro/guardado] cotizacion.partidas[*].unit  (solo-base) · 40 apariciones en 40 escenario(s)
+    ej. cotizacion.partidas[1].unit
+        base : 198950   nuevo: (no existe)
+* [hidro/guardado] cotizacion.pct  (numerica) · 40 apariciones en 40 escenario(s)
+    ej. cotizacion.pct
+        base : 0.011218102598132286   nuevo: 0.007759047846500968
+* [hidro/guardado] cotizacion.sub  (numerica) · 40 apariciones en 40 escenario(s)
+    ej. cotizacion.sub
+        base : 288650   nuevo: 198950
+* [pdf/guardado] propuesta-en#43  (numerica) · 40 apariciones en 40 escenario(s)
+    ej. propuesta-en#43
+        base : "926.59 ‹US$ 33,776.65 per ton of refrigeration and US$ 926.59 per square metre. Pro›"   nuevo: "894 ‹: US$ 32,588.7 per ton of refrigeration and US$ 894 per square metre. Projec›"
+* [pdf/guardado] cotizacion-hidro#7  (solo-base) · 40 apariciones en 40 escenario(s)
+    ej. cotizacion-hidro#7
+        base : "780 ‹probada (115 m de los tramos calculados) ML 115 780 89,700 F102 Cisterna de›"   nuevo: (no existe)
+* [pdf/guardado] cotizacion-hidro#8  (solo-base) · 40 apariciones en 40 escenario(s)
+    ej. cotizacion-hidro#8
+        base : "89,700 ‹ada (115 m de los tramos calculados) ML 115 780 89,700 F102 Cisterna de 15.6›"   nuevo: (no existe)
+* [pdf/guardado] cotizacion-hidro#9  (solo-base) · 40 apariciones en 40 escenario(s)
+    ej. cotizacion-hidro#9
+        base : "102 ‹m de los tramos calculados) ML 115 780 89,700 F102 Cisterna de 15.6 m³ y eq›"   nuevo: (no existe)
+* [pdf/guardado] cotizacion-hidro#15  (solo-nuevo) · 40 apariciones en 40 escenario(s)
+    ej. cotizacion-hidro#15
+        base : (no existe)   nuevo: "2 ‹; no se supone): Tubería de Cobre tipo L de 2 1/2\" (60 m): pendiente de prec›"
+* [pdf/guardado] cotizacion-hidro#16  (solo-nuevo) · 40 apariciones en 40 escenario(s)
+    ej. cotizacion-hidro#16
+        base : (no existe)   nuevo: "60 ‹se supone): Tubería de Cobre tipo L de 2 1/2\" (60 m): pendiente de precio u›"
+* [pdf/guardado] cotizacion-hidro#17  (solo-nuevo) · 40 apariciones en 40 escenario(s)
+    ej. cotizacion-hidro#17
+        base : (no existe)   nuevo: "2 ‹de precio unitario · Tubería de Cobre tipo L de 2\" (55 m): pendiente de prec›"
+* [pdf/guardado] cotizacion-hidro#18  (solo-nuevo) · 40 apariciones en 40 escenario(s)
+    ej. cotizacion-hidro#18
+        base : (no existe)   nuevo: "55 ‹recio unitario · Tubería de Cobre tipo L de 2\" (55 m): pendiente de precio u›"
+* [pdf/guardado] propuesta-es#38  (numerica) · 40 apariciones en 40 escenario(s)
+    ej. propuesta-es#38
+        base : "3,859,609.91 ‹,471.76 Contingencia sobre costo directo 15 % $ 3,859,609.91 Flete y maniobr›"   nuevo: "3,846,154.91 ‹,770.24 Contingencia sobre costo directo 15 % $ 3,846,154.91 Flete y maniobr›"
+* [pdf/guardado] propuesta-en#39  (numerica) · 40 apariciones en 40 escenario(s)
+    ej. propuesta-en#39
+        base : "208,627.56 ‹196,944.42 Contingency on direct cost 15 % US$ 208,627.56 Freight and handl›"   nuevo: "207,900.27 ‹196,257.85 Contingency on direct cost 15 % US$ 207,900.27 Freight and handl›"
+* [aire/nativo] cotizacion.pct  (numerica) · 39 apariciones en 39 escenario(s)
+    ej. cotizacion.pct
+        base : 0.08469677177597669   nuevo: 0.08499306641044496
+  … y 5273 grupos más (usa --max-familias=N o --json)
+
+Detalle por escenario y motor (las primeras diferencias de cada celda):
+  [prueba/nativo] load: 1 numéricas/estructurales, 0 de texto, 950 hojas comparadas
+      cotizacion.directo  (numerica)
+          base : 4888037.480799999
+          nuevo: 4716121.66
+  [lleno/nativo] load: 1 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      cotizacion.directo  (numerica)
+          base : 25730732.75761069
+          nuevo: 25641032.75761069
+  [lleno-cruces-parciales/nativo] load: 1 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      cotizacion.directo  (numerica)
+          base : 5642282.510257706
+          nuevo: 5552582.510257706
+  [zonas-oaFixed-fluorescent/nativo] load: 1 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      cotizacion.directo  (numerica)
+          base : 25737582.75761069
+          nuevo: 25647882.75761069
+  [sys-chiller/nativo] load: 1 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      cotizacion.directo  (numerica)
+          base : 25730732.75761069
+          nuevo: 25641032.75761069
+  [sys-vrf/nativo] load: 1 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      cotizacion.directo  (numerica)
+          base : 25739132.75761069
+          nuevo: 25649432.75761069
+  [sys-rooftop/nativo] load: 1 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      cotizacion.directo  (numerica)
+          base : 25734932.75761069
+          nuevo: 25645232.75761069
+  [sys-split/nativo] load: 1 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      cotizacion.directo  (numerica)
+          base : 25734932.75761069
+          nuevo: 25645232.75761069
+  [tech-VRF/nativo] load: 1 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      cotizacion.directo  (numerica)
+          base : 25730732.75761069
+          nuevo: 25641032.75761069
+  [tech-DX_split/nativo] load: 1 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      cotizacion.directo  (numerica)
+          base : 25730732.75761069
+          nuevo: 25641032.75761069
+  [tech-paquete/nativo] load: 1 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      cotizacion.directo  (numerica)
+          base : 25730732.75761069
+          nuevo: 25641032.75761069
+  [tech-chiller_fancoil/nativo] load: 1 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      cotizacion.directo  (numerica)
+          base : 25730732.75761069
+          nuevo: 25641032.75761069
+  [tech-AHU/nativo] load: 1 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      cotizacion.directo  (numerica)
+          base : 25730732.75761069
+          nuevo: 25641032.75761069
+  [tech-PTAC/nativo] load: 1 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      cotizacion.directo  (numerica)
+          base : 25730732.75761069
+          nuevo: 25641032.75761069
+  [zonas-materiales/nativo] load: 1 numéricas/estructurales, 0 de texto, 1993 hojas comparadas
+      cotizacion.directo  (numerica)
+          base : 25723882.75761069
+          nuevo: 25634182.75761069
+  [barra-calcular-todos/nativo] load: 1 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      cotizacion.directo  (numerica)
+          base : 25730732.75761069
+          nuevo: 25641032.75761069
+  [peakScan-false/nativo] load: 1 numéricas/estructurales, 0 de texto, 1729 hojas comparadas
+      cotizacion.directo  (numerica)
+          base : 25717032.75761069
+          nuevo: 25627332.75761069
+  [bldDiv-08/nativo] load: 1 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      cotizacion.directo  (numerica)
+          base : 25662232.75761069
+          nuevo: 25572532.75761069
+  [cotiz-USD/nativo] load: 1 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      cotizacion.directo  (numerica)
+          base : 25730732.75761069
+          nuevo: 25641032.75761069
+  [cotiz-sin-items/nativo] load: 1 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      cotizacion.directo  (numerica)
+          base : 22022005.070169713
+          nuevo: 21932305.070169713
+  [plaza-mexicali/nativo] load: 1 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      cotizacion.directo  (numerica)
+          base : 27877967.37821954
+          nuevo: 27781091.37821954
+  [plaza-otra-factor/nativo] load: 1 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      cotizacion.directo  (numerica)
+          base : 28046498.70579565
+          nuevo: 27948725.70579565
+  [sitio-custom/nativo] load: 1 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      cotizacion.directo  (numerica)
+          base : 25806082.75761069
+          nuevo: 25716382.75761069
+  [cotiz-licitacion/nativo] load: 1 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      cotizacion.directo  (numerica)
+          base : 25965485.23969798
+          nuevo: 25875785.23969798
+  [ductos-accesorios/nativo] load: 1 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      cotizacion.directo  (numerica)
+          base : 25874356.14252586
+          nuevo: 25784656.14252586
+  [soporte-sismico-viga/nativo] load: 1 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      cotizacion.directo  (numerica)
+          base : 25537920.75761069
+          nuevo: 25448220.75761069
+  [soporte-sin-sismico-manual/nativo] load: 1 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      cotizacion.directo  (numerica)
+          base : 25460762.75761069
+          nuevo: 25371062.75761069
+  [soporte-losa-fc/nativo] load: 1 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      cotizacion.directo  (numerica)
+          base : 25730732.75761069
+          nuevo: 25641032.75761069
+  [civil-demolicion/nativo] load: 1 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      cotizacion.directo  (numerica)
+          base : 30180497.32586968
+          nuevo: 30090797.32586968
+  [civil-manual/nativo] load: 1 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      cotizacion.directo  (numerica)
+          base : 23854298.047971994
+          nuevo: 23764598.047971994
+  [vent-kitchen/nativo] load: 1 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      cotizacion.directo  (numerica)
+          base : 23716247.75761069
+          nuevo: 23626547.75761069
+  [vent-industrial/nativo] load: 1 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      cotizacion.directo  (numerica)
+          base : 26524897.75761069
+          nuevo: 26435197.75761069
+  [vent-louver/nativo] load: 1 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      cotizacion.directo  (numerica)
+          base : 22326567.75761069
+          nuevo: 22236867.75761069
+  [vent-mua/nativo] load: 1 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      cotizacion.directo  (numerica)
+          base : 36397947.75761069
+          nuevo: 36308247.75761069
+  [cuartos-limpios/nativo] load: 1 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      cotizacion.directo  (numerica)
+          base : 32863549.286193654
+          nuevo: 32773849.286193654
+  [instalaciones-variantes/nativo] load: 1 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      cotizacion.directo  (numerica)
+          base : 33715892.949667625
+          nuevo: 33626192.949667625
+  [herencia-propio/nativo] load: 1 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      cotizacion.directo  (numerica)
+          base : 22458372.75761069
+          nuevo: 22368672.75761069
+  [valor-decisiones/nativo] load: 1 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      cotizacion.directo  (numerica)
+          base : 25730732.75761069
+          nuevo: 25641032.75761069
+  [kaizen-items/nativo] load: 1 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      cotizacion.directo  (numerica)
+          base : 25730732.75761069
+          nuevo: 25641032.75761069
+  [unidades-IP/nativo] load: 1 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      cotizacion.directo  (numerica)
+          base : 25730732.75761069
+          nuevo: 25641032.75761069
+
+====================================================================================================
+TOTALES POR FILA (todos los escenarios y modos)
+fila                   num/estruct     texto    hojas comparadas
+load                           102         0             177,215
+clean                         2566        48              19,098
+equip                          182         0             133,331
+duct                           186         0             181,612
+vent                           188         0              31,038
+quote                        16064      8498              95,780
+valor                          102         0              67,396
+kaizen                         102         0              21,964
+elec                          4748       808              67,286
+hidro                         1738       240              22,494
+fuego                          812       282              10,362
+aire                           232         0              22,508
+civil                         1330       136              32,817
+soporte                        970        20             112,936
+estr (externo)                   0         0                 224
+valid (cruzada)                118        50               3,916
+xlsx propuesta es             5826         0              39,024
+xlsx propuesta en             5826         0              39,024
+pdf (números)                23050      1200             578,703
+semáforo (info)                  0       326               5,466
+
+hojas numéricas/textuales comparadas: 1,656,728
+estr (StructCalc, archivo aparte): grupo declarado «externo» en la base y «externo» en la nueva -> no aplica
+DIFERENCIAS NUMÉRICAS O ESTRUCTURALES (base contra nuevo): 64142
+diferencias de ida y vuelta (guardar/abrir) que sólo aparecen en la nueva: 0
+diferencias sólo de texto           : 11282
+celdas de Excel reubicadas (maquetación, no numéricas): 160
+diferencias INFORMATIVAS del semáforo de completitud (texto de estado, no numéricas, no cuentan): 326  <- ver el renglón «semáforo (info)» de las tablas: cambió qué disciplinas dicen «Con datos» / «Sin datos»
+marcas de revisión normalizadas dentro de textos («2.9.15» y «2.9.16» -> «<REV>»): base 7, nuevo 41 (sólo modo nativo; no son diferencias)
+
+ESCENARIOS QUE SÓLO EXISTEN EN LA VERSIÓN NUEVA (usan una función que la base no tiene; la base corre la variante sin ella)
+  barra-calcular-todos       la función existe en las dos · numéricas/estructurales nativo 497 guardado 496 · texto 252
+  barra-calcular-vacio       la función existe en las dos · numéricas/estructurales nativo 245 guardado 244 · texto 66
+  diferencias numéricas/estructurales en estos escenarios: 1482 (ya incluidas en el total de arriba) · de texto: 318
+RESULTADO: HAY DIFERENCIAS NUMÉRICAS O ESTRUCTURALES.

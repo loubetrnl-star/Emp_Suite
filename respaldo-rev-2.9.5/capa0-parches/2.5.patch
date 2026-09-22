@@ -1,0 +1,96 @@
+--- pasos/2.5-antes.html	2026-09-14 11:59:46.279836800 -0700
++++ index.html	2026-09-14 12:00:04.798279400 -0700
+@@ -6054,6 +6054,7 @@
+   const t = fam === "cobre" ? SOP_COBRE : fam === "plastico" ? SOP_PLASTICO : SOP_ACERO;
+   return (t.find(([d]) => dmm <= d) || t[t.length - 1])[1];
+ };
++const famSoporteAgua = (m) => m === "acero" ? "acero" : (m === "cpvc" || m === "pead" || m === "plastico") ? "plastico" : "cobre";
+ 
+ /* -------------------------------------------------------------------------
+    DIMENSIONAMIENTO DE LA VARILLA POR CARGA — MSS SP-58 tabla 4
+@@ -6178,7 +6179,7 @@
+   };
+   if (usa) {
+     if (typeof HIDRO !== "undefined" && HIDRO && HIDRO.tramos)
+-      contarTub(HIDRO.tramos, (S.hidro && S.hidro.mat === "cobre") ? "cobre" : "acero", "Hidráulica y sanitario");
++      contarTub(HIDRO.tramos, famSoporteAgua(S.hidro && S.hidro.material), "Hidráulica y sanitario");
+     if (typeof FUEGO !== "undefined" && FUEGO && FUEGO.nTotal > 0) {
+       const Lf = Math.max(0, num(S.fuego && S.fuego.Lramal, 30)) + Math.max(0, num(S.fuego && S.fuego.Lmontante, 12));
+       contarTub([{ tag: "Red contra incendio", L: Lf, d: FUEGO.mon ? FUEGO.mon.d : 100 }], "acero", "Contra incendio");
+@@ -14313,7 +14314,7 @@
+   return {
+     duct: segs.map((s) => ({ L: num(s.L), shape: s.shape })),
+     hidro: ht.map((t) => ({ tag: t.tag || t.etiqueta || "", L: num(t.L), d: num(t.d) })),
+-    hidroMat: (S.hidro && S.hidro.mat === "cobre") ? "cobre" : "acero",
++    hidroMat: famSoporteAgua(S.hidro && S.hidro.material),
+     fuego: (typeof FUEGO !== "undefined" && FUEGO) ? { nTotal: num(FUEGO.nTotal), monD: FUEGO.mon ? num(FUEGO.mon.d, 100) : 100 } : { nTotal: 0, monD: 100 },
+     aire: at.map((t) => ({ etiqueta: t.etiqueta || "", L: num(t.L), d: num(t.d) })),
+     aireMat: (S.aire && S.aire.material === "cobre") ? "cobre" : "acero",
+@@ -14337,7 +14338,7 @@
+   FUEGO = { nTotal: num(snap.fuego && snap.fuego.nTotal), mon: { d: num(snap.fuego && snap.fuego.monD, 100) } };
+   AIRE = { tramos: (snap.aire || []).map((t) => ({ etiqueta: t.etiqueta, L: num(t.L), d: num(t.d) })), totalUnidades: 0 };
+   QUOTE = { nEquip: num(snap.nEquip) };
+-  S.hidro = { ...(S.hidro || {}), mat: snap.hidroMat };
++  S.hidro = { ...(S.hidro || {}), material: snap.hidroMat };
+   S.aire = { ...(S.aire || {}), material: snap.aireMat };
+   try { return computeSoporte(G); }
+   finally { [DUCT, HIDRO, FUEGO, AIRE, QUOTE, S.hidro, S.aire] = prev; }
+--- pasos/2.5-antes-pruebas.mjs	2026-09-14 11:59:46.312457400 -0700
++++ pruebas.mjs	2026-09-14 12:01:05.497600500 -0700
+@@ -2995,6 +2995,56 @@
+   }
+ });
+ 
++t("22.8 2.5 la soportería hidráulica lee hidro.material: cobre y termoplásticos no se espacian como acero", () => {
++  const hidro0 = JSON.parse(JSON.stringify(S.hidro)), sop0 = JSON.parse(JSON.stringify(S.soporte));
++  const vinc0 = JSON.parse(JSON.stringify(S.vinculos || {}));
++  const hidroDe = () => (G("SOPORTE").porTuberia || []).find((x) => x.etiqueta === "Hidráulica y sanitario");
++  const filasPdf = () => {
++    const toks = [...Buffer.from(G("buildSoportePdf")()).toString("latin1").matchAll(/\(((?:[^()\\]|\\.)*)\) Tj/g)].map((m) => m[1]);
++    return toks.flatMap((x, i) => x === "Hidráulica y sanitario" ? [[toks[i + 3], toks[i + 5]]] : []);
++  };
++  const preparar = (material) => {
++    S.hidro = { ...G("defaultHidro")(), material };
++    S.soporte = G("defaultSoporte")();
++    G("recompute")();
++  };
++  try {
++    const esperado = {
++      cobre: { fam: "cobre", e: [2.4, 2.4], n: [12, 9] },
++      cpvc: { fam: "plastico", e: [1.2, 1.2], n: [22, 16] },
++      pead: { fam: "plastico", e: [1.2, 1.2], n: [22, 16] },
++      acero: { fam: "acero", e: [3, 2.7], n: [10, 8] },
++    };
++    Object.entries(esperado).forEach(([material, x]) => {
++      preparar(material);
++      eq(hidroDe().fam, x.fam, `${material} familia en vivo:`);
++      G("propAceptar")("motores>soporte");
++      G("recompute")();
++      eq(S.soporte.snap.hidroMat, x.fam, `${material} instantánea hidroMat:`);
++      const h = hidroDe();
++      eq(h.fam, x.fam, `${material} familia gobernada:`);
++      eq(JSON.stringify(h.det.map((d) => d.d)), "[50,38]", `${material} diámetros del caso:`);
++      eq(JSON.stringify(h.det.map((d) => d.e)), JSON.stringify(x.e), `${material} espaciamientos:`);
++      eq(JSON.stringify(h.det.map((d) => d.n)), JSON.stringify(x.n), `${material} soportes por tramo:`);
++      eq(JSON.stringify(filasPdf()), JSON.stringify(x.e.map((e, i) => [String(e), String(x.n[i])])), `${material} PDF conteo por tramo:`);
++    });
++    /* El gobernador congela el material aceptado y avisa si cambia. */
++    preparar("cobre");
++    G("propAceptar")("motores>soporte");
++    S.hidro.material = "cpvc";
++    G("recompute")();
++    eq(hidroDe().fam, "cobre", "tras cambiar a cpvc sin actualizar sigue lo aceptado:");
++    eq(G("estadoPropuesta")("motores>soporte").nivel, "desactualizado", "cambio de material marca la propuesta:");
++    G("propAceptar")("motores>soporte");
++    G("recompute")();
++    eq(hidroDe().fam, "plastico", "al actualizar toma el termoplástico:");
++  } finally {
++    S.hidro = hidro0; S.soporte = sop0;
++    S.vinculos = vinc0;
++    G("recompute")();
++  }
++});
++
+ /* ============================== resultado =============================== */
+ const total = ok + fail;
+ console.log(`\nSuiteEmp rev ${G("REV")} · banco de comprobaciones de la rev 2.9.3`);

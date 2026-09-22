@@ -1,0 +1,23 @@
+{
+ "generadoCon": "2.9.13",
+ "resumen": {
+  "tons": 18.584787,
+  "cfm": 5114.572875,
+  "area": 500,
+  "sysTarget": 20.443265161623447,
+  "sysChosen": "vrf",
+  "quoteTot": 11755194.88283405,
+  "quoteSub": 10133788.69209832,
+  "quoteDirect": 6704014.747352686,
+  "ventM3h": 16199.912331000001,
+  "ductKg": 390.17911296000005,
+  "cleanSupply": 8100,
+  "elecKVA": 8.823529411764707,
+  "hidroQ": 3.924,
+  "fuegoQ": 2302.5379999999996,
+  "aireFAD": 897.6,
+  "civilTotal": 1572299.248,
+  "soporteN": 10,
+  "partidas": 6704014.747352686
+ }
+}

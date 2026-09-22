@@ -1,0 +1,52 @@
+--- pasos/2.2-antes.html	2026-09-14 11:50:19.241776600 -0700
++++ index.html	2026-09-14 11:50:32.306241300 -0700
+@@ -7700,9 +7700,10 @@
+   const cisterna = consumoDia * Math.max(.5, num(H.diasReserva, 1));
+   /* La bomba se dimensiona con el gasto probable, no con el consumo diario:
+      tiene que poder con el minuto de mayor demanda. La carga dinámica total es
+-     la altura del edificio más las pérdidas más la presión residual que hay
+-     que dejar en el mueble más alto. */
+-  const cdt = num(H.alturaEdificio, 6) + hfTotal + num(H.presResidual, 15);
++     la altura del edificio más las pérdidas por fricción de los tramos (su
++     altura estática ya la cubre la altura del edificio) más la presión residual
++     que hay que dejar en el mueble más alto. */
++  const cdt = num(H.alturaEdificio, 6) + tramos.reduce((a, t) => a + t.hf, 0) + num(H.presResidual, 15);
+   /* Potencia hidráulica / eficiencia del conjunto bomba-motor (0.6 típico en
+      equipo de edificio pequeño). P(kW) = ρ·g·Q·H / η = 9.81·Q(L/s)·H(m)/1000/η */
+   const kWbomba = 9.81 * Qtotal * cdt / 1000 / .6;
+--- pasos/2.2-antes-pruebas.mjs	2026-09-14 11:50:19.274977100 -0700
++++ pruebas.mjs	2026-09-14 11:50:40.566282200 -0700
+@@ -2883,6 +2883,33 @@
+   }
+ });
+ 
++t("22.5 2.2 la carga dinámica hidráulica no cuenta dos veces la altura (edificio + fricción + residual)", () => {
++  const guardado = JSON.parse(JSON.stringify(S.hidro));
++  try {
++    S.hidro = { uso: "publico", material: "cobre",
++      muebles: [{ id: "wc_flux", cant: 4 }, { id: "ming_flux", cant: 2 }, { id: "lavabo", cant: 4 }, { id: "fregadero", cant: 1 }, { id: "manguera", cant: 2 }],
++      presRed: 25,
++      tramos: [
++        { id: "r22a", tag: "AF-GENERAL", servicio: "fria", um: 72, L: 25, alt: 3, tipoUM: "auto" },
++        { id: "r22b", tag: "AF-RAMAL", servicio: "fria", um: 20, L: 18, alt: 3, tipoUM: "auto" },
++      ],
++      pendiente: 2, calentador: "paso", tempEntrada: 18, tempSalida: 45,
++      dot: "industria", habitantes: 60, diasReserva: 1, alturaEdificio: 6, presResidual: 15 };
++    G("recompute")();
++    const H = G("HIDRO");
++    const friccion = H.tramos.reduce((a, x) => a + x.hf, 0);
++    cerca(friccion, 5.1443, 0.001, "fricción de los tramos:");
++    cerca(H.cdt, 6 + friccion + 15, 1e-9, "cdt = altura del edificio + fricción + residual:");
++    cerca(H.cdt, 26.1443, 0.001, "cdt con los valores por omisión:");
++    cerca(H.presDisp, 25 - friccion - 6, 1e-9, "presión disponible sigue descontando la altura de los tramos:");
++    cerca(H.kWbomba, 9.81 * H.Qtotal * H.cdt / 1000 / .6, 1e-9, "kW al eje con la cdt corregida:");
++    eq(H.hpBomba, 2.5, "HP nominales con la cdt corregida:");
++  } finally {
++    S.hidro = guardado;
++    G("recompute")();
++  }
++});
++
+ /* ============================== resultado =============================== */
+ const total = ok + fail;
+ console.log(`\nSuiteEmp rev ${G("REV")} · banco de comprobaciones de la rev 2.9.3`);

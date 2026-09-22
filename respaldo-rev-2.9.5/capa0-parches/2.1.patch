@@ -1,0 +1,78 @@
+--- pasos/2.1-antes.html	2026-09-14 11:46:47.920918000 -0700
++++ index.html	2026-09-14 11:47:37.533503100 -0700
+@@ -7133,8 +7133,10 @@
+   const ft = fTemp(o.tempAmb), fg = fGrupo(o.nCond);
+   const dvMax = Math.max(.5, num(o.dvMax, 3));
+   /* Carga continua —la que opera tres horas o más sin interrupción, que en
+-     climas y proceso es casi toda— se dimensiona al 125 %. Art. 210-19(a). */
+-  const Idis = I * (o.continua === false ? 1 : 1.25);
++     climas y proceso es casi toda— se dimensiona al 125 %. Art. 210-19(a).
++     Quien ya trae la corriente de diseño armada (alimentador, 430-24 y
++     215-2(a)(1)) la pasa en o.Idis; la caída de tensión sigue con I. */
++  const Idis = num(o.Idis, 0) > 0 ? num(o.Idis) : I * (o.continua === false ? 1 : 1.25);
+   const senPhi = Math.sqrt(Math.max(0, 1 - fp * fp));
+   const dvDe = (awg) => {
+     const R = R_KM[mat][awg];
+@@ -7408,6 +7410,10 @@
+ 
+   /* Alimentador general del tablero: la corriente de demanda del sistema. */
+   const Itab = sis.ph === 3 ? kVAdemanda * 1000 / (Math.sqrt(3) * sis.V) : kVAdemanda * 1000 / sis.V;
++  /* 430-24 y 215-2(a)(1): el 25 % del motor mayor ya está en kVAdemanda; solo las cargas continuas que no son motor suben al 125 %.
++     Pendiente de decisión del criterio del interruptor principal: IdisAlim queda calculada pero aún no alimenta a alim ni a principal. */
++  const kVAcontNoMotor = demTipo.filter((d) => d.tipo !== "motor" && TIPO_CARGA[d.tipo].continua).reduce((a, d) => a + d.dem, 0);
++  const IdisAlim = kVAdemanda > 0 ? Itab * (kVAdemanda + 0.25 * kVAcontNoMotor) / kVAdemanda : 0;
+   const alim = selConductor({ I: Itab, V: sis.V, ph: sis.ph, L: num(E.Ltablero, 30), fp: num(E.fpObjetivo, .95),
+     material: mat, tempAmb: E.tempAmb, nCond: E.nCond, dvMax: Math.max(1, num(E.dvTotal, 5) - num(E.dvRamal, 3)), continua: true });
+   const principal = ocpdArriba(Itab * 1.25);
+@@ -7444,7 +7450,7 @@
+   memo.push("Criterio de caída de tensión: 3 % en circuito derivado y 5 % acumulados. No es requisito obligatorio de la NOM-001-SEDE sino recomendación de las notas de los artículos 210-19 y 215-2; se aplica como criterio duro de la casa.");
+ 
+   return { calc, demTipo, fases, desbalance, kVAconectada, kVAdemanda, fdem, extraMotor,
+-    Itab, alim, principal, IccTrafo, kAIC, sis, mat, memo, avisos, verHVAC, verVent,
++    Itab, IdisAlim, alim, principal, IccTrafo, kAIC, sis, mat, memo, avisos, verHVAC, verVent,
+     kWtot: calc.reduce((a, c) => a + c.kWtot, 0) };
+ }
+ 
+--- pasos/2.1-antes-pruebas.mjs	2026-09-14 11:46:47.951205000 -0700
++++ pruebas.mjs	2026-09-14 11:48:27.872258300 -0700
+@@ -2849,6 +2849,40 @@
+   }
+ });
+ 
++t("22.4 2.1 la corriente de diseño del alimentador no repite el 125 % (430-24 / 215-2(a)(1)) y selConductor la acepta en Idis", () => {
++  /* Parcial: IdisAlim queda calculada y selConductor acepta Idis explícita; la
++     conexión al alimentador y al interruptor principal espera la decisión del criterio. */
++  const guardado = JSON.parse(JSON.stringify(S.elec));
++  try {
++    S.elec = { ...G("defaultElec")(), sistema: "3F4H-220", material: "cobre", tempAmb: 30, nCond: 3,
++      dvRamal: 3, dvTotal: 5, trafoKVA: 150, trafoZ: 4, Ltablero: 5, fpObjetivo: .95, tomarHVAC: false,
++      cargas: [
++        { id: "r21m1", nombre: "Motor 15 kW", tipo: "motor", kW: 15, V: 220, ph: 3, cant: 1, L: 20, fp: .85, fija: false },
++        { id: "r21m2", nombre: "Motores 7.5 kW", tipo: "motor", kW: 7.5, V: 220, ph: 3, cant: 2, L: 20, fp: .85, fija: false },
++        { id: "r21a1", nombre: "Alumbrado", tipo: "alumbrado", kW: 9.5, V: 220, ph: 3, cant: 1, L: 20, fp: .95, fija: false },
++        { id: "r21c1", nombre: "Contactos", tipo: "contactos", kW: 9, V: 220, ph: 3, cant: 1, L: 20, fp: .90, fija: false },
++      ] };
++    G("recompute")();
++    const E = G("ELEC");
++    /* Motores 35.29 + 25 % del mayor 4.41 + alumbrado 10 × 1.25 + contactos 10 = 62.21 kVA → 163.25 A. */
++    const Iref = (15 / .85 + 2 * 7.5 / .85 + .25 * 15 / .85 + 1.25 * 9.5 / .95 + 9 / .90) * 1000 / (Math.sqrt(3) * 220);
++    cerca(E.kVAdemanda, 59.71, 0.01, "kVAdemanda (ya trae el 25 % del motor mayor):");
++    cerca(E.IdisAlim, Iref, 0.01, "corriente de diseño del alimentador:");
++    cerca(E.IdisAlim / E.Itab, 62.206 / 59.706, 0.001, "factor sobre Itab (no 1.25):");
++    const o = { I: E.Itab, V: 220, ph: 3, L: 5, fp: .95, material: "cobre", tempAmb: 30, nCond: 3, dvMax: 2 };
++    const c = G("selConductor")({ ...o, Idis: E.IdisAlim });
++    cerca(c.Idis, E.IdisAlim, 1e-9, "selConductor respeta Idis explícita:");
++    eq(c.awg, "2/0", "calibre con la corriente de diseño corregida:");
++    eq(c.ocpd, 175, "protección del conductor con la corriente de diseño corregida:");
++    const d = G("selConductor")({ ...o, continua: true });
++    cerca(d.Idis, E.Itab * 1.25, 1e-9, "sin Idis explícita sigue el 125 % de carga continua:");
++    if (!(c.I === d.I)) throw new Error("la caída de tensión debe seguir calculándose con la corriente real I");
++  } finally {
++    S.elec = guardado;
++    G("recompute")();
++  }
++});
++
+ /* ============================== resultado =============================== */
+ const total = ok + fail;
+ console.log(`\nSuiteEmp rev ${G("REV")} · banco de comprobaciones de la rev 2.9.3`);

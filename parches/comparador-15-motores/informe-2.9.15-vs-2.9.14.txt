@@ -1,0 +1,496 @@
+  1/56 vacio                           2/56 prueba                          3/56 lleno-sin-cruces                4/56 lleno                           5/56 lleno-cruces-parciales          6/56 zonas-oaFixed-fluorescent       7/56 sys-chiller                     8/56 sys-vrf                         9/56 sys-rooftop                     10/56 sys-split                       11/56 tech-VRF                        12/56 tech-DX_split                   13/56 tech-paquete                    14/56 tech-chiller_fancoil            15/56 tech-AHU                        16/56 tech-PTAC                       17/56 zonas-materiales                18/56 barra-calcular-vacio            19/56 peakScan-false                  20/56 barra-calcular-todos            21/56 bldDiv-08                       22/56 cotiz-USD                       23/56 cotiz-sin-items                 24/56 plaza-mexicali                  25/56 plaza-otra-factor               26/56 sitio-custom                    27/56 cotiz-licitacion                28/56 ductos-accesorios               29/56 soporte-sismico-viga            30/56 soporte-sin-sismico-manual      31/56 soporte-losa-fc                 32/56 civil-demolicion                33/56 civil-manual                    34/56 vent-kitchen                    35/56 vent-industrial                 36/56 vent-louver                     37/56 vent-mua                        38/56 cuartos-limpios                 39/56 instalaciones-variantes         40/56 propuestas-aceptadas            41/56 propuestas-propio               42/56 herencia-propio                 43/56 valor-decisiones                44/56 kaizen-items                    45/56 unidades-IP                     46/56 sin-zonas-con-datos             47/56 parcial-fuego                   48/56 parcial-civil-directas          49/56 parcial-soporte-riel            50/56 parcial-vent-cocina-sin-medidas  51/56 parcial-vent-cocina             52/56 parcial-ductos-sin-caudal       53/56 parcial-ductos-con-caudal       54/56 parcial-limpio                  55/56 parcial-equipo-manual           56/56 parcial-zona-sola             
+====================================================================================================
+COMPARADOR DE ESTADOS DE LOS 15 MOTORES · 56 escenarios · modos: nativo + guardado · 79.7 s
+  base : respaldo-rev-2.9.8/index-2.9.15-inicio-20260921-073627.html
+  nuevo: index.html
+  igualdad exacta (Object.is en números), cero tolerancia
+====================================================================================================
+
+--- Resumen «motor x escenario» · modo nativo ---   (= iguales   X difieren   t sólo texto   - no aplica   r reubicado   i informativo   ? no comparable   E error)
+                      1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56   iguales/difieren
+load                  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+clean                 =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+equip                 =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+duct                  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+vent                  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+quote                 =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+valor                 =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+kaizen                =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+elec                  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t    0/56
+hidro                 t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t    0/56
+fuego                 =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+aire                  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+civil                 =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+soporte               =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+estr (externo)        -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -   56/0
+valid (cruzada)       =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+xlsx propuesta es     =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+xlsx propuesta en     =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+pdf (números)         X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X    0/56
+semáforo (info)       =  i  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  i  i  i  i  i  i  i  i  i  i   45/0
+
+--- Resumen «motor x escenario» · modo guardado ---   (= iguales   X difieren   t sólo texto   - no aplica   r reubicado   i informativo   ? no comparable   E error)
+                      1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56   iguales/difieren
+load                  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+clean                 =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+equip                 =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+duct                  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+vent                  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+quote                 =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+valor                 =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+kaizen                =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+elec                  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t    0/56
+hidro                 t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t  t    0/56
+fuego                 =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+aire                  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+civil                 =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+soporte               =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+estr (externo)        -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -   56/0
+valid (cruzada)       =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+xlsx propuesta es     =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+xlsx propuesta en     =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+pdf (números)         X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X    0/56
+semáforo (info)       i  i  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  i  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  i  i  i  i  i  i  i  i  i  i   43/0
+
+Escenarios (número de columna):
+   1  vacio                        Proyecto vacío recién abierto
+   2  prueba                       Proyecto de prueba del arnés (2 zonas, todos los cruces autorizados)
+   3  lleno                        Proyecto lleno: 4 zonas, cargas, muebles, aire, ductos, cuartos limpios, partidas
+   4  lleno-sin-cruces             Proyecto lleno con TODOS los cruces sin autorizar
+   5  lleno-cruces-parciales       Proyecto lleno con sólo algunos cruces autorizados
+   6  zonas-oaFixed-fluorescent    Zonas con oaFixed y lightType fluorescent (y una LED sin oaFixed)
+   7  sys-chiller                  Arquitectura forzada (sysForce) = chiller
+   8  sys-vrf                      Arquitectura forzada (sysForce) = vrf
+   9  sys-rooftop                  Arquitectura forzada (sysForce) = rooftop
+  10  sys-split                    Arquitectura forzada (sysForce) = split
+  11  tech-VRF                     Tecnología forzada (forceTech) = VRF
+  12  tech-DX_split                Tecnología forzada (forceTech) = DX_split
+  13  tech-paquete                 Tecnología forzada (forceTech) = paquete
+  14  tech-chiller_fancoil         Tecnología forzada (forceTech) = chiller_fancoil
+  15  tech-AHU                     Tecnología forzada (forceTech) = AHU
+  16  tech-PTAC                    Tecnología forzada (forceTech) = PTAC
+  17  zonas-materiales             Envolvente: otros muros, techos y vidrios en cada zona (paneles, tilt-up, lámina, low-e, policarbonato)
+  18  barra-calcular-todos         SÓLO NUEVA · botón Calcular de la barra pulsado en cada motor (la base corre lo mismo sin el botón)  [SOLO EN LA NUEVA]
+  19  barra-calcular-vacio         SÓLO NUEVA · botón Calcular pulsado en un proyecto vacío (debe avisar y no mover nada)  [SOLO EN LA NUEVA]
+  20  peakScan-false               peakScan = false (carga a la hora de diseño, sin barrido)
+  21  bldDiv-08                    Diversidad de edificio 0.8
+  22  cotiz-USD                    Cotización en USD (tipo de cambio 17.9)
+  23  cotiz-sin-items              Cotización sin partidas de equipo agregadas
+  24  plaza-mexicali               Plaza y sitio Mexicali
+  25  plaza-otra-factor            Plaza «otra» con factor manual 1.09
+  26  sitio-custom                 Sitio personalizado (db 41, wb 22, 300 m)
+  27  cotiz-licitacion             Cotización en modo licitación, base CMIC, IVA 8 %
+  28  ductos-accesorios            Ductos con todos los accesorios, redondo/rectangular, métodos y candados
+  29  soporte-sismico-viga         Soportería con sísmico, SDS 1.5, estructura de viga de acero
+  30  soporte-sin-sismico-manual   Soportería sin sísmico y con metros capturados (sin usar motores)
+  31  soporte-losa-fc              Soportería sísmica sobre losa f'c 300
+  32  civil-demolicion             Obra civil con demolición y acabados por m²
+  33  civil-manual                 Obra civil con geometría capturada (sin usar zonas)
+  34  vent-kitchen                 Ventilación: campana de cocina
+  35  vent-industrial              Ventilación: extracción industrial de proceso (rige el caudal de proceso)
+  36  vent-louver                  Ventilación: persiana
+  37  vent-mua                     Ventilación: aire de reposición
+  38  cuartos-limpios              Cuartos limpios ISO 5 a 8, niveles bajo/medio/alto y achSet manual
+  39  instalaciones-variantes      Eléctrico 440 V aluminio, hidráulico privado, fuego extra 1 con red, aire ISO 1.2.1 inox N+1
+  40  propuestas-aceptadas         Todas las propuestas entre disciplinas aceptadas (propAceptar)
+  41  propuestas-propio            Todas las propuestas marcadas «capturo lo mío» (propPropio)
+  42  herencia-propio              Campos heredables capturados a mano (regla 1 rota a propósito)
+  43  valor-decisiones             Ingeniería de valor: primera medida aceptada, segunda descartada
+  44  kaizen-items                 Kaizen con mejoras capturadas en distintas etapas del ciclo PDCA
+  45  unidades-IP                  Unidades imperiales (S.units = IP): los motores no deben notarlo
+  46  sin-zonas-con-datos          Sin zonas pero con datos capturados en las demás disciplinas
+  47  parcial-fuego                Captura parcial · sólo contra incendio (300 m²)
+  48  parcial-civil-directas       Captura parcial · sólo cantidades directas de obra civil (firme y puertas, sin área)
+  49  parcial-soporte-riel         Captura parcial · sólo riel de soportería (60 m)
+  50  parcial-vent-cocina-sin-medidas Captura parcial · ventilación en modo cocina sin medidas de campana
+  51  parcial-vent-cocina          Captura parcial · ventilación en modo cocina con campana de 2.5 × 1.1 m
+  52  parcial-ductos-sin-caudal    Captura parcial · un tramo de ducto capturado sin caudal
+  53  parcial-ductos-con-caudal    Captura parcial · un tramo de ducto de 3,400 m³/h
+  54  parcial-limpio               Captura parcial · sólo un cuarto limpio de 60 m² × 3 m
+  55  parcial-equipo-manual        Captura parcial · sólo un equipo elegido a mano en la cotización
+  56  parcial-zona-sola            Captura parcial · una zona de 120 m² × 3 m y nada más
+
+COBERTURA · lo que cada escenario calcula de verdad (valores de la BASE; si fueran todos cero el escenario «empataría» sin probar nada)
+   # escenario                        arq      TR  zon  tram  vent cfm   FFU     kVA    L/s   roc   HP   directo MXN  part      civil   soporte  kz  vz        tecnología por zona
+   1 vacio                            vrf       0    1     0         0     1       0      0     1   10             0     0      4,100    44,000   0   0                   DX_split
+   2 prueba                           vrf   13.72    2     0     9,535     1       0      0    42   10     4,888,037    18  1,429,766   114,500   2   2                    VRF/VRF
+   3 lleno                        chiller   63.97    4     5    24,523    81   306.9   5.03   103   30    25,730,733    53  6,990,119   905,790   8   9 chiller_fancoil/VRF/VRF/VRF
+   4 lleno-sin-cruces             chiller   63.97    4     5    24,523    81     130   5.03   103   30     5,215,733     9  6,990,119   905,790   1   2 chiller_fancoil/VRF/VRF/VRF
+   5 lleno-cruces-parciales       chiller   63.97    4     5    24,523    81   135.6   5.03   103   30     5,642,283    13  6,990,119   905,790   1   2 chiller_fancoil/VRF/VRF/VRF
+   6 zonas-oaFixed-fluorescent    chiller   70.41    4     5    24,523    81   313.6   5.03   103   30    25,737,583    53  6,990,119   905,790  11  12 chiller_fancoil/VRF/VRF/VRF
+   7 sys-chiller                  chiller   63.97    4     5    24,523    81   306.9   5.03   103   30    25,730,733    53  6,990,119   905,790   8   9 chiller_fancoil/VRF/VRF/VRF
+   8 sys-vrf                          vrf   63.97    4     5    24,523    81   367.1   5.03   103   30    25,739,133    53  6,990,119   905,790   7   7 chiller_fancoil/VRF/VRF/VRF
+   9 sys-rooftop                  rooftop   63.97    4     5    24,523    81   308.9   5.03   103   30    25,734,933    53  6,990,119   905,790   8  10 chiller_fancoil/VRF/VRF/VRF
+  10 sys-split                      split   63.97    4     5    24,523    81   316.6   5.03   103   30    25,734,933    53  6,990,119   905,790   8  11 chiller_fancoil/VRF/VRF/VRF
+  11 tech-VRF                     chiller   63.97    4     5    24,523    81   306.9   5.03   103   30    25,730,733    53  6,990,119   905,790   8   9            VRF/VRF/VRF/VRF
+  12 tech-DX_split                chiller   63.97    4     5    24,523    81   306.9   5.03   103   30    25,730,733    53  6,990,119   905,790   8   9 DX_split/DX_split/DX_split/DX_split
+  13 tech-paquete                 chiller   63.97    4     5    24,523    81   306.9   5.03   103   30    25,730,733    53  6,990,119   905,790   8   9 paquete/paquete/paquete/paquete
+  14 tech-chiller_fancoil         chiller   63.97    4     5    24,523    81   306.9   5.03   103   30    25,730,733    53  6,990,119   905,790   8   9 chiller_fancoil/chiller_fancoil/chiller_fancoil/chiller_fancoil
+  15 tech-AHU                     chiller   63.97    4     5    24,523    81   306.9   5.03   103   30    25,730,733    53  6,990,119   905,790   8   9            AHU/AHU/AHU/AHU
+  16 tech-PTAC                    chiller   63.97    4     5    24,523    81   306.9   5.03   103   30    25,730,733    53  6,990,119   905,790   8   9        PTAC/PTAC/PTAC/PTAC
+  17 zonas-materiales             chiller   62.82    4     5    24,523    81   300.1   5.03   103   30    25,723,883    53  6,990,119   905,790   6   6 chiller_fancoil/VRF/VRF/VRF
+  18 barra-calcular-todos         chiller   63.97    4     5    24,523    81   306.9   5.03   103   30    25,730,733    53  6,990,119   905,790   8   9 chiller_fancoil/VRF/VRF/VRF
+  19 barra-calcular-vacio             vrf       0    1     0         0     1       0      0     1   10             0     0      4,100    44,000   0   0                   DX_split
+  20 peakScan-false               chiller   62.79    4     5    24,523    81   300.1   5.03   103   30    25,717,033    53  6,990,119   905,790   9   9 chiller_fancoil/VRF/VRF/VRF
+  21 bldDiv-08                    chiller   56.56    4     5    24,523    81     273   5.03   103   30    25,662,233    53  6,990,119   905,790   8   8 chiller_fancoil/VRF/VRF/VRF
+  22 cotiz-USD                    chiller   63.97    4     5    24,523    81   306.9   5.03   103   30    25,730,733    53  6,990,119   905,790   8   9 chiller_fancoil/VRF/VRF/VRF
+  23 cotiz-sin-items              chiller   63.97    4     5    24,523    81   306.9   5.03   103   30    22,022,005    46  6,990,119   720,790   8   9 chiller_fancoil/VRF/VRF/VRF
+  24 plaza-mexicali               chiller   64.96    4     5    24,523    81   327.2   5.03   103   30    27,877,967    53  6,990,119   905,790   8   8 chiller_fancoil/VRF/VRF/VRF
+  25 plaza-otra-factor            chiller   63.97    4     5    24,523    81   306.9   5.03   103   30    28,046,499    53  6,990,119   905,790   8   9 chiller_fancoil/VRF/VRF/VRF
+  26 sitio-custom                 chiller   60.22    4     5    24,523    81   306.9   5.03   103   30    25,806,083    53  6,990,119   905,790   7   7 chiller_fancoil/VRF/VRF/VRF
+  27 cotiz-licitacion             chiller   63.97    4     5    24,523    81   306.9   5.03   103   30    25,965,485    53  6,990,119   905,790   8   9 chiller_fancoil/VRF/VRF/VRF
+  28 ductos-accesorios            chiller   63.97    4     6    24,523    81   306.9   5.03   103   30    25,874,356    52  6,990,119   942,815   8   9 chiller_fancoil/VRF/VRF/VRF
+  29 soporte-sismico-viga         chiller   63.97    4     5    24,523    81   306.9   5.03   103   30    25,537,921    52  6,990,119   712,978   8   9 chiller_fancoil/VRF/VRF/VRF
+  30 soporte-sin-sismico-manual   chiller   63.97    4     5    24,523    81   306.9   5.03   103   30    25,460,763    50  6,990,119   635,820   8   9 chiller_fancoil/VRF/VRF/VRF
+  31 soporte-losa-fc              chiller   63.97    4     5    24,523    81   306.9   5.03   103   30    25,730,733    53  6,990,119   905,790   8   9 chiller_fancoil/VRF/VRF/VRF
+  32 civil-demolicion             chiller   63.97    4     5    24,523    81   306.9   5.03   103   30    30,180,497    53 11,439,883   905,790   8   9 chiller_fancoil/VRF/VRF/VRF
+  33 civil-manual                 chiller   63.97    4     5    24,523    81   306.9   5.03   103   30    23,854,298    53  5,113,684   905,790   8   9 chiller_fancoil/VRF/VRF/VRF
+  34 vent-kitchen                 chiller   63.97    4     5     5,906    81   302.6   5.03   103   30    23,716,248    54  6,990,119   905,790   8   9 chiller_fancoil/VRF/VRF/VRF
+  35 vent-industrial              chiller   63.97    4     5    30,000    81   308.1   5.03   103   30    26,524,898    53  6,990,119   905,790   8   9 chiller_fancoil/VRF/VRF/VRF
+  36 vent-louver                  chiller   63.97    4     5     1,046    81   301.5   5.03   103   30    22,326,568    53  6,990,119   905,790   8   9 chiller_fancoil/VRF/VRF/VRF
+  37 vent-mua                     chiller   63.97    4     5    49,045    81   312.5   5.03   103   30    36,397,948    54  6,990,119   905,790   8   9 chiller_fancoil/VRF/VRF/VRF
+  38 cuartos-limpios              chiller   67.79    4     5    24,523   170   326.2   5.03   103   30    32,863,549    53  7,994,935   905,790   8   9 chiller_fancoil/VRF/VRF/VRF
+  39 instalaciones-variantes      chiller   63.97    4     5    24,523    81   331.6   4.21   134   50    33,715,893    53  6,990,119   947,604   9  10 chiller_fancoil/VRF/VRF/VRF
+  40 propuestas-aceptadas         chiller   63.97    4     6     3,265    81     302   5.03   103   30     4,673,293     9  6,990,119   809,833   1   2 chiller_fancoil/VRF/VRF/VRF
+  41 propuestas-propio            chiller   63.97    4     5    24,523    81     130   5.03   103   30     5,215,733     9  6,990,119   354,600   1   2 chiller_fancoil/VRF/VRF/VRF
+  42 herencia-propio              chiller   63.97    4     5     1,955    81   301.6   5.03   103   30    22,458,373    53  6,990,119   905,790   8   9 chiller_fancoil/VRF/VRF/VRF
+  43 valor-decisiones             chiller   63.97    4     5    24,523    81   306.9   5.03   103   30    25,730,733    53  6,990,119   905,790   8   9 chiller_fancoil/VRF/VRF/VRF
+  44 kaizen-items                 chiller   63.97    4     5    24,523    81   306.9   5.03   103   30    25,730,733    53  6,990,119   905,790   8   9 chiller_fancoil/VRF/VRF/VRF
+  45 unidades-IP                  chiller   63.97    4     5    24,523    81   306.9   5.03   103   30    25,730,733    53  6,990,119   905,790   8   9 chiller_fancoil/VRF/VRF/VRF
+  46 sin-zonas-con-datos             none       0    0     5    19,776    81   206.1   5.03   124   30    21,146,808    45  3,848,065   733,634   3   3                           
+  47 parcial-fuego                    vrf       0    1     0         0     1       0      0    25   10     1,871,797     9      4,100    44,000   1   1                   DX_split
+  48 parcial-civil-directas           vrf       0    1     0         0     1       0      0     1   10     2,114,625    11    315,329    44,000   1   1                   DX_split
+  49 parcial-soporte-riel             vrf       0    1     0         0     1       0      0     1   10     1,826,497    10      4,100    67,100   1   1                   DX_split
+  50 parcial-vent-cocina-sin-medidas     vrf       0    1     0        30     1       0      0     1   10     1,811,227    11      4,100    44,000   1   1                   DX_split
+  51 parcial-vent-cocina              vrf       0    1     0     2,461     1       0      0     1   10     2,445,747    11      4,100    44,000   1   1                   DX_split
+  52 parcial-ductos-sin-caudal        vrf       0    1     1         0     1       0      0     1   10     1,803,397     9      4,100    44,000   1   1                   DX_split
+  53 parcial-ductos-con-caudal        vrf       0    1     1         0     1       0      0     1   10     1,803,397     9      4,100    44,000   1   1                   DX_split
+  54 parcial-limpio                   vrf       0    1     0         0    14       0      0     1   10     2,747,497     9    246,000    44,000   1   1                   DX_split
+  55 parcial-equipo-manual            vrf       0    1     0         0     1       0      0     1   10     2,643,286    13      4,100    62,500   1   1                   DX_split
+  56 parcial-zona-sola                vrf    0.86    1     0     1,271     1       0      0    10   10     2,530,773    18    514,681    44,000   3   4                        VRF
+
+IDA Y VUELTA · el mismo archivo, escenario construido (nativo) contra proyecto guardado y abierto (guardado): salida y cotización
+  escenario                      base  nuevo  sólo nuevo  (diferencias numéricas/estructurales entre construir y reabrir)
+  vacio                             0      0           0
+  prueba                            0      0           0
+  lleno                             0      0           0
+  lleno-sin-cruces                  0      0           0
+  lleno-cruces-parciales            0      0           0
+  zonas-oaFixed-fluorescent         0      0           0
+  sys-chiller                       0      0           0
+  sys-vrf                           0      0           0
+  sys-rooftop                       0      0           0
+  sys-split                         0      0           0
+  tech-VRF                          0      0           0
+  tech-DX_split                     0      0           0
+  tech-paquete                      0      0           0
+  tech-chiller_fancoil              0      0           0
+  tech-AHU                          0      0           0
+  tech-PTAC                         0      0           0
+  zonas-materiales                  0      0           0
+  barra-calcular-todos              0      0           0
+  barra-calcular-vacio              0      0           0
+  peakScan-false                    0      0           0
+  bldDiv-08                         0      0           0
+  cotiz-USD                         0      0           0
+  cotiz-sin-items                   0      0           0
+  plaza-mexicali                    0      0           0
+  plaza-otra-factor                 0      0           0
+  sitio-custom                      0      0           0
+  cotiz-licitacion                  0      0           0
+  ductos-accesorios                 0      0           0
+  soporte-sismico-viga              0      0           0
+  soporte-sin-sismico-manual        0      0           0
+  soporte-losa-fc                   0      0           0
+  civil-demolicion                  0      0           0
+  civil-manual                      0      0           0
+  vent-kitchen                      0      0           0
+  vent-industrial                   0      0           0
+  vent-louver                       0      0           0
+  vent-mua                          0      0           0
+  cuartos-limpios                  19     19           0
+  instalaciones-variantes           0      0           0
+  propuestas-aceptadas              0      0           0
+  propuestas-propio                 0      0           0
+  herencia-propio                   0      0           0
+  valor-decisiones                150    150           0
+  kaizen-items                      0      0           0
+  unidades-IP                       0      0           0
+  sin-zonas-con-datos             622    622           0
+  parcial-fuego                     0      0           0
+  parcial-civil-directas            0      0           0
+  parcial-soporte-riel              0      0           0
+  parcial-vent-cocina-sin-medidas      0      0           0
+  parcial-vent-cocina               0      0           0
+  parcial-ductos-sin-caudal         0      0           0
+  parcial-ductos-con-caudal         0      0           0
+  parcial-limpio                    0      0           0
+  parcial-equipo-manual             0      0           0
+  parcial-zona-sola                 0      0           0
+  totales: base 791, nuevo 791, sólo en nuevo 0. (Una diferencia que existe igual en las dos versiones es propia del escenario —p. ej. la memoria de la casa vive en localStorage, no en el proyecto—; sólo cuenta lo que aparece SOLO en la nueva.)
+
+====================================================================================================
+DIFERENCIAS AGRUPADAS por (fila, modo, ruta con índices [*], clase) · con un ejemplo por grupo
+====================================================================================================
+* [pdf/nativo] memoria-elec#21  (solo-nuevo) · 56 apariciones en 56 escenario(s)
+    ej. memoria-elec#21
+        base : (no existe)   nuevo: "-2 ‹10-15(b)(16)) · canalizacion con areas THHN/THWN-2 (Tabla 5 del cap. 9) Temp›"
+* [pdf/nativo] memoria-elec#22  (solo-nuevo) · 56 apariciones en 56 escenario(s)
+    ej. memoria-elec#22
+        base : (no existe)   nuevo: "5 ‹6)) · canalizacion con areas THHN/THWN-2 (Tabla 5 del cap. 9) Temperatura am›"
+* [pdf/nativo] memoria-elec#23  (solo-nuevo) · 56 apariciones en 56 escenario(s)
+    ej. memoria-elec#23
+        base : (no existe)   nuevo: "9 ‹izacion con areas THHN/THWN-2 (Tabla 5 del cap. 9) Temperatura ambiente 40 C›"
+* [pdf/guardado] memoria-elec#21  (solo-nuevo) · 56 apariciones en 56 escenario(s)
+    ej. memoria-elec#21
+        base : (no existe)   nuevo: "-2 ‹10-15(b)(16)) · canalizacion con areas THHN/THWN-2 (Tabla 5 del cap. 9) Temp›"
+* [pdf/guardado] memoria-elec#22  (solo-nuevo) · 56 apariciones en 56 escenario(s)
+    ej. memoria-elec#22
+        base : (no existe)   nuevo: "5 ‹6)) · canalizacion con areas THHN/THWN-2 (Tabla 5 del cap. 9) Temperatura am›"
+* [pdf/guardado] memoria-elec#23  (solo-nuevo) · 56 apariciones en 56 escenario(s)
+    ej. memoria-elec#23
+        base : (no existe)   nuevo: "9 ‹izacion con areas THHN/THWN-2 (Tabla 5 del cap. 9) Temperatura ambiente 40 C›"
+* [pdf/nativo] memoria-elec#241  (solo-nuevo) · 34 apariciones en 34 escenario(s)
+    ej. memoria-elec#241
+        base : (no existe)   nuevo: "5 ‹no de canalización con áreas THHN/THWN-2 (Tabla 5 del capítulo 9) · temperat›"
+* [pdf/guardado] memoria-elec#241  (solo-nuevo) · 34 apariciones en 34 escenario(s)
+    ej. memoria-elec#241
+        base : (no existe)   nuevo: "5 ‹no de canalización con áreas THHN/THWN-2 (Tabla 5 del capítulo 9) · temperat›"
+* [pdf/nativo] memoria-elec#240  (solo-nuevo) · 33 apariciones en 33 escenario(s)
+    ej. memoria-elec#240
+        base : (no existe)   nuevo: "-2 ‹°C · relleno de canalización con áreas THHN/THWN-2 (Tabla 5 del capítulo 9)›"
+* [pdf/guardado] memoria-elec#240  (solo-nuevo) · 33 apariciones en 33 escenario(s)
+    ej. memoria-elec#240
+        base : (no existe)   nuevo: "-2 ‹°C · relleno de canalización con áreas THHN/THWN-2 (Tabla 5 del capítulo 9)›"
+* [pdf/nativo] memoria-elec#242  (solo-nuevo) · 31 apariciones en 31 escenario(s)
+    ej. memoria-elec#242
+        base : (no existe)   nuevo: "9 ‹ión con áreas THHN/THWN-2 (Tabla 5 del capítulo 9) · temperatura ambiente de›"
+* [pdf/guardado] memoria-elec#242  (solo-nuevo) · 31 apariciones en 31 escenario(s)
+    ej. memoria-elec#242
+        base : (no existe)   nuevo: "9 ‹ión con áreas THHN/THWN-2 (Tabla 5 del capítulo 9) · temperatura ambiente de›"
+* [pdf/nativo] memoria-integral#1125  (solo-nuevo) · 19 apariciones en 19 escenario(s)
+    ej. memoria-integral#1125
+        base : (no existe)   nuevo: "-2 ‹10-15(b)(16)) · canalizacion con areas THHN/THWN-2 (Tabla 5 del cap. 9) Temp›"
+* [pdf/guardado] memoria-integral#1125  (solo-nuevo) · 19 apariciones en 19 escenario(s)
+    ej. memoria-integral#1125
+        base : (no existe)   nuevo: "-2 ‹10-15(b)(16)) · canalizacion con areas THHN/THWN-2 (Tabla 5 del cap. 9) Temp›"
+* [pdf/nativo] memoria-integral#1126  (solo-nuevo) · 17 apariciones en 17 escenario(s)
+    ej. memoria-integral#1126
+        base : (no existe)   nuevo: "5 ‹6)) · canalizacion con areas THHN/THWN-2 (Tabla 5 del cap. 9) Temperatura am›"
+* [pdf/nativo] memoria-integral#1127  (solo-nuevo) · 17 apariciones en 17 escenario(s)
+    ej. memoria-integral#1127
+        base : (no existe)   nuevo: "9 ‹izacion con areas THHN/THWN-2 (Tabla 5 del cap. 9) Temperatura ambiente 40 C›"
+* [pdf/nativo] memoria-integral#1344  (solo-nuevo) · 17 apariciones en 17 escenario(s)
+    ej. memoria-integral#1344
+        base : (no existe)   nuevo: "-2 ‹°C · relleno de canalización con áreas THHN/THWN-2 (Tabla 5 del capítulo 9)›"
+* [pdf/guardado] memoria-integral#1126  (solo-nuevo) · 17 apariciones en 17 escenario(s)
+    ej. memoria-integral#1126
+        base : (no existe)   nuevo: "5 ‹6)) · canalizacion con areas THHN/THWN-2 (Tabla 5 del cap. 9) Temperatura am›"
+* [pdf/guardado] memoria-integral#1127  (solo-nuevo) · 17 apariciones en 17 escenario(s)
+    ej. memoria-integral#1127
+        base : (no existe)   nuevo: "9 ‹izacion con areas THHN/THWN-2 (Tabla 5 del cap. 9) Temperatura ambiente 40 C›"
+* [pdf/guardado] memoria-integral#1344  (solo-nuevo) · 17 apariciones en 17 escenario(s)
+    ej. memoria-integral#1344
+        base : (no existe)   nuevo: "-2 ‹°C · relleno de canalización con áreas THHN/THWN-2 (Tabla 5 del capítulo 9)›"
+* [pdf/nativo] memoria-integral#1345  (solo-nuevo) · 15 apariciones en 15 escenario(s)
+    ej. memoria-integral#1345
+        base : (no existe)   nuevo: "5 ‹no de canalización con áreas THHN/THWN-2 (Tabla 5 del capítulo 9) · temperat›"
+* [pdf/guardado] memoria-integral#1345  (solo-nuevo) · 15 apariciones en 15 escenario(s)
+    ej. memoria-integral#1345
+        base : (no existe)   nuevo: "5 ‹no de canalización con áreas THHN/THWN-2 (Tabla 5 del capítulo 9) · temperat›"
+* [pdf/nativo] memoria-integral#1346  (solo-nuevo) · 14 apariciones en 14 escenario(s)
+    ej. memoria-integral#1346
+        base : (no existe)   nuevo: "9 ‹ión con áreas THHN/THWN-2 (Tabla 5 del capítulo 9) · temperatura ambiente de›"
+* [pdf/guardado] memoria-integral#1346  (solo-nuevo) · 14 apariciones en 14 escenario(s)
+    ej. memoria-integral#1346
+        base : (no existe)   nuevo: "9 ‹ión con áreas THHN/THWN-2 (Tabla 5 del capítulo 9) · temperatura ambiente de›"
+* [pdf/nativo] memoria-elec#84  (solo-nuevo) · 13 apariciones en 13 escenario(s)
+    ej. memoria-elec#84
+        base : (no existe)   nuevo: "-2 ‹°C · relleno de canalización con áreas THHN/THWN-2 (Tabla 5 del capítulo 9)›"
+* [pdf/nativo] memoria-elec#85  (solo-nuevo) · 13 apariciones en 13 escenario(s)
+    ej. memoria-elec#85
+        base : (no existe)   nuevo: "5 ‹no de canalización con áreas THHN/THWN-2 (Tabla 5 del capítulo 9) · temperat›"
+* [pdf/nativo] memoria-elec#86  (solo-nuevo) · 13 apariciones en 13 escenario(s)
+    ej. memoria-elec#86
+        base : (no existe)   nuevo: "9 ‹ión con áreas THHN/THWN-2 (Tabla 5 del capítulo 9) · temperatura ambiente de›"
+* [pdf/guardado] memoria-elec#84  (solo-nuevo) · 13 apariciones en 13 escenario(s)
+    ej. memoria-elec#84
+        base : (no existe)   nuevo: "-2 ‹°C · relleno de canalización con áreas THHN/THWN-2 (Tabla 5 del capítulo 9)›"
+* [pdf/guardado] memoria-elec#85  (solo-nuevo) · 13 apariciones en 13 escenario(s)
+    ej. memoria-elec#85
+        base : (no existe)   nuevo: "5 ‹no de canalización con áreas THHN/THWN-2 (Tabla 5 del capítulo 9) · temperat›"
+* [pdf/guardado] memoria-elec#86  (solo-nuevo) · 13 apariciones en 13 escenario(s)
+    ej. memoria-elec#86
+        base : (no existe)   nuevo: "9 ‹ión con áreas THHN/THWN-2 (Tabla 5 del capítulo 9) · temperatura ambiente de›"
+* [pdf/nativo] memoria-integral#1131  (solo-nuevo) · 7 apariciones en 7 escenario(s)
+    ej. memoria-integral#1131
+        base : (no existe)   nuevo: "-2 ‹10-15(b)(16)) · canalizacion con areas THHN/THWN-2 (Tabla 5 del cap. 9) Temp›"
+* [pdf/nativo] memoria-integral#1350  (solo-nuevo) · 7 apariciones en 7 escenario(s)
+    ej. memoria-integral#1350
+        base : (no existe)   nuevo: "-2 ‹°C · relleno de canalización con áreas THHN/THWN-2 (Tabla 5 del capítulo 9)›"
+* [pdf/guardado] memoria-integral#1131  (solo-nuevo) · 7 apariciones en 7 escenario(s)
+    ej. memoria-integral#1131
+        base : (no existe)   nuevo: "-2 ‹10-15(b)(16)) · canalizacion con areas THHN/THWN-2 (Tabla 5 del cap. 9) Temp›"
+* [pdf/guardado] memoria-integral#1350  (solo-nuevo) · 7 apariciones en 7 escenario(s)
+    ej. memoria-integral#1350
+        base : (no existe)   nuevo: "-2 ‹°C · relleno de canalización con áreas THHN/THWN-2 (Tabla 5 del capítulo 9)›"
+* [pdf/nativo] memoria-integral#1132  (solo-nuevo) · 5 apariciones en 5 escenario(s)
+    ej. memoria-integral#1132
+        base : (no existe)   nuevo: "5 ‹6)) · canalizacion con areas THHN/THWN-2 (Tabla 5 del cap. 9) Temperatura am›"
+* [pdf/nativo] memoria-integral#1133  (solo-nuevo) · 5 apariciones en 5 escenario(s)
+    ej. memoria-integral#1133
+        base : (no existe)   nuevo: "9 ‹izacion con areas THHN/THWN-2 (Tabla 5 del cap. 9) Temperatura ambiente 40 C›"
+* [pdf/nativo] memoria-elec#239  (solo-nuevo) · 5 apariciones en 5 escenario(s)
+    ej. memoria-elec#239
+        base : (no existe)   nuevo: "-2 ‹°C · relleno de canalización con áreas THHN/THWN-2 (Tabla 5 del capítulo 9)›"
+* [pdf/guardado] memoria-integral#1132  (solo-nuevo) · 5 apariciones en 5 escenario(s)
+    ej. memoria-integral#1132
+        base : (no existe)   nuevo: "5 ‹6)) · canalizacion con areas THHN/THWN-2 (Tabla 5 del cap. 9) Temperatura am›"
+* [pdf/guardado] memoria-integral#1133  (solo-nuevo) · 5 apariciones en 5 escenario(s)
+    ej. memoria-integral#1133
+        base : (no existe)   nuevo: "9 ‹izacion con areas THHN/THWN-2 (Tabla 5 del cap. 9) Temperatura ambiente 40 C›"
+* [pdf/guardado] memoria-elec#239  (solo-nuevo) · 5 apariciones en 5 escenario(s)
+    ej. memoria-elec#239
+        base : (no existe)   nuevo: "-2 ‹°C · relleno de canalización con áreas THHN/THWN-2 (Tabla 5 del capítulo 9)›"
+* [pdf/nativo] memoria-integral#1334  (solo-nuevo) · 4 apariciones en 4 escenario(s)
+    ej. memoria-integral#1334
+        base : (no existe)   nuevo: "-2 ‹°C · relleno de canalización con áreas THHN/THWN-2 (Tabla 5 del capítulo 9)›"
+* [pdf/nativo] memoria-integral#1124  (solo-nuevo) · 4 apariciones en 4 escenario(s)
+    ej. memoria-integral#1124
+        base : (no existe)   nuevo: "5 ‹6)) · canalizacion con areas THHN/THWN-2 (Tabla 5 del cap. 9) Temperatura am›"
+* [pdf/nativo] memoria-integral#1343  (solo-nuevo) · 4 apariciones en 4 escenario(s)
+    ej. memoria-integral#1343
+        base : (no existe)   nuevo: "5 ‹no de canalización con áreas THHN/THWN-2 (Tabla 5 del capítulo 9) · temperat›"
+* [pdf/nativo] memoria-integral#1351  (solo-nuevo) · 4 apariciones en 4 escenario(s)
+    ej. memoria-integral#1351
+        base : (no existe)   nuevo: "5 ‹no de canalización con áreas THHN/THWN-2 (Tabla 5 del capítulo 9) · temperat›"
+* [pdf/nativo] memoria-integral#1352  (solo-nuevo) · 4 apariciones en 4 escenario(s)
+    ej. memoria-integral#1352
+        base : (no existe)   nuevo: "9 ‹ión con áreas THHN/THWN-2 (Tabla 5 del capítulo 9) · temperatura ambiente de›"
+* [pdf/nativo] memoria-integral#1348  (solo-nuevo) · 4 apariciones en 4 escenario(s)
+    ej. memoria-integral#1348
+        base : (no existe)   nuevo: "-2 ‹°C · relleno de canalización con áreas THHN/THWN-2 (Tabla 5 del capítulo 9)›"
+* [pdf/nativo] memoria-integral#1349  (solo-nuevo) · 4 apariciones en 4 escenario(s)
+    ej. memoria-integral#1349
+        base : (no existe)   nuevo: "5 ‹no de canalización con áreas THHN/THWN-2 (Tabla 5 del capítulo 9) · temperat›"
+* [pdf/guardado] memoria-integral#1334  (solo-nuevo) · 4 apariciones en 4 escenario(s)
+    ej. memoria-integral#1334
+        base : (no existe)   nuevo: "-2 ‹°C · relleno de canalización con áreas THHN/THWN-2 (Tabla 5 del capítulo 9)›"
+* [pdf/guardado] memoria-integral#1124  (solo-nuevo) · 4 apariciones en 4 escenario(s)
+    ej. memoria-integral#1124
+        base : (no existe)   nuevo: "5 ‹6)) · canalizacion con areas THHN/THWN-2 (Tabla 5 del cap. 9) Temperatura am›"
+* [pdf/guardado] memoria-integral#1343  (solo-nuevo) · 4 apariciones en 4 escenario(s)
+    ej. memoria-integral#1343
+        base : (no existe)   nuevo: "5 ‹no de canalización con áreas THHN/THWN-2 (Tabla 5 del capítulo 9) · temperat›"
+* [pdf/guardado] memoria-integral#1351  (solo-nuevo) · 4 apariciones en 4 escenario(s)
+    ej. memoria-integral#1351
+        base : (no existe)   nuevo: "5 ‹no de canalización con áreas THHN/THWN-2 (Tabla 5 del capítulo 9) · temperat›"
+* [pdf/guardado] memoria-integral#1352  (solo-nuevo) · 4 apariciones en 4 escenario(s)
+    ej. memoria-integral#1352
+        base : (no existe)   nuevo: "9 ‹ión con áreas THHN/THWN-2 (Tabla 5 del capítulo 9) · temperatura ambiente de›"
+* [pdf/guardado] memoria-integral#1348  (solo-nuevo) · 4 apariciones en 4 escenario(s)
+    ej. memoria-integral#1348
+        base : (no existe)   nuevo: "-2 ‹°C · relleno de canalización con áreas THHN/THWN-2 (Tabla 5 del capítulo 9)›"
+* [pdf/guardado] memoria-integral#1349  (solo-nuevo) · 4 apariciones en 4 escenario(s)
+    ej. memoria-integral#1349
+        base : (no existe)   nuevo: "5 ‹no de canalización con áreas THHN/THWN-2 (Tabla 5 del capítulo 9) · temperat›"
+* [pdf/nativo] memoria-elec#243  (solo-nuevo) · 3 apariciones en 3 escenario(s)
+    ej. memoria-elec#243
+        base : (no existe)   nuevo: "9 ‹ión con áreas THHN/THWN-2 (Tabla 5 del capítulo 9) · temperatura ambiente de›"
+* [pdf/nativo] memoria-integral#1335  (solo-nuevo) · 3 apariciones en 3 escenario(s)
+    ej. memoria-integral#1335
+        base : (no existe)   nuevo: "5 ‹no de canalización con áreas THHN/THWN-2 (Tabla 5 del capítulo 9) · temperat›"
+* [pdf/nativo] memoria-integral#1123  (solo-nuevo) · 3 apariciones en 3 escenario(s)
+    ej. memoria-integral#1123
+        base : (no existe)   nuevo: "-2 ‹10-15(b)(16)) · canalizacion con areas THHN/THWN-2 (Tabla 5 del cap. 9) Temp›"
+* [pdf/nativo] memoria-integral#1342  (solo-nuevo) · 3 apariciones en 3 escenario(s)
+    ej. memoria-integral#1342
+        base : (no existe)   nuevo: "-2 ‹°C · relleno de canalización con áreas THHN/THWN-2 (Tabla 5 del capítulo 9)›"
+* [pdf/nativo] memoria-integral#1129  (solo-nuevo) · 3 apariciones en 3 escenario(s)
+    ej. memoria-integral#1129
+        base : (no existe)   nuevo: "9 ‹izacion con areas THHN/THWN-2 (Tabla 5 del cap. 9) Temperatura ambiente 40 C›"
+* [pdf/nativo] memoria-integral#1149  (solo-nuevo) · 3 apariciones en 3 escenario(s)
+    ej. memoria-integral#1149
+        base : (no existe)   nuevo: "-2 ‹10-15(b)(16)) · canalizacion con areas THHN/THWN-2 (Tabla 5 del cap. 9) Temp›"
+  … y 184 grupos más (usa --max-familias=N o --json)
+
+Detalle por escenario y motor (las primeras diferencias de cada celda):
+  [vacio/nativo] elec: 0 numéricas/estructurales, 2 de texto, 96 hojas comparadas
+  [prueba/nativo] elec: 0 numéricas/estructurales, 2 de texto, 130 hojas comparadas
+  [lleno/nativo] elec: 0 numéricas/estructurales, 2 de texto, 768 hojas comparadas
+  [lleno-sin-cruces/nativo] elec: 0 numéricas/estructurales, 2 de texto, 479 hojas comparadas
+  [lleno-cruces-parciales/nativo] elec: 0 numéricas/estructurales, 2 de texto, 539 hojas comparadas
+  [zonas-oaFixed-fluorescent/nativo] elec: 0 numéricas/estructurales, 2 de texto, 768 hojas comparadas
+  [sys-chiller/nativo] elec: 0 numéricas/estructurales, 2 de texto, 768 hojas comparadas
+  [sys-vrf/nativo] elec: 0 numéricas/estructurales, 2 de texto, 926 hojas comparadas
+  [sys-rooftop/nativo] elec: 0 numéricas/estructurales, 2 de texto, 843 hojas comparadas
+  [sys-split/nativo] elec: 0 numéricas/estructurales, 2 de texto, 843 hojas comparadas
+  [tech-VRF/nativo] elec: 0 numéricas/estructurales, 2 de texto, 768 hojas comparadas
+  [tech-DX_split/nativo] elec: 0 numéricas/estructurales, 2 de texto, 768 hojas comparadas
+  [tech-paquete/nativo] elec: 0 numéricas/estructurales, 2 de texto, 768 hojas comparadas
+  [tech-chiller_fancoil/nativo] elec: 0 numéricas/estructurales, 2 de texto, 768 hojas comparadas
+  [tech-AHU/nativo] elec: 0 numéricas/estructurales, 2 de texto, 768 hojas comparadas
+  [tech-PTAC/nativo] elec: 0 numéricas/estructurales, 2 de texto, 768 hojas comparadas
+  [zonas-materiales/nativo] elec: 0 numéricas/estructurales, 2 de texto, 768 hojas comparadas
+  [barra-calcular-todos/nativo] elec: 0 numéricas/estructurales, 2 de texto, 768 hojas comparadas
+  [barra-calcular-vacio/nativo] elec: 0 numéricas/estructurales, 2 de texto, 96 hojas comparadas
+  [peakScan-false/nativo] elec: 0 numéricas/estructurales, 2 de texto, 768 hojas comparadas
+  [bldDiv-08/nativo] elec: 0 numéricas/estructurales, 2 de texto, 768 hojas comparadas
+  [cotiz-USD/nativo] elec: 0 numéricas/estructurales, 2 de texto, 768 hojas comparadas
+  [cotiz-sin-items/nativo] elec: 0 numéricas/estructurales, 2 de texto, 768 hojas comparadas
+  [plaza-mexicali/nativo] elec: 0 numéricas/estructurales, 2 de texto, 768 hojas comparadas
+  [plaza-otra-factor/nativo] elec: 0 numéricas/estructurales, 2 de texto, 768 hojas comparadas
+  [sitio-custom/nativo] elec: 0 numéricas/estructurales, 2 de texto, 768 hojas comparadas
+  [cotiz-licitacion/nativo] elec: 0 numéricas/estructurales, 2 de texto, 768 hojas comparadas
+  [ductos-accesorios/nativo] elec: 0 numéricas/estructurales, 2 de texto, 768 hojas comparadas
+  [soporte-sismico-viga/nativo] elec: 0 numéricas/estructurales, 2 de texto, 768 hojas comparadas
+  [soporte-sin-sismico-manual/nativo] elec: 0 numéricas/estructurales, 2 de texto, 768 hojas comparadas
+  [soporte-losa-fc/nativo] elec: 0 numéricas/estructurales, 2 de texto, 768 hojas comparadas
+  [civil-demolicion/nativo] elec: 0 numéricas/estructurales, 2 de texto, 768 hojas comparadas
+  [civil-manual/nativo] elec: 0 numéricas/estructurales, 2 de texto, 768 hojas comparadas
+  [vent-kitchen/nativo] elec: 0 numéricas/estructurales, 2 de texto, 770 hojas comparadas
+  [vent-industrial/nativo] elec: 0 numéricas/estructurales, 2 de texto, 768 hojas comparadas
+  [vent-louver/nativo] elec: 0 numéricas/estructurales, 2 de texto, 770 hojas comparadas
+  [vent-mua/nativo] elec: 0 numéricas/estructurales, 2 de texto, 768 hojas comparadas
+  [cuartos-limpios/nativo] elec: 0 numéricas/estructurales, 2 de texto, 770 hojas comparadas
+  [instalaciones-variantes/nativo] elec: 0 numéricas/estructurales, 2 de texto, 768 hojas comparadas
+  [propuestas-aceptadas/nativo] elec: 0 numéricas/estructurales, 2 de texto, 839 hojas comparadas
+
+====================================================================================================
+TOTALES POR FILA (todos los escenarios y modos)
+fila                   num/estruct     texto    hojas comparadas
+load                             0         0             177,215
+clean                            0         0              19,926
+equip                            0         0             133,331
+duct                             0         0             181,612
+vent                             0         0              31,038
+quote                            0         0             100,506
+valor                            0         0              67,396
+kaizen                           0         0              21,964
+elec                             0       224              67,726
+hidro                            0       112              23,214
+fuego                            0         0              10,650
+aire                             0         0              22,508
+civil                            0         0              33,745
+soporte                          0         0             113,608
+estr (externo)                   0         0                 224
+valid (cruzada)                  0         0               4,012
+xlsx propuesta es                0         0              40,874
+xlsx propuesta en                0         0              40,874
+pdf (números)                 1190       336             781,027
+semáforo (info)                  0        48               5,466
+
+hojas numéricas/textuales comparadas: 1,871,450
+estr (StructCalc, archivo aparte): grupo declarado «externo» en la base y «externo» en la nueva -> no aplica
+DIFERENCIAS NUMÉRICAS O ESTRUCTURALES (base contra nuevo): 1190
+diferencias de ida y vuelta (guardar/abrir) que sólo aparecen en la nueva: 0
+diferencias sólo de texto           : 672
+celdas de Excel reubicadas (maquetación, no numéricas): 0
+diferencias INFORMATIVAS del semáforo de completitud (texto de estado, no numéricas, no cuentan): 48  <- ver el renglón «semáforo (info)» de las tablas: cambió qué disciplinas dicen «Con datos» / «Sin datos»
+marcas de revisión normalizadas dentro de textos («2.9.14» y «2.9.15» -> «<REV>»): base 7, nuevo 7 (sólo modo nativo; no son diferencias)
+
+ESCENARIOS QUE SÓLO EXISTEN EN LA VERSIÓN NUEVA (usan una función que la base no tiene; la base corre la variante sin ella)
+  barra-calcular-todos       la función existe en las dos · numéricas/estructurales nativo 12 guardado 12 · texto 12
+  barra-calcular-vacio       la función existe en las dos · numéricas/estructurales nativo 6 guardado 6 · texto 12
+  diferencias numéricas/estructurales en estos escenarios: 36 (ya incluidas en el total de arriba) · de texto: 24
+RESULTADO: HAY DIFERENCIAS NUMÉRICAS O ESTRUCTURALES.

@@ -1,0 +1,6 @@
+QMX Rev D — referencia comercial
+Copia sellada (solo lectura) de la cotización Rev D en inglés y en español.
+NO se consulta durante el costeo desde cero. Se abre solo en el Paso 6 (comparación).
+De estos archivos se tomó ÚNICAMENTE: código, descripción (ES y EN), unidad y sección A–H de los 341 conceptos.
+No se tomó ninguna cantidad, precio unitario, importe, subtotal ni total.
+Huellas SHA-256 en SHA256.txt para comprobar que no se alteraron.

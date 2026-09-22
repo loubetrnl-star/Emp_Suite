@@ -1,0 +1,74 @@
+--- pasos/1.1-antes.html	2026-09-14 11:31:50.903296300 -0700
++++ index.html	2026-09-14 11:32:15.471582600 -0700
+@@ -3693,6 +3693,8 @@
+   fasar: 1.45,            // factor de salario real declarado
+   refBase: "",            // edición, licitación o folio de la base citada
+   finPct: 1.5,            // financiamiento, % sobre directo + indirectos
++  indirectPct: 18,        // indirectos de licitación, % sobre directo
++  profitPct: 12,          // utilidad de licitación, % sobre directo + indirectos + financiamiento
+   modo: "privada",        // privada | licitacion
+   plazaFactor: 0,         // 0 = usar el factor de la plaza; >0 lo sustituye
+ 
+@@ -4972,9 +4974,9 @@
+    Cargos adicionales: 5 al millar de inspeccion y vigilancia + 2 al millar CMIC. */
+ const CARGO_INSPECCION = 0.005, CARGO_CMIC = 0.002;
+ function estructuraSobrecosto(cd) {
+-  const i = num(S.quote.indirectPct, 0) / 100;
++  const i = num(S.quote.indirectPct, QUOTE_SEED.indirectPct) / 100;
+   const fin = num(S.quote.finPct, 1.5) / 100;
+-  const u = num(S.quote.profitPct, 0) / 100;
++  const u = num(S.quote.profitPct, QUOTE_SEED.profitPct) / 100;
+   const ca = CARGO_INSPECCION + CARGO_CMIC;
+   const ci = cd * i, sub1 = cd + ci;
+   const cf = sub1 * fin, sub2 = sub1 + cf;
+@@ -15859,6 +15861,8 @@
+             <div class="field"><label>Referencia citada (edición, licitación o folio)</label><input data-path="quote.refBase" value="${esc(S.quote.refBase || "")}" placeholder="obligatoria en licitación" /></div>
+             <div class="field"><label>FASAR</label><input type="number" step="0.01" data-path="quote.fasar" value="${num(S.quote.fasar, FASAR_DEF)}" /><div class="hint">Mercado ${FASAR_MIN} a ${FASAR_MAX}. Validar contra su nómina.</div></div>
+             <div class="field"><label>Financiamiento %</label><input type="number" step="0.1" data-path="quote.finPct" value="${num(S.quote.finPct, 1.5)}" /></div>
++            <div class="field"><label>Indirectos %</label><input type="number" step="0.1" data-path="quote.indirectPct" value="${num(S.quote.indirectPct, QUOTE_SEED.indirectPct)}" /></div>
++            <div class="field"><label>Utilidad %</label><input type="number" step="0.1" data-path="quote.profitPct" value="${num(S.quote.profitPct, QUOTE_SEED.profitPct)}" /></div>
+           </div>
+           ${(() => { const c = catalogoConceptos(); let con = 0, sin = 0;
+             c.secciones.forEach((x) => x.partidas.forEach((p) => { analizarPU(p) ? con++ : sin++; }));
+--- pasos/1.1-antes-pruebas.mjs	2026-09-14 11:31:50.931992300 -0700
++++ pruebas.mjs	2026-09-14 11:35:58.202011500 -0700
+@@ -2715,6 +2715,39 @@
+   G("kbBorrar")();
+ });
+ 
++/* ============================ 22. Capa 0 · correcciones comprobadas ====== */
++t("22.1 1.1 la licitación integra 18 % de indirectos y 12 % de utilidad editables, no 0 %", () => {
++  const Q = G("QUOTE_SEED");
++  eq(Q.indirectPct, 18, "semilla de indirectos de licitación:");
++  eq(Q.profitPct, 12, "semilla de utilidad de licitación:");
++  const guardado = JSON.parse(JSON.stringify(S.quote));
++  try {
++    /* Proyecto viejo, sin las dos llaves: cae a la semilla, no a 0 %. */
++    delete S.quote.indirectPct; delete S.quote.profitPct; S.quote.finPct = 1.5;
++    const E = G("estructuraSobrecosto")(1000000);
++    if (Math.abs(E.pu - 1022105) < 1) throw new Error("sigue integrando 0 % de indirectos y utilidad (1,022,105)");
++    cerca(E.pu, 1350813.968, 0.01, "importe integrado sobre $1,000,000:");
++    /* La tarjeta de licitación ofrece un campo por cada %, con la semilla. */
++    S.tab = "cotizacion"; G("render")();
++    const ind = w.document.querySelectorAll('#view input[data-path="quote.indirectPct"]');
++    const uti = w.document.querySelectorAll('#view input[data-path="quote.profitPct"]');
++    eq(ind.length, 1, "campo de indirectos:"); eq(uti.length, 1, "campo de utilidad:");
++    eq(ind[0].value, "18"); eq(uti[0].value, "12");
++    /* Lo capturado manda en el cálculo y en el documento. */
++    ind[0].value = "20"; ind[0].dispatchEvent(new w.Event("input", { bubbles: true }));
++    eq(S.quote.indirectPct, 20, "la captura se guarda:");
++    cerca(G("estructuraSobrecosto")(1000000).pu, 1000000 * 1.20 * 1.015 * 1.12 * 1.007, 0.01, "con 20 % capturado:");
++    const txt = Buffer.from(G("buildLicitacionPdf")()).toString("latin1");
++    const celdas = [...txt.matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1"));
++    const fila = (etq) => { const i = celdas.findIndex((c) => c.startsWith(etq)); if (i < 0) throw new Error(`el PDF no trae la fila «${etq}»`); return celdas.slice(i, i + 3); };
++    eq(fila("Costo indirecto")[2], "20", "% de indirectos impreso:");
++    eq(fila("Cargo por utilidad")[2], "12", "% de utilidad impreso:");
++  } finally {
++    Object.keys(S.quote).forEach((k) => delete S.quote[k]);
++    Object.assign(S.quote, guardado);
++  }
++});
++
+ /* ============================== resultado =============================== */
+ const total = ok + fail;
+ console.log(`\nSuiteEmp rev ${G("REV")} · banco de comprobaciones de la rev 2.9.3`);

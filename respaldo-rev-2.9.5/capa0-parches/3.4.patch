@@ -1,0 +1,88 @@
+--- pasos/3.4-antes.html	2026-09-14 12:11:06.130457500 -0700
++++ index.html	2026-09-14 12:11:32.222480200 -0700
+@@ -13615,15 +13615,25 @@
+           esfuerzo: "alto",
+         });
+       }
+-      /* 3. Movimiento: cambios de aire de cuarto limpio por encima del URS */
+-      if (z.spaceType === "cleanroom" && num(z.achClean, 15) > 15) {
+-        const base = simZone(z, { achClean: 15 });
++      /* 3. Movimiento: cambios de aire de cuarto limpio por encima del mínimo de su clase.
++         Lee la clase con el mismo respaldo que computeLoad (iso8). ISO 8 conserva el piso
++         de 15 (mínimo URS típico) mientras se decide si manda ach[0] = 10. */
++      const clsKz = ISO_CLASSES[z.iso] || ISO_CLASSES.iso8;
++      const claseKz = clsKz.label.split(" · ")[0];
++      const achKz = num(z.achClean, 15) || 15;
++      const ursTipicoKz = z.iso === "iso8" || !ISO_CLASSES[z.iso];
++      const pisoKz = ursTipicoKz ? 15 : clsKz.ach[0];
++      const motivoKz = ursTipicoKz
++        ? `15, mínimo URS típico de ${claseKz} (rango de la clase ${clsKz.ach[0]}–${clsKz.ach[2]})`
++        : `${pisoKz}, mínimo de ${claseKz} (rango ${clsKz.ach[0]}–${clsKz.ach[2]}, ISO 14644-4 · ISPE)`;
++      if (z.spaceType === "cleanroom" && achKz > pisoKz) {
++        const base = simZone(z, { achClean: pisoKz });
+         const ahorro = r.tons - base.tons;
+         if (ahorro > 0.2) push({
+           muda: "mov", zona: z.name, tipo: "opex", tr: ahorro,
+           titulo: "Cambios de aire por encima del mínimo de la clase",
+-          ahora: `${num(z.achClean, 15)} cambios/h contra los 15 que pide el URS para ISO 8`,
+-          cambio: "Bajar a 15 si el URS lo permite: cada cambio de más son filtros, ventiladores encendidos y carga las 24 horas. Verificar con conteo de partículas antes de fijarlo.",
++          ahora: `${achKz} cambios/h contra ${motivoKz}`,
++          cambio: `Bajar a ${pisoKz} si el URS lo permite: cada cambio de más son filtros, ventiladores encendidos y carga las 24 horas. Verificar con conteo de partículas antes de fijarlo.`,
+           esfuerzo: "medio",
+         });
+       }
+--- pasos/3.4-antes-pruebas.mjs	2026-09-14 12:11:06.163081800 -0700
++++ pruebas.mjs	2026-09-14 12:12:05.862978900 -0700
+@@ -3148,6 +3148,52 @@
+   }
+ });
+ 
++t("22.12 3.4 Kaizen lee la clase ISO del cuarto limpio: propone el mínimo de su clase y no cita ISO 8 en otra clase", () => {
++  /* Parcial: ISO 8 conserva el piso de 15 (mínimo URS típico) mientras se decide si baja a ach[0] = 10. */
++  const zonas0 = S.zones, zi0 = S.zi, tab0 = S.tab, perms0 = JSON.parse(JSON.stringify(S.perms ?? null));
++  const dz = G("defaultZone");
++  const limpio = (nombre, iso, ach) => ({ ...dz(nombre), spaceType: "cleanroom", iso, achClean: ach,
++    area: 120, height: 3, occ: 2, lights: 720, equip: 2400, ach: 0.05, runHours: 24 });
++  try {
++    S.zones = [
++      { ...dz("Producción"), area: 400, height: 6, occ: 30 },
++      { ...dz("Oficinas"), area: 100, height: 3, occ: 10 },
++      limpio("Limpio ISO 5", "iso5", 360), limpio("Limpio ISO 6", "iso6", 135), limpio("Limpio ISO 7", "iso7", 45),
++      limpio("Limpio ISO 8", "iso8", 25), limpio("Limpio ISO 8 alto", "iso8", 40), limpio("Limpio ISO 7 bajo", "iso7", 20),
++    ];
++    S.zi = 0;
++    S.perms = { ...(S.perms || {}) };
++    Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "prueba 22.12" }; });
++    S.tab = "valor"; G("KZ_CACHE").key = null; G("VZ_CACHE").key = null;
++    G("recompute")();
++    const mov = G("KAIZEN").ops.filter((o) => o.muda === "mov");
++    const de = (nombre) => mov.find((o) => o.zona === nombre);
++    [
++      ["Limpio ISO 5", 240, "360 cambios/h contra 240, mínimo de ISO 5 (rango 240–480, ISO 14644-4 · ISPE)", 1.021],
++      ["Limpio ISO 6", 90, "135 cambios/h contra 90, mínimo de ISO 6 (rango 90–180, ISO 14644-4 · ISPE)", 0.492],
++      ["Limpio ISO 7", 30, "45 cambios/h contra 30, mínimo de ISO 7 (rango 30–60, ISO 14644-4 · ISPE)", 0.34],
++      ["Limpio ISO 8 alto", 15, "40 cambios/h contra 15, mínimo URS típico de ISO 8 (rango de la clase 10–25)", 0.303],
++    ].forEach(([zona, piso, ahora, tr]) => {
++      const op = de(zona);
++      if (!op) throw new Error(`${zona}: Kaizen no propone bajar los cambios de aire`);
++      eq(op.ahora, ahora, `${zona} estado actual:`);
++      contiene(op.cambio, `Bajar a ${piso} si el URS lo permite`, `${zona} propuesta:`);
++      cerca(op.tr, tr, 0.001, `${zona} ahorro TR:`);
++    });
++    if (de("Limpio ISO 8")) throw new Error("ISO 8 a 25 cambios/h no debe proponer (ahorro a 15 bajo 0.2 TR)");
++    if (de("Limpio ISO 7 bajo")) throw new Error("ISO 7 a 20 cambios/h ya está bajo el mínimo de su clase: no debe proponer bajar");
++    eq(G("VALOR").props.filter((p) => p.medida === "kaizen:mov").length, 4, "medidas de movimiento en ingeniería de valor:");
++    const xlsx = Buffer.from(G("buildPropuestaXlsx")({ lang: "es", mon: "MXN" })).toString("utf8");
++    if (xlsx.includes("que pide el URS para ISO 8")) throw new Error("el libro sigue afirmando \"que pide el URS para ISO 8\"");
++    contiene(xlsx, "45 cambios/h contra 30, mínimo de ISO 7", "hoja INGENIERIA_VALOR:");
++  } finally {
++    S.zones = zonas0; S.zi = zi0; S.tab = tab0;
++    if (perms0 === null) delete S.perms; else S.perms = perms0;
++    G("KZ_CACHE").key = null; G("VZ_CACHE").key = null;
++    G("recompute")();
++  }
++});
++
+ /* ============================== resultado =============================== */
+ const total = ok + fail;
+ console.log(`\nSuiteEmp rev ${G("REV")} · banco de comprobaciones de la rev 2.9.3`);

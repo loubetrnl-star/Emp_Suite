@@ -1,0 +1,77 @@
+﻿origen;nombres;valor;clase;mas_cercano_sitio;donde_en_sitio;dE00;dL;dC;dh
+:root suite;--gr-1 --acero-0 --bg --sobre-accion;#0D0F12;DERIVADO;#0B0D10;--acero-0 (:root);0.43;0.7;0.2;0
+:root suite;--gr-2 --acero-1 --bg2;#13161A;DERIVADO;#111417;--acero-1 / --tinta (:root);1.03;1.0;0.8;7
+:root suite;--gr-3 --acero-2 --capsula;#1A1D22;DERIVADO;#191E24;--acero-2 (:root);1.12;-0.4;-1.0;6
+:root suite;--gr-4 --acero-3 --card2 --panel2;#23272D;DERIVADO;#20262D;literal de CSS;1.12;0.6;-1.0;5
+:root suite;--gr-5 --navy;#313740;DERIVADO;#2A3038;--acero-3 (:root);2.33;3.2;0.5;3
+:root suite;--gr-6 --azul-hondo;#5A626D;DERIVADO;#4B5563;--tinta-2 (:root);4.95;5.5;-2.1;1
+:root suite;--gr-7 --papel-2 --tinta-3 --cota --plata;#A5ADB8;DERIVADO;#A8B0BA;--claro-2 / --plano (:root);0.97;-1.1;0.5;2
+:root suite;--gr-8 --papel --tinta-2 --claro-2 --p-hepa --muted --orange --ok;#C2C8D0;DERIVADO;#B4BDCB;literal de CSS;3.90;4.0;-3.4;4
+:root suite;--gr-9 --blanco --tinta --claro --fg --text --orange-soft --warn;#EEF0F3;DERIVADO;#EDEFF2;literal de HTML/SVG en linea;0.21;0.3;-0.0;0
+:root suite;--marca;#C8643F;NO ESTÁ;#F0561D;--senal / --p-fire (:root);7.94;-3.6;-29.3;0
+:root suite;--marca-2;#A4502F;NO ESTÁ;#F0561D;--senal / --p-fire (:root);16.09;-13.3;-35.4;1
+:root suite;--marca-claro;#F2DDCE;NO ESTÁ;#F6F7F9;--papel (:root);11.53;-7.8;10.0;153
+:root suite;--senal --p-fire --accion --alerta;#F0561D;IDÉNTICO;#F0561D;--senal / --p-fire (:root);0.00;0.0;0.0;0
+:root suite;--plano --azul --dato;#86AEEF;DERIVADO;#6FA7E6;literal de CSS;4.22;3.5;-0.5;6
+:root suite;--p-hvac-2;#93A2B5;DERIVADO;#98A6BA;literal de HTML/SVG en linea;1.47;-1.6;-0.3;3
+:root suite;--p-hvac;#4B5563;IDÉNTICO;#4B5563;--tinta-2 (:root);0.00;0.0;0.0;0
+:root suite;--p-cw;#5B85FF;IDÉNTICO;#5B85FF;--p-cw (:root);0.00;0.0;0.0;0
+:root suite;--p-el;#D7A8FF;IDÉNTICO;#D7A8FF;--p-bt (:root);0.00;0.0;0.0;0
+:root suite;--p-air;#F2C230;IDÉNTICO;#F2C230;--p-air (:root);0.00;0.0;0.0;0
+:root suite;--p-mt;#A96BFF;IDÉNTICO;#A96BFF;--p-mt / --p-el (:root);0.00;0.0;0.0;0
+:root suite;--p-pot;#3FD1B0;IDÉNTICO;#3FD1B0;--p-pot (:root);0.00;0.0;0.0;0
+:root suite;--p-plu;#7CC8F7;IDÉNTICO;#7CC8F7;--p-plu (:root);0.00;0.0;0.0;0
+:root suite;--p-vac;#9AA4B0;IDÉNTICO;#9AA4B0;--p-vac (:root);0.00;0.0;0.0;0
+:root suite;--p-drain;#FFFFFF;IDÉNTICO;#FFFFFF;--blanco / --p-san (:root);0.00;0.0;0.0;0
+:root suite;--card;#1B1E23;DERIVADO;#191E24;--acero-2 (:root);1.11;0.1;-1.0;6
+:root suite;--accion-txt --alerta-txt --bad;#FF8A5C;NO ESTÁ;#FF6A33;literal de CSS;6.94;6.4;-18.8;1
+PDF;PDF_MARCA;#C8643F;NO ESTÁ;#F0561D;--senal / --p-fire (:root);7.94;;;
+PDF;PDF_SENAL;#F0561D;IDÉNTICO;#F0561D;--senal / --p-fire (:root);0.00;;;
+PDF;texto principal;#3B3629;NO ESTÁ;#333333;literal de CSS (solo en @media print);7.56;;;
+PDF;texto secundario;#6E6654;NO ESTÁ;#6B7480;--tinta-3 (:root);17.25;;;
+PDF;texto de párrafo;#4A4536;NO ESTÁ;#333333;literal de CSS (solo en @media print);10.05;;;
+PDF;etiqueta de fila;#544C3D;NO ESTÁ;#333333;literal de CSS (solo en @media print);11.90;;;
+PDF;texto tenue;#7D7561;NO ESTÁ;#6B7480;--tinta-3 (:root);17.17;;;
+PDF;línea de firma;#8F8773;NO ESTÁ;#6B7480;--tinta-3 (:root);18.67;;;
+PDF;línea por defecto;#D6CFBF;NO ESTÁ;#FFF0C4;literal de CSS;11.19;;;
+PDF;cebra;#F7F5EF;NO ESTÁ;#FFFFFF;--blanco / --p-san (:root);3.58;;;
+PDF;título sobre banda;#FAE8DB;NO ESTÁ;#FFFFFF;--blanco / --p-san (:root);9.37;;;
+PDF;aviso;#8C331A;NO ESTÁ;#F0561D;--senal / --p-fire (:root);23.86;;;
+PDF;blanco;#FFFFFF;IDÉNTICO;#FFFFFF;--blanco / --p-san (:root);0.00;;;
+PDF;negro (defecto de texto);#000000;IDÉNTICO;#000000;literal de CSS;0.00;;;
+Excel;fuente base, sumas oscuras y fondo del total (tinta café-carbón);#3A3529;NO ESTÁ;#333333;literal de CSS (solo en @media print);7.10;;;
+Excel;título de hoja, fondo de cabeceras (arcilla);#C8643F;NO ESTÁ;#F0561D;--senal / --p-fire (:root);7.94;;;
+Excel;notas (gris cálido);#6E6754;NO ESTÁ;#6B7480;--tinta-3 (:root);17.47;;;
+Excel;texto sobre cabecera;#FFFFFF;IDÉNTICO;#FFFFFF;--blanco / --p-san (:root);0.00;;;
+Excel;texto y fondo de la marca de señal;#F0561D;IDÉNTICO;#F0561D;--senal / --p-fire (:root);0.00;;;
+Excel;fondo de subtotal (crema);#EFEAE0;NO ESTÁ;#FFFFFF;--blanco / --p-san (:root);6.44;;;
+Excel;fondo de fila de énfasis (crema claro);#FBFAF6;NO ESTÁ;#FFFFFF;--blanco / --p-san (:root);2.25;;;
+Excel;bordes de celda;#E1DACB;NO ESTÁ;#E5E8EC;--papel-2 / --claro (:root);9.81;;;
+rgba suite;rgba(0,0,0,0.35);;DERIVADO;;;"negro a otra opacidad; el sitio solo lo usa como relleno SVG a .4 (fill-opacity), no como sombra ni velo";;;
+rgba suite;rgba(0,0,0,0.4);;IDÉNTICO;;;"negro a 0.4: el sitio lo usa solo como relleno SVG (fill:#000;fill-opacity:0.4), no como sombra ni velo";;;
+rgba suite;rgba(0,0,0,0.45);;DERIVADO;;;"negro a otra opacidad; el sitio solo lo usa como relleno SVG a .4 (fill-opacity), no como sombra ni velo";;;
+rgba suite;rgba(0,0,0,0.5);;DERIVADO;;;"negro a otra opacidad; el sitio solo lo usa como relleno SVG a .4 (fill-opacity), no como sombra ni velo";;;
+rgba suite;rgba(0,0,0,0.6);;DERIVADO;;;"negro a otra opacidad; el sitio solo lo usa como relleno SVG a .4 (fill-opacity), no como sombra ni velo";;;
+rgba suite;rgba(6,7,9,0.62);;DERIVADO;;;"base acero equivalente a la del sitio rgba(11,13,16,·) (ΔE00 de la base 1.2); el alfa es propio de la suite";;;
+rgba suite;rgba(13,15,18,0.72);;DERIVADO;;;"base acero equivalente a la del sitio rgba(11,13,16,·) (ΔE00 de la base 0.4); el alfa es propio de la suite";;;
+rgba suite;rgba(24,27,32,0.86);;DERIVADO;;;"base acero equivalente a la del sitio rgba(18,24,32,·) (ΔE00 de la base 2.3); el alfa es propio de la suite";;;
+rgba suite;rgba(24,27,32,0.94);;DERIVADO;;;"base acero equivalente a la del sitio rgba(18,24,32,·) (ΔE00 de la base 2.3); el alfa es propio de la suite";;;
+rgba suite;rgba(26,29,34,0.96);;DERIVADO;;;"base acero equivalente a la del sitio rgba(23,29,38,·) (ΔE00 de la base 2.5); el alfa es propio de la suite";;;
+rgba suite;rgba(30,34,40,0.92);;DERIVADO;;;"base acero equivalente a la del sitio rgba(23,29,38,·) (ΔE00 de la base 2.5); el alfa es propio de la suite";;;
+rgba suite;rgba(255,255,255,0.012);;DERIVADO;;;"blanco translúcido; alfa más cercano del sitio 0.024 (Δα=0.012)";;;
+rgba suite;rgba(255,255,255,0.02);;DERIVADO;;;"blanco translúcido; alfa más cercano del sitio 0.024 (Δα=0.004)";;;
+rgba suite;rgba(255,255,255,0.025);;DERIVADO;;;"blanco translúcido; alfa más cercano del sitio 0.024 (Δα=0.001)";;;
+rgba suite;rgba(255,255,255,0.03);;DERIVADO;;;"blanco translúcido; alfa más cercano del sitio 0.024 (Δα=0.006)";;;
+rgba suite;rgba(255,255,255,0.04);;IDÉNTICO;;;rgba(255,255,255,0.04) presente en el sitio (2 usos);;;
+rgba suite;rgba(255,255,255,0.045);;DERIVADO;;;"blanco translúcido; alfa más cercano del sitio 0.04 (Δα=0.005)";;;
+rgba suite;rgba(255,255,255,0.05);;DERIVADO;;;"blanco translúcido; alfa más cercano del sitio 0.055 (Δα=0.005)";;;
+rgba suite;rgba(255,255,255,0.06);;IDÉNTICO;;;rgba(255,255,255,0.06) presente en el sitio (2 usos);;;
+rgba suite;rgba(255,255,255,0.07);;IDÉNTICO;;;rgba(255,255,255,0.07) presente en el sitio (2 usos);;;
+rgba suite;rgba(255,255,255,0.075);;DERIVADO;;;"blanco translúcido; alfa más cercano del sitio 0.07 (Δα=0.005)";;;
+rgba suite;rgba(255,255,255,0.08);;DERIVADO;;;"blanco translúcido; alfa más cercano del sitio 0.07 (Δα=0.010)";;;
+rgba suite;rgba(255,255,255,0.09);;DERIVADO;;;"blanco translúcido; alfa más cercano del sitio 0.1 (Δα=0.010)";;;
+rgba suite;rgba(255,255,255,0.1);;IDÉNTICO;;;rgba(255,255,255,0.1) presente en el sitio (62 usos);;;
+rgba suite;rgba(255,255,255,0.11);;DERIVADO;;;"blanco translúcido; alfa más cercano del sitio 0.1 (Δα=0.010)";;;
+rgba suite;rgba(255,255,255,0.12);;DERIVADO;;;"blanco translúcido; alfa más cercano del sitio 0.1 (Δα=0.020)";;;
+rgba suite;rgba(255,255,255,0.28);;IDÉNTICO;;;rgba(255,255,255,0.28) presente en el sitio (5 usos);;;
+rgba suite;rgba(255,255,255,0.38);;DERIVADO;;;"blanco translúcido; alfa más cercano del sitio 0.28 (Δα=0.100) (el sitio usa rgba(122,147,189,.4), azul-gris, para el borde de campos)";;;

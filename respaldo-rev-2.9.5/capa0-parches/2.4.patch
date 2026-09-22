@@ -1,0 +1,67 @@
+--- pasos/2.4-antes.html	2026-09-14 11:56:40.988071200 -0700
++++ index.html	2026-09-14 11:57:04.832324500 -0700
+@@ -7883,6 +7883,8 @@
+   const presBomba = Math.max(0, mcaTotal - (F.fuente === "municipal" ? presFuente : 0));
+   const kWbomba = 9.81 * (qBomba / 60 / 1000) * presBomba / .65 ;
+   const hpBomba = Math.ceil(kWbomba / .746 / 5) * 5;
++  const bombaNoCubre = qBomba < qTotal;
++  if (bombaNoCubre) avisos.push({ lvl: "err", msg: `La demanda de ${n(qTotal, 0)} L/min (${n(qTotal / 3.785, 0)} gpm) rebasa la bomba mayor de la lista de prediseño, ${n(qBomba, 0)} L/min (${n(qBomba / 3.785, 0)} gpm), que NO cubre la demanda. La bomba nominal, su potencia de ${n(hpBomba, 0)} HP (subestimada) y la descripción de la partida quedan con ${n(qBomba, 0)} L/min: seleccionar la bomba con el fabricante antes de cerrar el alcance.` });
+   const reserva = qTotal * r.dur;                        // litros
+   memo.push(`Clasificación: ${r.label}. Ejemplos de esta clase: ${r.ej}`);
+   memo.push(`Densidad de diseño ${n(r.dens, 2)} mm/min (${n(r.dens / 40.746, 3)} gpm/ft²) sobre un área de operación de ${n(areaDis, 0)} m² (${n(areaDis * 10.764, 0)} ft²), dentro del rango ${r.areaMin}–${r.areaMax} m² de la curva densidad-área de NFPA 13.`);
+@@ -7892,7 +7894,7 @@
+   memo.push(`Trayectoria más desfavorable: cabezal del área de diseño ${ram.nom} (${n(ram.V, 2)} m/s, ${n(hfRam, 2)} m de pérdida en ${n(Lram, 0)} m) y montante ${mon.nom} (${n(mon.V, 2)} m/s, ${n(hfMon, 2)} m en ${n(Lmon, 0)} m), con 30 % de longitud equivalente por accesorios. Estática ${n(estatica, 1)} m.`);
+   memo.push("El cabezal se calcula con el caudal COMPLETO del área de diseño en toda su longitud. Es conservador a propósito: en la red real el caudal se va repartiendo entre rociadores y la pérdida es menor. El cálculo formal nodo por nodo lo resuelve exacto; este prediseño se queda del lado seguro para dimensionar bomba y toma.");
+   memo.push(`Presión requerida en la base del montante: ${n(mcaTotal, 1)} m de columna de agua = ${n(barTotal, 2)} bar (${n(barTotal * 14.5, 0)} psi).`);
+-  memo.push(`Bomba contra incendio NFPA 20: nominal ${n(qBomba, 0)} L/min (${n(qBomba / 3.785, 0)} gpm) a ${n(presBomba, 1)} m · ${n(hpBomba, 0)} HP estimados con 65 % de eficiencia. Verificar que la curva no pase de 140 % de la presión nominal a caudal cero y entregue al menos 65 % al 150 % del caudal.`);
++  memo.push(`Bomba contra incendio NFPA 20: nominal ${n(qBomba, 0)} L/min (${n(qBomba / 3.785, 0)} gpm)${bombaNoCubre ? ` — POR DEBAJO de la demanda de ${n(qTotal, 0)} L/min (${n(qTotal / 3.785, 0)} gpm), no cubre` : ""} a ${n(presBomba, 1)} m · ${n(hpBomba, 0)} HP estimados con 65 % de eficiencia. Verificar que la curva no pase de 140 % de la presión nominal a caudal cero y entregue al menos 65 % al 150 % del caudal.`);
+   memo.push(`Reserva de agua: ${n(qTotal, 0)} L/min × ${r.dur} min de duración = ${n(reserva, 0)} L (${n(reserva / 1000, 1)} m³). Esta reserva es exclusiva del sistema contra incendio y no se comparte con el consumo del edificio.`);
+   memo.push("PREDISEÑO: la trayectoria más desfavorable se resuelve completa, pero el cálculo formal de NFPA 13 balancea nodo por nodo toda el área de diseño y se entrega con su gráfica de demanda contra abastecimiento. Este resultado sirve para dimensionar toma, cisterna y bomba, y para saber si el proyecto es viable.");
+ 
+--- pasos/2.4-antes-pruebas.mjs	2026-09-14 11:56:41.019944300 -0700
++++ pruebas.mjs	2026-09-14 11:58:14.317303500 -0700
+@@ -2957,6 +2957,44 @@
+   }
+ });
+ 
++t("22.7 2.4 la bomba contra incendio que no cubre la demanda avisa (err) en motor, memoria y PDF en vez de topar en silencio", () => {
++  const fuego0 = JSON.parse(JSON.stringify(S.fuego));
++  try {
++    const base = { ...G("defaultFuego")(), area: 600, altura: 6, rociador: "k80", material: "acero_neg",
++      areaDiseno: 0, Lramal: 30, Lmontante: 12, presFuente: 30, fuente: "cisterna", tomarArea: false };
++    /* Ordinario 2: la bomba de lista cubre y no hay aviso. */
++    S.fuego = { ...base, riesgo: "ord2" };
++    G("recompute")();
++    let F = G("FUEGO");
++    eq(F.qBomba, 2500, "ord2 bomba nominal:");
++    if (F.avisos.some((a) => /rebasa la bomba mayor/.test(a.msg))) throw new Error("ord2 avisa de bomba sin rebasar la lista");
++    /* Extra 1: 5,162 L/min contra la bomba mayor de 5,000. */
++    S.fuego = { ...base, riesgo: "extra1" };
++    G("recompute")();
++    F = G("FUEGO");
++    cerca(F.qTotal, 5161.98, 0.01, "extra1 demanda:");
++    eq(F.qBomba, 5000, "extra1 bomba nominal (sin decidir capacidad mayor):");
++    eq(F.hpBomba, Math.ceil(9.81 * (5000 / 60 / 1000) * F.presBomba / .65 / .746 / 5) * 5, "extra1 HP con la bomba de lista (fórmula sin cambio):");
++    const nn = G("n");
++    const av = F.avisos.filter((a) => /rebasa la bomba mayor/.test(a.msg));
++    eq(av.length, 1, "avisos de bomba que no cubre:");
++    eq(av[0].lvl, "err", "nivel del aviso:");
++    contiene(av[0].msg, "La demanda de 5,162 L/min (1,364 gpm) rebasa la bomba mayor de la lista de prediseño, 5,000 L/min (1,321 gpm), que NO cubre la demanda.", "aviso:");
++    contiene(av[0].msg, `potencia de ${nn(F.hpBomba, 0)} HP (subestimada)`, "aviso potencia:");
++    contiene(F.memo.join(" "), `nominal 5,000 L/min (1,321 gpm) — POR DEBAJO de la demanda de 5,162 L/min (1,364 gpm), no cubre a ${nn(F.presBomba, 1)} m`, "memoria:");
++    const pdf = Buffer.from(G("buildFuegoPdf")()).toString("latin1");
++    const iObs = pdf.indexOf("7. Observaciones");
++    if (iObs < 0) throw new Error("el PDF no tiene la sección 7. Observaciones");
++    const obs = [...pdf.slice(iObs).matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ").replace(/\s+/g, " ");
++    contiene(obs, "rebasa la bomba mayor de la lista", "PDF observaciones:");
++    const sem = G("semaforoSuite")().find((x) => x.id === "fuego");
++    eq(sem && sem.nivel, "incompleta", "semáforo de contra incendio:");
++  } finally {
++    S.fuego = fuego0;
++    G("recompute")();
++  }
++});
++
+ /* ============================== resultado =============================== */
+ const total = ok + fail;
+ console.log(`\nSuiteEmp rev ${G("REV")} · banco de comprobaciones de la rev 2.9.3`);

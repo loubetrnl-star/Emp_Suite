@@ -1,0 +1,244 @@
+--- pasos/2.3-rep-antes.html	2026-09-14 12:29:29.876216100 -0700
++++ index.html	2026-09-14 12:30:59.985598300 -0700
+@@ -1410,7 +1410,7 @@
+   pdfTable(d, ["Tramo", "Servicio", "m3/h", "Seccion mm", "m/s", "Pa/m", "dP Pa", "Cal."],
+     DUCT.segs.map((s) => [s.tag, s.service, n(s.flow * 3.6, 0), s.shape === "round" ? "D " + n(s.d, 0) : `${s.w} x ${s.h}`, n(s.V, 1), n(s.Pam, 2), n(s.total, 1), String(s.gauge.gauge)]),
+     [80, 70, 60, 85, 45, 45, 50, 35]);
+-  pdfParagraph(d, `Caída de presión acumulada ${n(DUCT.path, 1)} Pa · presión de ventilador sugerida ${n(DUCT.path * 1.15, 1)} Pa con 15 % de margen (suma de todos los tramos de suministro y retorno; cota superior, sin recorrido crítico) · lámina ${n(DUCT.boq.sheet, 1)} m² · ${n(DUCT.boq.kg, 0)} kg · ${n(DUCT.boq.joints, 0)} juntas transversales · ${n(DUCT.boq.hangers, 0)} soportes.`);
++  pdfParagraph(d, `Caída de presión acumulada ${n(DUCT.path, 1)} Pa · presión de ventilador sugerida ${n(DUCT.path * 1.15, 1)} Pa con 15 % de margen (suma de todos los tramos de suministro y retorno, sin recorrido crítico; ${cotaDuctTexto(DUCT)}) · lámina ${n(DUCT.boq.sheet, 1)} m² · ${n(DUCT.boq.kg, 0)} kg · ${n(DUCT.boq.joints, 0)} juntas transversales · ${n(DUCT.boq.hangers, 0)} soportes.`);
+   pdfHeading(d, "7. Equipos seleccionados");
+   pdfTable(d, ["Zona", "Marca", "Modelo", "Capacidad", "Tecnologia"],
+     LOADS.map((r, i) => [S.zones[i].name, "Carrier", r.eq.primary.model, `${r.eq.primary.TR} TR`, r.eq.techLabel])
+@@ -4430,8 +4430,8 @@
+       hf.push([xT(L("TOTAL", "TOTAL"), XS.SUBT), xV(XS.SUBT), xF(`SUM(C${ini}:C${fin})`, XS.SUBT), xF(`SUM(D${ini}:D${fin})`, XS.SUBT),
+         xV(XS.SUBT), xV(XS.SUBT), xV(XS.SUBT), xN(+DUCT.pathTotal.toFixed(1), XS.SUBT), xV(XS.SUBT)]);
+       hf.push([]);
+-      hf.push([xT(L(`Circuito del equipo de aire (suministro + retorno): ${n(DUCT.path, 0)} Pa (suma de todos los tramos; cota superior, sin recorrido critico). Extraccion y grasa, que cuelgan de sus propios ventiladores: ${n(DUCT.pathOtros, 0)} Pa. Lamina cuantificada: ${n(DUCT.boq.kg, 0)} kg.`,
+-        `Air handler circuit (supply + return): ${n(DUCT.path, 0)} Pa (sum of all runs; upper bound, not the critical path). Exhaust and grease, on their own fans: ${n(DUCT.pathOtros, 0)} Pa. Sheet metal taken off: ${n(DUCT.boq.kg, 0)} kg.`), XS.NOTA)]);
++      hf.push([xT(L(`Circuito del equipo de aire (suministro + retorno): ${n(DUCT.path, 0)} Pa (suma de todos los tramos, sin recorrido critico; ${cotaDuctTexto(DUCT, "es-plano")}). Extraccion y grasa, que cuelgan de sus propios ventiladores: ${n(DUCT.pathOtros, 0)} Pa. Lamina cuantificada: ${n(DUCT.boq.kg, 0)} kg.`,
++        `Air handler circuit (supply + return): ${n(DUCT.path, 0)} Pa (sum of all runs, not the critical path; ${cotaDuctTexto(DUCT, "en")}). Exhaust and grease, on their own fans: ${n(DUCT.pathOtros, 0)} Pa. Sheet metal taken off: ${n(DUCT.boq.kg, 0)} kg.`), XS.NOTA)]);
+     }
+     hf.push([]);
+     hf.push([xT(FUENTE_HORARIA, XS.NOTA)]);
+@@ -7003,6 +7003,17 @@
+   boq.despiece = despieceProyecto(segs, duct.meta);
+   return { segs, path, pathOtros, pathTotal, critical, boq, maxV: segs.reduce((a, s) => Math.max(a, s.V), 0) };
+ }
++/* La suma de tramos (DUCT.path) solo acota el recorrido crítico de los tramos
++   que están capturados: no cubre rejillas, persianas, filtros ni tramos que
++   falten, en particular el retorno. La red que arma chainToDuct no crea
++   retorno, así que el texto lo avisa cuando no hay ningún tramo "return".
++   modo: "es" (con acentos), "es-plano" (sin acentos, libro XLSX) o "en". */
++function cotaDuctTexto(d, modo = "es") {
++  const sinRetorno = !((d && d.segs) || []).some((s) => s.service === "return");
++  if (modo === "en") return "upper bound of the critical path of the runs entered; excludes runs, grilles and filters not on the list" + (sinRetorno ? "; no return runs entered" : "");
++  if (modo === "es-plano") return "cota superior del recorrido critico de los tramos capturados; no incluye tramos, rejillas ni filtros que no esten en la lista" + (sinRetorno ? "; sin tramos de retorno capturados" : "");
++  return "cota superior del recorrido crítico de los tramos capturados; no incluye tramos, rejillas ni filtros que no estén en la lista" + (sinRetorno ? "; sin tramos de retorno capturados" : "");
++}
+ function defaultSegment(tag = "TR-1", flow = 1000) {
+   return { id: "s" + Math.random().toString(36).slice(2, 8), tag, service: "supply", shape: "rect", flow, method: "equal_friction", targetF: .8, targetV: 6, length: 12, lock: false, d: null, w: null, h: null, aspect: 3, hmax: 0, fittings: [{ type: "elbow_90_rect", qty: 2, C: .28 }] };
+ }
+@@ -8154,7 +8165,7 @@
+     if (c.usa.includes("esp") && espReq > 0 && c.esp != null && espReq > c.esp) {
+       puntos -= Math.min(40, (espReq / c.esp - 1) * 60);
+       limita = "presión estática";
+-      marcas.push(`el ducto pide ${n(espReq, 2)} in.wg (suma de tramos, cota superior) y la familia entrega del orden de ${n(c.esp, 2)}`);
++      marcas.push(`el ducto pide ${n(espReq, 2)} in.wg (suma de tramos; ${cotaDuctTexto(DUCT)}) y la familia entrega del orden de ${n(c.esp, 2)}`);
+     }
+     return { model: e, cap, cfm: cfmE, sensible: senE, fit: Math.round(Math.max(0, Math.min(100, puntos))),
+       limita, marcas, fuera: fueraDeRango(e), fuente: fuenteDe(e) };
+@@ -16285,14 +16296,14 @@
+       </div>
+       ${d.segs.length ? `<div class="card"><h3>Pérdida por tramo<span class="tag">crítico: ${crit ? esc(crit.tag) : "—"}</span></h3><div class="body">
+         ${chartBreakdown(d.segs.map((s) => ({ k: s.tag, v: s.total, c: (crit && s.tag === crit.tag) ? CLR.or : CLR.bl })))}
+-        <div class="ref" style="margin-top:10px">La presión del ventilador que se muestra suma todos los tramos de suministro y retorno: es una cota superior, porque el recorrido crítico todavía no se calcula. Si un tramo domina, revisa su velocidad o sus accesorios antes de subir el equipo.</div>
++        <div class="ref" style="margin-top:10px">La presión del ventilador que se muestra suma todos los tramos de suministro y retorno, porque el recorrido crítico todavía no se calcula: es una ${cotaDuctTexto(d)}. Si un tramo domina, revisa su velocidad o sus accesorios antes de subir el equipo.</div>
+       </div></div>` : ""}
+       <div class="card"><h3>Resumen hidráulico</h3><div class="body">
+         <div class="metrics">
+           <div class="metric"><div class="k">Δp acumulado</div><div class="v">${uv(U.press(d.path), 2)}</div></div>
+           <div class="metric"><div class="k">Velocidad máxima</div><div class="v">${uv(U.vel(d.maxV), 1)}</div></div>
+           <div class="metric"><div class="k">Tramo crítico</div><div class="v" style="font-size:17.5px">${crit ? esc(crit.tag) : "—"}</div></div>
+-          <div class="metric"><div class="k">Presión del ventilador</div><div class="v">${uv(U.press(d.path * 1.15), 2)}</div><div class="sub">+15 % de margen · suma de tramos, cota superior</div></div>
++          <div class="metric"><div class="k">Presión del ventilador</div><div class="v">${uv(U.press(d.path * 1.15), 2)}</div><div class="sub">+15 % de margen · suma de tramos, cota superior solo de los tramos capturados${d.segs.some((s) => s.service === "return") ? "" : " · sin tramos de retorno capturados"}</div></div>
+         </div>
+       </div></div>
+       ${(() => {
+@@ -17549,7 +17560,7 @@
+     cuando: "Para baños, cocinas, cuartos de proceso y reposición de cascada; no para el aire acondicionado." },
+   ductos: { que: "Dimensiona cada tramo por fricción constante o por velocidad, con calibre SMACNA y cuantificación de lámina.",
+     cuando: "Cuando ya hay caudales. Se pueden generar los tramos desde la carga térmica con un botón.",
+-    ojo: "El ventilador debe vencer el recorrido crítico, no la suma de todos los tramos. Por ahora la suite muestra la suma de tramos (cota superior): la presión real del recorrido crítico se revisa a mano." },
++    ojo: "El ventilador debe vencer el recorrido crítico, no la suma de todos los tramos. Por ahora la suite muestra la suma de tramos: es cota superior del recorrido crítico de los tramos capturados; no incluye tramos, rejillas ni filtros que no estén en la lista. La red que se genera desde la carga no trae tramos de retorno: si no los capturas, la cifra tampoco los incluye. La presión real del recorrido crítico se revisa a mano." },
+   electrico: { que: "Cuadro de cargas del proyecto: demanda, balanceo por fase, alimentador, protección, tierra y canalización.",
+     cuando: "Cuando la cédula de equipos está cerrada, para que las cargas entren solas con su MCA.",
+     ojo: "No es estudio de corto circuito ni coordinación de protecciones." },
+--- pasos/2.3-rep-antes-pruebas.mjs	2026-09-14 12:29:29.910139800 -0700
++++ pruebas.mjs	2026-09-14 12:36:27.607377100 -0700
+@@ -2913,7 +2913,7 @@
+   }
+ });
+ 
+-t("22.6 2.3 la presión de ductos se declara suma de tramos (cota superior) y ningún texto afirma que manda el recorrido crítico", () => {
++t("22.6 2.3 la presión de ductos se declara suma de tramos (cota superior solo de los tramos capturados, con aviso si no hay retorno) y ningún texto afirma que manda el recorrido crítico", () => {
+   /* Sin topología de red el número sigue siendo la suma (pasa a la capa de motores);
+      lo que se fija aquí es que pantalla, guía, selección, memoria y libro lo digan. */
+   const ducto0 = JSON.parse(JSON.stringify(S.duct)), tab0 = S.tab, perms0 = JSON.parse(JSON.stringify(S.perms));
+@@ -2924,34 +2924,82 @@
+       fittings: [{ type: "tee_branch", qty: 1, C: .65 }, { type: "exit_diffuser", qty: 1, C: 1 }] });
+     S.duct.segments = [{ ...seg("SA-PRINCIPAL", 3200), id: "p226t", shape: "rect", method: "equal_friction", targetF: .8, length: 20, aspect: 3,
+       fittings: [{ type: "elbow_90_rect", qty: 2, C: .28 }] }, ...Array.from({ length: 8 }, (_, i) => ramal(`SA-RAMAL-${i + 1}`, `p226r${i}`, 400))];
+-    G("recompute")();
+-    const D = G("DUCT");
+-    cerca(D.path, D.segs.reduce((a, s) => a + s.total, 0), 1e-9, "DUCT.path sigue siendo la suma de tramos en esta capa:");
+-    cerca(G("requisitoFam")("split_duct").esp, D.path * 1.15 / 249.089, 1e-9, "esp de selección con la suma:");
+-    /* Pantalla de ductos */
+-    S.tab = "ductos"; G("render")();
+-    const pant = w.document.body.textContent.replace(/\s+/g, " ");
+-    if (pant.includes("La barra más larga manda la presión del ventilador")) throw new Error("la pantalla sigue diciendo que la barra más larga manda");
+-    contiene(pant, "suma todos los tramos de suministro y retorno: es una cota superior", "nota de la gráfica:");
+-    contiene(pant, "+15 % de margen · suma de tramos, cota superior", "sub de Presión del ventilador:");
+-    /* Guía del módulo */
+-    const ojo = G("GUIA").ductos.ojo;
+-    if (/El tramo crítico es el que manda/.test(ojo)) throw new Error("la guía sigue afirmando que el tramo crítico manda");
+-    contiene(ojo, "cota superior", "guía de ductos:");
+-    /* Marca de selección */
++    /* 2.3-rep: "cota superior" solo vale para el recorrido crítico de los tramos
++       capturados; sin ningún tramo "return" (como la red de chainToDuct) cada
++       texto lo avisa, y con retorno capturado el aviso desaparece. */
++    const COTA = "cota superior del recorrido crítico de los tramos capturados; no incluye tramos, rejillas ni filtros que no estén en la lista";
++    const COTA_PLANO = "cota superior del recorrido critico de los tramos capturados; no incluye tramos, rejillas ni filtros que no esten en la lista";
++    const COTA_EN = "upper bound of the critical path of the runs entered; excludes runs, grilles and filters not on the list";
++    const SIN = "; sin tramos de retorno capturados", SIN_EN = "; no return runs entered";
++    const revisar = (red, esperaRetorno, conMarca) => {
++      G("recompute")();
++      const D = G("DUCT");
++      const hayRetorno = D.segs.some((s) => s.service === "return");
++      if (hayRetorno !== esperaRetorno) throw new Error(`${red}: la red ${hayRetorno ? "sí" : "no"} trae retorno, se esperaba lo contrario`);
++      const sin = hayRetorno ? "" : SIN, sinEn = hayRetorno ? "" : SIN_EN;
++      const falta = (txt, frase, donde) => { if (txt.includes(frase)) throw new Error(`${red} · ${donde} dice «${frase}» y la red sí trae retorno`); };
++      cerca(D.path, D.segs.filter((s) => ["supply", "return"].includes(s.service)).reduce((a, s) => a + s.total, 0), 1e-9, `${red} · DUCT.path sigue siendo la suma de tramos en esta capa:`);
++      cerca(G("requisitoFam")("split_duct").esp, D.path * 1.15 / 249.089, 1e-9, `${red} · esp de selección con la suma:`);
++      /* Pantalla de ductos */
++      S.tab = "ductos"; G("render")();
++      /* Solo lo que se ve: fuera el código de los <script>, que también trae las frases. */
++      const vista = w.document.body.cloneNode(true);
++      vista.querySelectorAll("script, style, template").forEach((x) => x.remove());
++      const pant = vista.textContent.replace(/\s+/g, " ");
++      if (pant.includes("La barra más larga manda la presión del ventilador")) throw new Error("la pantalla sigue diciendo que la barra más larga manda");
++      if (pant.includes("es una cota superior,")) throw new Error(`${red} · la pantalla sigue diciendo «cota superior» sin acotarla a los tramos capturados`);
++      contiene(pant, `suma todos los tramos de suministro y retorno, porque el recorrido crítico todavía no se calcula: es una ${COTA}${sin}. Si un tramo domina`, `${red} · nota de la gráfica:`);
++      contiene(pant, `+15 % de margen · suma de tramos, cota superior solo de los tramos capturados${hayRetorno ? "" : " · sin tramos de retorno capturados"}`, `${red} · sub de Presión del ventilador:`);
++      if (hayRetorno) falta(pant, "sin tramos de retorno capturados", "la pantalla");
++      /* Marca de selección (se fuerza una presión alta para que haya castigo) */
++      if (conMarca) {
++        const sel = G("selPorFamilia")("split_duct", { ...G("requisitoFam")("split_duct"), esp: 5 });
++        const marcas = sel.cands.flatMap((c) => c.marcas || []).filter((x) => /in\.wg/.test(x));
++        if (!marcas.length) throw new Error(`${red} · el caso no castiga por presión: no se puede revisar la marca`);
++        marcas.forEach((x) => contiene(x, `in.wg (suma de tramos; ${COTA}${sin}) y la familia entrega`, `${red} · marca de selección:`));
++      }
++      /* Memoria PDF */
++      const txt = Buffer.from(G("buildMemoriaPdf")()).toString("latin1");
++      const todo = [...txt.matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");
++      /* El párrafo es largo y puede partirse entre páginas: entre dos palabras se
++         tolera el pie y el encabezado de página que el PDF intercala. */
++      const fraseMem = `presión de ventilador sugerida ${G("n")(D.path * 1.15, 1)} Pa con 15 % de margen (suma de todos los tramos de suministro y retorno, sin recorrido crítico; ${COTA}${sin})`;
++      const reMem = new RegExp(fraseMem.split(" ").map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("\\s+(?:Página \\d+ de \\d+[^]{0,400}?\\s+)?"));
++      if (!reMem.test(todo)) throw new Error(`${red} · memoria PDF: no contiene "${fraseMem}"`);
++      if (hayRetorno) falta(todo, "sin tramos de retorno capturados", "la memoria PDF");
++      /* Libro XLSX, espejo ES/EN */
++      const xes = Buffer.from(G("buildPropuestaXlsx")({ lang: "es", mon: "MXN" })).toString("utf8");
++      const xen = Buffer.from(G("buildPropuestaXlsx")({ lang: "en", mon: "USD" })).toString("utf8");
++      contiene(xes, `(suministro + retorno): ${G("n")(D.path, 0)} Pa (suma de todos los tramos, sin recorrido critico; ${COTA_PLANO}${sin}).`, `${red} · libro ES:`);
++      contiene(xen, `(supply + return): ${G("n")(D.path, 0)} Pa (sum of all runs, not the critical path; ${COTA_EN}${sinEn}).`, `${red} · libro EN:`);
++      if (hayRetorno) { falta(xes, "sin tramos de retorno capturados", "el libro ES"); falta(xen, "no return runs entered", "el libro EN"); }
++      return D;
++    };
++    /* Red 1: troncal + 8 ramales de suministro, capturada a mano */
++    const D = revisar("red de suministro", false, false);
+     const sel = G("selPorFamilia")("split_duct", G("requisitoFam")("split_duct"));
+     const marcas = sel.cands.flatMap((c) => c.marcas || []).filter((x) => /in\.wg/.test(x));
+     if (!marcas.length) throw new Error("el caso no castiga por presión: no se puede revisar la marca");
+-    marcas.forEach((x) => contiene(x, "in.wg (suma de tramos, cota superior) y la familia entrega", "marca de selección:"));
+-    /* Memoria PDF */
+-    const txt = Buffer.from(G("buildMemoriaPdf")()).toString("latin1");
+-    const todo = [...txt.matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");
+-    contiene(todo, `presión de ventilador sugerida ${G("n")(D.path * 1.15, 1)} Pa con 15 % de margen (suma de todos los tramos de suministro y retorno; cota superior, sin recorrido crítico)`, "memoria PDF:");
+-    /* Libro XLSX, espejo ES/EN */
+-    const xes = Buffer.from(G("buildPropuestaXlsx")({ lang: "es", mon: "MXN" })).toString("utf8");
+-    const xen = Buffer.from(G("buildPropuestaXlsx")({ lang: "en", mon: "USD" })).toString("utf8");
+-    contiene(xes, `(suministro + retorno): ${G("n")(D.path, 0)} Pa (suma de todos los tramos; cota superior, sin recorrido critico).`, "libro ES:");
+-    contiene(xen, `(supply + return): ${G("n")(D.path, 0)} Pa (sum of all runs; upper bound, not the critical path).`, "libro EN:");
++    marcas.forEach((x) => contiene(x, `in.wg (suma de tramos; ${COTA}${SIN}) y la familia entrega`, "marca de selección:"));
++    if (!(D.path > 0)) throw new Error("red de suministro sin presión");
++    /* Guía del módulo (texto fijo: debe acotar y avisar del retorno) */
++    const ojo = G("GUIA").ductos.ojo;
++    if (/El tramo crítico es el que manda/.test(ojo)) throw new Error("la guía sigue afirmando que el tramo crítico manda");
++    if (/\(cota superior\)/.test(ojo)) throw new Error("la guía sigue diciendo «(cota superior)» sin acotarla");
++    contiene(ojo, COTA, "guía de ductos:");
++    contiene(ojo, "no trae tramos de retorno", "guía de ductos (retorno):");
++    /* Red 2: la que arma la propia suite desde la carga (sin retorno) */
++    const vinc0 = S.vinculos === undefined ? undefined : JSON.parse(JSON.stringify(S.vinculos));
++    try {
++      G("chainToDuct")(true);
++      revisar("red de chainToDuct", false, true);
++      /* Red 3: la misma red con un retorno capturado: el aviso desaparece */
++      S.duct.segments.push({ ...seg("RA-PRINCIPAL", 1770), id: "p226ra", service: "return", shape: "rect", method: "equal_friction",
++        targetF: .8, length: 20, aspect: 2, fittings: [{ type: "elbow_90_rect", qty: 2, C: .28 }] });
++      revisar("red de chainToDuct con retorno", true, true);
++    } finally {
++      if (vinc0 === undefined) delete S.vinculos; else S.vinculos = vinc0;
++    }
+   } finally {
+     S.duct = ducto0; S.tab = tab0;
+     Object.keys(S.perms).forEach((k) => delete S.perms[k]);
+--- /dev/null	2026-09-14 12:37:16.000000000 -0700
++++ casos/2.3-rep.mjs	2026-09-14 12:31:27.708688700 -0700
+@@ -0,0 +1,47 @@
++// Caso 2.3-rep · El rótulo "cota superior" de la presión de ductos.
++// Red C: la que arma la suite con chainToDuct (sin tramos de retorno).
++// Red D: la misma red más un tramo de retorno capturado a mano.
++// Imprime lo que dicen pantalla, memoria PDF, libro ES/EN, marca de selección y guía.
++// Uso: node casos/2.3-rep.mjs <html>
++import { cargar, proyectoBase, imprime } from "./_carga.mjs";
++
++const w = await cargar(process.argv[2]);
++const G = (e) => w.eval(e);
++const S = proyectoBase(w);
++Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "caso 2.3-rep" }; });
++const tjs = (buf) => {
++  const txt = Buffer.from(buf).toString("latin1");
++  return [...txt.matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");
++};
++const corta = (s, re, n = 260) => { const m = re.exec(s); return m ? s.slice(m.index, m.index + n) : null; };
++
++function leer(nombre) {
++  G("recompute")();
++  const D = G("DUCT");
++  S.tab = "ductos"; G("render")();
++  const pant = w.document.body.textContent.replace(/\s+/g, " ");
++  const pdf = tjs(G("buildMemoriaPdf")());
++  const xes = Buffer.from(G("buildPropuestaXlsx")({ lang: "es", mon: "MXN" })).toString("utf8");
++  const xen = Buffer.from(G("buildPropuestaXlsx")({ lang: "en", mon: "USD" })).toString("utf8");
++  const sel = G("selPorFamilia")("split_duct", { ...G("requisitoFam")("split_duct"), esp: 5 });
++  const marca = sel.cands.flatMap((c) => c.marcas || []).find((x) => /in\.wg/.test(x)) || null;
++  return {
++    red: nombre,
++    tramos: D.segs.map((s) => `${s.tag}/${s.service}`),
++    DUCT_path_Pa: Math.round(D.path * 10) / 10,
++    pantalla_nota: corta(pant, /La presión del ventilador que se muestra/, 330),
++    pantalla_sub: corta(pant, /\+15 % de margen/, 110),
++    memoria_pdf: corta(pdf, /con 15 % de margen \(/, 300),
++    libro_es: corta(xes, /\(suministro \+ retorno\)/, 260),
++    libro_en: corta(xen, /\(supply \+ return\)/, 240),
++    marca_seleccion: marca,
++  };
++}
++
++G("chainToDuct")(true);
++const C = leer("C chainToDuct (sin retorno)");
++const seg = G("defaultSegment");
++S.duct.segments.push({ ...seg("RA-PRINCIPAL", 1770), id: "c23rra", service: "return", shape: "rect", method: "equal_friction",
++  targetF: .8, length: 20, aspect: 2, fittings: [{ type: "elbow_90_rect", qty: 2, C: .28 }] });
++const Dr = leer("D chainToDuct + RA-PRINCIPAL (con retorno)");
++imprime({ caso: "2.3-rep", guia_ojo: G("GUIA").ductos.ojo, C, D: Dr });

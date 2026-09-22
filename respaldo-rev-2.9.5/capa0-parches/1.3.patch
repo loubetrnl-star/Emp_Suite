@@ -1,0 +1,88 @@
+--- pasos/1.3-antes.html	2026-09-14 11:42:55.987116900 -0700
++++ index.html	2026-09-14 11:43:11.032338700 -0700
+@@ -4165,12 +4165,14 @@
+   });
+   const rDir = rf.length + 1;
+   rf.push([xV(XS.SUBT), xT(L("COSTO DIRECTO", "DIRECT COST"), XS.SUBT), xF(REF_DIRECTO, XS.SUBT), xF(`IF(C${rDir}=0,0,1)`, XS.PCT)]);
+-  const rInd = rDir + 1, rUti = rDir + 2, rFle = rDir + 3, rFia = rDir + 4, rSub = rDir + 5, rIva = rDir + 6, rTot = rDir + 7;
++  const conFin = num(q.financing) !== 0;
++  const rInd = rDir + 1, rUti = rDir + 2, rFle = rDir + 3, rFia = rDir + 4, rFin = conFin ? rDir + 5 : rFia, rSub = rFin + 1, rIva = rSub + 1, rTot = rSub + 2;
+   rf.push([xV(XS.TD), xT(`${L("Indirectos", "Overhead")} ${n(q.indirect * 100, 0)} %`, XS.TD), xF(`C${rDir}*${q.indirect}`, XS.MXN), xV(XS.TD)]);
+   rf.push([xV(XS.TD), xT(`${L("Utilidad", "Fee")} ${n(q.utility * 100, 0)} %`, XS.TD), xF(`(C${rDir}+C${rInd})*${q.utility}`, XS.MXN), xV(XS.TD)]);
+   rf.push([xV(XS.TD), xT(`${L("Flete, maniobras y seguro de transito", "Freight, rigging and transit insurance")} ${n(num(q.freight) * 100, 1)} %`, XS.TD), xF(`C${rDir}*${num(q.freight)}`, XS.MXN), xV(XS.TD)]);
+   rf.push([xV(XS.TD), xT(`${L("Fianzas de anticipo y cumplimiento", "Advance payment and performance bonds")} ${n(num(q.bond) * 100, 1)} %`, XS.TD), xF(`C${rDir}*${num(q.bond)}`, XS.MXN), xV(XS.TD)]);
+-  rf.push([xV(XS.SUBT), xT(L("SUBTOTAL ANTES DE IMPUESTO", "SUBTOTAL BEFORE TAX"), XS.SUBT), xF(`SUM(C${rDir}:C${rFia})`, XS.SUBT), xV(XS.SUBT)]);
++  if (conFin) rf.push([xV(XS.TD), xT(`${L("Financiamiento", "Financing")} ${n(num(q.financing) * 100, 1)} %`, XS.TD), xF(`C${rDir}*${num(q.financing)}`, XS.MXN), xV(XS.TD)]);
++  rf.push([xV(XS.SUBT), xT(L("SUBTOTAL ANTES DE IMPUESTO", "SUBTOTAL BEFORE TAX"), XS.SUBT), xF(`SUM(C${rDir}:C${rFin})`, XS.SUBT), xV(XS.SUBT)]);
+   rf.push([xV(XS.TD), xT(`${L("IVA", "VAT")} ${n(q.iva * 100, 0)} %`, XS.TD), xF(`C${rSub}*${q.iva}`, XS.MXN), xV(XS.TD)]);
+   rf.push([xV(XS.TOT), xT(L("TOTAL DE LA PROPUESTA", "PROPOSAL TOTAL"), XS.TOT), xF(`C${rSub}+C${rIva}`, XS.TOT), xV(XS.TOT)]);
+   rf.push([]);
+--- pasos/1.3-antes-pruebas.mjs	2026-09-14 11:42:56.021236900 -0700
++++ pruebas.mjs	2026-09-14 11:44:55.542544800 -0700
+@@ -2788,6 +2788,66 @@
+     G("recompute")();
+   }
+ });
++t("22.3 1.3 el libro de la propuesta suma el financiamiento al subtotal, igual que la pantalla", () => {
++  const guardado = JSON.parse(JSON.stringify(S.quote));
++  /* Celdas de una hoja del libro (ZIP en STORE): { "C12": { f } | { v } | { s } }. */
++  const hojaDe = (bytes, nombre) => {
++    const txt = Buffer.from(bytes).toString("utf8");
++    const wb = txt.slice(txt.indexOf("<sheets>"), txt.indexOf("</sheets>") + 9);
++    const i = [...wb.matchAll(/<sheet name="([^"]+)"/g)].map((m) => m[1]).indexOf(nombre);
++    const x = ([...txt.matchAll(/<worksheet[\s\S]*?<\/worksheet>/g)][i] || [""])[0];
++    const des = (z) => z.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, "&");
++    const c = {};
++    for (const m of x.matchAll(/<c r="([A-Z]+\d+)"[^>]*?(?:\/>|>([\s\S]*?)<\/c>)/g)) {
++      const k = m[2] || "", f = k.match(/<f>([\s\S]*?)<\/f>/), v = k.match(/<v>([\s\S]*?)<\/v>/), s = k.match(/<t[^>]*>([\s\S]*?)<\/t>/);
++      c[m[1]] = f ? { f: des(f[1]) } : v ? { v: +v[1] } : s ? { s: des(s[1]) } : {};
++    }
++    return c;
++  };
++  const filaDe = (H, pref) => { const e = Object.entries(H).find(([r, c]) => r[0] === "B" && c.s && c.s.startsWith(pref)); return e ? +e[0].slice(1) : 0; };
++  try {
++    Object.assign(S.quote, { currency: "MXN", indirect: 0.18, utility: 0.12, freight: 0.025, bond: 0.015, financing: 0.03, iva: 0.16 });
++    G("recompute")();
++    const Q = G("QUOTE");
++    if (!(Q.direct > 0) || !(Q.finan > 0)) throw new Error(`el estado del banco no trae costo directo ni financiamiento (${Q.direct} / ${Q.finan})`);
++    const bytes = G("buildPropuestaXlsx")({ lang: "es", mon: "MXN" });
++    const R = hojaDe(bytes, "RESUMEN_EJECUTIVO");
++    const rDir = filaDe(R, "COSTO DIRECTO"), rFia = filaDe(R, "Fianzas"), rFin = filaDe(R, "Financiamiento");
++    const rSub = filaDe(R, "SUBTOTAL ANTES DE IMPUESTO"), rIva = filaDe(R, "IVA"), rTot = filaDe(R, "TOTAL DE LA PROPUESTA");
++    if (!rFin) throw new Error("el resumen ejecutivo no trae el renglón de financiamiento");
++    eq(R["B" + rFin].s, `Financiamiento ${G("n")(3, 1)} %`, "rótulo del renglón:");
++    eq(rFin, rFia + 1, "financiamiento va después de fianzas:");
++    eq(R["C" + rSub].f, `SUM(C${rDir}:C${rFin})`, "el subtotal suma hasta el financiamiento:");
++    /* Mismo costo directo que la pantalla: el resto del resumen debe dar QUOTE. */
++    const val = (r) => {
++      if (r === rDir) return Q.direct;
++      const f = (R["C" + r] || {}).f;
++      if (!f) return (R["C" + r] || {}).v || 0;
++      const js = f.replace(/SUM\(C(\d+):C(\d+)\)/g, (m, a, b) => { const o = []; for (let k = +a; k <= +b; k++) o.push(`__v(${k})`); return "(" + o.join("+") + ")"; })
++        .replace(/\bC(\d+)\b/g, (m, k) => `__v(${k})`);
++      return Function("__v", `return (${js});`)(val);
++    };
++    cerca(val(rFin), Q.finan, 0.01, "financiamiento del libro contra la pantalla:");
++    cerca(val(rSub), Q.sub, 0.01, "subtotal del libro contra la pantalla:");
++    cerca(val(rIva), Q.iva, 0.01, "IVA del libro contra la pantalla:");
++    cerca(val(rTot), Q.tot, 0.01, "total del libro contra la pantalla:");
++    /* La portada toma el total de su renglón, no de una celda fija. */
++    const P = hojaDe(bytes, "PORTADA");
++    if (!Object.values(P).some((c) => c.f === `RESUMEN_EJECUTIVO!C${rTot}`)) throw new Error(`la portada no apunta a RESUMEN_EJECUTIVO!C${rTot}`);
++    /* El libro en inglés lleva el mismo renglón traducido. */
++    const REN = hojaDe(G("buildPropuestaXlsx")({ lang: "en", mon: "USD" }), "EXECUTIVE_SUMMARY");
++    if (!filaDe(REN, "Financing")) throw new Error("el libro en inglés no trae el renglón de financiamiento");
++    /* Sin financiamiento el resumen queda como antes: sin renglón y el subtotal cierra en fianzas. */
++    S.quote.financing = 0; G("recompute")();
++    const R0 = hojaDe(G("buildPropuestaXlsx")({ lang: "es", mon: "MXN" }), "RESUMEN_EJECUTIVO");
++    eq(filaDe(R0, "Financiamiento"), 0, "renglón con financiamiento en 0:");
++    eq(R0["C" + filaDe(R0, "SUBTOTAL ANTES DE IMPUESTO")].f, `SUM(C${filaDe(R0, "COSTO DIRECTO")}:C${filaDe(R0, "Fianzas")})`, "subtotal con financiamiento en 0:");
++  } finally {
++    Object.keys(S.quote).forEach((k) => delete S.quote[k]);
++    Object.assign(S.quote, guardado);
++    G("recompute")();
++  }
++});
+ 
+ /* ============================== resultado =============================== */
+ const total = ok + fail;

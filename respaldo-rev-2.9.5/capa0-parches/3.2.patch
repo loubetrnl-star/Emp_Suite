@@ -1,0 +1,47 @@
+--- pasos/3.2-antes.html	2026-09-14 12:05:50.386803300 -0700
++++ index.html	2026-09-14 12:06:02.418797000 -0700
+@@ -1378,7 +1378,7 @@
+   pdfDocHeaderMeta(d);
+   pdfHeading(d, "2. Bases de diseño");
+   pdfParagraph(d, `Metodo por hora: la carga de cada zona se calcula de las 8 a las 18 horas solares y se reporta la hora de mayor demanda, como lo hace HAP. El punto de rocio del aparato (ADP) se resuelve donde la recta del factor de calor sensible efectivo corta la curva de saturacion, de modo que la temperatura de suministro responde a la carga latente real en lugar de asumir un salto fijo.`);
+-  pdfParagraph(d, `Exterior ${P.T_OUT_DB} °C de bulbo seco y ${P.T_OUT_WB} °C de bulbo húmedo · interior ${P.T_IN_DB} °C con ${P.RH_IN * 100} % de humedad relativa · latitud ${P.LAT}° · mes de julio, hora solar ${P.HOUR} · diversidad de edificio ${S.bldDiv}. Método Carrier HAP: DET por orientación con color b = ${P.COLOR_B}, factores de almacenamiento de tablas 7 a 13, aire exterior por el mayor entre ASHRAE 62.1 y tabla 45, y selección de aparato con factor de bypass ${HAP.BF}.`);
++  pdfParagraph(d, `Exterior ${SITE.db} °C de bulbo seco y ${SITE.wb} °C de bulbo húmedo · interior ${P.T_IN_DB} °C con ${P.RH_IN * 100} % de humedad relativa · latitud ${P.LAT}° · mes de julio, hora solar ${P.HOUR} · diversidad de edificio ${S.bldDiv}. Método Carrier HAP: DET por orientación con color b = ${P.COLOR_B}, factores de almacenamiento de tablas 7 a 13, aire exterior por el mayor entre ASHRAE 62.1 y tabla 45, y selección de aparato con factor de bypass ${HAP.BF}.`);
+   /* H-11 · Las tablas horarias que son estimación propia se declaran en la
+      memoria, con su rango de validez. H-16 · Y el criterio de los K del catálogo.
+      H-22 · Y la fuente real de los cambios de aire de cuarto limpio. */
+--- pasos/3.2-antes-pruebas.mjs	2026-09-14 12:05:50.419568300 -0700
++++ pruebas.mjs	2026-09-14 12:06:25.589627500 -0700
+@@ -3087,6 +3087,33 @@
+   }
+ });
+ 
++t("22.10 3.2 las bases de diseño de la memoria HVAC imprimen el exterior del sitio (SITE), no 35/24 fijos", () => {
++  const site0 = JSON.parse(JSON.stringify(S.site ?? null));
++  const RX = /Exterior[^°]*?(-?\d+(?:\.\d+)?) °C de bulbo seco y (-?\d+(?:\.\d+)?) °C de bulbo húmedo/g;
++  const texto = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ").replace(/\s+/g, " ");
++  try {
++    [
++      { nombre: "Mexicali", site: { key: "mexicali" }, esperado: "46/23" },
++      { nombre: "Personalizado", site: { key: "custom", db: 42, wb: 26, alt: 1200, range: 14 }, esperado: "42/26" },
++      { nombre: "Tijuana", site: { key: "tijuana" }, esperado: "35/24" },
++    ].forEach((c) => {
++      S.site = JSON.parse(JSON.stringify(c.site));
++      G("recompute")();
++      const SITE = G("SITE");
++      eq(`${SITE.db}/${SITE.wb}`, c.esperado, `${c.nombre} exterior del motor:`);
++      const suelta = [...texto(G("buildMemoriaPdf")()).matchAll(RX)].map((m) => `${m[1]}/${m[2]}`);
++      eq(JSON.stringify(suelta), JSON.stringify([c.esperado]), `${c.nombre} memoria suelta, bases de diseño:`);
++      if (c.nombre !== "Tijuana") {
++        const integral = [...texto(G("buildMemoriaIntegralPdf")()).matchAll(RX)].map((m) => `${m[1]}/${m[2]}`);
++        if (!integral.length || integral.some((x) => x !== c.esperado)) throw new Error(`${c.nombre} memoria integral, bases de diseño: ${JSON.stringify(integral)} ≠ ${c.esperado}`);
++      }
++    });
++  } finally {
++    if (site0 === null) delete S.site; else S.site = site0;
++    G("recompute")();
++  }
++});
++
+ /* ============================== resultado =============================== */
+ const total = ok + fail;
+ console.log(`\nSuiteEmp rev ${G("REV")} · banco de comprobaciones de la rev 2.9.3`);

@@ -1,0 +1,57 @@
+--- pasos/3.3-antes.html	2026-09-14 12:08:06.827589100 -0700
++++ index.html	2026-09-14 12:08:30.719103600 -0700
+@@ -6334,8 +6334,9 @@
+     aux.push({ desc: `Tablero general ${n(ELEC.principal, 0)} A con interruptor principal y ${nCirc} circuito(s) derivado(s)`, qty: 1, unit: num(q.tablero, QUOTE_SEED.tablero) + num(q.circuito, QUOTE_SEED.circuito) * nCirc, total: num(q.tablero, QUOTE_SEED.tablero) + num(q.circuito, QUOTE_SEED.circuito) * nCirc , sec: "C", un: "LOTE", mot: "elec"});
+   }
+   if (verHid && HIDRO && HIDRO.umTotal > 0) {
+-    const mTub = HIDRO.tramos.reduce((a, t) => a + num(t.L, 0), 0) || 50;
+-    aux.push({ desc: `Red hidráulica de ${TUB_AGUA[HIDRO.mat].label} instalada y probada (${n(mTub, 0)} m de los tramos calculados)`, qty: mTub, unit: num(q.hidroM, QUOTE_SEED.hidroM), total: num(q.hidroM, QUOTE_SEED.hidroM) * mTub , sec: "F", un: "ML", mot: "hidro"});
++    const mCap = HIDRO.tramos.reduce((a, t) => a + num(t.L, 0), 0);
++    const mTub = mCap || 50;
++    aux.push({ desc: `Red hidráulica de ${TUB_AGUA[HIDRO.mat].label} instalada y probada (${n(mTub, 0)} m ${mCap > 0 ? "de los tramos calculados" : "supuestos: sin longitudes capturadas en los tramos; ratificar con levantamiento"})`, qty: mTub, unit: num(q.hidroM, QUOTE_SEED.hidroM), total: num(q.hidroM, QUOTE_SEED.hidroM) * mTub , sec: "F", un: "ML", mot: "hidro"});
+     aux.push({ desc: `Cisterna de ${n(HIDRO.cisterna / 1000, 1)} m³ y equipo de bombeo de ${n(HIDRO.hpBomba, 1)} HP`, qty: 1, unit: num(q.cisternaM3, QUOTE_SEED.cisternaM3) * (HIDRO.cisterna / 1000) + num(q.bombaHP, QUOTE_SEED.bombaHP) * HIDRO.hpBomba, total: num(q.cisternaM3, QUOTE_SEED.cisternaM3) * (HIDRO.cisterna / 1000) + num(q.bombaHP, QUOTE_SEED.bombaHP) * HIDRO.hpBomba , sec: "F", un: "LOTE", mot: "hidro"});
+   }
+   if (verFue && FUEGO && FUEGO.nTotal > 0) {
+--- pasos/3.3-antes-pruebas.mjs	2026-09-14 12:08:06.859190500 -0700
++++ pruebas.mjs	2026-09-14 12:09:14.802538500 -0700
+@@ -3114,6 +3114,40 @@
+   }
+ });
+ 
++t("22.11 3.3 sin longitudes capturadas la red hidráulica cotiza 50 m declarados como supuesto, no \"de los tramos calculados\"", () => {
++  const hidro0 = JSON.parse(JSON.stringify(S.hidro)), perms0 = JSON.parse(JSON.stringify(S.perms ?? null));
++  const pdfTxt = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");
++  const renglon = () => (G("QUOTE").aux || []).find((a) => a.mot === "hidro" && a.un === "ML");
++  const tramo = (tag, um, L) => ({ ...G("defaultTramoAgua")(tag), um, L, alt: 3 });
++  try {
++    S.perms = { ...(S.perms || {}), "hidro>quote": { ts: 1, via: "banco" } };
++    [
++      { nombre: "sin tramos", tramos: [], qty: 50, supuesto: true },
++      { nombre: "tramos en 0 m", tramos: [tramo("AF-GENERAL", 72, 0), tramo("AF-RAMAL BAÑOS", 20, 0)], qty: 50, supuesto: true },
++      { nombre: "tramos de 25 y 18 m", tramos: [tramo("AF-GENERAL", 72, 25), tramo("AF-RAMAL BAÑOS", 20, 18)], qty: 43, supuesto: false },
++    ].forEach((c) => {
++      S.hidro = { ...G("defaultHidro")(), tramos: c.tramos };
++      G("recompute")();
++      if (!(G("HIDRO").umTotal > 0)) throw new Error(`${c.nombre}: la hidrosanitaria del caso no trae unidades mueble`);
++      const a = renglon();
++      if (!a) throw new Error(`${c.nombre}: la cotización no trae el renglón de red hidráulica`);
++      eq(a.qty, c.qty, `${c.nombre} metros cotizados:`);
++      cerca(a.total, c.qty * a.unit, 0.001, `${c.nombre} importe del renglón:`);
++      const esperado = c.supuesto ? `(${c.qty} m supuestos: sin longitudes capturadas en los tramos; ratificar con levantamiento)` : `(${c.qty} m de los tramos calculados)`;
++      contiene(a.desc, esperado, `${c.nombre} descripción:`);
++      if (c.supuesto && /tramos calculados/.test(a.desc)) throw new Error(`${c.nombre}: sigue afirmando "de los tramos calculados" sobre 50 m supuestos`);
++      if (/tuber[ií]a|tubo/i.test(a.desc)) throw new Error(`${c.nombre}: la descripción activaría la receta de tubería en la licitación`);
++      const xlsx = Buffer.from(G("buildPropuestaXlsx")({ lang: "es", mon: "MXN" })).toString("utf8");
++      contiene(xlsx, esperado, `${c.nombre} libro de la propuesta:`);
++      contiene(pdfTxt(G("buildPropuestaPdf")({ lang: "es", mon: "MXN" })), esperado, `${c.nombre} PDF de la propuesta:`);
++    });
++  } finally {
++    S.hidro = hidro0;
++    if (perms0 === null) delete S.perms; else S.perms = perms0;
++    G("recompute")();
++  }
++});
++
+ /* ============================== resultado =============================== */
+ const total = ok + fail;
+ console.log(`\nSuiteEmp rev ${G("REV")} · banco de comprobaciones de la rev 2.9.3`);

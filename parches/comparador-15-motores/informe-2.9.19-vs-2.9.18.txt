@@ -1,0 +1,1090 @@
+  1/56 vacio                           2/56 prueba                          3/56 lleno-sin-cruces                4/56 lleno                           5/56 lleno-cruces-parciales          6/56 zonas-oaFixed-fluorescent       7/56 sys-chiller                     8/56 sys-vrf                         9/56 sys-rooftop                     10/56 sys-split                       11/56 tech-VRF                        12/56 tech-DX_split                   13/56 tech-paquete                    14/56 tech-chiller_fancoil            15/56 tech-AHU                        16/56 tech-PTAC                       17/56 barra-calcular-vacio            18/56 zonas-materiales                19/56 peakScan-false                  20/56 barra-calcular-todos            21/56 bldDiv-08                       22/56 cotiz-USD                       23/56 cotiz-sin-items                 24/56 plaza-mexicali                  25/56 sitio-custom                    26/56 plaza-otra-factor               27/56 cotiz-licitacion                28/56 ductos-accesorios               29/56 soporte-sismico-viga            30/56 soporte-sin-sismico-manual      31/56 soporte-losa-fc                 32/56 civil-demolicion                33/56 civil-manual                    34/56 vent-kitchen                    35/56 vent-industrial                 36/56 vent-louver                     37/56 vent-mua                        38/56 cuartos-limpios                 39/56 instalaciones-variantes         40/56 propuestas-aceptadas            41/56 propuestas-propio               42/56 herencia-propio                 43/56 valor-decisiones                44/56 kaizen-items                    45/56 unidades-IP                     46/56 sin-zonas-con-datos             47/56 parcial-fuego                   48/56 parcial-civil-directas          49/56 parcial-soporte-riel            50/56 parcial-vent-cocina-sin-medidas  51/56 parcial-vent-cocina             52/56 parcial-ductos-sin-caudal       53/56 parcial-ductos-con-caudal       54/56 parcial-limpio                  55/56 parcial-equipo-manual           56/56 parcial-zona-sola             
+====================================================================================================
+COMPARADOR DE ESTADOS DE LOS 15 MOTORES · 56 escenarios · modos: nativo + guardado · 136.9 s
+  base : respaldo-rev-2.9.8/index-2.9.19-inicio-20260921-211252.html
+  nuevo: index.html
+  igualdad exacta (Object.is en números), cero tolerancia
+====================================================================================================
+
+--- Resumen «motor x escenario» · modo nativo ---   (= iguales   X difieren   t sólo texto   - no aplica   r reubicado   i informativo   ? no comparable   E error)
+                      1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56   iguales/difieren
+load                  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X    0/56
+clean                 =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+equip                 =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+duct                  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+vent                  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+quote                 =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  t  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   55/1
+valor                 =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+kaizen                =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+elec                  X  X  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  X  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  X  X  X  X  X  X  X  X  X  X   43/13
+hidro                 t  t  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  t  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  t  t  t  t  t  t  t  t  t  t    0/56
+fuego                 X  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  X  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  X  X  X  X  X  X  X  X  =   46/10
+aire                  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+civil                 =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+soporte               X  X  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  X  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  X  X  =  X  X  X  X  X  =  X   45/11
+estr (externo)        -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -   56/0
+valid (cruzada)       X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  =  X  X  X  X  X  X  X  X  X  X    1/55
+xlsx propuesta es     =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+xlsx propuesta en     =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+pdf (números)         X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X    0/56
+semáforo (info)       i  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  i  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   54/0
+
+--- Resumen «motor x escenario» · modo guardado ---   (= iguales   X difieren   t sólo texto   - no aplica   r reubicado   i informativo   ? no comparable   E error)
+                      1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56   iguales/difieren
+load                  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X    0/56
+clean                 =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+equip                 =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+duct                  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+vent                  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+quote                 =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  t  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   55/1
+valor                 =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+kaizen                =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+elec                  X  X  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  X  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  X  X  X  X  X  X  X  X  X  X   43/13
+hidro                 t  t  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  t  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  t  t  t  t  t  t  t  t  t  t    0/56
+fuego                 X  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  X  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  X  X  X  X  X  X  X  X  =   46/10
+aire                  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+civil                 =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+soporte               X  X  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  X  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  X  X  =  X  X  X  X  X  =  X   45/11
+estr (externo)        -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -   56/0
+valid (cruzada)       X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X    0/56
+xlsx propuesta es     =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+xlsx propuesta en     =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+pdf (números)         X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X  X    0/56
+semáforo (info)       =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =   56/0
+
+Escenarios (número de columna):
+   1  vacio                        Proyecto vacío recién abierto
+   2  prueba                       Proyecto de prueba del arnés (2 zonas, todos los cruces autorizados)
+   3  lleno                        Proyecto lleno: 4 zonas, cargas, muebles, aire, ductos, cuartos limpios, partidas
+   4  lleno-sin-cruces             Proyecto lleno con TODOS los cruces sin autorizar
+   5  lleno-cruces-parciales       Proyecto lleno con sólo algunos cruces autorizados
+   6  zonas-oaFixed-fluorescent    Zonas con oaFixed y lightType fluorescent (y una LED sin oaFixed)
+   7  sys-chiller                  Arquitectura forzada (sysForce) = chiller
+   8  sys-vrf                      Arquitectura forzada (sysForce) = vrf
+   9  sys-rooftop                  Arquitectura forzada (sysForce) = rooftop
+  10  sys-split                    Arquitectura forzada (sysForce) = split
+  11  tech-VRF                     Tecnología forzada (forceTech) = VRF
+  12  tech-DX_split                Tecnología forzada (forceTech) = DX_split
+  13  tech-paquete                 Tecnología forzada (forceTech) = paquete
+  14  tech-chiller_fancoil         Tecnología forzada (forceTech) = chiller_fancoil
+  15  tech-AHU                     Tecnología forzada (forceTech) = AHU
+  16  tech-PTAC                    Tecnología forzada (forceTech) = PTAC
+  17  zonas-materiales             Envolvente: otros muros, techos y vidrios en cada zona (paneles, tilt-up, lámina, low-e, policarbonato)
+  18  barra-calcular-todos         SÓLO NUEVA · botón Calcular de la barra pulsado en cada motor (la base corre lo mismo sin el botón)  [SOLO EN LA NUEVA]
+  19  barra-calcular-vacio         SÓLO NUEVA · botón Calcular pulsado en un proyecto vacío (debe avisar y no mover nada)  [SOLO EN LA NUEVA]
+  20  peakScan-false               peakScan = false (carga a la hora de diseño, sin barrido)
+  21  bldDiv-08                    Diversidad de edificio 0.8
+  22  cotiz-USD                    Cotización en USD (tipo de cambio 17.9)
+  23  cotiz-sin-items              Cotización sin partidas de equipo agregadas
+  24  plaza-mexicali               Plaza y sitio Mexicali
+  25  plaza-otra-factor            Plaza «otra» con factor manual 1.09
+  26  sitio-custom                 Sitio personalizado (db 41, wb 22, 300 m)
+  27  cotiz-licitacion             Cotización en modo licitación, base CMIC, IVA 8 %
+  28  ductos-accesorios            Ductos con todos los accesorios, redondo/rectangular, métodos y candados
+  29  soporte-sismico-viga         Soportería con sísmico, SDS 1.5, estructura de viga de acero
+  30  soporte-sin-sismico-manual   Soportería sin sísmico y con metros capturados (sin usar motores)
+  31  soporte-losa-fc              Soportería sísmica sobre losa f'c 300
+  32  civil-demolicion             Obra civil con demolición y acabados por m²
+  33  civil-manual                 Obra civil con geometría capturada (sin usar zonas)
+  34  vent-kitchen                 Ventilación: campana de cocina
+  35  vent-industrial              Ventilación: extracción industrial de proceso (rige el caudal de proceso)
+  36  vent-louver                  Ventilación: persiana
+  37  vent-mua                     Ventilación: aire de reposición
+  38  cuartos-limpios              Cuartos limpios ISO 5 a 8, niveles bajo/medio/alto y achSet manual
+  39  instalaciones-variantes      Eléctrico 440 V aluminio, hidráulico privado, fuego extra 1 con red, aire ISO 1.2.1 inox N+1
+  40  propuestas-aceptadas         Todas las propuestas entre disciplinas aceptadas (propAceptar)
+  41  propuestas-propio            Todas las propuestas marcadas «capturo lo mío» (propPropio)
+  42  herencia-propio              Campos heredables capturados a mano (regla 1 rota a propósito)
+  43  valor-decisiones             Ingeniería de valor: primera medida aceptada, segunda descartada
+  44  kaizen-items                 Kaizen con mejoras capturadas en distintas etapas del ciclo PDCA
+  45  unidades-IP                  Unidades imperiales (S.units = IP): los motores no deben notarlo
+  46  sin-zonas-con-datos          Sin zonas pero con datos capturados en las demás disciplinas
+  47  parcial-fuego                Captura parcial · sólo contra incendio (300 m²)
+  48  parcial-civil-directas       Captura parcial · sólo cantidades directas de obra civil (firme y puertas, sin área)
+  49  parcial-soporte-riel         Captura parcial · sólo riel de soportería (60 m)
+  50  parcial-vent-cocina-sin-medidas Captura parcial · ventilación en modo cocina sin medidas de campana
+  51  parcial-vent-cocina          Captura parcial · ventilación en modo cocina con campana de 2.5 × 1.1 m
+  52  parcial-ductos-sin-caudal    Captura parcial · un tramo de ducto capturado sin caudal
+  53  parcial-ductos-con-caudal    Captura parcial · un tramo de ducto de 3,400 m³/h
+  54  parcial-limpio               Captura parcial · sólo un cuarto limpio de 60 m² × 3 m
+  55  parcial-equipo-manual        Captura parcial · sólo un equipo elegido a mano en la cotización
+  56  parcial-zona-sola            Captura parcial · una zona de 120 m² × 3 m y nada más
+
+COBERTURA · lo que cada escenario calcula de verdad (valores de la BASE; si fueran todos cero el escenario «empataría» sin probar nada)
+   # escenario                        arq      TR  zon  tram  vent cfm   FFU     kVA    L/s   roc   HP   directo MXN  part      civil   soporte  kz  vz        tecnología por zona
+   1 vacio                            vrf       0    1     0         0     0       0      0     0   10             0     0          0         0   0   0                   DX_split
+   2 prueba                           vrf   10.71    2     0     9,535     0       0      0    42   10     4,729,822     9  1,427,350         0   1   1                    VRF/VRF
+   3 lleno                        chiller   53.41    4     5    24,523    81   286.7   5.22   103   30    25,675,683    52  6,990,119   905,790   8   8 chiller_fancoil/VRF/VRF/VRF
+   4 lleno-sin-cruces             chiller   53.41    4     5    24,523    81     130   5.22   103   30     5,243,133     9  6,990,119   905,790   1   1 chiller_fancoil/VRF/VRF/VRF
+   5 lleno-cruces-parciales       chiller   53.41    4     5    24,523    81   135.6   5.22   103   30     5,587,233    12  6,990,119   905,790   1   1 chiller_fancoil/VRF/VRF/VRF
+   6 zonas-oaFixed-fluorescent    chiller   56.64    4     5    24,523    81   300.3   5.22   103   30    25,689,383    52  6,990,119   905,790  13  15 chiller_fancoil/VRF/VRF/VRF
+   7 sys-chiller                  chiller   53.41    4     5    24,523    81   286.7   5.22   103   30    25,675,683    52  6,990,119   905,790   8   8 chiller_fancoil/VRF/VRF/VRF
+   8 sys-vrf                          vrf   53.41    4     5    24,523    81   338.6   5.22   103   30    25,688,283    52  6,990,119   905,790   7   7 chiller_fancoil/VRF/VRF/VRF
+   9 sys-rooftop                  rooftop   53.41    4     5    24,523    81   283.3   5.22   103   30    25,688,283    52  6,990,119   905,790   7   9 chiller_fancoil/VRF/VRF/VRF
+  10 sys-split                      split   53.41    4     5    24,523    81     294   5.22   103   30    25,684,083    52  6,990,119   905,790   8  11 chiller_fancoil/VRF/VRF/VRF
+  11 tech-VRF                     chiller   53.41    4     5    24,523    81   286.7   5.22   103   30    25,675,683    52  6,990,119   905,790   8   8            VRF/VRF/VRF/VRF
+  12 tech-DX_split                chiller   53.41    4     5    24,523    81   286.7   5.22   103   30    25,675,683    52  6,990,119   905,790   8   8 DX_split/DX_split/DX_split/DX_split
+  13 tech-paquete                 chiller   53.41    4     5    24,523    81   286.7   5.22   103   30    25,675,683    52  6,990,119   905,790   8   8 paquete/paquete/paquete/paquete
+  14 tech-chiller_fancoil         chiller   53.41    4     5    24,523    81   286.7   5.22   103   30    25,675,683    52  6,990,119   905,790   8   8 chiller_fancoil/chiller_fancoil/chiller_fancoil/chiller_fancoil
+  15 tech-AHU                     chiller   53.41    4     5    24,523    81   286.7   5.22   103   30    25,675,683    52  6,990,119   905,790   8   8            AHU/AHU/AHU/AHU
+  16 tech-PTAC                    chiller   53.41    4     5    24,523    81   286.7   5.22   103   30    25,675,683    52  6,990,119   905,790   8   8        PTAC/PTAC/PTAC/PTAC
+  17 zonas-materiales             chiller   52.25    4     5    24,523    81   286.7   5.22   103   30    25,668,833    52  6,990,119   905,790   6   6 chiller_fancoil/VRF/VRF/VRF
+  18 barra-calcular-todos         chiller   53.41    4     5    24,523    81   286.7   5.22   103   30    25,675,683    52  6,990,119   905,790   8   8 chiller_fancoil/VRF/VRF/VRF
+  19 barra-calcular-vacio             vrf       0    1     0         0     0       0      0     0   10             0     0          0         0   0   0                   DX_split
+  20 peakScan-false               chiller   52.19    4     5    24,523    81   286.7   5.22   103   30    25,661,983    52  6,990,119   905,790   8   8 chiller_fancoil/VRF/VRF/VRF
+  21 bldDiv-08                    chiller      46    4     5    24,523    81   259.7   5.22   103   30    25,614,033    52  6,990,119   905,790   9   9 chiller_fancoil/VRF/VRF/VRF
+  22 cotiz-USD                    chiller   53.41    4     5    24,523    81   286.7   5.22   103   30    25,675,683    52  6,990,119   905,790   8   8 chiller_fancoil/VRF/VRF/VRF
+  23 cotiz-sin-items              chiller   53.41    4     5    24,523    81   286.7   5.22   103   30    21,966,955    45  6,990,119   720,790   8   8 chiller_fancoil/VRF/VRF/VRF
+  24 plaza-mexicali               chiller   64.96    4     5    24,523    81   327.3   5.22   103   30    27,788,921    52  6,990,119   905,790   8   8 chiller_fancoil/VRF/VRF/VRF
+  25 plaza-otra-factor            chiller   53.41    4     5    24,523    81   286.7   5.22   103   30    27,986,494    52  6,990,119   905,790   8   8 chiller_fancoil/VRF/VRF/VRF
+  26 sitio-custom                 chiller   60.28    4     5    24,523    81     307   5.22   103   30    25,723,633    52  6,990,119   905,790   7   7 chiller_fancoil/VRF/VRF/VRF
+  27 cotiz-licitacion             chiller   53.41    4     5    24,523    81   286.7   5.22   103   30    25,910,435    52  6,990,119   905,790   8   8 chiller_fancoil/VRF/VRF/VRF
+  28 ductos-accesorios            chiller   53.41    4     6    24,523    81   286.7   5.22   103   30    25,819,306    51  6,990,119   942,815   8   8 chiller_fancoil/VRF/VRF/VRF
+  29 soporte-sismico-viga         chiller   53.41    4     5    24,523    81   286.7   5.22   103   30    25,482,871    51  6,990,119   712,978   8   8 chiller_fancoil/VRF/VRF/VRF
+  30 soporte-sin-sismico-manual   chiller   53.41    4     5    24,523    81   286.7   5.22   103   30    25,405,713    49  6,990,119   635,820   8   8 chiller_fancoil/VRF/VRF/VRF
+  31 soporte-losa-fc              chiller   53.41    4     5    24,523    81   286.7   5.22   103   30    25,675,683    52  6,990,119   905,790   8   8 chiller_fancoil/VRF/VRF/VRF
+  32 civil-demolicion             chiller   53.41    4     5    24,523    81   286.7   5.22   103   30    30,125,447    52 11,439,883   905,790   8   8 chiller_fancoil/VRF/VRF/VRF
+  33 civil-manual                 chiller   53.41    4     5    24,523    81   286.7   5.22   103   30    23,799,248    52  5,113,684   905,790   8   8 chiller_fancoil/VRF/VRF/VRF
+  34 vent-kitchen                 chiller   53.41    4     5     5,906    81   282.4   5.22   103   30    23,661,198    53  6,990,119   905,790   8   8 chiller_fancoil/VRF/VRF/VRF
+  35 vent-industrial              chiller   53.41    4     5    30,000    81     288   5.22   103   30    26,469,848    52  6,990,119   905,790   8   8 chiller_fancoil/VRF/VRF/VRF
+  36 vent-louver                  chiller   53.41    4     5     1,046    81   281.3   5.22   103   30    22,271,518    52  6,990,119   905,790   8   8 chiller_fancoil/VRF/VRF/VRF
+  37 vent-mua                     chiller   53.41    4     5    49,045    81   292.4   5.22   103   30    36,342,898    53  6,990,119   905,790   8   8 chiller_fancoil/VRF/VRF/VRF
+  38 cuartos-limpios              chiller   57.23    4     5    24,523   170   312.8   5.22   103   30    32,815,349    52  7,994,935   905,790   9  11 chiller_fancoil/VRF/VRF/VRF
+  39 instalaciones-variantes      chiller   53.41    4     5    24,523    81   311.4   4.38   134   50    33,653,593    52  6,990,119   947,604   9   9 chiller_fancoil/VRF/VRF/VRF
+  40 propuestas-aceptadas         chiller   53.41    4     6     3,265    81   281.8   5.22   103   30     4,715,394     9  6,990,119   809,833   1   1 chiller_fancoil/VRF/VRF/VRF
+  41 propuestas-propio            chiller   53.41    4     5    24,523    81     130   5.22   103   30     5,243,133     9  6,990,119   354,600   1   1 chiller_fancoil/VRF/VRF/VRF
+  42 herencia-propio              chiller   53.41    4     5     1,955    81   281.5   5.22   103   30    22,403,323    52  6,990,119   905,790   8   8 chiller_fancoil/VRF/VRF/VRF
+  43 valor-decisiones             chiller   53.41    4     5    24,523    81   286.7   5.22   103   30    25,675,683    52  6,990,119   905,790   8   8 chiller_fancoil/VRF/VRF/VRF
+  44 kaizen-items                 chiller   53.41    4     5    24,523    81   286.7   5.22   103   30    25,675,683    52  6,990,119   905,790   8   8 chiller_fancoil/VRF/VRF/VRF
+  45 unidades-IP                  chiller   53.41    4     5    24,523    81   286.7   5.22   103   30    25,675,683    52  6,990,119   905,790   8   8 chiller_fancoil/VRF/VRF/VRF
+  46 sin-zonas-con-datos             none       0    0     5    19,776    81   206.2   5.22   124   30    21,064,358    44  3,848,065   733,634   3   3                           
+  47 parcial-fuego                    vrf       0    1     0         0     0       0      0    25   10     1,768,697     2          0         0   1   1                   DX_split
+  48 parcial-civil-directas           vrf       0    1     0         0     0       0      0     0   10       311,229     2    311,229         0   1   1                   DX_split
+  49 parcial-soporte-riel             vrf       0    1     0         0     0       0      0     0   10        48,600     2          0    48,600   1   1                   DX_split
+  50 parcial-vent-cocina-sin-medidas     vrf       0    1     0        30     0       0      0     0   10         7,830     2          0         0   1   1                   DX_split
+  51 parcial-vent-cocina              vrf       0    1     0     2,461     0       0      0     0   10       642,350     2          0         0   1   1                   DX_split
+  52 parcial-ductos-sin-caudal        vrf       0    1     1         0     0       0      0     0   10             0     0          0         0   1   1                   DX_split
+  53 parcial-ductos-con-caudal        vrf       0    1     1         0     0       0      0     0   10             0     0          0         0   1   1                   DX_split
+  54 parcial-limpio                   vrf       0    1     0         0    14       0      0     0   10     1,003,200     5    246,000         0   1   1                   DX_split
+  55 parcial-equipo-manual            vrf       0    1     0         0     0       0      0     0   10       865,389     6          0    44,000   1   1                   DX_split
+  56 parcial-zona-sola                vrf    0.38    1     0     1,271     0       0      0    10   10     2,427,489     9    510,397         0   3   4                        VRF
+
+IDA Y VUELTA · el mismo archivo, escenario construido (nativo) contra proyecto guardado y abierto (guardado): salida y cotización
+  escenario                      base  nuevo  sólo nuevo  (diferencias numéricas/estructurales entre construir y reabrir)
+  vacio                             0      0           0
+  prueba                            0      0           0
+  lleno                             0      0           0
+  lleno-sin-cruces                  0      0           0
+  lleno-cruces-parciales            0      0           0
+  zonas-oaFixed-fluorescent         0      0           0
+  sys-chiller                       0      0           0
+  sys-vrf                           0      0           0
+  sys-rooftop                       0      0           0
+  sys-split                         0      0           0
+  tech-VRF                          0      0           0
+  tech-DX_split                     0      0           0
+  tech-paquete                      0      0           0
+  tech-chiller_fancoil              0      0           0
+  tech-AHU                          0      0           0
+  tech-PTAC                         0      0           0
+  zonas-materiales                  0      0           0
+  barra-calcular-todos              0      0           0
+  barra-calcular-vacio              0      0           0
+  peakScan-false                    0      0           0
+  bldDiv-08                         0      0           0
+  cotiz-USD                         0      0           0
+  cotiz-sin-items                   0      0           0
+  plaza-mexicali                    0      0           0
+  plaza-otra-factor                 0      0           0
+  sitio-custom                      0      0           0
+  cotiz-licitacion                  0      0           0
+  ductos-accesorios                 0      0           0
+  soporte-sismico-viga              0      0           0
+  soporte-sin-sismico-manual        0      0           0
+  soporte-losa-fc                   0      0           0
+  civil-demolicion                  0      0           0
+  civil-manual                      0      0           0
+  vent-kitchen                      0      0           0
+  vent-industrial                   0      0           0
+  vent-louver                       0      0           0
+  vent-mua                          0      0           0
+  cuartos-limpios                  19     19           0
+  instalaciones-variantes           0      0           0
+  propuestas-aceptadas              0      0           0
+  propuestas-propio                 0      0           0
+  herencia-propio                   0      0           0
+  valor-decisiones                150    150           0
+  kaizen-items                      0      0           0
+  unidades-IP                       0      0           0
+  sin-zonas-con-datos             622    624           2  <- load.salida.LOADS[*].psy.secoExterior ; load.salida.<<+9 más>>
+  parcial-fuego                     0      0           0
+  parcial-civil-directas            0      0           0
+  parcial-soporte-riel              0      0           0
+  parcial-vent-cocina-sin-medidas      0      0           0
+  parcial-vent-cocina               0      0           0
+  parcial-ductos-sin-caudal         0      0           0
+  parcial-ductos-con-caudal         0      0           0
+  parcial-limpio                    0      0           0
+  parcial-equipo-manual             0      0           0
+  parcial-zona-sola                 0      0           0
+  totales: base 791, nuevo 793, sólo en nuevo 2. (Una diferencia que existe igual en las dos versiones es propia del escenario —p. ej. la memoria de la casa vive en localStorage, no en el proyecto—; sólo cuenta lo que aparece SOLO en la nueva.)
+
+====================================================================================================
+DIFERENCIAS AGRUPADAS por (fila, modo, ruta con índices [*], clase) · con un ejemplo por grupo
+====================================================================================================
+* [load/guardado] salida.LOADS[*].psy.secoExterior  (solo-nuevo) · 183 apariciones en 56 escenario(s)
+    ej. salida.LOADS[0].psy.secoExterior
+        base : (no existe)   nuevo: true
+* [valid/guardado] salida.VALID.rows[*].lvl  (solo-nuevo) · 183 apariciones en 56 escenario(s)
+    ej. salida.VALID.rows[6].lvl
+        base : (no existe)   nuevo: "warn"
+* [valid/guardado] salida.VALID.rows[*].msg  (solo-nuevo) · 183 apariciones en 56 escenario(s)
+    ej. salida.VALID.rows[6].msg
+        base : (no existe)   nuevo: "No hay soportes que contar: no hay ductos ni tubería calculados en los motores, ni metros capturados a mano."
+* [load/nativo] salida.LOADS[*].psy.secoExterior  (solo-nuevo) · 182 apariciones en 55 escenario(s)
+    ej. salida.LOADS[0].psy.secoExterior
+        base : (no existe)   nuevo: true
+* [valid/nativo] salida.VALID.rows[*].lvl  (solo-nuevo) · 182 apariciones en 55 escenario(s)
+    ej. salida.VALID.rows[6].lvl
+        base : (no existe)   nuevo: "warn"
+* [valid/nativo] salida.VALID.rows[*].msg  (solo-nuevo) · 182 apariciones en 55 escenario(s)
+    ej. salida.VALID.rows[6].msg
+        base : (no existe)   nuevo: "No hay soportes que contar: no hay ductos ni tubería calculados en los motores, ni metros capturados a mano."
+* [fuego/nativo] salida.FUEGO.memo[*]  (solo-base) · 100 apariciones en 10 escenario(s)
+    ej. salida.FUEGO.memo[2]
+        base : "Densidad de diseño 8.1 mm/min (0.199 gpm/ft²) sobre un área de operación de 139 m² (1,496 ft²), dentro del …"   nuevo: (no existe)
+* [fuego/guardado] salida.FUEGO.memo[*]  (solo-base) · 100 apariciones en 10 escenario(s)
+    ej. salida.FUEGO.memo[2]
+        base : "Densidad de diseño 8.1 mm/min (0.199 gpm/ft²) sobre un área de operación de 139 m² (1,496 ft²), dentro del …"   nuevo: (no existe)
+* [pdf/nativo] memoria-load#4  (numerica) · 56 apariciones en 56 escenario(s)
+    ej. memoria-load#4
+        base : "19 ‹ersion del motor de calculo SuiteEmp rev <rev> (19-sep-2026) · sitio Tijuana›"   nuevo: "21 ‹ersion del motor de calculo SuiteEmp rev <rev> (21-sep-2026) · sitio Tijuana›"
+* [pdf/nativo] memoria-clean#5  (numerica) · 56 apariciones en 56 escenario(s)
+    ej. memoria-clean#5
+        base : "19 ‹ersion del motor de calculo SuiteEmp rev <rev> (19-sep-2026) · sitio Tijuana›"   nuevo: "21 ‹ersion del motor de calculo SuiteEmp rev <rev> (21-sep-2026) · sitio Tijuana›"
+* [pdf/nativo] memoria-equip#4  (numerica) · 56 apariciones en 56 escenario(s)
+    ej. memoria-equip#4
+        base : "19 ‹ersion del motor de calculo SuiteEmp rev <rev> (19-sep-2026) · sitio Tijuana›"   nuevo: "21 ‹ersion del motor de calculo SuiteEmp rev <rev> (21-sep-2026) · sitio Tijuana›"
+* [pdf/nativo] memoria-vent#4  (numerica) · 56 apariciones en 56 escenario(s)
+    ej. memoria-vent#4
+        base : "19 ‹ersion del motor de calculo SuiteEmp rev <rev> (19-sep-2026) · sitio Tijuana›"   nuevo: "21 ‹ersion del motor de calculo SuiteEmp rev <rev> (21-sep-2026) · sitio Tijuana›"
+* [pdf/nativo] memoria-quote#4  (numerica) · 56 apariciones en 56 escenario(s)
+    ej. memoria-quote#4
+        base : "19 ‹ersion del motor de calculo SuiteEmp rev <rev> (19-sep-2026) · sitio Tijuana›"   nuevo: "21 ‹ersion del motor de calculo SuiteEmp rev <rev> (21-sep-2026) · sitio Tijuana›"
+* [pdf/nativo] memoria-valor#4  (numerica) · 56 apariciones en 56 escenario(s)
+    ej. memoria-valor#4
+        base : "19 ‹ersion del motor de calculo SuiteEmp rev <rev> (19-sep-2026) · sitio Tijuana›"   nuevo: "21 ‹ersion del motor de calculo SuiteEmp rev <rev> (21-sep-2026) · sitio Tijuana›"
+* [pdf/nativo] memoria-kaizen#5  (numerica) · 56 apariciones en 56 escenario(s)
+    ej. memoria-kaizen#5
+        base : "19 ‹ersion del motor de calculo SuiteEmp rev <rev> (19-sep-2026) · sitio Tijuana›"   nuevo: "21 ‹ersion del motor de calculo SuiteEmp rev <rev> (21-sep-2026) · sitio Tijuana›"
+* [pdf/nativo] memoria-elec#8  (numerica) · 56 apariciones en 56 escenario(s)
+    ej. memoria-elec#8
+        base : "19 ‹ersion del motor de calculo SuiteEmp rev <rev> (19-sep-2026) · sitio Tijuana›"   nuevo: "21 ‹ersion del motor de calculo SuiteEmp rev <rev> (21-sep-2026) · sitio Tijuana›"
+* [pdf/nativo] memoria-fuego#5  (numerica) · 56 apariciones en 56 escenario(s)
+    ej. memoria-fuego#5
+        base : "19 ‹ersion del motor de calculo SuiteEmp rev <rev> (19-sep-2026) · sitio Tijuana›"   nuevo: "21 ‹ersion del motor de calculo SuiteEmp rev <rev> (21-sep-2026) · sitio Tijuana›"
+* [pdf/nativo] memoria-integral#6  (numerica) · 56 apariciones en 56 escenario(s)
+    ej. memoria-integral#6
+        base : "19 ‹ersion del motor de calculo SuiteEmp rev <rev> (19-sep-2026) · sitio Tijuana›"   nuevo: "21 ‹ersion del motor de calculo SuiteEmp rev <rev> (21-sep-2026) · sitio Tijuana›"
+* [pdf/nativo] memoria-general#4  (numerica) · 56 apariciones en 56 escenario(s)
+    ej. memoria-general#4
+        base : "19 ‹ersion del motor de calculo SuiteEmp rev <rev> (19-sep-2026) · sitio Tijuana›"   nuevo: "21 ‹ersion del motor de calculo SuiteEmp rev <rev> (21-sep-2026) · sitio Tijuana›"
+* [pdf/nativo] cedula-equipos#4  (numerica) · 56 apariciones en 56 escenario(s)
+    ej. cedula-equipos#4
+        base : "19 ‹ersion del motor de calculo SuiteEmp rev <rev> (19-sep-2026) · sitio Tijuana›"   nuevo: "21 ‹ersion del motor de calculo SuiteEmp rev <rev> (21-sep-2026) · sitio Tijuana›"
+* [pdf/nativo] propuesta-es#14  (numerica) · 56 apariciones en 56 escenario(s)
+    ej. propuesta-es#14
+        base : "19 ‹ersion del motor de calculo SuiteEmp rev <rev> (19-sep-2026) · sitio Tijuana›"   nuevo: "21 ‹ersion del motor de calculo SuiteEmp rev <rev> (21-sep-2026) · sitio Tijuana›"
+* [pdf/nativo] propuesta-en#15  (numerica) · 56 apariciones en 56 escenario(s)
+    ej. propuesta-en#15
+        base : "19 ‹Calculation engine version SuiteEmp rev <rev> (19-sep-2026) · site Tijuana,›"   nuevo: "21 ‹Calculation engine version SuiteEmp rev <rev> (21-sep-2026) · site Tijuana,›"
+* [pdf/guardado] memoria-load#4  (numerica) · 56 apariciones en 56 escenario(s)
+    ej. memoria-load#4
+        base : "19 ‹ersion del motor de calculo SuiteEmp rev <rev> (19-sep-2026) · sitio Tijuana›"   nuevo: "21 ‹ersion del motor de calculo SuiteEmp rev <rev> (21-sep-2026) · sitio Tijuana›"
+* [pdf/guardado] memoria-clean#5  (numerica) · 56 apariciones en 56 escenario(s)
+    ej. memoria-clean#5
+        base : "19 ‹ersion del motor de calculo SuiteEmp rev <rev> (19-sep-2026) · sitio Tijuana›"   nuevo: "21 ‹ersion del motor de calculo SuiteEmp rev <rev> (21-sep-2026) · sitio Tijuana›"
+* [pdf/guardado] memoria-equip#4  (numerica) · 56 apariciones en 56 escenario(s)
+    ej. memoria-equip#4
+        base : "19 ‹ersion del motor de calculo SuiteEmp rev <rev> (19-sep-2026) · sitio Tijuana›"   nuevo: "21 ‹ersion del motor de calculo SuiteEmp rev <rev> (21-sep-2026) · sitio Tijuana›"
+* [pdf/guardado] memoria-vent#4  (numerica) · 56 apariciones en 56 escenario(s)
+    ej. memoria-vent#4
+        base : "19 ‹ersion del motor de calculo SuiteEmp rev <rev> (19-sep-2026) · sitio Tijuana›"   nuevo: "21 ‹ersion del motor de calculo SuiteEmp rev <rev> (21-sep-2026) · sitio Tijuana›"
+* [pdf/guardado] memoria-quote#4  (numerica) · 56 apariciones en 56 escenario(s)
+    ej. memoria-quote#4
+        base : "19 ‹ersion del motor de calculo SuiteEmp rev <rev> (19-sep-2026) · sitio Tijuana›"   nuevo: "21 ‹ersion del motor de calculo SuiteEmp rev <rev> (21-sep-2026) · sitio Tijuana›"
+* [pdf/guardado] memoria-valor#4  (numerica) · 56 apariciones en 56 escenario(s)
+    ej. memoria-valor#4
+        base : "19 ‹ersion del motor de calculo SuiteEmp rev <rev> (19-sep-2026) · sitio Tijuana›"   nuevo: "21 ‹ersion del motor de calculo SuiteEmp rev <rev> (21-sep-2026) · sitio Tijuana›"
+* [pdf/guardado] memoria-kaizen#5  (numerica) · 56 apariciones en 56 escenario(s)
+    ej. memoria-kaizen#5
+        base : "19 ‹ersion del motor de calculo SuiteEmp rev <rev> (19-sep-2026) · sitio Tijuana›"   nuevo: "21 ‹ersion del motor de calculo SuiteEmp rev <rev> (21-sep-2026) · sitio Tijuana›"
+* [pdf/guardado] memoria-elec#8  (numerica) · 56 apariciones en 56 escenario(s)
+    ej. memoria-elec#8
+        base : "19 ‹ersion del motor de calculo SuiteEmp rev <rev> (19-sep-2026) · sitio Tijuana›"   nuevo: "21 ‹ersion del motor de calculo SuiteEmp rev <rev> (21-sep-2026) · sitio Tijuana›"
+* [pdf/guardado] memoria-fuego#5  (numerica) · 56 apariciones en 56 escenario(s)
+    ej. memoria-fuego#5
+        base : "19 ‹ersion del motor de calculo SuiteEmp rev <rev> (19-sep-2026) · sitio Tijuana›"   nuevo: "21 ‹ersion del motor de calculo SuiteEmp rev <rev> (21-sep-2026) · sitio Tijuana›"
+* [pdf/guardado] memoria-integral#6  (numerica) · 56 apariciones en 56 escenario(s)
+    ej. memoria-integral#6
+        base : "19 ‹ersion del motor de calculo SuiteEmp rev <rev> (19-sep-2026) · sitio Tijuana›"   nuevo: "21 ‹ersion del motor de calculo SuiteEmp rev <rev> (21-sep-2026) · sitio Tijuana›"
+* [pdf/guardado] memoria-general#4  (numerica) · 56 apariciones en 56 escenario(s)
+    ej. memoria-general#4
+        base : "19 ‹ersion del motor de calculo SuiteEmp rev <rev> (19-sep-2026) · sitio Tijuana›"   nuevo: "21 ‹ersion del motor de calculo SuiteEmp rev <rev> (21-sep-2026) · sitio Tijuana›"
+* [pdf/guardado] cedula-equipos#4  (numerica) · 56 apariciones en 56 escenario(s)
+    ej. cedula-equipos#4
+        base : "19 ‹ersion del motor de calculo SuiteEmp rev <rev> (19-sep-2026) · sitio Tijuana›"   nuevo: "21 ‹ersion del motor de calculo SuiteEmp rev <rev> (21-sep-2026) · sitio Tijuana›"
+* [pdf/guardado] propuesta-es#14  (numerica) · 56 apariciones en 56 escenario(s)
+    ej. propuesta-es#14
+        base : "19 ‹ersion del motor de calculo SuiteEmp rev <rev> (19-sep-2026) · sitio Tijuana›"   nuevo: "21 ‹ersion del motor de calculo SuiteEmp rev <rev> (21-sep-2026) · sitio Tijuana›"
+* [pdf/guardado] propuesta-en#15  (numerica) · 56 apariciones en 56 escenario(s)
+    ej. propuesta-en#15
+        base : "19 ‹Calculation engine version SuiteEmp rev <rev> (19-sep-2026) · site Tijuana,›"   nuevo: "21 ‹Calculation engine version SuiteEmp rev <rev> (21-sep-2026) · site Tijuana,›"
+* [pdf/nativo] memoria-load#64  (numerica) · 55 apariciones en 55 escenario(s)
+    ej. memoria-load#64
+        base : "19 ‹h / 1.699 Version del motor SuiteEmp rev <rev> (19-sep-2026) DET de muro y c›"   nuevo: "21 ‹h / 1.699 Version del motor SuiteEmp rev <rev> (21-sep-2026) DET de muro y c›"
+* [pdf/nativo] memoria-hidro#4  (numerica) · 55 apariciones en 55 escenario(s)
+    ej. memoria-hidro#4
+        base : "19 ‹ersion del motor de calculo SuiteEmp rev <rev> (19-sep-2026) · sitio Tijuana›"   nuevo: "21 ‹ersion del motor de calculo SuiteEmp rev <rev> (21-sep-2026) · sitio Tijuana›"
+* [pdf/nativo] memoria-general#25  (numerica) · 55 apariciones en 55 escenario(s)
+    ej. memoria-general#25
+        base : "19 ‹eclarados Version del motor SuiteEmp rev <rev> (19-sep-2026) DET de muro y c›"   nuevo: "21 ‹eclarados Version del motor SuiteEmp rev <rev> (21-sep-2026) DET de muro y c›"
+* [pdf/guardado] memoria-load#64  (numerica) · 55 apariciones en 55 escenario(s)
+    ej. memoria-load#64
+        base : "19 ‹h / 1.699 Version del motor SuiteEmp rev <rev> (19-sep-2026) DET de muro y c›"   nuevo: "21 ‹h / 1.699 Version del motor SuiteEmp rev <rev> (21-sep-2026) DET de muro y c›"
+* [pdf/guardado] memoria-hidro#4  (numerica) · 55 apariciones en 55 escenario(s)
+    ej. memoria-hidro#4
+        base : "19 ‹ersion del motor de calculo SuiteEmp rev <rev> (19-sep-2026) · sitio Tijuana›"   nuevo: "21 ‹ersion del motor de calculo SuiteEmp rev <rev> (21-sep-2026) · sitio Tijuana›"
+* [pdf/guardado] memoria-general#25  (numerica) · 55 apariciones en 55 escenario(s)
+    ej. memoria-general#25
+        base : "19 ‹eclarados Version del motor SuiteEmp rev <rev> (19-sep-2026) DET de muro y c›"   nuevo: "21 ‹eclarados Version del motor SuiteEmp rev <rev> (21-sep-2026) DET de muro y c›"
+* [load/nativo] estado.site.alt  (numerica) · 54 apariciones en 54 escenario(s)
+    ej. estado.site.alt
+        base : 0   nuevo: 149
+* [load/nativo] estado.site.db  (numerica) · 54 apariciones en 54 escenario(s)
+    ej. estado.site.db
+        base : 35   nuevo: 32.8
+* [load/nativo] estado.site.wb  (numerica) · 54 apariciones en 54 escenario(s)
+    ej. estado.site.wb
+        base : 24   nuevo: 17.5
+* [load/nativo] estado.site.range  (solo-nuevo) · 54 apariciones en 54 escenario(s)
+    ej. estado.site.range
+        base : (no existe)   nuevo: 9.2
+* [pdf/nativo] memoria-fuego#134  (numerica) · 44 apariciones en 44 escenario(s)
+    ej. memoria-fuego#134
+        base : "19 ‹po 2026.09 Motor de calculo SuiteEmp rev <rev> (19-sep-2026) Emitido 19/9/20›"   nuevo: "21 ‹po 2026.09 Motor de calculo SuiteEmp rev <rev> (21-sep-2026) Emitido 19/9/20›"
+* [pdf/guardado] memoria-fuego#134  (numerica) · 44 apariciones en 44 escenario(s)
+    ej. memoria-fuego#134
+        base : "19 ‹po 2026.09 Motor de calculo SuiteEmp rev <rev> (19-sep-2026) Emitido 19/9/20›"   nuevo: "21 ‹po 2026.09 Motor de calculo SuiteEmp rev <rev> (21-sep-2026) Emitido 19/9/20›"
+* [hidro/nativo] salida.HIDRO.memo[*]  (solo-base) · 43 apariciones en 43 escenario(s)
+    ej. salida.HIDRO.memo[8]
+        base : "Equipo de bombeo: 5.22 L/s a 31.4 m de carga dinámica total → 2.68 kW al eje, 4 HP nominales con 60 % de ef…"   nuevo: (no existe)
+* [hidro/guardado] salida.HIDRO.memo[*]  (solo-base) · 43 apariciones en 43 escenario(s)
+    ej. salida.HIDRO.memo[8]
+        base : "Equipo de bombeo: 5.22 L/s a 31.4 m de carga dinámica total → 2.68 kW al eje, 4 HP nominales con 60 % de ef…"   nuevo: (no existe)
+* [pdf/nativo] memoria-clean#101  (numerica) · 42 apariciones en 42 escenario(s)
+    ej. memoria-clean#101
+        base : "19 ‹po 2026.09 Motor de calculo SuiteEmp rev <rev> (19-sep-2026) Emitido 19/9/20›"   nuevo: "21 ‹po 2026.09 Motor de calculo SuiteEmp rev <rev> (21-sep-2026) Emitido 19/9/20›"
+* [pdf/nativo] memoria-hidro#103  (solo-nuevo) · 42 apariciones en 42 escenario(s)
+    ej. memoria-hidro#103
+        base : (no existe)   nuevo: "103.3 ‹por el método de Hunter (IPC apéndice E, Table E103.3(3); el agua caliente c›"
+* [pdf/nativo] memoria-hidro#104  (solo-nuevo) · 42 apariciones en 42 escenario(s)
+    ej. memoria-hidro#104
+        base : (no existe)   nuevo: "3 ‹método de Hunter (IPC apéndice E, Table E103.3(3); el agua caliente con la›"
+* [pdf/nativo] memoria-hidro#106  (solo-base) · 42 apariciones en 42 escenario(s)
+    ej. memoria-hidro#106
+        base : "103.3 ‹o de Hunter con la tabla IPC apéndice E, Table E103.3(3) (tanque o fluxómetr›"   nuevo: (no existe)
+* [pdf/nativo] memoria-hidro#107  (solo-base) · 42 apariciones en 42 escenario(s)
+    ej. memoria-hidro#107
+        base : "3 ‹unter con la tabla IPC apéndice E, Table E103.3(3) (tanque o fluxómetro segú›"   nuevo: (no existe)
+* [pdf/nativo] memoria-hidro#155  (numerica) · 42 apariciones en 42 escenario(s)
+    ej. memoria-hidro#155
+        base : "19 ‹po 2026.09 Motor de calculo SuiteEmp rev <rev> (19-sep-2026) Emitido 19/9/20›"   nuevo: "21 ‹po 2026.09 Motor de calculo SuiteEmp rev <rev> (21-sep-2026) Emitido 19/9/20›"
+* [pdf/nativo] memoria-aire#131  (numerica) · 42 apariciones en 42 escenario(s)
+    ej. memoria-aire#131
+        base : "19 ‹po 2026.09 Motor de calculo SuiteEmp rev <rev> (19-sep-2026) Emitido 19/9/20›"   nuevo: "21 ‹po 2026.09 Motor de calculo SuiteEmp rev <rev> (21-sep-2026) Emitido 19/9/20›"
+* [pdf/guardado] memoria-clean#101  (numerica) · 42 apariciones en 42 escenario(s)
+    ej. memoria-clean#101
+        base : "19 ‹po 2026.09 Motor de calculo SuiteEmp rev <rev> (19-sep-2026) Emitido 19/9/20›"   nuevo: "21 ‹po 2026.09 Motor de calculo SuiteEmp rev <rev> (21-sep-2026) Emitido 19/9/20›"
+* [pdf/guardado] memoria-hidro#103  (solo-nuevo) · 42 apariciones en 42 escenario(s)
+    ej. memoria-hidro#103
+        base : (no existe)   nuevo: "103.3 ‹por el método de Hunter (IPC apéndice E, Table E103.3(3); el agua caliente c›"
+* [pdf/guardado] memoria-hidro#104  (solo-nuevo) · 42 apariciones en 42 escenario(s)
+    ej. memoria-hidro#104
+        base : (no existe)   nuevo: "3 ‹método de Hunter (IPC apéndice E, Table E103.3(3); el agua caliente con la›"
+  … y 987 grupos más (usa --max-familias=N o --json)
+
+Detalle por escenario y motor (las primeras diferencias de cada celda):
+  [vacio/nativo] load: 5 numéricas/estructurales, 0 de texto, 463 hojas comparadas
+      salida.LOADS[0].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      estado.site.alt  (numerica)
+          base : 0
+          nuevo: 149
+      estado.site.db  (numerica)
+          base : 35
+          nuevo: 32.8
+      estado.site.wb  (numerica)
+          base : 24
+          nuevo: 17.5
+      estado.site.range  (solo-nuevo)
+          base : (no existe)
+          nuevo: 9.2
+  [prueba/nativo] load: 6 numéricas/estructurales, 0 de texto, 950 hojas comparadas
+      salida.LOADS[0].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[1].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      estado.site.alt  (numerica)
+          base : 0
+          nuevo: 149
+      estado.site.db  (numerica)
+          base : 35
+          nuevo: 32.8
+      estado.site.wb  (numerica)
+          base : 24
+          nuevo: 17.5
+  [lleno/nativo] load: 8 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      salida.LOADS[0].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[1].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[2].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[3].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      estado.site.alt  (numerica)
+          base : 0
+          nuevo: 149
+  [lleno-sin-cruces/nativo] load: 8 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      salida.LOADS[0].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[1].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[2].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[3].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      estado.site.alt  (numerica)
+          base : 0
+          nuevo: 149
+  [lleno-cruces-parciales/nativo] load: 8 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      salida.LOADS[0].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[1].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[2].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[3].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      estado.site.alt  (numerica)
+          base : 0
+          nuevo: 149
+  [zonas-oaFixed-fluorescent/nativo] load: 8 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      salida.LOADS[0].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[1].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[2].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[3].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      estado.site.alt  (numerica)
+          base : 0
+          nuevo: 149
+  [sys-chiller/nativo] load: 8 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      salida.LOADS[0].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[1].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[2].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[3].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      estado.site.alt  (numerica)
+          base : 0
+          nuevo: 149
+  [sys-vrf/nativo] load: 8 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      salida.LOADS[0].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[1].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[2].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[3].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      estado.site.alt  (numerica)
+          base : 0
+          nuevo: 149
+  [sys-rooftop/nativo] load: 8 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      salida.LOADS[0].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[1].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[2].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[3].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      estado.site.alt  (numerica)
+          base : 0
+          nuevo: 149
+  [sys-split/nativo] load: 8 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      salida.LOADS[0].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[1].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[2].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[3].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      estado.site.alt  (numerica)
+          base : 0
+          nuevo: 149
+  [tech-VRF/nativo] load: 8 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      salida.LOADS[0].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[1].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[2].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[3].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      estado.site.alt  (numerica)
+          base : 0
+          nuevo: 149
+  [tech-DX_split/nativo] load: 8 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      salida.LOADS[0].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[1].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[2].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[3].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      estado.site.alt  (numerica)
+          base : 0
+          nuevo: 149
+  [tech-paquete/nativo] load: 8 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      salida.LOADS[0].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[1].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[2].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[3].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      estado.site.alt  (numerica)
+          base : 0
+          nuevo: 149
+  [tech-chiller_fancoil/nativo] load: 8 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      salida.LOADS[0].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[1].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[2].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[3].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      estado.site.alt  (numerica)
+          base : 0
+          nuevo: 149
+  [tech-AHU/nativo] load: 8 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      salida.LOADS[0].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[1].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[2].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[3].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      estado.site.alt  (numerica)
+          base : 0
+          nuevo: 149
+  [tech-PTAC/nativo] load: 8 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      salida.LOADS[0].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[1].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[2].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[3].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      estado.site.alt  (numerica)
+          base : 0
+          nuevo: 149
+  [zonas-materiales/nativo] load: 8 numéricas/estructurales, 0 de texto, 1993 hojas comparadas
+      salida.LOADS[0].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[1].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[2].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[3].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      estado.site.alt  (numerica)
+          base : 0
+          nuevo: 149
+  [barra-calcular-todos/nativo] load: 8 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      salida.LOADS[0].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[1].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[2].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[3].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      estado.site.alt  (numerica)
+          base : 0
+          nuevo: 149
+  [barra-calcular-vacio/nativo] load: 5 numéricas/estructurales, 0 de texto, 463 hojas comparadas
+      salida.LOADS[0].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      estado.site.alt  (numerica)
+          base : 0
+          nuevo: 149
+      estado.site.db  (numerica)
+          base : 35
+          nuevo: 32.8
+      estado.site.wb  (numerica)
+          base : 24
+          nuevo: 17.5
+      estado.site.range  (solo-nuevo)
+          base : (no existe)
+          nuevo: 9.2
+  [peakScan-false/nativo] load: 8 numéricas/estructurales, 0 de texto, 1729 hojas comparadas
+      salida.LOADS[0].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[1].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[2].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[3].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      estado.site.alt  (numerica)
+          base : 0
+          nuevo: 149
+  [bldDiv-08/nativo] load: 8 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      salida.LOADS[0].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[1].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[2].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[3].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      estado.site.alt  (numerica)
+          base : 0
+          nuevo: 149
+  [cotiz-USD/nativo] load: 8 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      salida.LOADS[0].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[1].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[2].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[3].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      estado.site.alt  (numerica)
+          base : 0
+          nuevo: 149
+  [cotiz-sin-items/nativo] load: 8 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      salida.LOADS[0].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[1].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[2].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[3].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      estado.site.alt  (numerica)
+          base : 0
+          nuevo: 149
+  [plaza-mexicali/nativo] load: 4 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      salida.LOADS[0].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[1].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[2].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[3].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+  [plaza-otra-factor/nativo] load: 8 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      salida.LOADS[0].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[1].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[2].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[3].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      estado.site.alt  (numerica)
+          base : 0
+          nuevo: 149
+  [sitio-custom/nativo] load: 4 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      salida.LOADS[0].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[1].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[2].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[3].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+  [cotiz-licitacion/nativo] load: 8 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      salida.LOADS[0].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[1].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[2].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[3].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      estado.site.alt  (numerica)
+          base : 0
+          nuevo: 149
+  [ductos-accesorios/nativo] load: 8 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      salida.LOADS[0].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[1].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[2].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[3].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      estado.site.alt  (numerica)
+          base : 0
+          nuevo: 149
+  [soporte-sismico-viga/nativo] load: 8 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      salida.LOADS[0].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[1].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[2].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[3].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      estado.site.alt  (numerica)
+          base : 0
+          nuevo: 149
+  [soporte-sin-sismico-manual/nativo] load: 8 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      salida.LOADS[0].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[1].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[2].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[3].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      estado.site.alt  (numerica)
+          base : 0
+          nuevo: 149
+  [soporte-losa-fc/nativo] load: 8 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      salida.LOADS[0].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[1].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[2].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[3].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      estado.site.alt  (numerica)
+          base : 0
+          nuevo: 149
+  [civil-demolicion/nativo] load: 8 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      salida.LOADS[0].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[1].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[2].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[3].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      estado.site.alt  (numerica)
+          base : 0
+          nuevo: 149
+  [civil-manual/nativo] load: 8 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      salida.LOADS[0].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[1].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[2].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[3].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      estado.site.alt  (numerica)
+          base : 0
+          nuevo: 149
+  [vent-kitchen/nativo] load: 8 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      salida.LOADS[0].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[1].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[2].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[3].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      estado.site.alt  (numerica)
+          base : 0
+          nuevo: 149
+  [vent-industrial/nativo] load: 8 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      salida.LOADS[0].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[1].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[2].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[3].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      estado.site.alt  (numerica)
+          base : 0
+          nuevo: 149
+  [vent-louver/nativo] load: 8 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      salida.LOADS[0].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[1].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[2].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[3].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      estado.site.alt  (numerica)
+          base : 0
+          nuevo: 149
+  [vent-mua/nativo] load: 8 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      salida.LOADS[0].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[1].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[2].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[3].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      estado.site.alt  (numerica)
+          base : 0
+          nuevo: 149
+  [cuartos-limpios/nativo] load: 8 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      salida.LOADS[0].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[1].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[2].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[3].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      estado.site.alt  (numerica)
+          base : 0
+          nuevo: 149
+  [instalaciones-variantes/nativo] load: 8 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      salida.LOADS[0].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[1].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[2].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[3].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      estado.site.alt  (numerica)
+          base : 0
+          nuevo: 149
+  [propuestas-aceptadas/nativo] load: 8 numéricas/estructurales, 0 de texto, 1953 hojas comparadas
+      salida.LOADS[0].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[1].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[2].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      salida.LOADS[3].psy.secoExterior  (solo-nuevo)
+          base : (no existe)
+          nuevo: true
+      estado.site.alt  (numerica)
+          base : 0
+          nuevo: 149
+
+====================================================================================================
+TOTALES POR FILA (todos los escenarios y modos)
+fila                   num/estruct     texto    hojas comparadas
+load                           581         0             177,205
+clean                            0         0              19,894
+equip                            0         0             144,991
+duct                             0         0             181,536
+vent                             0         0              31,038
+quote                            0         4              96,560
+valor                            0         0              62,532
+kaizen                           0         0              22,012
+elec                           286         8              68,906
+hidro                           86       626              22,838
+fuego                          200         0              10,188
+aire                             0         0              22,508
+civil                            0         0              32,817
+soporte                         22         0             112,914
+estr (externo)                   0         0                 224
+valid (cruzada)                730      2691               3,736
+xlsx propuesta es                0         0              39,502
+xlsx propuesta en                0         0              39,502
+pdf (números)                 7326      3360             571,776
+semáforo (info)                  0         8               5,464
+
+hojas numéricas/textuales comparadas: 1,660,679
+estr (StructCalc, archivo aparte): grupo declarado «externo» en la base y «externo» en la nueva -> no aplica
+DIFERENCIAS NUMÉRICAS O ESTRUCTURALES (base contra nuevo): 9231
+diferencias de ida y vuelta (guardar/abrir) que sólo aparecen en la nueva: 2
+diferencias sólo de texto           : 6689
+celdas de Excel reubicadas (maquetación, no numéricas): 0
+diferencias INFORMATIVAS del semáforo de completitud (texto de estado, no numéricas, no cuentan): 8  <- ver el renglón «semáforo (info)» de las tablas: cambió qué disciplinas dicen «Con datos» / «Sin datos»
+marcas de revisión normalizadas dentro de textos («2.9.18» y «2.9.19» -> «<REV>»): base 7, nuevo 7 (sólo modo nativo; no son diferencias)
+
+ESCENARIOS QUE SÓLO EXISTEN EN LA VERSIÓN NUEVA (usan una función que la base no tiene; la base corre la variante sin ella)
+  barra-calcular-todos       la función existe en las dos · numéricas/estructurales nativo 73 guardado 69 · texto 132
+  barra-calcular-vacio       la función existe en las dos · numéricas/estructurales nativo 134 guardado 130 · texto 78
+  diferencias numéricas/estructurales en estos escenarios: 406 (ya incluidas en el total de arriba) · de texto: 210
+RESULTADO: HAY DIFERENCIAS NUMÉRICAS O ESTRUCTURALES.

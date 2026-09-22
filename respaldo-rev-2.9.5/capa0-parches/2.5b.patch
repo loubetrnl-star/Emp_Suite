@@ -1,0 +1,32 @@
+--- pasos/2.5b-antes.html	2026-09-14 13:04:35.453958800 -0700
++++ index.html	2026-09-14 13:04:47.492558800 -0700
+@@ -14356,7 +14356,10 @@
+ }
+ function resumenSnapSoporte(sn) {
+   const m = (xs) => xs.reduce((a, x) => a + Math.max(0, num(x.L)), 0);
+-  return `${n(m(sn.duct), 0)} m de ducto (${sn.duct.length} tramos) · ${n(m(sn.hidro), 0)} m de tubería hidráulica · incendio ${sn.fuego.nTotal} rociador(es) · ${n(m(sn.aire), 0)} m de red de aire · ${sn.nEquip} base(s) de equipo`;
++  /* Capa 0 · 2.5: el material entra a la firma de la instantánea; si no se
++     nombra aquí, la tarjeta desactualizada muestra dos textos idénticos. */
++  const matSop = sn.hidroMat === "plastico" ? "termoplástico" : (sn.hidroMat || "acero");
++  return `${n(m(sn.duct), 0)} m de ducto (${sn.duct.length} tramos) · ${n(m(sn.hidro), 0)} m de tubería hidráulica soportada como ${matSop} · incendio ${sn.fuego.nTotal} rociador(es) · ${n(m(sn.aire), 0)} m de red de aire · ${sn.nEquip} base(s) de equipo`;
+ }
+ /* Soportería con instantánea: el motor de soportería no cambia, pero se le
+    presentan los tramos que el usuario ACEPTÓ, no los que hay ahora. Así un
+--- pasos/2.5b-antes-pruebas.mjs	2026-09-14 13:04:35.486002200 -0700
++++ pruebas.mjs	2026-09-14 13:04:51.020257200 -0700
+@@ -3318,6 +3318,15 @@
+   }
+ });
+ 
++t("22.17 2.5 el resumen de la instantánea de soportería nombra el material de la tubería hidráulica", () => {
++  const sn = G("snapshotSoporte")();
++  const r = (mat) => G("resumenSnapSoporte")({ ...sn, hidroMat: mat });
++  contiene(r("acero"), "soportada como acero");
++  contiene(r("cobre"), "soportada como cobre");
++  contiene(r("plastico"), "soportada como termoplástico");
++  if (r("acero") === r("cobre")) throw new Error("la tarjeta desactualizada mostraría dos textos iguales");
++});
++
+ /* ============================== resultado =============================== */
+ const total = ok + fail;
+ console.log(`\nSuiteEmp rev ${G("REV")} · banco de comprobaciones de la rev 2.9.3`);

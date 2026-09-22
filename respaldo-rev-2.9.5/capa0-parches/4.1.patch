@@ -1,0 +1,49 @@
+--- pasos/4.1-antes.html	2026-09-14 12:13:45.981789500 -0700
++++ index.html	2026-09-14 12:13:59.011532600 -0700
+@@ -18385,8 +18385,13 @@
+   s.civil = { ...defaultCivil(), ...(s.civil && typeof s.civil === "object" ? s.civil : {}) };
+   s.soporte = { ...defaultSoporte(), ...(s.soporte && typeof s.soporte === "object" ? s.soporte : {}) };
+   if (!Array.isArray(s.aire.consumos)) s.aire.consumos = defaultAire().consumos;
+-  if (!s.clean || typeof s.clean !== "object") s.clean = { rooms: [defaultRoom()], ci: 0 };
+-  if (!Array.isArray(s.clean.rooms) || !s.clean.rooms.length) s.clean = { rooms: [defaultRoom()], ci: 0 };
++  if (!s.clean || typeof s.clean !== "object" || Array.isArray(s.clean)) s.clean = { rooms: [defaultRoom()], ci: 0 };
++  if (!Array.isArray(s.clean.rooms)) {
++    const old = s.clean;
++    s.clean = { rooms: [{ ...defaultRoom(old.name || "Cuarto limpio 1"), ...old }], ci: 0 };
++    delete s.clean.rooms[0].rooms; delete s.clean.rooms[0].ci;
++  }
++  if (!s.clean.rooms.length) s.clean = { rooms: [defaultRoom()], ci: 0 };
+   if (!s.duct || typeof s.duct !== "object") s.duct = base.duct;
+   if (!Array.isArray(s.duct.segments)) s.duct.segments = [];
+   if (!s.quote || typeof s.quote !== "object") s.quote = JSON.parse(JSON.stringify(QUOTE_SEED));
+--- pasos/4.1-antes-pruebas.mjs	2026-09-14 12:13:46.011871800 -0700
++++ pruebas.mjs	2026-09-14 12:14:31.365898200 -0700
+@@ -3193,6 +3193,28 @@
+     G("recompute")();
+   }
+ });
++t("22.13 4.1 un respaldo con el cuarto limpio en formato viejo se migra al sanear y conserva lo capturado", () => {
++  const viejo = { name: "Sala de llenado", iso: "iso6", level: "max", area: 120, height: 3, dp: 15, crackLen: 10, oaFrac: 0.15, occ: 8, procW: 40 };
++  const resp = { ...JSON.parse(JSON.stringify(G("defaultState")())), clean: { ...viejo }, pid: null, linaje: null };
++  const s = G("sanearEstado")(JSON.parse(JSON.stringify(resp)));
++  eq(Array.isArray(s.clean.rooms), true, "rooms[] tras sanear:");
++  eq(s.clean.rooms.length, 1, "cuartos:");
++  eq(s.clean.ci, 0, "ci:");
++  const r = s.clean.rooms[0];
++  Object.entries(viejo).forEach(([k, v]) => eq(r[k], v, `cuarto migrado ${k}:`));
++  eq(r.rooms, undefined, "rooms dentro del cuarto:");
++  eq(r.ci, undefined, "ci dentro del cuarto:");
++  const c = G("computeClean")(r);
++  cerca(c.vol, 360, 1e-9, "volumen:");
++  cerca(c.supply, 64800, 1e-6, "suministro m³/h:");
++  eq(c.ffu, 72, "FFU:");
++  /* Lo que ya terminaba en el cuarto por omisión sigue igual (huella de INIT y proyectos nuevos). */
++  const def = JSON.stringify({ rooms: [G("defaultRoom")()], ci: 0 });
++  eq(JSON.stringify(G("sanearEstado")(JSON.parse(JSON.stringify(G("INIT")))).clean), def, "clean de INIT:");
++  eq(JSON.stringify(G("sanearEstado")({ clean: { rooms: [], x: 1 } }).clean), def, "rooms vacío:");
++  eq(JSON.stringify(G("sanearEstado")({ clean: [] }).clean), def, "clean arreglo:");
++  eq(JSON.stringify(G("sanearEstado")({ clean: null }).clean), def, "clean nulo:");
++});
+ 
+ /* ============================== resultado =============================== */
+ const total = ok + fail;

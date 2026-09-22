@@ -1,0 +1,89 @@
+--- pasos/3.1-antes.html	2026-09-14 12:02:44.345648200 -0700
++++ index.html	2026-09-14 12:03:20.035384000 -0700
+@@ -4303,7 +4303,7 @@
+       L("PRESION Pa", "PRESSURE Pa"), L("ORIGEN DEL DATO", "DATUM SOURCE")].map((x) => xT(x, XS.TH)));
+     rooms.forEach((c) => {
+       const R = seguro(() => computeClean(c), null);
+-      af.push([xT(c.name, XS.TD), xT(`ISO ${num(c.iso, 8)}`, XS.TD), xN(+num(c.area).toFixed(1), XS.NUM),
++      af.push([xT(c.name, XS.TD), xT((ISO_CLASSES[c.iso] || ISO_CLASSES.iso7).label.split(" · ")[0], XS.TD), xN(+num(c.area).toFixed(1), XS.NUM),
+         xN(+num(c.height).toFixed(2), XS.NUM), xN(+(num(c.area) * num(c.height)).toFixed(1), XS.NUM),
+         xN(R ? +num(R.ach).toFixed(0) : 0, XS.NUM), xN(R ? Math.round(num(R.supply)) : 0, XS.NUM),
+         xN(num(c.dp, 0), XS.NUM), xT(L("Capturado en cuartos limpios", "Captured in cleanrooms"), XS.TD)]);
+@@ -4338,14 +4338,15 @@
+     const R = seguro(() => computeClean(c), null);
+     if (!R) return;
+     pushU(L("Cuartos limpios", "Cleanrooms"),
+-      L(`Clasificacion del cuarto ${c.name}`, `Classification of room ${c.name}`), `ISO ${num(c.iso, 8)}`,
++      L(`Clasificacion del cuarto ${c.name}`, `Classification of room ${c.name}`),
++      L(`${R.cls.label.split(" · ")[0]} · rango ${R.cls.ach[0]}–${R.cls.ach[2]} cambios/h`, `${R.cls.label.split(" · ")[0]} · range ${R.cls.ach[0]}–${R.cls.ach[2]} ACH`),
+       L(`${n(num(R.ach), 0)} cambios/h · ${Math.round(num(R.supply))} m3/h`, `${n(num(R.ach), 0)} ACH · ${Math.round(num(R.supply))} m3/h`),
+       num(R.ach) >= num(R.achMin, 0) ? L("SI", "YES") : L("REVISAR", "REVIEW"),
+       L(`ISO 14644-4 · hoja ${HN.DESGLOSE_AREAS}`, `ISO 14644-4 · tab ${HN.DESGLOSE_AREAS}`));
+     if (num(c.dp) > 0) pushU(L("Cuartos limpios", "Cleanrooms"),
+       L(`Cascada de presion del cuarto ${c.name}`, `Pressure cascade for room ${c.name}`), `${num(c.dp)} Pa`,
+       L(`${Math.round(num(R.leak || 0))} m3/h de fuga compensada`, `${Math.round(num(R.leak || 0))} m3/h of leakage made up`),
+-      L("SI", "YES"), L("ISO 14644-4", "ISO 14644-4"));
++      L("NO EVALUADO", "NOT EVALUATED"), L("ISO 14644-4", "ISO 14644-4"));
+   });
+   if (VENT && VENT.m3h > 0) pushU(L("Ventilacion", "Ventilation"),
+     L("Aire exterior de ventilacion", "Outdoor air ventilation"), L("ASHRAE 62.1", "ASHRAE 62.1"),
+@@ -4381,6 +4382,8 @@
+   uf.push([]);
+   uf.push([xT(L("Un REVISAR no es un incumplimiento: es un renglon que el motor marco y que debe cerrarse antes de emitir en firme. Se declara a proposito en vez de esconderse.",
+     "A REVIEW verdict is not a failure: it is a line the engine flagged and that must be closed before final issue. It is declared on purpose rather than hidden."), XS.NOTA)]);
++  uf.push([xT(L("Un NO EVALUADO es un requisito que la suite no calcula todavia: no se afirma que cumpla y debe verificarse por separado.",
++    "A NOT EVALUATED verdict is a requirement the suite does not calculate yet: compliance is not claimed and it must be verified separately."), XS.NOTA)]);
+   hojas.push({ nombre: HN.CUMPLIMIENTO_URS, congelar: 4, anchos: [6, 22, 46, 30, 34, 12, 30], filas: uf });
+ 
+   /* ---------- 8) BASES HVAC ---------- */
+--- pasos/3.1-antes-pruebas.mjs	2026-09-14 12:02:44.377493700 -0700
++++ pruebas.mjs	2026-09-14 12:03:55.156667700 -0700
+@@ -3045,6 +3045,48 @@
+   }
+ });
+ 
++t("22.9 3.1 CUMPLIMIENTO_URS lee la clase ISO del cuarto y la cascada sale NO EVALUADO, no SI fijo", () => {
++  /* Parcial: el mínimo de renovaciones y el veredicto NFPA 13 esperan la decisión del criterio. */
++  const clean0 = JSON.parse(JSON.stringify(S.clean));
++  const filasDe = (bytes, marca) => {
++    const txt = Buffer.from(bytes).toString("utf8");
++    const x = [...txt.matchAll(/<worksheet[\s\S]*?<\/worksheet>/g)].map((m) => m[0]).find((h) => h.includes(marca)) || "";
++    const des = (z) => z.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, "&");
++    return { xml: des(x), filas: [...x.matchAll(/<row\b[\s\S]*?<\/row>/g)].map((r) =>
++      [...r[0].matchAll(/<c\b[^>]*?(?:\/>|>([\s\S]*?)<\/c>)/g)].map((c) => { const m = /<t\b[^>]*>([\s\S]*?)<\/t>/.exec(c[1] || ""); return m ? des(m[1]) : ""; })) };
++  };
++  try {
++    const room = G("defaultRoom");
++    S.clean = { ci: 0, rooms: [
++      { ...room("Sala A"), iso: "iso5", level: "med", achSet: 20, area: 40, height: 3, dp: 15 },
++      { ...room("Sala B"), iso: "iso7", level: "min", achSet: 0, area: 60, height: 2.7, dp: 12.5 },
++    ] };
++    G("recompute")();
++    const libros = [
++      { bytes: G("buildPropuestaXlsx")({ lang: "es", mon: "MXN" }), urs: "CUMPLIMIENTO DE URS", area: "AREAS CLASIFICADAS",
++        clasif: "Clasificacion del cuarto", casc: "Cascada de presion", ne: "NO EVALUADO", si: "SI",
++        crit: ["ISO 5 · rango 240–480 cambios/h", "ISO 7 · rango 30–60 cambios/h"], nota: "Un NO EVALUADO es un requisito que la suite no calcula todavia" },
++      { bytes: G("buildPropuestaXlsx")({ lang: "en", mon: "USD" }), urs: "URS COMPLIANCE", area: "CLASSIFIED AREAS",
++        clasif: "Classification of room", casc: "Pressure cascade", ne: "NOT EVALUATED", si: "YES",
++        crit: ["ISO 5 · range 240–480 ACH", "ISO 7 · range 30–60 ACH"], nota: "A NOT EVALUATED verdict is a requirement the suite does not calculate yet" },
++    ];
++    libros.forEach((b) => {
++      const U = filasDe(b.bytes, b.urs), A = filasDe(b.bytes, b.area);
++      if (!U.filas.length || !A.filas.length) throw new Error(`${b.ne}: el libro no trae las hojas de URS y áreas`);
++      eq(JSON.stringify(A.filas.filter((f) => f[0] === "Sala A" || f[0] === "Sala B").map((f) => f[1])), '["ISO 5","ISO 7"]', `${b.ne} clase en DESGLOSE_AREAS:`);
++      const reng = U.filas.filter((f) => /^\d+$/.test(f[0] || ""));
++      const clasif = reng.filter((f) => f[2].startsWith(b.clasif)), casc = reng.filter((f) => f[2].startsWith(b.casc));
++      eq(JSON.stringify(clasif.map((f) => f[3])), JSON.stringify(b.crit), `${b.ne} criterio de clasificación:`);
++      eq(JSON.stringify(casc.map((f) => f[5])), JSON.stringify([b.ne, b.ne]), `${b.ne} veredicto de cascada:`);
++      if (U.xml.includes("ISO 8")) throw new Error(`${b.ne}: la hoja URS sigue imprimiendo ISO 8 sin cuarto ISO 8`);
++      contiene(U.xml, b.nota, `${b.ne} nota de NO EVALUADO:`);
++    });
++  } finally {
++    S.clean = clean0;
++    G("recompute")();
++  }
++});
++
+ /* ============================== resultado =============================== */
+ const total = ok + fail;
+ console.log(`\nSuiteEmp rev ${G("REV")} · banco de comprobaciones de la rev 2.9.3`);
