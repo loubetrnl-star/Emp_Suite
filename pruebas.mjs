@@ -5951,14 +5951,14 @@ t("S.41 (rev 2.9.23) cobre tipo L: referencias de mercado con fuente y fecha, IV
   try {
     const REF = G("HIDRO_PU_REFERENCIA"), IUSA = "https://www.iusa.com.mx/assets/descargables/listas/construccion/lista-de-precios-plomeria-cobre.pdf";
     eq(Object.keys(REF).join(","), "cobre_1_2_,cobre_3_4_,cobre_1_,cobre_1_1_4_,cobre_1_1_2_,cobre_2_,cobre_2_1_2_,cobre_3_,cobre_4_", "nueve diámetros de cobre tipo L, 1/2\" a 4\":");
-    /* Los tres del dueño (menudeo, con IVA) y los seis de la lista de distribuidor (sin IVA), tal como se publican, por tramo de 6.10 m. */
-    eq([REF.cobre_1_2_.precio, REF.cobre_3_4_.precio, REF.cobre_1_.precio].join(","), "1105,1762,2924.99", "Tienda IUSA 21-sep-2026:"); ["cobre_1_2_", "cobre_3_4_", "cobre_1_"].forEach((k) => { eq(REF[k].iva, true, k + " con IVA:"); eq(REF[k].porTramo, 6.1, k + " por tramo:"); });
-    eq([REF.cobre_1_1_4_.precio, REF.cobre_1_1_2_.precio, REF.cobre_2_.precio, REF.cobre_2_1_2_.precio, REF.cobre_3_.precio, REF.cobre_4_.precio].join(","), "6172.11,8045.11,12851.2,22748.07,30821.54,57438.08", "lista distribuidor IUSA vigente 11-ago-2026:");
-    ["cobre_1_1_4_", "cobre_1_1_2_", "cobre_2_", "cobre_2_1_2_", "cobre_3_", "cobre_4_"].forEach((k) => { eq(REF[k].iva, false, k + " sin IVA:"); eq(REF[k].url, IUSA, k + " URL:"); contiene(REF[k].fuente, "vigente 11-ago-2026", k + " vigencia:"); });
+    /* Decisión del dueño 22-sep-2026: los nueve de la lista de distribuidor IUSA (sin IVA), tal como se publican, por tramo de 6.10 m; los tres de menudeo con IVA quedaron sustituidos. */
+    eq(Object.values(REF).map((e) => e.precio).join(","), "1827.14,2916.91,4846.88,6172.11,8045.11,12851.2,22748.07,30821.54,57438.08", "lista distribuidor IUSA vigente 11-ago-2026, 1/2\" a 4\":");
+    Object.keys(REF).forEach((k) => { eq(REF[k].iva, false, k + " sin IVA:"); eq(REF[k].porTramo, 6.1, k + " por tramo:"); eq(REF[k].url, IUSA, k + " URL:"); contiene(REF[k].fuente, "vigente 11-ago-2026", k + " vigencia:"); });
+    if (JSON.stringify(REF).includes("menudeo")) throw new Error("quedó un precio de menudeo");
     Object.values(REF).forEach((e) => { eq(e.origen, "referencia", "origen:"); eq(e.moneda, "MXN", "moneda:"); eq(e.fecha, "2026-09-21", "fecha:"); if (!e.fuente) throw new Error("referencia sin fuente"); });
     /* El motor trabaja por metro y antes de IVA. */
     G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.41"; Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.41" }; });
-    cerca(G("hidroPUEntrada")("cobre_1_2_").precioM, 1105 / 6.1 / 1.16, 1e-9, "1/2\": 1,105.00 ÷ 6.10 m ÷ 1.16 = MXN/m antes de IVA:");
+    cerca(G("hidroPUEntrada")("cobre_1_2_").precioM, 1827.14 / 6.1, 1e-9, "1/2\": 1,827.14 ÷ 6.10 m, ya sin IVA:");
     cerca(G("hidroPUEntrada")("cobre_2_").precioM, 12851.2 / 6.1, 1e-9, "2\": 12,851.20 ÷ 6.10 m, ya sin IVA:");
     eq(G("hidroPUetiqueta")("referencia"), "Referencia Budget", "etiqueta:"); eq(G("hidroPUetiqueta")("proveedor"), "Proveedor local", "etiqueta:");
     /* Ruta 1 · Budget Proposal con referencias: sale, con leyenda y fuente/fecha; el Excel igual. */
