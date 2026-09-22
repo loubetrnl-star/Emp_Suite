@@ -3428,10 +3428,10 @@ t("22.12 3.4 Kaizen lee la clase ISO del cuarto limpio: propone el mínimo de su
     const mov = G("KAIZEN").ops.filter((o) => o.muda === "mov");
     const de = (nombre) => mov.find((o) => o.zona === nombre);
     [
-      ["Limpio ISO 5", 240, "360 cambios/h contra 240, mínimo de ISO 5 (rango 240–480, ISO 14644-4 · ISPE)", 1.0291] /* rev 2.9.20 · dos casos de diseño en cuartos limpios; antes (un caso) 1.021 */,
-      ["Limpio ISO 6", 90, "135 cambios/h contra 90, mínimo de ISO 6 (rango 90–180, ISO 14644-4 · ISPE)", 0.4995] /* antes 0.492 */,
-      ["Limpio ISO 7", 30, "45 cambios/h contra 30, mínimo de ISO 7 (rango 30–60, ISO 14644-4 · ISPE)", 0.3481] /* antes 0.34 */,
-      ["Limpio ISO 8 alto", 15, "40 cambios/h contra 15, mínimo URS típico de ISO 8 (rango de la clase 10–25)", 0.3103] /* antes 0.303 */,
+      ["Limpio ISO 5", 240, "360 cambios/h contra 240, mínimo de ISO 5 (rango 240–480, ISO 14644-4 · ISPE)", 1.1041] /* rev 2.9.21 · unidad de aire exterior + serpentín seco; 2.9.20 daba 1.0291, 2.9.19 1.021 */,
+      ["Limpio ISO 6", 90, "135 cambios/h contra 90, mínimo de ISO 6 (rango 90–180, ISO 14644-4 · ISPE)", 0.5744] /* 2.9.20 0.4995 · 2.9.19 0.492 */,
+      ["Limpio ISO 7", 30, "45 cambios/h contra 30, mínimo de ISO 7 (rango 30–60, ISO 14644-4 · ISPE)", 0.4231] /* 2.9.20 0.3481 · 2.9.19 0.34 */,
+      ["Limpio ISO 8 alto", 15, "40 cambios/h contra 15, mínimo URS típico de ISO 8 (rango de la clase 10–25)", 0.3852] /* 2.9.20 0.3103 · 2.9.19 0.303 */,
     ].forEach(([zona, piso, ahora, tr]) => {
       const op = de(zona);
       if (!op) throw new Error(`${zona}: Kaizen no propone bajar los cambios de aire`);
@@ -5731,12 +5731,56 @@ t("S.37 (rev 2.9.20, decisión del dueño) control de humedad: dos casos de dise
     ["enf", "des"].forEach((c) => { if (!(cl.casos[c].grand > 0 && cl.casos[c].tons > 0)) throw new Error(`caso ${c} sin carga`); });
     cerca(cl.casos.des.W, 14.2, 0.01, "el caso de deshumidificación usa la razón de humedad de ASHRAE:"); cerca(cl.casos.des.db, 22.8, 1e-9, "y su BS coincidente:");
     if (cl.casos.des.grandL <= cl.casos.enf.grandL) throw new Error("con DP 19.2 °C la latente de deshumidificación debía ser mayor que la de enfriamiento (BH 17.5 °C)");
-    const esperado = cl.casos.rige === "deshumidificacion" ? cl.casos.des : cl.casos.enf;
-    cerca(cl.grandS, esperado.grandS, 1e-9, "sensible del caso que rige:");
-    cerca(cl.grandL, Math.max(cl.casos.enf.grandL, cl.casos.des.grandL), 1e-9, "latente: la mayor de los dos casos:");
-    cerca(cl.grand, cl.grandS + cl.grandL, 1e-9, "total recompuesto:"); cerca(cl.tons, cl.grand / G("P").W_TON, 1e-9, "toneladas:");
-    if (!(cl.grand >= cl.casos.enf.grand && cl.grand >= cl.casos.des.grand)) throw new Error("el total debe cubrir los dos casos");
-    contiene(cl.memo.join(" "), "dos casos de diseño ASHRAE", "memoria de la zona:"); contiene(cl.memo.join(" "), "Rige en carga total", "cuál gobierna:");
+    if (!(cl.casos.des.grandL > 900 && cl.casos.des.grandL < 960)) throw new Error("latente de deshumidificación del cuarto (2 personas + 216 m³/h, sin infiltración) fuera de 900–960 W: " + cl.casos.des.grandL);
+    /* rev 2.9.21 · cuarto limpio: unidad de aire exterior dedicada + serpentín seco; cada equipo con el mayor de sus casos;
+       total combinado sólo referencia. Infiltración 0 (presión positiva), crédito sensible de aire exterior topado en 0. */
+    const E = cl.casos.equipo;
+    eq(E.modo, "oa", "cuarto limpio: aire exterior dedicado por omisión:");
+    eq(cl.lines.some((l) => /Infiltración 0/.test(l.label)), true, "infiltración 0 en presión positiva:");
+    eq(cl.casos.des.creditoTopado, true, "crédito sensible topado en deshumidificación:"); eq(cl.casos.des.oaS, 0, "oaS = 0:");
+    /* ADP requerido desde la latente interna: Wsup = Wi − Lint/(ql·Qoa); ADP con BF 0.15. */
+    const Wi = cl.psy.Wi, QL = G("SITE").QL;
+    cerca(E.oa.Wsup, (Wi - E.oa.Lint / (QL * E.oa.Q) / 1000) * 1000, 0.01, "humedad de suministro requerida:");
+    if (!(E.oa.adpReq > 7 && E.oa.adpReq < E.oa.dpSup)) throw new Error(`ADP requerido fuera de rango: ${E.oa.adpReq}`);
+    cerca(E.oa.adpSel, E.oa.adpReq - 2, 1e-9, "ADP de selección = requerido − 2 °C:"); eq(E.oa.alerta7, false, "sin alerta de 7 °C:");
+    /* Unidad de aire exterior: latente = ql·Qoa·(Wo − Wleave); selección = mayor de sus dos casos. */
+    cerca(E.oa.des.lat, QL * E.oa.Q * (E.oa.des.Wo - E.oa.des.Wleave), 2, /* Wo/Wleave se guardan a 2 decimales */ "latente de la unidad en deshumidificación:");
+    eq(E.oa.sel.total, Math.max(E.oa.enf.total, E.oa.des.total), "unidad: el mayor de sus casos:");
+    eq(E.oa.sel.caso, "deshumidificacion", "en Tijuana rige deshumidificación en la unidad:");
+    /* Serpentín seco: caudal de recirculación = cambios/h × volumen − aire exterior; en seco; selección = mayor de sus casos. */
+    cerca(E.seco.Qrec, 45 * 360 - E.oa.Q, 1e-6, "recirculación por cambios/h:");
+    eq(E.seco.sel.W, Math.max(E.seco.enf, E.seco.des), "serpentín seco: el mayor de sus casos:"); eq(E.seco.condensa, false, "trabaja en seco:");
+    if (!(E.seco.adpSeco > E.seco.tDewCuarto)) throw new Error("superficie del serpentín seco bajo el rocío del cuarto");
+    cerca(E.seco.tDewCuarto, 12.9, 0.15, "rocío del cuarto a 24 °C / 9.47 g/kg:");
+    /* Calor del ventilador incluido: sin Pa/η, módulos FFU × W; con Pa/η, Q·ΔP/η. */
+    if (!(cl.fanW > 0) || !/módulos HEPA/.test(cl.fanModo)) throw new Error("falta el calor del ventilador por módulos FFU");
+    /* Total combinado = referencia; latente del equipo = de la unidad. */
+    cerca(cl.grand, E.oa.sel.total + E.seco.sel.W, 1e-9, "total combinado = unidad + serpentín seco:");
+    cerca(cl.grandL, E.oa.sel.lat, 1e-9, "latente = la de la unidad:"); cerca(cl.tons, cl.grand / G("P").W_TON, 1e-9, "toneladas:");
+    eq(E.recal, 0, "sin recalentamiento:");
+    /* Condición resultante del cuarto contra la banda de HR. */
+    cerca(E.cuarto.W, E.oa.des.Wleave + E.oa.Lint / (QL * E.oa.Q), 0.02, "W resultante del cuarto:");
+    if (!(E.cuarto.rh > 40 && E.cuarto.rh < 50)) throw new Error("HR resultante fuera de lo esperado: " + E.cuarto.rh);
+    eq(E.cuarto.fueraHR, false, "dentro de la banda 40–60:");
+    contiene(cl.memo.join(" "), "Condición resultante del cuarto", "memoria: condición del cuarto:");
+    contiene(cl.memo.join(" "), "UNIDAD DE AIRE EXTERIOR", "memoria: dos equipos:"); contiene(cl.memo.join(" "), "SERPENTÍN SECO", "memoria: serpentín seco:");
+    /* Banda estrecha: aviso. Ventilador con Pa y η: Q·ΔP/η. Modo «todo»: un solo serpentín con recalentamiento. */
+    S.zones[1].rhMin = 50; S.zones[1].fanPa = 800; S.zones[1].fanEta = 60; G("recompute")();
+    const c2 = G("LOADS")[1];
+    eq(c2.casos.equipo.cuarto.fueraHR, true, "fuera de banda con HR mínima 50:");
+    if (!G("ENGINES").load.checks(c2, "Limpio").some((a) => /fuera de la banda/.test(a.msg))) throw new Error("falta el aviso de banda de HR");
+    cerca(c2.fanW, (45 * 360 / 3600) * 800 / 0.6, 1e-6, "calor del ventilador Q·ΔP/η:");
+    S.zones[1].rhMin = 40; S.zones[1].fanPa = 0; S.zones[1].fanEta = 0; S.zones[1].serpentin = "todo"; G("recompute")();
+    const c3 = G("LOADS")[1];
+    eq(c3.casos.equipo.modo, "todo", "modo todo el suministro:"); if (!(c3.recal > 10000)) throw new Error("con todo el suministro por el serpentín debía haber recalentamiento grande: " + c3.recal);
+    S.zones[1].serpentin = "auto";
+    /* Cambios por hora obligatorios: sin ellos la zona no se calcula ni deja Calcular. */
+    S.zones[1].achClean = 0; G("recompute")();
+    eq(G("LOADS")[1].sinACH, true, "sin cambios/h:"); eq(G("capturaReal")("load"), false, "Calcular bloqueado:");
+    if (!G("ENGINES").load.checks(G("LOADS")[1], "Limpio").some((a) => a.lvl === "err" && /cambios por hora/.test(a.msg))) throw new Error("falta el error de cambios/h");
+    eq(G("defaultZone")("x").achClean, 0, "la zona nueva arranca sin cambios/h:");
+    S.zones[1].achClean = 45; G("recompute")();
+    contiene(cl.memo.join(" "), "dos casos de diseño ASHRAE", "memoria de la zona:"); contiene(cl.memo.join(" "), "Selección · UNIDAD DE AIRE EXTERIOR", "cuál gobierna, por equipo:");
     const pdf = textoPdf(G("buildCargaPdf")());
     contiene(pdf, "Dos casos ASHRAE", "PDF de carga:"); contiene(pdf, "deshumidificacion", "PDF nombra el caso:");
     eq(G("SITE").caso, "enfriamiento", "SITE restaurado:"); eq(G("SITE").Wfijo, null, "sin razón fija:");
