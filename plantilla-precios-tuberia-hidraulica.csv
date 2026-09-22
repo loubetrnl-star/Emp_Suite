@@ -1,7 +1,7 @@
 ﻿material,clave,diametro,precio,por_tramo_m,iva_incluido,moneda,origen,fuente,url,fecha
-cobre,cobre_1_2_,"1/2""",1827.14,6.1,no,MXN,referencia,"IUSA lista de precios distribuidor plomería-cobre vigente 11-ago-2026, tipo L cód. 308759",https://www.iusa.com.mx/assets/descargables/listas/construccion/lista-de-precios-plomeria-cobre.pdf,2026-09-21
-cobre,cobre_3_4_,"3/4""",2916.91,6.1,no,MXN,referencia,"IUSA lista de precios distribuidor plomería-cobre vigente 11-ago-2026, tipo L cód. 308761",https://www.iusa.com.mx/assets/descargables/listas/construccion/lista-de-precios-plomeria-cobre.pdf,2026-09-21
-cobre,cobre_1_,"1""",4846.88,6.1,no,MXN,referencia,"IUSA lista de precios distribuidor plomería-cobre vigente 11-ago-2026, tipo L cód. 308763",https://www.iusa.com.mx/assets/descargables/listas/construccion/lista-de-precios-plomeria-cobre.pdf,2026-09-21
+cobre,cobre_1_2_,"1/2""",1105,6.1,si,MXN,referencia,"Tienda IUSA, menudeo, tubo rígido tipo L tramo 6.10 m",,2026-09-21
+cobre,cobre_3_4_,"3/4""",1762,6.1,si,MXN,referencia,"Tienda IUSA, menudeo, tubo rígido tipo L tramo 6.10 m",,2026-09-21
+cobre,cobre_1_,"1""",2924.99,6.1,si,MXN,referencia,"Tienda IUSA, menudeo, tubo rígido tipo L tramo 6.10 m",,2026-09-21
 cobre,cobre_1_1_4_,"1 1/4""",6172.11,6.1,no,MXN,referencia,"IUSA lista de precios distribuidor plomería-cobre vigente 11-ago-2026, tipo L cód. 308765",https://www.iusa.com.mx/assets/descargables/listas/construccion/lista-de-precios-plomeria-cobre.pdf,2026-09-21
 cobre,cobre_1_1_2_,"1 1/2""",8045.11,6.1,no,MXN,referencia,"IUSA lista de precios distribuidor plomería-cobre vigente 11-ago-2026, tipo L cód. 308766",https://www.iusa.com.mx/assets/descargables/listas/construccion/lista-de-precios-plomeria-cobre.pdf,2026-09-21
 cobre,cobre_2_,"2""",12851.2,6.1,no,MXN,referencia,"IUSA lista de precios distribuidor plomería-cobre vigente 11-ago-2026, tipo L cód. 308767",https://www.iusa.com.mx/assets/descargables/listas/construccion/lista-de-precios-plomeria-cobre.pdf,2026-09-21

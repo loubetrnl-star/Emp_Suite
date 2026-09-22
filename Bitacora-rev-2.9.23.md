@@ -47,14 +47,3 @@ Pruebas de humo sobre la rev actual (no se rehízo nada):
 - Laboratorio con HR especificada en Tijuana: dos casos (enfriamiento 32.8 °C / 6.42 g/kg = 5.99 kW SHF 0.94; deshumidificación 22.8 °C / DP 19.2 °C, 14.2 g/kg = 6.11 kW SHF 0.682), rige deshumidificación; memoria y PDF lo dicen.
 
 **Hallazgo (brecha corregida):** el PDF de carga térmica y la memoria integral no citaban la fuente climática del sitio (ASHRAE Handbook—Fundamentals 2021, estación, WMO, 0.4 %) cuando el sitio trae dato propio; sólo la pantalla lo mostraba. Se agrega la línea «Fuente climatica: …» después de las condiciones exteriores en ambos PDF (documento, no lógica: `MOTOR_VER` no cambia; cifras de regresión sin cambio). Prueba S.37 ampliada. Banco 350/350 y 355/355 con base.
-
-## 7. Decisión del dueño (22-sep-2026): una sola fuente, lista de distribuidor IUSA
-Los tres precios de menudeo con IVA (Tienda IUSA) se sustituyen por la misma lista de distribuidor IUSA vigente 11-ago-2026 (tipo L, tramo 6.10 m, sin IVA) que ya cubría 1-1/4"–4". Antes/después (precio publicado por tramo → MXN/m antes de IVA):
-
-| Diámetro | Antes (menudeo, con IVA) | Después (lista distribuidor, sin IVA) | Cód. IUSA |
-|---|---:|---:|---|
-| 1/2" | 1,105.00 → 156.15 MXN/m | 1,827.14 → 299.53 MXN/m | 308759 |
-| 3/4" | 1,762.00 → 249.01 MXN/m | 2,916.91 → 478.18 MXN/m | 308761 |
-| 1" | 2,924.99 → 413.36 MXN/m | 4,846.88 → 794.57 MXN/m | 308763 |
-
-1-1/4"–4" sin cambio. Sólo datos de referencia: `MOTOR_VER` no cambia; golden de regresión sin cambio (CPVC). S.41 ajustada (nueve precios de la lista, ninguno de menudeo; la ruta «con IVA ÷ 1.16» sigue cubierta por el CSV de proveedor de S.41). Banco 350/350 y 355/355 con base. Instalador y tag `rev-2.9.23-candidata` rehechos sobre este commit.
