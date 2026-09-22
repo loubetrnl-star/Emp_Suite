@@ -66,6 +66,8 @@ function proyectoDePrueba() {
       lights: 400, equip: 500, ach: .4 },
   ];
   S.zi = 0;
+  /* H-250: el banco emite espejos EN-USD; sin tipo de cambio fechado ya no se emiten, así que el proyecto de prueba lo captura. */
+  S.quote.fx = 18.5; S.quote.fxFecha = "2026-09-22"; S.quote.fxFuente = "banco de pruebas";
   G("recompute")();
 }
 proyectoDePrueba();
@@ -1569,7 +1571,7 @@ t("16.7 la misma área repartida en las ocho da una carga solar coherente con la
       if (m) throw new Error(`en ${d}: ${m[0]}`);
     });
     ["es", "en"].forEach((lang) => {
-      const m = Buffer.from(G("buildPropuestaXlsx")({ lang, mon: lang === "es" ? "MXN" : "USD" })).toString("utf8").match(VETADOS);
+      const m = Buffer.from(G("buildPropuestaXlsx")({ lang, mon: lang === "es" ? "MXN" : G("monedaEspejoEN")() })).toString("utf8").match(VETADOS);
       if (m) throw new Error(`en el libro ${lang}: ${m[0]}`);
     });
     const m2 = JSON.stringify(S).match(VETADOS);
@@ -1814,7 +1816,7 @@ t("16.7 la misma área repartida en las ocho da una carga solar coherente con la
     if (!S.quote.prop) S.quote.prop = G("defaultPropuesta")();
     S.quote.prop.comparaCon = idA;
     G("recompute")();
-    ["es", "en"].forEach((lang) => sinViejo(Buffer.from(G("buildPropuestaXlsx")({ lang, mon: lang === "es" ? "MXN" : "USD" })).toString("utf8"), `libro ${lang}`));
+    ["es", "en"].forEach((lang) => sinViejo(Buffer.from(G("buildPropuestaXlsx")({ lang, mon: lang === "es" ? "MXN" : G("monedaEspejoEN")() })).toString("utf8"), `libro ${lang}`));
     S.tab = "cotizacion"; G("render")();
     const opciones = [...w.document.querySelectorAll('[data-act="q-cmp-sel"] option')].map((o) => o.value);
     if (opciones.includes(idA)) throw new Error("el selector ofrece comparar contra otro proyecto");
@@ -1985,7 +1987,7 @@ t("16.7 la misma área repartida en las ocho da una carga solar coherente con la
     eq(S.elec.cargas[0].origen, undefined, "origen de la carga:");
     eq(avisos(), avisosOrigen, "avisos de troncal y ramal:");
     ["buildCedulaPdf", "buildHidroPdf", "buildSoportePdf"].forEach((d) => sinViejo(Buffer.from(G(d)()).toString("latin1"), d));
-    ["es", "en"].forEach((lang) => sinViejo(Buffer.from(G("buildPropuestaXlsx")({ lang, mon: lang === "es" ? "MXN" : "USD" })).toString("utf8"), `libro ${lang}`));
+    ["es", "en"].forEach((lang) => sinViejo(Buffer.from(G("buildPropuestaXlsx")({ lang, mon: lang === "es" ? "MXN" : G("monedaEspejoEN")() })).toString("utf8"), `libro ${lang}`));
     act("proj-ref", idT);
     clicModal("confirmar-si");
     G("closeModal")();
@@ -2842,7 +2844,7 @@ t("19.1 SuiteEmp firma los documentos y el nombre anterior ya no aparece", () =>
   contiene(pdfTxt, "SuiteEmp rev"); contiene(pdfTxt, "/Creator (SuiteEmp)");
   if (VIEJO.test(pdfTxt)) throw new Error("la memoria integral conserva el nombre anterior");
   ["es", "en"].forEach((lang) => {
-    const x = Buffer.from(G("buildPropuestaXlsx")({ lang, mon: lang === "es" ? "MXN" : "USD" })).toString("utf8");
+    const x = Buffer.from(G("buildPropuestaXlsx")({ lang, mon: lang === "es" ? "MXN" : G("monedaEspejoEN")() })).toString("utf8");
     contiene(x, "SuiteEmp rev", "libro " + lang + ":");
     if (VIEJO.test(x)) throw new Error("el libro " + lang + " conserva el nombre anterior");
   });
@@ -4246,13 +4248,15 @@ t("P.11 la soportería contra incendio soporta el cabezal y el montante por sepa
 
 t("P.12 el espejo en inglés traduce los hitos de pago (título y condición de liberación), no los deja en español", () => {
   const P0 = S.quote.prop;
-  const en = Buffer.from(G("buildPropuestaPdf")({ lang: "en", mon: "USD" })).toString("latin1");
+  /* H-250: el espejo en inglés va en la moneda que permita el tipo de cambio (USD sólo con fecha). */
+  const monEN = G("monedaEspejoEN")();
+  const en = Buffer.from(G("buildPropuestaPdf")({ lang: "en", mon: monEN })).toString("latin1");
   (P0.hitos || []).forEach(([titulo, , condicion]) => {
     if (en.includes(titulo)) throw new Error(`el hito "${titulo}" sigue en español en el PDF en inglés`);
     if (en.includes(condicion)) throw new Error(`la condición "${condicion}" sigue en español en el PDF en inglés`);
   });
   contiene(en, "Advance payment", "al menos el primer hito sí se tradujo:");
-  const xen = Buffer.from(G("buildPropuestaXlsx")({ lang: "en", mon: "USD" })).toString("utf8");
+  const xen = Buffer.from(G("buildPropuestaXlsx")({ lang: "en", mon: monEN })).toString("utf8");
   (P0.hitos || []).forEach(([titulo, , condicion]) => {
     if (xen.includes(titulo)) throw new Error(`el hito "${titulo}" sigue en español en el libro en inglés`);
     if (xen.includes(condicion)) throw new Error(`la condición "${condicion}" sigue en español en el libro en inglés`);
@@ -4631,6 +4635,8 @@ function llenarTodoS() {
   if (!S.duct.segments.some((c) => c.tag === "TR-S")) S.duct.segments.push({ ...G("defaultSegment")("TR-S", 2500), length: 20 });
   const ms = G("MUEBLES"); S.hidro.muebles = [{ id: ms[0].id, cant: 6 }, { id: ms[1].id, cant: 6 }];
   const r0 = G("cleanRooms")()[0]; r0.area = 60; r0.height = 3; r0.occ = 4;
+  /* H-250: los espejos EN-USD del banco necesitan tipo de cambio con fecha. */
+  if (!G("fxVigente")()) { S.quote.fx = 18.5; S.quote.fxFecha = "2026-09-22"; S.quote.fxFuente = "banco de pruebas"; }
   G("recompute")();
 }
 /* Recoge los PDF que la barra manda a entregar, sin descargar nada. */
@@ -5652,7 +5658,7 @@ t("S.35 (rev 2.9.19, revisión adversarial de 2.9.16–2.9.18) pendientes en Exc
     eq((G("QUOTE").aux || []).filter((a) => a.mot === "hidro" && a.un === "ML").length, 0, "el tramo sin UM no se cotiza como 1/2\":");
     const xl = Buffer.from(G("buildPropuestaXlsx")({ lang: "es", mon: "MXN" })).toString("utf8");
     contiene(xl, "PENDIENTE, sin cotizar:", "matriz de alcance del Excel:");
-    contiene(Buffer.from(G("buildPropuestaXlsx")({ lang: "en", mon: "USD" })).toString("utf8"), "PENDING, not priced:", "Excel en inglés:");
+    contiene(Buffer.from(G("buildPropuestaXlsx")({ lang: "en", mon: G("monedaEspejoEN")() })).toString("utf8"), "PENDING, not priced:", "Excel en inglés:");
     S.quote.modo = "licitacion"; G("recompute")();
     /* rev 2.9.23: la cotización formal no sale con tubería sin precio; con precio sí, y el tramo sin UM sigue pendiente. */
     let tiro = ""; try { G("buildLicitacionPdf")(); } catch (e) { tiro = String(e.message); }
@@ -6028,7 +6034,8 @@ t("S.41 (rev 2.9.23) referencias de mercado: únicamente California y sólo mate
     /* 7. USD sin tipo de cambio fechado: no se convierte. */
     S.quote.hidroPU[k0] = REF_PRUEBA("USD"); S.quote.fxFecha = ""; G("recompute")();
     eq(G("hidroPUEntrada")(k0).sinFx, true, "sin tipo de cambio fechado:"); eq((G("QUOTE").porCotizar || []).find((p) => p.clave === k0).motivo, "tipo de cambio sin capturar", "Por cotizar:");
-    contiene(Buffer.from(G("buildPropuestaXlsx")({ lang: "es", mon: "USD" })).toString("utf8"), "TIPO DE CAMBIO SIN CAPTURAR", "el Excel lo dice:");
+    /* H-250: el libro en USD ya no se emite sin fecha; el libro en MXN declara la referencia USD sin convertir. */
+    contiene(Buffer.from(G("buildPropuestaXlsx")({ lang: "es", mon: "MXN" })).toString("utf8"), "TIPO DE CAMBIO SIN CAPTURAR", "el Excel lo dice:");
     S.quote.fxFecha = "2026-09-22"; G("recompute")(); eq(G("hidroPUEntrada")(k0).sinFx, false, "con fecha convierte:");
     /* 8. Por cotizar en el Budget con contador; la formal bloqueada. */
     const pdf2 = txtPdf(G("buildPropuestaPdf")({ lang: "es", mon: "MXN" }));
@@ -6067,6 +6074,44 @@ t("S.41 (rev 2.9.23) referencias de mercado: únicamente California y sólo mate
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+/* ===== H-250 (auditoría 22-sep-2026, regla del dueño): nada en USD sin tipo de cambio fechado, en ningún documento ===== */
+t("S.43 (H-250) sin tipo de cambio con fecha nada sale en USD: la cotización queda en MXN y lo declara, la propuesta y el libro en USD no se emiten, el espejo en inglés sale en MXN y ningún documento ni la pantalla imprimen US$; con fecha, la conversión vuelve", () => {
+  const guardado = JSON.stringify(S);
+  const txt = (b) => Buffer.from(b).toString("latin1"), xt = (b) => Buffer.from(b).toString("utf8");
+  const noUSD = (nombre, s) => { if (/US\$/.test(s)) throw new Error(`${nombre}: imprime importes en US$ sin tipo de cambio fechado`); };
+  try {
+    G("importarRespaldo")(REG_PROY); S.quote.currency = "USD"; S.quote.fx = 18.5; S.quote.fxFecha = "2026-09-22"; S.quote.fxFuente = "fixture"; G("recompute")();
+    eq(G("QUOTE").cur, "USD", "con fecha la cotización sí va en USD:"); cerca(G("QUOTE").div, 18.5, 1e-9, "y divide entre el tipo de cambio:");
+    contiene(txt(G("buildPropuestaPdf")({ lang: "en", mon: "USD" })), "US$", "con fecha la propuesta en USD se emite:");
+    /* Sin fecha: el tipo de cambio 18.5 sigue capturado, pero no vale. */
+    S.quote.fxFecha = ""; G("recompute")();
+    const Q = G("QUOTE");
+    eq(Q.cur, "MXN", "sin fecha la cotización queda en MXN:"); eq(Q.div, 1, "sin dividir:"); eq(Q.usdSinFecha, true, "y lo marca:");
+    if (!(Q.pendientes || []).some((p) => /tipo de cambio/i.test(p.desc))) throw new Error("falta el pendiente «tipo de cambio sin fecha» en la cotización");
+    let lanzo = false; try { G("buildPropuestaPdf")({ lang: "en", mon: "USD" }); } catch (e) { lanzo = /tipo de cambio/i.test(String(e && e.message)); }
+    eq(lanzo, true, "la propuesta PDF en USD no se emite y dice por qué:");
+    lanzo = false; try { G("buildPropuestaXlsx")({ lang: "en", mon: "USD" }); } catch (e) { lanzo = /tipo de cambio/i.test(String(e && e.message)); }
+    eq(lanzo, true, "el libro en USD no se emite y dice por qué:");
+    const docs = {
+      "propuesta ES": txt(G("buildPropuestaPdf")({ lang: "es", mon: "MXN" })), "propuesta EN en MXN": txt(G("buildPropuestaPdf")({ lang: "en", mon: "MXN" })),
+      "libro ES": xt(G("buildPropuestaXlsx")({ lang: "es", mon: "MXN" })), "libro EN en MXN": xt(G("buildPropuestaXlsx")({ lang: "en", mon: "MXN" })),
+      "memoria de cotización": txt(G("buildCotizacionPdf")()), "cotización hidro": txt(G("buildCotizacionMotorPdf")("hidro")), "memoria integral": txt(G("buildMemoriaIntegralPdf")()),
+    };
+    /* La licitación puede no emitirse por otros bloqueos (formal); si sale, tampoco puede traer US$. */
+    try { docs["licitación"] = txt(G("buildLicitacionPdf")()); } catch (e) { if (/US\$/.test(String(e && e.message))) throw e; }
+    Object.entries(docs).forEach(([k, s]) => noUSD(k, s));
+    contiene(docs["memoria de cotización"], "sin tipo de cambio fechado", "la memoria de cotización declara por qué va en MXN:");
+    contiene(docs["propuesta ES"], "sin tipo de cambio fechado", "la propuesta declara por qué va en MXN:");
+    S.tab = "cotizacion"; G("render")();
+    noUSD("pantalla de cotización", w.document.getElementById("view").textContent);
+    eq(G("monedaEspejoEN")(), "MXN", "el espejo en inglés sale en MXN:");
+    /* Con fecha otra vez: la conversión vuelve y el espejo va en USD. */
+    S.quote.fxFecha = "2026-09-22"; G("recompute")();
+    eq(G("QUOTE").cur, "USD", "con fecha vuelve USD:"); eq(G("QUOTE").usdSinFecha, false, "sin marca:"); eq(G("monedaEspejoEN")(), "USD", "espejo en USD:");
+    contiene(txt(G("buildPropuestaPdf")({ lang: "en", mon: "USD" })), "US$", "propuesta EN en USD:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 /* ===== Flete local y maniobras en obra (rev 2.9.23, decisión del dueño 22-sep-2026) ===== */
 t("S.42 (rev 2.9.23) «Flete local y maniobras en obra»: parámetro comercial, se dice siempre (también en 0 o sin capturar) y la cotización aclara que no incluye flete de importación, aduana ni internación (sección H)", () => {
   const guardado = JSON.stringify(S);
@@ -6078,7 +6123,7 @@ t("S.42 (rev 2.9.23) «Flete local y maniobras en obra»: parámetro comercial, 
     const prop = txtPdf(G("buildPropuestaPdf")({ lang: "es", mon: "MXN" }));
     contiene(prop, "Flete local y maniobras en obra 2.5 %", "propuesta PDF: nombre nuevo con porcentaje:"); contiene(prop, nota, "propuesta PDF: aclaración de no doble cobro:");
     if (/Flete y maniobras\b/.test(prop)) throw new Error("quedó el nombre viejo en la propuesta");
-    contiene(txtPdf(G("buildPropuestaPdf")({ lang: "en", mon: "USD" })), "Local freight and site handling 2.5 %", "en inglés:"); contiene(txtPdf(G("buildPropuestaPdf")({ lang: "en", mon: "USD" })), "does NOT include import freight, customs or entry into Mexico", "aclaración en inglés:");
+    contiene(txtPdf(G("buildPropuestaPdf")({ lang: "en", mon: G("monedaEspejoEN")() })), "Local freight and site handling 2.5 %", "en inglés:"); contiene(txtPdf(G("buildPropuestaPdf")({ lang: "en", mon: G("monedaEspejoEN")() })), "does NOT include import freight, customs or entry into Mexico", "aclaración en inglés:");
     const xl = Buffer.from(G("buildPropuestaXlsx")({ lang: "es", mon: "MXN" })).toString("utf8");
     contiene(xl, "Flete local y maniobras en obra 2.5 %", "Excel: resumen:"); contiene(xl, nota, "Excel: condiciones:"); if (/Flete, maniobras y seguro de transito/.test(xl)) throw new Error("quedó el nombre viejo en el Excel");
     const tec = txtPdf(G("buildCotizacionPdf")()); contiene(tec, "Flete local y maniobras en obra 2.5 %", "cotización técnica:"); contiene(tec, nota, "cotización técnica: aclaración:");

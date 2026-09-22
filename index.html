@@ -1560,7 +1560,7 @@ function buildCotizacionPdf() {
   pdfRows(d, [
     ["Carga del proyecto", `${t.tons.toFixed(1)} TR en ${LOADS.length} zona(s) · ${t.area.toFixed(0)} m2`],
     ["Caudal total", `${t.cfm.toFixed(0)} CFM`],
-    ["Moneda", Q.cur === "USD" ? `USD (tipo de cambio ${fxTexto("es")})` : "Pesos mexicanos"],
+    ["Moneda", Q.cur === "USD" ? `USD (tipo de cambio ${fxTexto("es")})` : Q.usdSinFecha ? "Pesos mexicanos (USD solicitado sin tipo de cambio fechado: no se convierte)" : "Pesos mexicanos"],
   ]);
   pdfHeading(d, "2. Equipo propuesto");
   pdfTable(d, ["Clave", "Equipo", "Cant", "P. unitario", "Importe"],
@@ -4692,6 +4692,9 @@ function fxVigente() {
   const q = S.quote || {}; const fx = num(q.fx, 0), fecha = String(q.fxFecha || "").trim();
   return fx > 0 && /^\d{4}-\d{2}-\d{2}$/.test(fecha) ? { fx, fecha, fuente: String(q.fxFuente || "").trim() } : null;
 }
+/* H-250 (auditoría 22-sep-2026, regla del dueño): nada en USD sin tipo de cambio fechado, en ningún documento. El espejo en
+   inglés de la propuesta sale en USD sólo con fxVigente(); si no, sale en MXN (mismo documento, misma moneda que el español). */
+const monedaEspejoEN = () => (fxVigente() ? "USD" : "MXN");
 const fxTexto = (lang) => { const v = fxVigente(); return v ? (lang === "en" ? `${n(v.fx, 2)} MXN/USD as of ${v.fecha}${v.fuente ? ` (${v.fuente})` : ""}` : `${n(v.fx, 2)} MXN/USD del ${v.fecha}${v.fuente ? ` (${v.fuente})` : ""}`) : (lang === "en" ? "EXCHANGE RATE NOT CAPTURED (rate and date required)" : "TIPO DE CAMBIO SIN CAPTURAR (falta tipo y fecha)"); };
 const fechaLocalISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 /* rev 2.9.23 · DECISIÓN DEL DUEÑO (22-sep-2026): fuente única de precios de referencia = California, EE. UU.
@@ -4702,7 +4705,7 @@ const HIDRO_PU_REFERENCIA = {};
 const REFERENCIA_UBICACION_OK = /california|\bCA\b/i; /* regla del dueño: únicamente California */
 const esUbicacionCalifornia = (u) => REFERENCIA_UBICACION_OK.test(String(u || ""));
 const QUOTE_SEED = {
-  currency: "MXN", fx: 18.5, fxFecha: "", fxFuente: "", importacion: { monto: 0, moneda: "MXN", fuente: "", fecha: "" }, /* rev 2.9.23 · el tipo de cambio sólo vale con fecha capturada (decisión del dueño 22-sep-2026) */
+  currency: "MXN", fx: 0, fxFecha: "", fxFuente: "", /* H-250: sin semilla de tipo de cambio; se captura con fecha o no vale */ importacion: { monto: 0, moneda: "MXN", fuente: "", fecha: "" }, /* rev 2.9.23 · el tipo de cambio sólo vale con fecha capturada (decisión del dueño 22-sep-2026) */
   plaza: "tijuana",       // plaza de compra del noroeste
   basePrecio: "casa",     // contra qué se formó el precio unitario
   fasar: 1.45,            // factor de salario real declarado
@@ -5101,7 +5104,10 @@ function buildPropuestaXlsx(opt) {
   const Q = QUOTE, cat = catalogoConceptos(), t = totals();
   const q = S.quote;
   const mon = o.mon || (q.currency === "USD" ? "USD" : "MXN");
-  const fx = mon === "USD" ? Math.max(.01, num(q.fx, 18.5)) : 1;
+  /* H-250: en USD sólo con tipo de cambio fechado; sin él, no se emite (regla del dueño 22-sep-2026). */
+  const fxv = mon === "USD" ? fxVigente() : null;
+  if (mon === "USD" && !fxv) throw new Error("Sin tipo de cambio con fecha no se emite el libro en USD: captura el tipo de cambio y su fecha en Cotización");
+  const fx = fxv ? fxv.fx : 1;
   const conv = (v) => v / fx;
   const hojas = [];
   const sem = seguro(() => semaforoSuite(), []) || [];
@@ -5274,8 +5280,9 @@ function buildPropuestaXlsx(opt) {
   par(L("No. DE PROPUESTA", "PROPOSAL No."), `${P0.no} · Rev. ${P0.rev}`);
   par(L("FECHA", "DATE"), S.meta.date || new Date().toISOString().slice(0, 10));
   par(L("VIGENCIA", "VALIDITY"), `${num(P0.vigencia, 30)} ${L("dias calendario", "calendar days")}`);
-  par(L("MONEDA", "CURRENCY"), mon + (mon === "USD" ? ` · ${L("tipo de cambio", "exchange rate")} ${fxTexto(lang)}` : ""));
-  if ((Q.referencias || []).some((r) => r.moneda === "USD") || (mon !== "USD" && fxVigente())) par(L("TIPO DE CAMBIO", "EXCHANGE RATE"), fxTexto(lang));
+  par(L("MONEDA", "CURRENCY"), mon + (mon === "USD" ? ` · ${L("tipo de cambio", "exchange rate")} ${fxTexto(lang)}` : q.currency === "USD" ? L(" (USD solicitado sin tipo de cambio fechado: no se convierte)", " (USD requested without a dated exchange rate: not converted)") : ""));
+  /* H-250: también se declara cuando una referencia en USD quedó «Por cotizar» por falta de tipo de cambio fechado. */
+  if ((Q.referencias || []).some((r) => r.moneda === "USD") || (Q.porCotizar || []).some((p) => /tipo de cambio/i.test(p.motivo || "")) || (mon !== "USD" && fxVigente())) par(L("TIPO DE CAMBIO", "EXCHANGE RATE"), fxTexto(lang));
   par(L("CONTACTO UNICO", "SINGLE POINT OF CONTACT"), P0.firma);
   par(L("PARTIDAS POR COTIZAR", "ITEMS TO BE QUOTED"), String((Q.porCotizar || []).length));
   if ((Q.referencias || []).length) par(L("PRECIOS DE REFERENCIA", "REFERENCE PRICES"), L(`${Q.referencias.length} renglon(es) con precios de referencia de mercado, sujetos a cotizacion de proveedor`, `${Q.referencias.length} line(s) with market reference prices, subject to supplier quotation`));
@@ -5861,8 +5868,11 @@ function emitirPropuestaEspejo() {
   }
   setTimeout(() => {
     try {
-      const en = buildPropuestaXlsx({ lang: "en", mon: "USD" });
-      deliverXlsx(en, `Proposal-${base}-EN-USD.xlsx`);
+      /* H-250: el espejo en inglés va en USD sólo con tipo de cambio fechado; si no, en MXN. */
+      const monEN = monedaEspejoEN();
+      if (monEN !== "USD") toast("Sin tipo de cambio con fecha, el libro en inglés sale en MXN (nada se convierte a USD).", 6000);
+      const en = buildPropuestaXlsx({ lang: "en", mon: monEN });
+      deliverXlsx(en, `Proposal-${base}-EN-${monEN}.xlsx`);
     } catch (err) {
       console.error("SuiteEmp · fallo al generar el libro de propuesta EN", err);
       toast(`No se pudo generar el libro en inglés: ${err && err.message ? err.message : "revisa la consola"}`);
@@ -6529,7 +6539,10 @@ function buildPropuestaPdf(opt) {
   const P0 = S.quote.prop || defaultPropuesta();
   const Q = QUOTE, cat = catalogoConceptos(), t = totals();
   const mon = o.mon || (S.quote.currency === "USD" ? "USD" : "MXN");
-  const fx = mon === "USD" ? Math.max(.01, num(S.quote.fx, 18.5)) : 1;
+  /* H-250: en USD sólo con tipo de cambio fechado; sin él, no se emite (regla del dueño 22-sep-2026). */
+  const fxv = mon === "USD" ? fxVigente() : null;
+  if (mon === "USD" && !fxv) throw new Error("Sin tipo de cambio con fecha no se emite la propuesta en USD: captura el tipo de cambio y su fecha en Cotización");
+  const fx = fxv ? fxv.fx : 1;
   const $ = (v) => `${mon === "USD" ? "US$" : "$"} ${n(v / fx, 2)}`;
   const d = PdfDoc(`${L("Propuesta integral", "Integrated proposal")} ${P0.no} Rev ${P0.rev}`);
 
@@ -6547,7 +6560,7 @@ function buildPropuestaPdf(opt) {
     [L("No. de propuesta", "Proposal No."), `${P0.no} · Rev. ${P0.rev}`],
     [L("Fecha", "Date"), S.meta.date || ""],
     [L("Vigencia", "Validity"), `${num(P0.vigencia, 30)} ${L("dias calendario", "calendar days")}`],
-    [L("Moneda", "Currency"), mon + (mon === "USD" ? ` · ${L("tipo de cambio", "exchange rate")} ${fxTexto(lang)}` : "")],
+    [L("Moneda", "Currency"), mon + (mon === "USD" ? ` · ${L("tipo de cambio", "exchange rate")} ${fxTexto(lang)}` : S.quote.currency === "USD" ? L(" (USD solicitado sin tipo de cambio fechado: no se convierte)", " (USD requested without a dated exchange rate: not converted)") : "")],
     ...((Q.referencias || []).some((r) => r.moneda === "USD") && mon !== "USD" ? [[L("Tipo de cambio", "Exchange rate"), fxTexto(lang)]] : []),
     [L("Contacto unico", "Single point of contact"), P0.firma],
     [L("Version del motor de calculo", "Calculation engine version"), `${REV_SELLO()} · ${L("sitio", "site")} ${SITE.label}`],
@@ -6654,7 +6667,10 @@ function emitirPropuestaPdfEspejo() {
   }
   setTimeout(() => {
     try {
-      deliverPdf(buildPropuestaPdf({ lang: "en", mon: "USD" }), `Proposal-${base}-EN-USD.pdf`);
+      /* H-250: el espejo en inglés va en USD sólo con tipo de cambio fechado; si no, en MXN. */
+      const monEN = monedaEspejoEN();
+      if (monEN !== "USD") toast("Sin tipo de cambio con fecha, la propuesta en inglés sale en MXN (nada se convierte a USD).", 6000);
+      deliverPdf(buildPropuestaPdf({ lang: "en", mon: monEN }), `Proposal-${base}-EN-${monEN}.pdf`);
     } catch (err) {
       console.error("SuiteEmp · fallo al generar la propuesta EN", err);
       toast(`No se pudo generar la propuesta en inglés: ${err && err.message ? err.message : "revisa la consola"}`);
@@ -8461,7 +8477,11 @@ function computeQuote() {
   const flete = direct * num(q.freight), fianza = direct * num(q.bond), finan = direct * num(q.financing);
   const contPct = num(q.contingencia, QUOTE_SEED.contingencia), cont = direct * contPct;
   const sub = direct + ind + uti + cont + flete + fianza + finan, iva = sub * num(q.iva, QUOTE_SEED.iva), tot = sub + iva;
-  const div = q.currency === "USD" ? Math.max(1, q.fx) : 1;
+  /* H-250 (regla del dueño 22-sep-2026): nada en USD sin tipo de cambio fechado. Con moneda USD y sin fxVigente() la
+     cotización queda en MXN, sin dividir, y lo declara como pendiente; nada se convierte con un tipo sin fecha. */
+  const fxUSD = q.currency === "USD" ? fxVigente() : null, usdSinFecha = q.currency === "USD" && !fxUSD;
+  if (usdSinFecha) pendientes.push({ mot: "quote", desc: "Moneda USD solicitada sin tipo de cambio fechado: los importes quedan en MXN (no se convierte)", descEn: "USD requested without a dated exchange rate: amounts stay in MXN (no conversion)", motivo: "tipo de cambio sin fecha", motivoEn: "exchange rate without date" });
+  const div = fxUSD ? fxUSD.fx : 1;
   const projTons = t.tons > 0 ? t.tons : equipTons;
   return { lines, aux, equipTotal, equipTons, nEquip, auxTotal, direct, ind, uti, cont, contPct, flete, fianza, finan, sub, iva, tot, div, projTons,
     faltan, pendientes, porCotizar, referencias, verVent, verClean, verElec, verHid, verFue,
@@ -8470,7 +8490,7 @@ function computeQuote() {
     mxnTRequipo: equipTons > 0 ? equipTotal / equipTons : 0,
     /* Los indicadores por TR y por m² toman toneladas y área del motor de carga
        térmica: es un cruce entre dominios y solo aparece si está autorizado. */
-    cur: q.currency, linked: linkAllowed("load>quote"),
+    cur: usdSinFecha ? "MXN" : q.currency, usdSinFecha, linked: linkAllowed("load>quote"),
     perTon: linkAllowed("load>quote") && projTons > 0 ? sub / projTons : 0,
     perM2: linkAllowed("load>quote") && t.area > 0 ? sub / t.area : 0 };
 }
@@ -21274,7 +21294,7 @@ document.addEventListener("change", (e) => {
     const it = S.quote.items[+el.dataset.qty]; if (it) { it.qty = Math.max(1, parseInt(el.value) || 1); projAutosave(); render(); }
   } else if (el.dataset?.unit != null) {
     const it = S.quote.items[+el.dataset.unit];
-    if (it) { const dv = S.quote.currency === "USD" ? Math.max(1, S.quote.fx) : 1; it.unit = (parseFloat(el.value) || 0) * dv; projAutosave(); render(); }
+    if (it) { const fxv = S.quote.currency === "USD" ? fxVigente() : null; const dv = fxv ? fxv.fx : 1; /* H-250: sin fecha la captura es en MXN */ it.unit = (parseFloat(el.value) || 0) * dv; projAutosave(); render(); }
   }
 }, true);
 
