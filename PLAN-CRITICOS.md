@@ -139,15 +139,22 @@ Orden de integración: elec → hidro → fuego → aire → duct → vent → c
 ## 3. Bloqueados desde ya (prueba + propuesta, sin cerrar)
 H-165 (NFPA 96), H-168 (SMACNA), H-224 parcial (NFPA 13 CPVC), H-227 (SMACNA). Parciales pendientes de ratificación: H-120 (Carrier Tabla 20A), H-195 (texto Z358.1).
 
-## 4. Decisiones que necesito de ti para no detenerme
-1. H-141: diversidad sólo en el bloque (propuesta).
-2. H-178: kW del motor = potencia en el eje → hp de tabla (propuesta), o campo `hp`.
-3. H-217: curva de simultaneidad declarada como criterio de la casa (a) o sustituida (b).
-4. H-229/H-239: norma que rige claros de soportería de plomería (propongo mínimo MSS/IPC).
-5. H-244: perímetro de tabiquería capturable (propuesta).
-6. H-252: tratamiento interino de precios semilla (propongo etiqueta + formal bloqueada).
-7. H-165: ¿aceptas UMC 2018 §510.5.1 (texto en línea) mientras llega NFPA 96?
-8. Textos que me desbloquean: SMACNA DCS (Tablas 2-x, 5-1, redondo espiral), NFPA 13 (Tabla 17.4.2.1(a) y cap. 18), NFPA 96 cap. 7, Carrier Parte 1 Tabla 20A, ANSI Z358.1.
+## 4. Decisiones del dueño (22-sep-2026, 04:40 Tijuana) · rigen la Fase 2
+1. **H-141** · opción (a): la diversidad del edificio sólo al bloque de planta; zonas y terminales al pico sin diversidad. Marcar «criterio Carrier, ratificar con texto» hasta recibir la Parte 1.
+2. **H-178** · campo `hp` de placa por carga, y manda si se captura. Si sólo hay kW, se toma como potencia en el eje y se redondea al hp normalizado inmediato **superior** (nunca al más cercano); la memoria dice «hp inferido de kW». La corriente siempre sale de la Tabla 430-250.
+3. **H-217** · opción (a): la curva de simultaneidad queda como «criterio de la casa», declarada en pantalla y memoria, sin mover números.
+4. **H-229/H-239** · el mínimo de MSS SP-58 e IPC 308.5 por material y diámetro; se usa y declara la edición más reciente disponible en texto (MSS SP-58-2018 vía PHD, IPC 2009 vía MCP: secundarias); se ratifica con el texto.
+5. **H-244** · opción (a): lo capturado manda; sin captura, 3:2 marcado «estimado» en la partida. Los muros de carga térmica no son tabiquería.
+6. **H-252** · opción (a): «SEMILLA · SIN FUENTE» en el Budget y la formal bloqueada. Los precios capturados de proveedor por el dueño son válidos con su etiqueta. Al cargar Craftsman pasa a (b) automático.
+7. **H-165** · opción (b) con UMC: cita textual de la sección y los espesores tal como vienen en up.codes. Referencia del dueño para NFPA 96: acero No. 16 MSG (~0.054 in) o inoxidable No. 18 MSG (~0.043 in) con soldadura continua hermética; si el UMC dice otra cosa, se usa el más exigente y se documentan ambos. Queda anotado «ratificar con NFPA 96».
+8. **Textos pendientes** (los pasa el dueño conforme los consiga): SMACNA DCS (Tablas 2-x, 5-1, redondo espiral) → H-168, H-227; NFPA 13 (Tabla 17.4.2.1(a), cap. 18) → H-224; NFPA 96 → ratificar H-165; Carrier Parte 1 Tabla 20A → ratificar H-120 y H-141; ANSI Z358.1 → ratificar H-195. Mientras, esos hallazgos siguen BLOQUEADOS.
+
+## 4b. Reglas de la Fase 1 (dueño, 22-sep-2026)
+- Casos a mano independientes por motor, con su hoja en el repo; la prueba compara números con tolerancia, no textos.
+- Compuerta de mutantes por motor: ninguna disciplina se da por cubierta con mutantes vivos en lógica de cálculo. Ventilación y soportería primero.
+- Las pruebas que hoy protegen valores equivocados se marcan; no se «arreglan» (eso es Fase 2 con su hallazgo).
+- `--amend` sólo en commits locales sin tag; nunca en algo con tag.
+- Estado 22-sep 04:45: infraestructura commiteada (`3ec7cc7`); los 12 subagentes cayeron por límite de la API antes de escribir nada (se restablece 06:50 Tijuana). Al reanudar se relanzan TODOS desde cero en worktrees nuevos (prompts en `parches/fase1/PROMPTS-FASE1.md`); no se integran ramas a medias.
 
 ## 5. Mecánica de trabajo
 - Fase 0 y CLAUDE.md: yo, en `master`.
