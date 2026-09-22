@@ -5866,6 +5866,44 @@ t("S.39 (rev 2.9.22, decisión del dueño) precios de tubería hidráulica: PP-R
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+
+/* ===== R. Regresión por motor (rev 2.9.22, decisión del dueño): un proyecto fijo con cifras esperadas por disciplina ===== */
+const REG_DIR = "parches/regresion-motores/";
+const REG_PROY = fs.readFileSync(REG_DIR + "regresion-motores.emp.json", "utf8");
+const REG_ESP = JSON.parse(fs.readFileSync(REG_DIR + "regresion-motores.esperado.json", "utf8"));
+t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("importarRespaldo")(REG_PROY); S.tab = "tablero"; G("KZ_CACHE").key = null; G("VZ_CACHE").key = null; G("recompute")();
+    const MV = G("MOTOR_VER"), fallas = [];
+    Object.keys(MV).forEach((id) => {
+      const e = REG_ESP.motores[id];
+      if (!e) { fallas.push(`${id}: sin esperado (corre node parches/regresion-motores/genera.mjs)`); return; }
+      const ahora = JSON.stringify(G("cifrasMotor")(id)), esp = JSON.stringify(e.cifras);
+      if (e.ver !== MV[id]) fallas.push(`${id}: MOTOR_VER subió a v${MV[id]} y el esperado es de v${e.ver}: regenera el esperado de ese motor (genera.mjs) en el mismo commit que sube la versión`);
+      else if (ahora !== esp) fallas.push(`${id}: las cifras cambiaron con la MISMA versión v${MV[id]}: cambió la lógica del motor sin subir MOTOR_VER (o el fixture). Sube la versión con su hallazgo en MOTOR_CAMBIOS y regenera el esperado`);
+    });
+    if (fallas.length) throw new Error(fallas.join("\n   "));
+    eq(Object.keys(REG_ESP.motores).length, Object.keys(MV).length, "todos los motores tienen esperado:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+t("R.2 abrir un proyecto viejo nunca recalcula solo: los sellos quedan como venían, las disciplinas afectadas dicen Desactualizado y nada se vuelve a sellar ni a guardar", () => {
+  const guardado = JSON.stringify(S), lista0 = JSON.stringify(G("projList")());
+  try {
+    const p = JSON.parse(REG_PROY);
+    p.sellos = { hidro: { ts: 1700000000000, huella: "0123456789abcd", ver: "1", resumen: { Gasto: "3.924 L/s" } }, duct: { ts: 1700000000000, huella: "0123456789abcd", ver: "1" } };
+    const sellosArchivo = JSON.stringify(p.sellos);
+    G("importarRespaldo")(JSON.stringify(p)); G("recompute")();
+    eq(JSON.stringify(S.sellos), sellosArchivo, "los sellos son exactamente los del archivo (nadie recalculó ni volvió a sellar):");
+    eq(G("selloDe")("hidro").estado, "desactualizado", "hidro (motor v1 → v4):"); eq(G("selloDe")("duct").estado, "desactualizado", "ductos: la huella no coincide (captura distinta), no se recalculó:");
+    eq(G("motoresCambiados")().map((m) => m.id).join(","), "hidro", "sólo hidro cambió de versión de motor:");
+    eq(JSON.stringify(G("projList")()), lista0, "abrir no guardó nada por su cuenta:");
+    /* Calcular es la única vía de sellar: hasta que el usuario lo pulse, el sello viejo sigue. */
+    S.tab = "hidro"; G("render")();
+    eq(w.document.querySelector("#view .accsello").dataset.sello, "desactualizado", "la barra dice Desactualizado hasta que el usuario calcule:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 /* ============================== resultado =============================== */
 t("R.7 H-95 la licitación, la propuesta, la cotización y la memoria integral ya traen bloque de firma (Revisado por / Aprobado por)", () => {
   const g = { perms: JSON.parse(JSON.stringify(S.perms)) };

@@ -17365,6 +17365,28 @@ function resumenMotor(id) {
   })[id], null);
   return R || {};
 }
+/* rev 2.9.22 · Cifras NUMÉRICAS exactas por motor para la prueba de regresión por motor (parches/regresion-motores):
+   si cambian sin que suba MOTOR_VER[id], la prueba truena. Sólo salidas del motor; sin formato. */
+function cifrasMotor(id) {
+  const t = totals();
+  const R = seguro(() => ({
+    load: { grand: t.grand, tons: t.tons, cfm: t.cfm, oa: t.oa, zonas: LOADS.map((r) => [r.grand, r.grandL, r.tons, r.adp, r.recal || 0, r.casos && r.casos.equipo ? [r.casos.equipo.total, r.casos.equipo.latente, r.casos.equipo.recal] : null]) },
+    clean: { supply: CLEAN.sum.supply, ffu: CLEAN.sum.ffu, makeup: CLEAN.sum.makeup, leak: CLEAN.sum.leak },
+    equip: { chosen: SYS && SYS.chosen ? SYS.chosen.id : null, plantTarget: SYS ? SYS.plantTarget : null, instPlant: SYS && SYS.chosen ? SYS.chosen.instPlant : null },
+    duct: { kg: DUCT.boq.kg, path: DUCT.path, segs: DUCT.segs.map((g) => [g.Pam, g.V, g.w || null, g.h || null, g.d || null]) },
+    vent: { m3h: VENT.m3h, demand: VENT.demand, sp: VENT.sp, primary: VENT.eq && VENT.eq.primary ? VENT.eq.primary.model : null },
+    elec: { kVAdemanda: ELEC.kVAdemanda, principal: ELEC.principal, alim: [ELEC.alim.awg, ELEC.alim.tubo.d, ELEC.alim.ocpd], calc: ELEC.calc.map((c) => [c.cond.awg, c.cond.ocpd, c.cond.tubo.d]) },
+    hidro: { Qtotal: HIDRO.Qtotal, cdt: HIDRO.cdt, hpBomba: HIDRO.hpBomba, cisterna: HIDRO.cisterna, tramos: HIDRO.tramos.map((x) => [x.nom, x.Q, x.hf]) },
+    fuego: { qTotal: FUEGO.qTotal, nTotal: FUEGO.nTotal, qBomba: FUEGO.qBomba, hpBomba: FUEGO.hpBomba, reserva: FUEGO.reserva, mcaTotal: FUEGO.mcaTotal },
+    aire: { fad: AIRE.fadRequerido, unidades: AIRE.totalUnidades, hp: AIRE.principal ? AIRE.principal.hp : null, tanque: AIRE.tanque },
+    civil: { total: CIVIL.total, part: CIVIL.part.map((p) => [p.desc, p.qty, p.total]) },
+    soporte: { n: SOPORTE.nSoportes, total: SOPORTE.total, part: SOPORTE.part.map((p) => [p.desc, p.qty, p.total]) },
+    quote: { direct: QUOTE.direct, sub: QUOTE.sub, tot: QUOTE.tot, aux: (QUOTE.aux || []).map((a) => [a.desc, a.qty, a.total]), pendientes: (QUOTE.pendientes || []).map((p) => p.desc) },
+    kaizen: { ops: KAIZEN ? KAIZEN.ops.map((o) => [o.zona || "", o.muda || "", o.tr || 0, o.mxn || 0]) : [] },
+    valor: { total: VALOR ? VALOR.total : 0, props: VALOR ? VALOR.props.map((p) => [p.id, p.ahorro || 0]) : [] },
+  })[id], null);
+  return R;
+}
 const resumenTexto = (r) => r && typeof r === "object" ? Object.entries(r).map(([k, v]) => `${k} ${v}`).join(" · ") : "sin cifras";
 /* Motores cuyo sello se calculó con otra versión del motor. */
 function motoresCambiados() {

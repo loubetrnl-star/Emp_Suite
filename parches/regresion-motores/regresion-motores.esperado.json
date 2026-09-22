@@ -1,0 +1,595 @@
+{
+ "generadoCon": "2.9.21",
+ "fecha": "2026-09-22",
+ "motores": {
+  "load": {
+   "ver": "2",
+   "cifras": {
+    "grand": 54057.48616204199,
+    "tons": 15.370340108627236,
+    "cfm": 16040.626534284556,
+    "oa": 1560,
+    "zonas": [
+     [
+      32166.675237282765,
+      2053.681712648998,
+      9.146054943782419,
+      12.470017961006562,
+      0,
+      null
+     ],
+     [
+      7064.040112501234,
+      598.9391559688014,
+      2.00854140247405,
+      12.271833872142366,
+      0,
+      null
+     ],
+     [
+      10247.630774421446,
+      1080.6864183686716,
+      2.9137420456131493,
+      8.435672965036247,
+      0,
+      [
+       10247.630774421446,
+       1080.6864183686716,
+       0
+      ]
+     ],
+     [
+      4579.140037836543,
+      1114.8951360992355,
+      1.3020017167576183,
+      11.338823252914125,
+      0,
+      [
+       4579.140037836543,
+       1114.8951360992355,
+       0
+      ]
+     ]
+    ]
+   }
+  },
+  "clean": {
+   "ver": "2",
+   "cifras": {
+    "supply": 16200,
+    "ffu": 27,
+    "makeup": 1620,
+    "leak": 189.46784780537305
+   }
+  },
+  "equip": {
+   "ver": "1",
+   "cifras": {
+    "chosen": "vrf",
+    "plantTarget": 16.85225764294672,
+    "instPlant": 19.85182967406503
+   }
+  },
+  "duct": {
+   "ver": "1",
+   "cifras": {
+    "kg": 1360.9908385920003,
+    "path": 73.31967950431266,
+    "segs": [
+     [
+      0.5120089697318756,
+      7.142857142857143,
+      1200,
+      700,
+      null
+     ],
+     [
+      0.5162166815992743,
+      6.296296296296296,
+      900,
+      600,
+      null
+     ],
+     [
+      0.6006454750844948,
+      7.4074074074074066,
+      900,
+      750,
+      null
+     ]
+    ]
+   }
+  },
+  "vent": {
+   "ver": "1",
+   "cifras": {
+    "m3h": 19781.892946410004,
+    "demand": 11643.25659,
+    "sp": 1,
+    "primary": "GB-360"
+   }
+  },
+  "quote": {
+   "ver": "3",
+   "cifras": {
+    "direct": 12336357.400167169,
+    "sub": 18647637.846092694,
+    "tot": 21631259.901467524,
+    "aux": [
+     [
+      "Instalación mecánica, bases, izaje y arranque (35 % del equipo)",
+      1,
+      341127.8170263952
+     ],
+     [
+      "Tubería de refrigerante o hidráulica, aislada (20 TR)",
+      20,
+      190000
+     ],
+     [
+      "Ducto de lámina galvanizada instalado y sellado (1,361 kg del cálculo de ductos)",
+      1360.9908385920003,
+      224563.48836768005
+     ],
+     [
+      "Difusores y rejillas con caja plenum (16,041 CFM ÷ 400 CFM por boca)",
+      41,
+      280850
+     ],
+     [
+      "Control DDC y tablero local por equipo",
+      2,
+      137000
+     ],
+     [
+      "Ventilación: GB-360 · 11,643 CFM de extracción instalada con arrancador y curbs",
+      11643,
+      1688235
+     ],
+     [
+      "Módulos FFU con filtro HEPA terminal, instalados y probados (27 módulos de 1 cuarto(s) limpio(s))",
+      27,
+      1134000
+     ],
+     [
+      "Juego de filtros HEPA de repuesto (uno por módulo)",
+      27,
+      264600
+     ],
+     [
+      "Rejillas de retorno bajo a 150 mm NPT (9,535 CFM ÷ 500 CFM por rejilla)",
+      20,
+      64000
+     ],
+     [
+      "Alimentador general 2 cobre en 1 1/4\", 30 m con tierra y accesorios",
+      30,
+      40500
+     ],
+     [
+      "Tablero general 125 A con interruptor principal y 2 circuito(s) derivado(s)",
+      1,
+      76400
+     ],
+     [
+      "Tubería de CPVC CTS SDR-11 de 2 1/2\" instalada y probada (25 m de los tramos calculados)",
+      25,
+      10250
+     ],
+     [
+      "Tubería de CPVC CTS SDR-11 de 2\" instalada y probada (18 m de los tramos calculados)",
+      18,
+      5940
+     ],
+     [
+      "Cisterna de 0 m³ y equipo de bombeo de 1.5 HP",
+      1,
+      21750
+     ],
+     [
+      "Rociadores automáticos K80 · 1/2\" estándar (K5.6) con red de Acero negro cédula 40 (sistema húmedo) (58 rociadores)",
+      58,
+      165300
+     ],
+     [
+      "Bomba contra incendio 661 gpm y reserva de 138.2 m³",
+      1,
+      1697446.6599999997
+     ],
+     [
+      "Limpieza general, trazo y nivelación del área de trabajo",
+      700,
+      27594
+     ],
+     [
+      "Demolición y retiro de muros existentes",
+      40,
+      20586
+     ],
+     [
+      "Firme de concreto hidráulico de 15 cm, armado y acabado",
+      120,
+      168199.2
+     ],
+     [
+      "Panel sandwich MgO con caras de acero, 50 mm en área clasificada",
+      73.32,
+      238294.78594128293
+     ],
+     [
+      "Muro de metal stud con tablaroca ambas caras en área no clasificada",
+      354.39,
+      597142.2930779892
+     ],
+     [
+      "Plafón de panel sandwich MgO transitable",
+      120,
+      294000
+     ],
+     [
+      "Plafón reticular en área no clasificada",
+      580,
+      933800
+     ],
+     [
+      "Piso epóxico disipativo ESD, 3 mm en área clasificada",
+      120,
+      198000
+     ],
+     [
+      "Firme de concreto pulido y sellado en área no clasificada",
+      580,
+      359600
+     ],
+     [
+      "Media caña sanitaria en encuentros de piso y plafón",
+      31.11,
+      27733.24710697785
+     ],
+     [
+      "Puerta metálica de cuarto limpio con visor, sello perimetral y preparación para interlock",
+      2,
+      214827.08
+     ],
+     [
+      "Puerta metálica simple en áreas de servicio",
+      3,
+      199095.77999999997
+     ],
+     [
+      "Limpieza fina de obra, retiro de escombro y entrega",
+      700,
+      70000
+     ],
+     [
+      "Varilla roscada 3/8\" galvanizada, incluye corte y habilitado",
+      756,
+      49140
+     ],
+     [
+      "Anclaje M10 a concreto, incluye barrenado y limpieza de barreno",
+      67,
+      6365
+     ],
+     [
+      "Abrazadera de sujeción, incluye tornillería",
+      105,
+      29925
+     ],
+     [
+      "Tuerca y rondana galvanizadas",
+      536,
+      4824
+     ],
+     [
+      "Riostra sísmica NFPA 13 cap. 18, incluye herrajes y anclaje",
+      29,
+      121800
+     ],
+     [
+      "Riel tipo canal para corridas múltiples de instalación",
+      60,
+      23100
+     ],
+     [
+      "Base de concreto con aislador de vibración para equipo mecánico",
+      3,
+      55500
+     ],
+     [
+      "Plataforma de elevación tipo tijera eléctrica · renta",
+      3,
+      96000
+     ],
+     [
+      "Compresor de tornillo lubricado 20 HP · 2,430 L/min a 6.8 bar",
+      1,
+      438000
+     ],
+     [
+      "Tanque pulmón de 3000 L con válvula de seguridad, manómetro y purga automática",
+      3000,
+      585000
+     ],
+     [
+      "Secador refrigerativo de 2.46 m³/min · punto de rocío 3 °C (capacidad corregida a 35 °C y 6.8 bar)",
+      2.46,
+      84857.14285714286
+     ],
+     [
+      "Tren de filtración clase ISO 2.4.2: Prefiltro coalescente 1 µm + Filtro coalescente fino 0.01 µm · 0.1 mg/m³",
+      2,
+      77000
+     ],
+     [
+      "Red de aire comprimido en aluminio calibrado tipo push-fit: troncal 1 1/4\" y ramales 1/2\", instalada y probada",
+      60,
+      70260
+     ],
+     [
+      "Bajadas a punto de uso con filtro-regulador, válvula de corte y acople rápido (6 puntos del levantamiento)",
+      6,
+      29100
+     ]
+    ],
+    "pendientes": []
+   }
+  },
+  "valor": {
+   "ver": "1",
+   "cifras": {
+    "total": 229955.2040719458,
+    "props": [
+     [
+      "sis-split",
+      0
+     ],
+     [
+      "kz-0-sobre",
+      0
+     ],
+     [
+      "kz-1-mov",
+      0
+     ],
+     [
+      "kz-4-transp",
+      0
+     ],
+     [
+      "kz-2-defecto",
+      0
+     ],
+     [
+      "kz-3-espera",
+      0
+     ]
+    ]
+   }
+  },
+  "kaizen": {
+   "ver": "1",
+   "cifras": {
+    "ops": [
+     [
+      "Planta",
+      "sobre",
+      2.233560320075277,
+      108847.07945486513
+     ],
+     [
+      "Limpio ISO 7",
+      "mov",
+      0.5984844863925605,
+      0
+     ],
+     [
+      "Validación",
+      "defecto",
+      0,
+      0
+     ],
+     [
+      "Planta",
+      "espera",
+      0,
+      0
+     ],
+     [
+      "Alimentador",
+      "transp",
+      0,
+      0
+     ]
+    ]
+   }
+  },
+  "elec": {
+   "ver": "4",
+   "cifras": {
+    "kVAdemanda": 32.05882352941177,
+    "principal": 125,
+    "alim": [
+     "2",
+     "1 1/4\"",
+     100
+    ],
+    "calc": [
+     [
+      "4",
+      125,
+      "1 1/4\""
+     ],
+     [
+      "1",
+      100,
+      "1 1/4\""
+     ]
+    ]
+   }
+  },
+  "hidro": {
+   "ver": "4",
+   "cifras": {
+    "Qtotal": 3.699609328,
+    "cdt": 16.90082616125314,
+    "hpBomba": 1.5,
+    "cisterna": 0,
+    "tramos": [
+     [
+      "2 1/2\" · SIN VERIFICAR, CTS/SDR-11 no llega aquí",
+      3.699609328,
+      0.713449037216779
+     ],
+     [
+      "2\"",
+      2.208157,
+      1.1873771240363589
+     ]
+    ]
+   }
+  },
+  "fuego": {
+   "ver": "2",
+   "cifras": {
+    "qTotal": 2302.5379999999996,
+    "nTotal": 58,
+    "qBomba": 2500,
+    "hpBomba": 35,
+    "reserva": 138152.27999999997,
+    "mcaTotal": 37.815030708345105
+   }
+  },
+  "aire": {
+   "ver": "2",
+   "cifras": {
+    "fad": 2019.6,
+    "unidades": 1,
+    "hp": 20,
+    "tanque": 3000
+   }
+  },
+  "civil": {
+   "ver": "3",
+   "cifras": {
+    "total": 3348872.3861262496,
+    "part": [
+     [
+      "Limpieza general, trazo y nivelación del área de trabajo",
+      700,
+      27594
+     ],
+     [
+      "Demolición y retiro de muros existentes",
+      40,
+      20586
+     ],
+     [
+      "Firme de concreto hidráulico de 15 cm, armado y acabado",
+      120,
+      168199.2
+     ],
+     [
+      "Panel sandwich MgO con caras de acero, 50 mm en área clasificada",
+      73.32,
+      238294.78594128293
+     ],
+     [
+      "Muro de metal stud con tablaroca ambas caras en área no clasificada",
+      354.39,
+      597142.2930779892
+     ],
+     [
+      "Plafón de panel sandwich MgO transitable",
+      120,
+      294000
+     ],
+     [
+      "Plafón reticular en área no clasificada",
+      580,
+      933800
+     ],
+     [
+      "Piso epóxico disipativo ESD, 3 mm en área clasificada",
+      120,
+      198000
+     ],
+     [
+      "Firme de concreto pulido y sellado en área no clasificada",
+      580,
+      359600
+     ],
+     [
+      "Media caña sanitaria en encuentros de piso y plafón",
+      31.11,
+      27733.24710697785
+     ],
+     [
+      "Puerta metálica de cuarto limpio con visor, sello perimetral y preparación para interlock",
+      2,
+      214827.08
+     ],
+     [
+      "Puerta metálica simple en áreas de servicio",
+      3,
+      199095.77999999997
+     ],
+     [
+      "Limpieza fina de obra, retiro de escombro y entrega",
+      700,
+      70000
+     ]
+    ]
+   }
+  },
+  "soporte": {
+   "ver": "2",
+   "cifras": {
+    "n": 105,
+    "total": 386654,
+    "part": [
+     [
+      "Varilla roscada 3/8\" galvanizada, incluye corte y habilitado",
+      756,
+      49140
+     ],
+     [
+      "Anclaje M10 a concreto, incluye barrenado y limpieza de barreno",
+      67,
+      6365
+     ],
+     [
+      "Abrazadera de sujeción, incluye tornillería",
+      105,
+      29925
+     ],
+     [
+      "Tuerca y rondana galvanizadas",
+      536,
+      4824
+     ],
+     [
+      "Riostra sísmica NFPA 13 cap. 18, incluye herrajes y anclaje",
+      29,
+      121800
+     ],
+     [
+      "Riel tipo canal para corridas múltiples de instalación",
+      60,
+      23100
+     ],
+     [
+      "Base de concreto con aislador de vibración para equipo mecánico",
+      3,
+      55500
+     ],
+     [
+      "Plataforma de elevación tipo tijera eléctrica · renta",
+      3,
+      96000
+     ]
+    ]
+   }
+  }
+ }
+}
