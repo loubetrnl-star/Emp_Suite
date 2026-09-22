@@ -97,3 +97,10 @@ unidades-IP                    TR 53.44→53.31      total =
 ## 7. Pendiente
 1. Elegir estación de referencia (o dar el dato) para Tecate, Ensenada y Mexicali.
 2. Precio de cobre tipo L por diámetro (no está en la cotización QMX Rev I).
+
+## 8. Decisiones del dueño sobre estaciones climáticas (21-sep-2026, commit posterior)
+- **Tecate → Brown Field 722904** (≈ 33 km al oeste, 157 m): DP 0.4 % 20.0 °C / 15.0 g/kg / BS coincidente 24.0 °C. Marcada en memoria, pantalla y PDF como **estación de referencia**, con nombre y distancia.
+- **Ensenada → Imperial Beach NOLF 722909** (≈ 95 km al norte, costa, 7 m): DP 0.4 % 20.5 °C / 15.2 g/kg / 24.3 °C. Igual, como estación de referencia.
+- **Mexicali → estación propia Mexicali Intl 760053**, adoptada como dato completo: 44.0 °C BS / 24.8 °C BH, 23 m, rango 14.2 K, DP 26.2 °C / 21.7 g/kg / 37.0 °C (antes 46/23 °C sin fuente). Antes → después registrado en la prueba 22.10.
+- Cobre tipo L: sin precio, con el bloqueo activo hasta que el dueño lo entregue.
+- Banco 349/349.

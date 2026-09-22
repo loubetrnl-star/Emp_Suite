@@ -3340,7 +3340,7 @@ t("22.10 3.2 las bases de diseño de la memoria HVAC imprimen el exterior del si
   const texto = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ").replace(/\s+/g, " ");
   try {
     [
-      { nombre: "Mexicali", site: { key: "mexicali" }, esperado: "46/23" },
+      { nombre: "Mexicali", site: { key: "mexicali" }, esperado: "44/24.8" }, /* rev 2.9.23 · Mexicali Intl 760053 adoptada como dato (antes 46/23 sin fuente) */
       { nombre: "Personalizado", site: { key: "custom", db: 42, wb: 26, alt: 1200, range: 14 }, esperado: "42/26" },
       { nombre: "Tijuana", site: { key: "tijuana" }, esperado: "32.8/17.5" }, /* rev 2.9.18 · ASHRAE 2021 (antes 35/24) */
     ].forEach((c) => {
@@ -5719,7 +5719,7 @@ t("S.37 (rev 2.9.20, decisión del dueño) control de humedad: dos casos de dise
   try {
     G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.37";
     eq(G("SITES").tijuana.dp, 19.2, "Tijuana DP 0.4 %:"); eq(G("SITES").tijuana.dpHR, 14.2, "razón de humedad:"); eq(G("SITES").tijuana.dpDB, 22.8, "BS coincidente:");
-    eq(G("SITES").tecate.dp, undefined, "Tecate sin dato (no se estima):");
+    eq(G("SITES").tecate.dpRef.wmo, "722904", "Tecate: punto de rocío de estación de referencia (Brown Field):");
     const dz = G("defaultZone");
     S.zones = [{ ...dz("Oficina"), area: 200, height: 3, occ: 10, lights: 2000, equip: 1500 }, { ...dz("Limpio"), spaceType: "cleanroom", iso: "iso7", achClean: 45, area: 120, height: 3, occ: 2, lights: 720, equip: 2400, runHours: 24 },
       { ...dz("Laboratorio HR"), area: 150, height: 3, occ: 4, lights: 1500, equip: 3000, hrControl: "si" }];
@@ -5785,9 +5785,9 @@ t("S.37 (rev 2.9.20, decisión del dueño) control de humedad: dos casos de dise
     contiene(pdf, "Dos casos ASHRAE", "PDF de carga:"); contiene(pdf, "deshumidificacion", "PDF nombra el caso:");
     eq(G("SITE").caso, "enfriamiento", "SITE restaurado:"); eq(G("SITE").Wfijo, null, "sin razón fija:");
     /* Sitio sin punto de rocío: faltante, aviso, un caso. */
-    S.site = { key: "tecate" }; G("recompute")();
+    S.site = { key: "custom", db: 40, wb: 24, alt: 100, range: 12, dp: 0, dpHR: 0, dpDB: 0 }; G("recompute")(); /* rev 2.9.23: Tecate ya trae estación de referencia; el faltante se prueba con un sitio sin DP */
     const cl2 = G("LOADS")[1];
-    eq(cl2.casos.faltante, true, "Tecate: faltante:"); contiene(cl2.memo.join(" "), "FALTA el punto de rocío", "memoria lo dice:");
+    eq(cl2.casos.faltante, true, "sitio sin DP: faltante:"); contiene(cl2.memo.join(" "), "FALTA el punto de rocío", "memoria lo dice:");
     if (!G("ENGINES").load.checks(cl2, "Limpio").some((a) => a.lvl === "warn" && /falta el punto de rocío/.test(a.msg))) throw new Error("falta el aviso de dato faltante");
     contiene(textoPdf(G("buildCargaPdf")()), "FALTA el punto de rocio", "PDF: faltante:");
     /* Personalizado captura sus tres datos de deshumidificación. */
@@ -5802,19 +5802,25 @@ t("S.38 (rev 2.9.22, decisión del dueño) sitio sin punto de rocío: marca roja
   try {
     G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.38";
     S.zones = [{ ...G("defaultZone")("Limpio"), spaceType: "cleanroom", iso: "iso7", achClean: 45, area: 120, height: 3, occ: 2 }];
-    ["tecate", "ensenada", "mexicali"].forEach((k) => { if (!(G("SITES")[k].ref || []).length) throw new Error(`${k}: sin estaciones de referencia`); if (G("SITES")[k].dp) throw new Error(`${k}: no debe traer DP como dato`); });
+    /* rev 2.9.23 · decisión del dueño: Tecate → Brown Field 722904 y Ensenada → Imperial Beach 722909 como ESTACIÓN DE REFERENCIA; Mexicali adopta 760053 como dato. */
+    const T = G("SITES");
+    eq(T.tecate.dpRef.wmo, "722904", "Tecate: Brown Field:"); eq(T.tecate.dp, 20.0, "DP de Brown Field:"); eq(T.ensenada.dpRef.wmo, "722909", "Ensenada: Imperial Beach:"); eq(T.ensenada.dp, 20.5, "DP de Imperial Beach:");
+    eq(T.mexicali.dpRef, undefined, "Mexicali: dato propio, no referencia:"); eq(`${T.mexicali.db}/${T.mexicali.wb}/${T.mexicali.alt}/${T.mexicali.dp}`, "44/24.8/23/26.2", "Mexicali 760053 adoptada completa:"); contiene(T.mexicali.src, "WMO 760053", "fuente:");
     S.site = { key: "tecate" }; G("recompute")();
-    eq(G("SITE").deshum, null, "Tecate sin DP:"); eq(G("LOADS")[0].casos.faltante, true, "faltante:");
+    if (!G("SITE").deshum || !G("SITE").deshum.referencia) throw new Error("Tecate debía usar la estación de referencia");
+    contiene(G("LOADS")[0].memo.join(" "), "ESTACIÓN DE REFERENCIA, no del sitio: Brown Field", "memoria marca la referencia con nombre:"); contiene(G("LOADS")[0].memo.join(" "), "33 km", "y distancia:");
+    contiene(Buffer.from(G("buildCargaPdf")()).toString("latin1"), "ESTACION DE REFERENCIA", "PDF marca la referencia:");
+    S.site = { key: "custom", dp: 0, dpHR: 0, dpDB: 0 }; G("recompute")();
+    eq(G("SITE").deshum, null, "sitio sin DP:"); eq(G("LOADS")[0].casos.faltante, true, "faltante:");
     const pdf = Buffer.from(G("buildCargaPdf")()).toString("latin1");
     contiene(pdf, "DESHUMIDIFICACION NO EVALUADA: FALTA DATO CLIMATICO", "PDF marca la falta:");
     contiene(pdf, "0.941 0.337 0.114 rg", "en rojo (color de señal):");
-    /* Captura manual sin fuente: no cuenta. Con fuente: cuenta y se imprime. */
-    S.site = { key: "tecate", dp: 18, dpHR: 13, dpDB: 24 }; G("recompute")();
-    eq(G("SITE").deshum, null, "DP manual sin fuente no se usa:"); eq(G("SITE").dpPendiente, true, "y se marca pendiente de fuente:");
+    /* Captura manual sin fuente: no cuenta. Con fuente: cuenta y se imprime (sitio personalizado sin DP). */
+    S.site = { key: "custom", db: 40, wb: 24, alt: 100, range: 12, dp: 18, dpHR: 13, dpDB: 24, dpFuente: "" }; G("recompute")();
+    if (!G("SITE").deshum) throw new Error("personalizado con DP debía usarse"); eq(G("SITE").deshum.fuente, "capturado por el usuario", "sin fuente declarada, personalizado dice capturado por el usuario:");
     S.site.dpFuente = "ASHRAE 2021, estación X, cotejo del cliente"; G("recompute")();
-    if (!G("SITE").deshum) throw new Error("con fuente el DP manual debía usarse");
-    eq(G("LOADS")[0].casos.faltante, undefined, "ya se evalúan los dos casos:");
-    contiene(Buffer.from(G("buildCargaPdf")()).toString("latin1"), "capturado a mano", "PDF dice que es manual:");
+    eq(G("SITE").deshum.fuente, "ASHRAE 2021, estación X, cotejo del cliente", "fuente declarada:");
+    eq(G("LOADS")[0].casos.faltante, undefined, "se evalúan los dos casos:");
     /* Adoptar una estación de referencia: rellena DP, HR, BS coincidente y fuente. */
     S.site = { key: "ensenada" }; G("recompute")(); S.tab = "proyecto"; G("render")();
     const btn = w.document.querySelector('#view [data-act="site-ref-dp"][data-i="0"]');
