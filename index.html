@@ -1560,7 +1560,7 @@ function buildCotizacionPdf() {
   pdfRows(d, [
     ["Carga del proyecto", `${t.tons.toFixed(1)} TR en ${LOADS.length} zona(s) · ${t.area.toFixed(0)} m2`],
     ["Caudal total", `${t.cfm.toFixed(0)} CFM`],
-    ["Moneda", Q.cur === "USD" ? `USD (tipo de cambio ${q.fx})` : "Pesos mexicanos"],
+    ["Moneda", Q.cur === "USD" ? `USD (tipo de cambio ${fxTexto("es")})` : "Pesos mexicanos"],
   ]);
   pdfHeading(d, "2. Equipo propuesto");
   pdfTable(d, ["Clave", "Equipo", "Cant", "P. unitario", "Importe"],
@@ -4686,20 +4686,26 @@ function listPrice(famKey, TR, q) {
    1-1/4"–4": IUSA lista de precios distribuidor plomería-cobre, vigente a partir del 11-ago-2026, columna TUBERÍA RÍGIDA
    TIPO L, precios sin IVA (PDF consultado el 21-sep-2026). Ningún precio se estimó ni se extrapoló. */
 const IVA_MX = 0.16;
+/* rev 2.9.23 · Tipo de cambio vigente: el que captura el dueño con su fecha; sin fecha no hay conversión (nada se estima). */
+function fxVigente() {
+  const q = S.quote || {}; const fx = num(q.fx, 0), fecha = String(q.fxFecha || "").trim();
+  return fx > 0 && /^\d{4}-\d{2}-\d{2}$/.test(fecha) ? { fx, fecha, fuente: String(q.fxFuente || "").trim() } : null;
+}
+const fxTexto = (lang) => { const v = fxVigente(); return v ? (lang === "en" ? `${n(v.fx, 2)} MXN/USD as of ${v.fecha}${v.fuente ? ` (${v.fuente})` : ""}` : `${n(v.fx, 2)} MXN/USD del ${v.fecha}${v.fuente ? ` (${v.fuente})` : ""}`) : (lang === "en" ? "EXCHANGE RATE NOT CAPTURED (rate and date required)" : "TIPO DE CAMBIO SIN CAPTURAR (falta tipo y fecha)"); };
 const fechaLocalISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 const HIDRO_PU_REFERENCIA = {
-  cobre_1_2_:   { precio: 1105.00, moneda: "MXN", iva: true, porTramo: 6.10, origen: "referencia", fuente: "Tienda IUSA, menudeo, tubo rígido tipo L tramo 6.10 m", url: "", fecha: "2026-09-21" },
-  cobre_3_4_:   { precio: 1762.00, moneda: "MXN", iva: true, porTramo: 6.10, origen: "referencia", fuente: "Tienda IUSA, menudeo, tubo rígido tipo L tramo 6.10 m", url: "", fecha: "2026-09-21" },
-  cobre_1_:     { precio: 2924.99, moneda: "MXN", iva: true, porTramo: 6.10, origen: "referencia", fuente: "Tienda IUSA, menudeo, tubo rígido tipo L tramo 6.10 m", url: "", fecha: "2026-09-21" },
-  cobre_1_1_4_: { precio: 6172.11, moneda: "MXN", iva: false, porTramo: 6.10, origen: "referencia", fuente: "IUSA lista de precios distribuidor plomería-cobre vigente 11-ago-2026, tipo L cód. 308765", url: "https://www.iusa.com.mx/assets/descargables/listas/construccion/lista-de-precios-plomeria-cobre.pdf", fecha: "2026-09-21" },
-  cobre_1_1_2_: { precio: 8045.11, moneda: "MXN", iva: false, porTramo: 6.10, origen: "referencia", fuente: "IUSA lista de precios distribuidor plomería-cobre vigente 11-ago-2026, tipo L cód. 308766", url: "https://www.iusa.com.mx/assets/descargables/listas/construccion/lista-de-precios-plomeria-cobre.pdf", fecha: "2026-09-21" },
-  cobre_2_:     { precio: 12851.20, moneda: "MXN", iva: false, porTramo: 6.10, origen: "referencia", fuente: "IUSA lista de precios distribuidor plomería-cobre vigente 11-ago-2026, tipo L cód. 308767", url: "https://www.iusa.com.mx/assets/descargables/listas/construccion/lista-de-precios-plomeria-cobre.pdf", fecha: "2026-09-21" },
-  cobre_2_1_2_: { precio: 22748.07, moneda: "MXN", iva: false, porTramo: 6.10, origen: "referencia", fuente: "IUSA lista de precios distribuidor plomería-cobre vigente 11-ago-2026, tipo L cód. 308768", url: "https://www.iusa.com.mx/assets/descargables/listas/construccion/lista-de-precios-plomeria-cobre.pdf", fecha: "2026-09-21" },
-  cobre_3_:     { precio: 30821.54, moneda: "MXN", iva: false, porTramo: 6.10, origen: "referencia", fuente: "IUSA lista de precios distribuidor plomería-cobre vigente 11-ago-2026, tipo L cód. 312964", url: "https://www.iusa.com.mx/assets/descargables/listas/construccion/lista-de-precios-plomeria-cobre.pdf", fecha: "2026-09-21" },
-  cobre_4_:     { precio: 57438.08, moneda: "MXN", iva: false, porTramo: 6.10, origen: "referencia", fuente: "IUSA lista de precios distribuidor plomería-cobre vigente 11-ago-2026, tipo L cód. 312967", url: "https://www.iusa.com.mx/assets/descargables/listas/construccion/lista-de-precios-plomeria-cobre.pdf", fecha: "2026-09-21" },
+  cobre_1_2_:   { precio: 1105.00, moneda: "MXN", iva: true, porTramo: 6.10, origen: "referencia", fuente: "Tienda IUSA, menudeo, tubo rígido tipo L tramo 6.10 m", ubicacion: "México", lista: "neta", url: "", fecha: "2026-09-21" },
+  cobre_3_4_:   { precio: 1762.00, moneda: "MXN", iva: true, porTramo: 6.10, origen: "referencia", fuente: "Tienda IUSA, menudeo, tubo rígido tipo L tramo 6.10 m", ubicacion: "México", lista: "neta", url: "", fecha: "2026-09-21" },
+  cobre_1_:     { precio: 2924.99, moneda: "MXN", iva: true, porTramo: 6.10, origen: "referencia", fuente: "Tienda IUSA, menudeo, tubo rígido tipo L tramo 6.10 m", ubicacion: "México", lista: "neta", url: "", fecha: "2026-09-21" },
+  cobre_1_1_4_: { precio: 6172.11, moneda: "MXN", iva: false, porTramo: 6.10, origen: "referencia", fuente: "IUSA lista de precios distribuidor plomería-cobre vigente 11-ago-2026, tipo L cód. 308765", ubicacion: "México", lista: "bruta", url: "https://www.iusa.com.mx/assets/descargables/listas/construccion/lista-de-precios-plomeria-cobre.pdf", fecha: "2026-09-21" },
+  cobre_1_1_2_: { precio: 8045.11, moneda: "MXN", iva: false, porTramo: 6.10, origen: "referencia", fuente: "IUSA lista de precios distribuidor plomería-cobre vigente 11-ago-2026, tipo L cód. 308766", ubicacion: "México", lista: "bruta", url: "https://www.iusa.com.mx/assets/descargables/listas/construccion/lista-de-precios-plomeria-cobre.pdf", fecha: "2026-09-21" },
+  cobre_2_:     { precio: 12851.20, moneda: "MXN", iva: false, porTramo: 6.10, origen: "referencia", fuente: "IUSA lista de precios distribuidor plomería-cobre vigente 11-ago-2026, tipo L cód. 308767", ubicacion: "México", lista: "bruta", url: "https://www.iusa.com.mx/assets/descargables/listas/construccion/lista-de-precios-plomeria-cobre.pdf", fecha: "2026-09-21" },
+  cobre_2_1_2_: { precio: 22748.07, moneda: "MXN", iva: false, porTramo: 6.10, origen: "referencia", fuente: "IUSA lista de precios distribuidor plomería-cobre vigente 11-ago-2026, tipo L cód. 308768", ubicacion: "México", lista: "bruta", url: "https://www.iusa.com.mx/assets/descargables/listas/construccion/lista-de-precios-plomeria-cobre.pdf", fecha: "2026-09-21" },
+  cobre_3_:     { precio: 30821.54, moneda: "MXN", iva: false, porTramo: 6.10, origen: "referencia", fuente: "IUSA lista de precios distribuidor plomería-cobre vigente 11-ago-2026, tipo L cód. 312964", ubicacion: "México", lista: "bruta", url: "https://www.iusa.com.mx/assets/descargables/listas/construccion/lista-de-precios-plomeria-cobre.pdf", fecha: "2026-09-21" },
+  cobre_4_:     { precio: 57438.08, moneda: "MXN", iva: false, porTramo: 6.10, origen: "referencia", fuente: "IUSA lista de precios distribuidor plomería-cobre vigente 11-ago-2026, tipo L cód. 312967", ubicacion: "México", lista: "bruta", url: "https://www.iusa.com.mx/assets/descargables/listas/construccion/lista-de-precios-plomeria-cobre.pdf", fecha: "2026-09-21" },
 };
 const QUOTE_SEED = {
-  currency: "MXN", fx: 18.5,
+  currency: "MXN", fx: 18.5, fxFecha: "", fxFuente: "", /* rev 2.9.23 · el tipo de cambio sólo vale con fecha capturada (decisión del dueño 22-sep-2026) */
   plaza: "tijuana",       // plaza de compra del noroeste
   basePrecio: "casa",     // contra qué se formó el precio unitario
   fasar: 1.45,            // factor de salario real declarado
@@ -5265,7 +5271,8 @@ function buildPropuestaXlsx(opt) {
   par(L("No. DE PROPUESTA", "PROPOSAL No."), `${P0.no} · Rev. ${P0.rev}`);
   par(L("FECHA", "DATE"), S.meta.date || new Date().toISOString().slice(0, 10));
   par(L("VIGENCIA", "VALIDITY"), `${num(P0.vigencia, 30)} ${L("dias calendario", "calendar days")}`);
-  par(L("MONEDA", "CURRENCY"), mon + (mon === "USD" ? ` · ${L("tipo de cambio de referencia", "reference exchange rate")} ${n(fx, 2)} MXN/USD` : ""));
+  par(L("MONEDA", "CURRENCY"), mon + (mon === "USD" ? ` · ${L("tipo de cambio", "exchange rate")} ${fxTexto(lang)}` : ""));
+  if ((Q.referencias || []).some((r) => r.moneda === "USD") || (mon !== "USD" && fxVigente())) par(L("TIPO DE CAMBIO", "EXCHANGE RATE"), fxTexto(lang));
   par(L("CONTACTO UNICO", "SINGLE POINT OF CONTACT"), P0.firma);
   par(L("PARTIDAS POR COTIZAR", "ITEMS TO BE QUOTED"), String((Q.porCotizar || []).length));
   if ((Q.referencias || []).length) par(L("PRECIOS DE REFERENCIA", "REFERENCE PRICES"), L(`${Q.referencias.length} renglon(es) con precios de referencia de mercado, sujetos a cotizacion de proveedor`, `${Q.referencias.length} line(s) with market reference prices, subject to supplier quotation`));
@@ -5674,8 +5681,8 @@ function buildPropuestaXlsx(opt) {
   secC(L("1. CONDICIONES COMERCIALES", "1. COMMERCIAL TERMS"));
   li(L(`Vigencia: ${num(P0.vigencia, 30)} dias calendario a partir de la fecha de emision de esta propuesta.`,
     `Validity: ${num(P0.vigencia, 30)} calendar days from the issue date of this proposal.`));
-  li(L(`Moneda: ${mon}${mon === "USD" ? `, con tipo de cambio de referencia de ${n(fx, 2)} MXN/USD que se reconsidera al momento de contratar.` : "."}`,
-    `Currency: ${mon}${mon === "USD" ? `, at a reference exchange rate of ${n(fx, 2)} MXN/USD to be revisited at contract award.` : "."}`));
+  li(L(`Moneda: ${mon}${mon === "USD" ? `, con tipo de cambio de ${fxTexto("es")} que se reconsidera al momento de contratar.` : "."}`,
+    `Currency: ${mon}${mon === "USD" ? `, at an exchange rate of ${fxTexto("en")} to be revisited at contract award.` : "."}`));
   li(L(`Impuesto: ${n(q.iva * 100, 0)} %${q.iva === 0.08 ? " conforme al estimulo fiscal de la Region Fronteriza Norte, mientras este vigente y el domicilio de la obra califique." : "."}`,
     `Tax: ${n(q.iva * 100, 0)} %${q.iva === 0.08 ? " under the Northern Border Region tax incentive, while it remains in force and the project address qualifies." : "."}`));
   li(L("Precios unitarios abiertos: cada concepto se factura contra avance certificado por supervision.",
@@ -5696,7 +5703,7 @@ function buildPropuestaXlsx(opt) {
   li(L("Trabajos adicionales o cambios de alcance se cotizan por separado antes de ejecutarse.",
     "Additional work or scope changes are quoted separately before execution."));
   if ((Q.porCotizar || []).length) li(L(`PARTIDAS POR COTIZAR: ${Q.porCotizar.length} (sin importe, fuera del total): ${Q.porCotizar.map((p) => p.desc).join(" · ")}.`, `ITEMS TO BE QUOTED: ${Q.porCotizar.length} (no amount, outside the total): ${Q.porCotizar.map((p) => p.descEn).join(" · ")}.`));
-  if ((Q.referencias || []).length) li(L(`PRECIOS DE REFERENCIA DE MERCADO, SUJETOS A COTIZACION DE PROVEEDOR: ${Q.referencias.map((r) => `${r.desc} (${r.fuente}${r.fecha ? ", " + r.fecha : ""})`).join(" · ")}.`, `MARKET REFERENCE PRICES, SUBJECT TO SUPPLIER QUOTATION: ${Q.referencias.map((r) => `${r.desc} (${r.fuente}${r.fecha ? ", " + r.fecha : ""})`).join(" · ")}.`));
+  if ((Q.referencias || []).length) li(L(`PRECIOS DE REFERENCIA DE MERCADO, SUJETOS A COTIZACION DE PROVEEDOR: ${Q.referencias.map((r) => refTexto(r, "es")).join(" · ")}.`, `MARKET REFERENCE PRICES, SUBJECT TO SUPPLIER QUOTATION: ${Q.referencias.map((r) => refTexto(r, "en")).join(" · ")}.`));
   const noCot = SEC_ORDEN.filter((k) => !cat.secciones.some((s) => s.clave === k));
   if (noCot.length) li(L(`Disciplinas NO cotizadas en esta propuesta: ${noCot.map((k) => `${k}) ${SEC_PROP[k].label}`).join(" · ")}. No tienen partidas en esta propuesta (sin captura, sin autorizacion del cruce o pendientes de un dato) y se cotizan por separado.`,
     `Disciplines NOT quoted in this proposal: ${noCot.map((k) => `${k}) ${secLabel({ label: SEC_PROP[k].label }, "en")}`).join(" · ")}. They have no items in this proposal (no input, link not authorized or pending a datum) and are quoted separately.`));
@@ -6535,7 +6542,8 @@ function buildPropuestaPdf(opt) {
     [L("No. de propuesta", "Proposal No."), `${P0.no} · Rev. ${P0.rev}`],
     [L("Fecha", "Date"), S.meta.date || ""],
     [L("Vigencia", "Validity"), `${num(P0.vigencia, 30)} ${L("dias calendario", "calendar days")}`],
-    [L("Moneda", "Currency"), mon + (mon === "USD" ? ` · ${L("tipo de cambio", "exchange rate")} ${n(fx, 2)} MXN/USD` : "")],
+    [L("Moneda", "Currency"), mon + (mon === "USD" ? ` · ${L("tipo de cambio", "exchange rate")} ${fxTexto(lang)}` : "")],
+    ...((Q.referencias || []).some((r) => r.moneda === "USD") && mon !== "USD" ? [[L("Tipo de cambio", "Exchange rate"), fxTexto(lang)]] : []),
     [L("Contacto unico", "Single point of contact"), P0.firma],
     [L("Version del motor de calculo", "Calculation engine version"), `${REV_SELLO()} · ${L("sitio", "site")} ${SITE.label}`],
     [L("Catalogo de equipo", "Equipment catalogue"), `${CAT_REV.version} · ${CAT_REV.nota}`],
@@ -6599,14 +6607,14 @@ function buildPropuestaPdf(opt) {
 
   pdfHeading(d, `${secN + 3}. ${L("Condiciones", "Terms")}`);
   if ((Q.referencias || []).length) pdfParagraph(d, L(
-    `PRECIOS DE REFERENCIA DE MERCADO, SUJETOS A COTIZACION DE PROVEEDOR: ${Q.referencias.map((r) => `${r.desc} (${r.fuente}${r.fecha ? ", " + r.fecha : ""})`).join(" · ")}.`,
-    `MARKET REFERENCE PRICES, SUBJECT TO SUPPLIER QUOTATION: ${Q.referencias.map((r) => `${r.desc} (${r.fuente}${r.fecha ? ", " + r.fecha : ""})`).join(" · ")}.`), { color: PDF_SENAL });
+    `PRECIOS DE REFERENCIA DE MERCADO, SUJETOS A COTIZACION DE PROVEEDOR: ${Q.referencias.map((r) => refTexto(r, "es")).join(" · ")}.`,
+    `MARKET REFERENCE PRICES, SUBJECT TO SUPPLIER QUOTATION: ${Q.referencias.map((r) => refTexto(r, "en")).join(" · ")}.`), { color: PDF_SENAL });
   if ((S.quote.hidroPUlog || []).length) pdfParagraph(d, L(
     `Bitacora de precios de tuberia: ${S.quote.hidroPUlog.map((l) => `${l.clave} ${l.fecha}: referencia ${n(l.antes.precioM, 2)} MXN/m (${l.antes.fuente}) -> proveedor local ${n(l.despues.precioM, 2)} MXN/m (${l.despues.fuente})`).join(" · ")}.`,
     `Pipe price log: ${S.quote.hidroPUlog.map((l) => `${l.clave} ${l.fecha}: reference ${n(l.antes.precioM, 2)} MXN/m -> local supplier ${n(l.despues.precioM, 2)} MXN/m`).join(" · ")}.`));
   pdfParagraph(d, L(
-    `Vigencia: ${num(P0.vigencia, 30)} dias calendario a partir de la fecha de emision. Moneda ${mon}${mon === "USD" ? ", tipo de cambio de referencia " + n(fx, 2) + " MXN/USD que se reconsidera al contratar" : ""}. Impuesto ${n(S.quote.iva * 100, 0)} %. Forma de pago conforme al esquema de arriba, contra factura y avance certificado por supervision.`,
-    `Validity: ${num(P0.vigencia, 30)} calendar days from the issue date. Currency ${mon}${mon === "USD" ? ", reference exchange rate " + n(fx, 2) + " MXN/USD to be revisited at contract award" : ""}. Tax ${n(S.quote.iva * 100, 0)} %. Payment per the schedule above, against invoice and progress certified by supervision.`));
+    `Vigencia: ${num(P0.vigencia, 30)} dias calendario a partir de la fecha de emision. Moneda ${mon}${mon === "USD" ? ", tipo de cambio " + fxTexto("es") + " que se reconsidera al contratar" : ""}. Impuesto ${n(S.quote.iva * 100, 0)} %. Forma de pago conforme al esquema de arriba, contra factura y avance certificado por supervision.`,
+    `Validity: ${num(P0.vigencia, 30)} calendar days from the issue date. Currency ${mon}${mon === "USD" ? ", exchange rate " + fxTexto("en") + " to be revisited at contract award" : ""}. Tax ${n(S.quote.iva * 100, 0)} %. Payment per the schedule above, against invoice and progress certified by supervision.`));
   pdfParagraph(d, L(
     "Precios unitarios abiertos: cada concepto se factura contra avance certificado por supervision. Los precios de equipo son de referencia de la lista vigente de la casa y se ratifican contra la seleccion del fabricante antes de comprar.",
     "Open-book unit prices: each item is invoiced against progress certified by supervision. Equipment prices are reference figures from the current house price list and are ratified against the manufacturer's selection before purchase."));
@@ -8173,13 +8181,18 @@ function computeSoporte(Gc) {
 function hidroPUEntrada(clave) {
   const e = (S.quote && S.quote.hidroPU && typeof S.quote.hidroPU === "object") ? S.quote.hidroPU[clave] : undefined;
   if (e == null) return null;
-  const fx = Math.max(.01, num(S.quote.fx, 18.5));
-  if (typeof e !== "object") { const v = num(e, 0); return v > 0 ? { precioM: v, origen: "proveedor", fuente: "captura en pantalla", url: "", fecha: "", iva: false, porTramo: 1, moneda: "MXN", bruto: v } : null; }
+  if (typeof e !== "object") { const v = num(e, 0); return v > 0 ? { precioM: v, origen: "proveedor", fuente: "captura en pantalla", ubicacion: "", lista: "neta", url: "", fecha: "", iva: false, porTramo: 1, moneda: "MXN", bruto: v } : null; }
   const p = num(e.precio, 0); if (!(p > 0)) return null;
   const porTramo = num(e.porTramo, 1) > 0 ? num(e.porTramo, 1) : 1;
-  const precioM = p / porTramo / (e.iva ? 1 + IVA_MX : 1) * (String(e.moneda).toUpperCase() === "USD" ? fx : 1);
-  return { precioM, origen: e.origen === "referencia" ? "referencia" : "proveedor", fuente: String(e.fuente || ""), url: String(e.url || ""), fecha: String(e.fecha || ""), iva: !!e.iva, porTramo, moneda: String(e.moneda || "MXN").toUpperCase(), bruto: p };
+  const usd = String(e.moneda).toUpperCase() === "USD", fxv = usd ? fxVigente() : null;
+  /* USD sin tipo de cambio con fecha: el precio existe pero no se convierte (precioM 0 → Por cotizar / bloqueo formal). */
+  const precioM = usd && !fxv ? 0 : p / porTramo / (e.iva ? 1 + IVA_MX : 1) * (usd ? fxv.fx : 1);
+  return { precioM, sinFx: usd && !fxv, origen: e.origen === "referencia" ? "referencia" : "proveedor", fuente: String(e.fuente || ""), ubicacion: String(e.ubicacion || ""), lista: e.lista === "bruta" ? "bruta" : "neta", url: String(e.url || ""), fecha: String(e.fecha || ""), iva: !!e.iva, porTramo, moneda: usd ? "USD" : "MXN", bruto: p, fx: fxv };
 }
+/* rev 2.9.23 · Etiqueta completa de un precio de referencia: fuente, ubicación, fecha, moneda, impuestos y lista bruta/neta. */
+const refTexto = (r, lang) => lang === "en"
+  ? `${r.desc} (${r.fuente}${r.ubicacion ? ", " + r.ubicacion : ""}${r.fecha ? ", " + r.fecha : ""}; ${n(r.bruto, 2)} ${r.moneda}${r.porTramo && r.porTramo !== 1 ? ` per ${n(r.porTramo, 2)} m` : ""}, ${r.iva ? "tax included" : "before tax"}, ${r.lista === "bruta" ? "gross list" : "net"})`
+  : `${r.desc} (${r.fuente}${r.ubicacion ? ", " + r.ubicacion : ""}${r.fecha ? ", " + r.fecha : ""}; ${n(r.bruto, 2)} ${r.moneda}${r.porTramo && r.porTramo !== 1 ? ` por ${n(r.porTramo, 2)} m` : ""}, ${r.iva ? "impuestos incluidos" : "antes de impuestos"}, ${r.lista === "bruta" ? "lista bruta" : "neta"})`;
 const hidroPUetiqueta = (o) => o === "referencia" ? "Referencia Budget" : "Proveedor local";
 /* Sustituir una referencia por costo de proveedor deja el antes y el después en la bitácora del proyecto. */
 function hidroPUPoner(clave, nuevo, via) {
@@ -8317,10 +8330,11 @@ function computeQuote() {
       const desc = `Tubería de ${T.label} de ${nom} instalada y probada (${n(m, 1)} m de los tramos calculados)`, descEn = `Installed and tested ${T.labelEn} ${nom} water piping (${n(m, 1)} m from the calculated runs)`;
       if (e && e.precioM > 0) {
         aux.push({ desc, descEn, qty: m, unit: e.precioM, total: e.precioM * m, sec: "F", un: "ML", mot: "hidro", origen: e.origen, fuente: e.fuente, fecha: e.fecha, url: e.url });
-        if (e.origen === "referencia") referencias.push({ clave, desc: `${T.label} ${nom}`, precioM: e.precioM, fuente: e.fuente, fecha: e.fecha, url: e.url });
+        if (e.origen === "referencia") referencias.push({ clave, desc: `${T.label} ${nom}`, precioM: e.precioM, fuente: e.fuente, ubicacion: e.ubicacion, lista: e.lista, iva: e.iva, moneda: e.moneda, bruto: e.bruto, porTramo: e.porTramo, fecha: e.fecha, url: e.url });
       } else {
-        pendientes.push({ mot: "hidro", desc: `Tubería de ${T.label} de ${nom} (${n(m, 1)} m)`, descEn: `${T.labelEn} ${nom} water piping (${n(m, 1)} m)`, motivo: "pendiente de precio unitario", motivoEn: "unit price pending" });
-        porCotizar.push({ sec: "F", mot: "hidro", clave, desc: `Tubería de ${T.label} de ${nom} instalada y probada`, descEn: `Installed and tested ${T.labelEn} ${nom} water piping`, un: "ML", qty: m });
+        const sinFx = !!(e && e.sinFx);
+        pendientes.push({ mot: "hidro", desc: `Tubería de ${T.label} de ${nom} (${n(m, 1)} m)`, descEn: `${T.labelEn} ${nom} water piping (${n(m, 1)} m)`, motivo: sinFx ? "precio en USD sin tipo de cambio con fecha" : "pendiente de precio unitario", motivoEn: sinFx ? "USD price without a dated exchange rate" : "unit price pending" });
+        porCotizar.push({ sec: "F", mot: "hidro", clave, desc: `Tubería de ${T.label} de ${nom} instalada y probada`, descEn: `Installed and tested ${T.labelEn} ${nom} water piping`, un: "ML", qty: m, motivo: sinFx ? "tipo de cambio sin capturar" : "sin precio" });
       }
     });
     if (sinL > 0 || !HIDRO.tramos.length) pendientes.push({ mot: "hidro",
@@ -17429,11 +17443,11 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "2", clean: "2", equip: "1", duct: "1", vent: "1", quote: "4", valor: "1", kaizen: "1", elec: "4", hidro: "4", fuego: "2", aire: "2", civil: "3", soporte: "2" };
+const MOTOR_VER = { load: "2", clean: "2", equip: "1", duct: "1", vent: "1", quote: "5", valor: "1", kaizen: "1", elec: "4", hidro: "4", fuego: "2", aire: "2", civil: "3", soporte: "2" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" }],
   clean: [{ ver: "2", rev: "2.9.16", que: "sin pisos de 1 m² ni 2.2 m; 5 Pa de ISO 14644-4 con aviso; ceros capturados respetados" }],
-  quote: [{ ver: "2", rev: "2.9.16", que: "red hidráulica por diámetro con precio capturado; sin 50 m supuestos; partidas pendientes" }, { ver: "3", rev: "2.9.19", que: "tramo con longitud y sin unidades mueble queda pendiente" }, { ver: "4", rev: "2.9.23", que: "precio de tubería por renglón con origen (referencia de mercado o proveedor local), IVA desglosado y por metro; sin precio: partida Por cotizar en el Budget, bloqueo sólo en la formal" }],
+  quote: [{ ver: "2", rev: "2.9.16", que: "red hidráulica por diámetro con precio capturado; sin 50 m supuestos; partidas pendientes" }, { ver: "3", rev: "2.9.19", que: "tramo con longitud y sin unidades mueble queda pendiente" }, { ver: "4", rev: "2.9.23", que: "precio de tubería por renglón con origen (referencia de mercado o proveedor local), IVA desglosado y por metro; sin precio: partida Por cotizar en el Budget, bloqueo sólo en la formal" }, { ver: "5", rev: "2.9.23", que: "precios en USD sólo se convierten con tipo de cambio capturado con fecha; sin fecha salen Por cotizar y bloquean la formal (nada se estima)" }],
   elec: [{ ver: "2", rev: "2.9.16", que: "canalización con las áreas del conductor de la memoria (THW-LS por omisión, NOM-001-SEDE Cap. 10 Tabla 5)" }, { ver: "3", rev: "2.9.18", que: "siete áreas THHN/THWN-2 corregidas a la Tabla 5" }, { ver: "4", rev: "2.9.19", que: "sin compresor de aire cuando no hay demanda" }],
   hidro: [{ ver: "2", rev: "2.9.16", que: "tramo sin longitud ya no supone 10 m" }, { ver: "3", rev: "2.9.18", que: "curva de Hunter de IPC apéndice E Table E103.3(3)" }, { ver: "4", rev: "2.9.19", que: "renglones de 2500 a 5000 UM de la misma tabla" }],
   fuego: [{ ver: "2", rev: "2.9.16", que: "sin área no hay demanda, bomba ni reserva; área mínima de operación NFPA 13 con aviso" }],
@@ -18619,9 +18633,9 @@ function hidroDiametrosSinPrecio() {
 function hidroPUPlantillaCsv() {
   /* rev 2.9.23 · precio tal como lo publica el proveedor: por_tramo_m (1 = por metro), iva_incluido (si/no), origen
      (proveedor = cotización de proveedor local; referencia = precio de mercado para el Budget), url y fecha. */
-  const filas = [["material", "clave", "diametro", "precio", "por_tramo_m", "iva_incluido", "moneda", "origen", "fuente", "url", "fecha"]];
+  const filas = [["material", "clave", "diametro", "precio", "por_tramo_m", "iva_incluido", "moneda", "origen", "fuente", "ubicacion", "lista", "url", "fecha"]];
   Object.entries(TUB_AGUA).forEach(([mat, T]) => T.d.forEach(([, nom]) => { const d = String(nom).split(" ·")[0], k = claveHidroPU(mat, d), e = (S.quote && S.quote.hidroPU && typeof S.quote.hidroPU[k] === "object") ? S.quote.hidroPU[k] : null;
-    filas.push(e ? [mat, k, d, e.precio, e.porTramo || 1, e.iva ? "si" : "no", e.moneda || "MXN", e.origen || "proveedor", e.fuente || "", e.url || "", e.fecha || ""] : [mat, k, d, "", "1", "no", "MXN", "proveedor", "", "", ""]); }));
+    filas.push(e ? [mat, k, d, e.precio, e.porTramo || 1, e.iva ? "si" : "no", e.moneda || "MXN", e.origen || "proveedor", e.fuente || "", e.ubicacion || "", e.lista || "neta", e.url || "", e.fecha || ""] : [mat, k, d, "", "1", "no", "MXN", "proveedor", "", "", "neta", "", ""]); }));
   return filas.map((f) => f.map((c) => /[",\n]/.test(String(c)) ? `"${String(c).replace(/"/g, '""')}"` : String(c)).join(",")).join("\n");
 }
 /* Importa un CSV con las columnas de la plantilla. USD se convierte con el tipo de cambio del proyecto. Devuelve el resumen. */
@@ -18645,7 +18659,7 @@ function hidroPUImportarCsv(texto) {
     const fuente = col(c, "fuente", "");
     if (origen === "referencia" && !fuente) { malas.push(`fila ${i + 2}: un precio de referencia necesita fuente`); return; }
     hidroPUPoner(claveHidroPU(mat, d), { precio, moneda: mon === "USD" ? "USD" : "MXN", iva: /^(s|y|1|true)/i.test(col(c, "iva_incluido", "no")), porTramo: num(col(c, "por_tramo_m", "1"), 1) > 0 ? num(col(c, "por_tramo_m", "1"), 1) : 1,
-      origen, fuente: fuente || "CSV de proveedor local", url: col(c, "url", ""), fecha: col(c, "fecha", "") || fechaLocalISO() }, "csv"); ok++;
+      origen, fuente: fuente || "CSV de proveedor local", ubicacion: col(c, "ubicacion", ""), lista: /^b/i.test(col(c, "lista", "neta")) ? "bruta" : "neta", url: col(c, "url", ""), fecha: col(c, "fecha", "") || fechaLocalISO() }, "csv"); ok++;
   });
   return { ok, malas };
 }
@@ -18661,7 +18675,7 @@ function hidroPUHtml() {
       <button type="button" class="toolbtn mini" data-act="hidro-pu-csv">Importar CSV de precios</button> <button type="button" class="toolbtn mini" data-act="hidro-pu-plantilla">Descargar plantilla CSV</button></div>
     ${sin.length ? `<div class="hint" style="color:var(--warn)"><b>Por cotizar:</b> sin precio en ${sin.join(", ")}. El Budget sale sin importe en esos diámetros; la cotización formal no sale.</div>` : ""}
     <div class="row">${noms.map((nom) => { const k = claveHidroPU(HIDRO.mat, nom), e = hidroPUEntrada(k);
-      return `<div>${inpV(`${nom.split(" ·")[0]} (MXN/m antes de IVA)`, `quote.hidroPU.${k}`, e ? +e.precioM.toFixed(2) : "")}<div class="hint" style="margin-top:-6px">${e ? `<b>${hidroPUetiqueta(e.origen)}</b> · ${esc(e.fuente)}${e.fecha ? " · " + esc(e.fecha) : ""}${e.porTramo !== 1 || e.iva ? ` · publicado ${n(e.bruto, 2)} ${esc(e.moneda)}${e.porTramo !== 1 ? ` por tramo de ${n(e.porTramo, 2)} m` : ""}${e.iva ? " con IVA" : " sin IVA"}` : ""}${e.url ? ` · <a href="${esc(e.url)}" target="_blank" rel="noopener">fuente</a>` : ""}` : "Sin precio · Por cotizar"}</div></div>`; }).join("")}</div>
+      return `<div>${inpV(`${nom.split(" ·")[0]} (MXN/m antes de IVA)`, `quote.hidroPU.${k}`, e ? +e.precioM.toFixed(2) : "")}<div class="hint" style="margin-top:-6px">${e ? `<b>${hidroPUetiqueta(e.origen)}</b> · ${esc(e.fuente)}${e.ubicacion ? " · " + esc(e.ubicacion) : ""}${e.fecha ? " · " + esc(e.fecha) : ""} · publicado ${n(e.bruto, 2)} ${esc(e.moneda)}${e.porTramo !== 1 ? ` por tramo de ${n(e.porTramo, 2)} m` : "/m"} · ${e.iva ? "impuestos incluidos" : "antes de impuestos"} · lista ${e.lista}${e.sinFx ? ` · <b style="color:var(--warn)">USD sin tipo de cambio con fecha: Por cotizar</b>` : ""}${e.url ? ` · <a href="${esc(e.url)}" target="_blank" rel="noopener">fuente</a>` : ""}` : "Sin precio · Por cotizar"}</div></div>`; }).join("")}</div>
     ${log.length ? `<div class="hint"><b>Bitácora de precios:</b> ${log.map((l) => `${esc(l.clave)} ${esc(l.fecha)}: referencia ${n(l.antes.precioM, 2)} → proveedor local ${n(l.despues.precioM, 2)} MXN/m (${esc(l.via)})`).join(" · ")}</div>` : ""}`;
 }
 function viewCotizacion() {
@@ -18859,7 +18873,10 @@ function viewCotizacion() {
           <div class="row">
             ${sel("Moneda", "quote.currency", [["MXN", "Pesos MXN"], ["USD", "Dólares USD"]])}
             ${inp("Tipo de cambio", "quote.fx", "number", "0.25")}
+            ${inp("Fecha del tipo de cambio", "quote.fxFecha", "date")}
+            ${inp("Fuente del tipo de cambio", "quote.fxFuente", "text")}
           </div>
+          ${fxVigente() ? "" : `<div class="hint" style="color:var(--warn)"><b>Tipo de cambio sin capturar:</b> los precios en USD no se convierten hasta que captures el tipo y su fecha; salen «Por cotizar».</div>`}
         </div></div>
 
         <div class="card"><h3>Contra tus obras cerradas</h3><div class="body">
@@ -18960,6 +18977,8 @@ function viewSeleccion() {
         <div class="row">
           ${sel("Moneda", "quote.currency", [["MXN", "Pesos MXN"], ["USD", "Dólares USD"]])}
           ${inp("Tipo de cambio (MXN por USD)", "quote.fx", "number", "0.25")}
+          ${inp("Fecha del tipo de cambio", "quote.fxFecha", "date")}
+          ${inp("Fuente del tipo de cambio", "quote.fxFuente", "text")}
         </div>
         ${inp("Factor de ajuste de lista", "quote.priceFactor", "number", "0.05")}
         <details><summary>Precios por familia (MXN por TR)</summary>
@@ -21493,7 +21512,8 @@ function sanearEstado(d) {
   }
   if (s.soporte && s.soporte.snap && typeof s.soporte.snap !== "object") delete s.soporte.snap;
   s.zi = 0; s.clean.ci = 0;
-  if (s.quote && typeof s.quote === "object") { const h = s.quote.hidroPU; s.quote.hidroPU = {}; if (h && typeof h === "object" && !Array.isArray(h)) Object.keys(h).forEach((k) => { if (/^[a-z]+_[0-9a-z_]+$/i.test(k)) { const v = h[k]; if (v && typeof v === "object" && num(v.precio, 0) > 0) s.quote.hidroPU[k] = { precio: num(v.precio), moneda: String(v.moneda || "MXN").toUpperCase() === "USD" ? "USD" : "MXN", iva: !!v.iva, porTramo: num(v.porTramo, 1) > 0 ? num(v.porTramo, 1) : 1, origen: v.origen === "referencia" ? "referencia" : "proveedor", fuente: String(v.fuente || ""), url: String(v.url || ""), fecha: String(v.fecha || "") }; else if (num(v, 0) > 0) s.quote.hidroPU[k] = num(v); } });
+  if (s.quote && typeof s.quote === "object") { const h = s.quote.hidroPU; s.quote.hidroPU = {}; if (h && typeof h === "object" && !Array.isArray(h)) Object.keys(h).forEach((k) => { if (/^[a-z]+_[0-9a-z_]+$/i.test(k)) { const v = h[k]; if (v && typeof v === "object" && num(v.precio, 0) > 0) s.quote.hidroPU[k] = { precio: num(v.precio), moneda: String(v.moneda || "MXN").toUpperCase() === "USD" ? "USD" : "MXN", iva: !!v.iva, porTramo: num(v.porTramo, 1) > 0 ? num(v.porTramo, 1) : 1, origen: v.origen === "referencia" ? "referencia" : "proveedor", fuente: String(v.fuente || ""), ubicacion: String(v.ubicacion || "").slice(0, 120), lista: v.lista === "bruta" ? "bruta" : "neta", url: String(v.url || ""), fecha: String(v.fecha || "") }; else if (num(v, 0) > 0) s.quote.hidroPU[k] = num(v); } });
+    s.quote.fxFecha = /^\d{4}-\d{2}-\d{2}$/.test(String(s.quote.fxFecha || "")) ? String(s.quote.fxFecha) : ""; s.quote.fxFuente = String(s.quote.fxFuente || "").slice(0, 200);
     /* rev 2.9.23 · los diámetros sin precio propio toman la referencia de mercado vigente (Referencia Budget). */
     Object.keys(HIDRO_PU_REFERENCIA).forEach((k) => { if (!(k in s.quote.hidroPU)) s.quote.hidroPU[k] = JSON.parse(JSON.stringify(HIDRO_PU_REFERENCIA[k])); });
     s.quote.hidroPUlog = Array.isArray(s.quote.hidroPUlog) ? s.quote.hidroPUlog.filter((l) => l && typeof l === "object" && l.clave && l.antes && l.despues).slice(-200) : []; }

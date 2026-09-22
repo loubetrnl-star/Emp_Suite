@@ -5855,15 +5855,15 @@ t("S.39 (rev 2.9.22, decisión del dueño) precios de tubería hidráulica: PP-R
     eq(T.ppr.d.length, 9, "PP-R con 9 diámetros (20–110 mm, DIN 8077 PN20):"); eq(T.ppr.d[0][0], 13.2, "PP-R 20 mm: interior 13.2 mm:");
     eq(G("famSoporteAgua")("ppr"), "plastico", "PP-R se soporta como termoplástico:");
     const csv = G("hidroPUPlantillaCsv")();
-    contiene(csv, "material,clave,diametro,precio,por_tramo_m,iva_incluido,moneda,origen,fuente,url,fecha", "encabezado (rev 2.9.23):");
+    contiene(csv, "material,clave,diametro,precio,por_tramo_m,iva_incluido,moneda,origen,fuente,ubicacion,lista,url,fecha", "encabezado (rev 2.9.23):");
     eq(csv.split("\n").length - 1, Object.values(T).reduce((a, t) => a + t.d.length, 0), "una fila por diámetro y material:");
-    contiene(csv, "cpvc,cpvc_1_1_4_,\"1 1/4\"\"\",,1,no,MXN,proveedor,,,", "fila CPVC 1 1/4 (el diámetro lleva comillas):");
-    contiene(csv, "cobre,cobre_2_,\"2\"\"\",12851.2,6.1,no,MXN,referencia,\"IUSA lista de precios distribuidor", "la plantilla trae la referencia de mercado del cobre 2\":");
+    contiene(csv, "cpvc,cpvc_1_1_4_,\"1 1/4\"\"\",,1,no,MXN,proveedor,,,neta,,", "fila CPVC 1 1/4 (el diámetro lleva comillas):");
+    contiene(csv, "cobre,cobre_2_,\"2\"\"\",12851.2,6.1,no,MXN,referencia,\"IUSA lista de precios distribuidor", "la plantilla trae la referencia de mercado del cobre 2\":"); contiene(csv, "México,bruta,https://www.iusa.com.mx", "con ubicación y lista bruta:");
     G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.39"; Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.39" }; });
     S.zones[0].area = 100; S.zones[0].height = 3;
     S.hidro = { ...G("defaultHidro")(), material: "cpvc", tramos: [{ ...G("defaultTramoAgua")("AF-1"), um: 40, L: 25, alt: 0 }, { ...G("defaultTramoAgua")("AF-2"), um: 12, L: 12, alt: 0 }],
       muebles: [{ id: "wc_flux", cant: 4 }, { id: "lavabo", cant: 4 }] };
-    S.quote.hidroPU = {}; S.quote.fx = 18; G("recompute")();
+    S.quote.hidroPU = {}; S.quote.fx = 18; S.quote.fxFecha = "2026-09-22"; S.quote.fxFuente = "prueba"; G("recompute")(); /* rev 2.9.23: USD sólo con tipo de cambio fechado */
     const sin = G("hidroDiametrosSinPrecio")();
     if (sin.length < 1) throw new Error("debía haber diámetros sin precio");
     eq(G("accEstado")("hidro").cot.ok, false, "cotización de hidro bloqueada sin precios:"); contiene(G("accEstado")("hidro").cot.razon, "Falta el precio", "razón:");
@@ -5934,7 +5934,7 @@ t("S.40 una instalación limpia abre con todo en cero: sin proyectos, sin cuarto
   eq(SL.hidro.muebles.length + SL.hidro.tramos.length, 0, "sin muebles ni tramos de agua:"); eq(num(SL.fuego.area), 0, "sin área contra incendio:");
   eq(SL.aire.consumos.length, 0, "sin consumos de aire:"); eq(num(SL.civil.firmeM2) + num(SL.civil.puertasSimples) + num(SL.civil.puertasLimpias), 0, "civil en ceros:");
   eq(num(SL.soporte.rielM) + num(SL.soporte.basesEquipo), 0, "soportería en ceros:");
-  eq(SL.quote.items.length, 0, "sin equipos elegidos:"); eq(JSON.stringify(SL.quote.hidroPU), JSON.stringify(GL("HIDRO_PU_REFERENCIA")), "sólo referencias de mercado de tubería, ningún precio de proveedor:"); eq((SL.quote.hidroPUlog || []).length, 0, "sin bitácora de precios:"); eq(SL.kaizen.items.length, 0, "sin mejoras:");
+  eq(SL.quote.items.length, 0, "sin equipos elegidos:"); eq(JSON.stringify(SL.quote.hidroPU), JSON.stringify(GL("HIDRO_PU_REFERENCIA")), "sólo referencias de mercado de tubería, ningún precio de proveedor:"); eq((SL.quote.hidroPUlog || []).length, 0, "sin bitácora de precios:"); eq(SL.quote.fxFecha, "", "tipo de cambio sin fecha capturada:"); eq(SL.kaizen.items.length, 0, "sin mejoras:");
   eq(Object.keys(SL.sellos).length, 0, "sin sellos:"); eq(Object.keys(SL.perms).length, 0, "sin cruces autorizados:");
   GL("recompute()");
   eq(GL("QUOTE").tot, 0, "cotización en cero:"); eq(GL("totals()").tons, 0, "carga en cero:"); eq(GL("HIDRO").Qtotal, 0, "hidro en cero:"); eq(GL("FUEGO").qTotal, 0, "incendio en cero:"); eq(GL("AIRE").fadRequerido, 0, "aire en cero:"); eq(GL("CIVIL").total + GL("SOPORTE").total, 0, "civil y soportería en cero:");
@@ -6012,7 +6012,30 @@ t("S.41 (rev 2.9.23) cobre tipo L: referencias de mercado con fuente y fecha, IV
     const sv = G("sanearEstado")(viejo).quote;
     eq(sv.hidroPU.cobre_1_, 333, "el numérico viejo se conserva:"); eq(sv.hidroPU.cobre_2_.origen, "referencia", "los demás toman la referencia:"); eq(JSON.stringify(sv.hidroPUlog), "[]", "bitácora saneada:");
     G("reemplazarEstado")(G("sanearEstado")(viejo)); eq(G("hidroPUEntrada")("cobre_1_").origen, "proveedor", "numérico = Proveedor local:"); cerca(G("hidroPUEntrada")("cobre_1_").precioM, 333, 1e-9, "por metro:");
-    /* Pantalla: cada renglón dice su origen. */
+    /* Ruta 3 · precio de referencia en USD (fuente de California, decisión del dueño 22-sep-2026): sólo se convierte con tipo de cambio capturado con fecha. */
+    S.hidro = { ...G("defaultHidro")(), material: "cpvc", tramos: [{ ...G("defaultTramoAgua")("AF-1"), um: 40, L: 25, alt: 0 }], muebles: [{ id: "wc_flux", cant: 4 }] };
+    S.quote.hidroPU = {}; S.quote.fx = 18.5; S.quote.fxFecha = ""; S.quote.fxFuente = ""; G("recompute")();
+    const dUSD = G("hidroDiametrosSinPrecio")()[0]; if (!dUSD) throw new Error("debía haber un diámetro CPVC sin precio");
+    const kUSD = G("claveHidroPU")("cpvc", dUSD);
+    S.quote.hidroPU[kUSD] = { precio: 12.5, moneda: "USD", iva: false, porTramo: 1, origen: "referencia", fuente: "Lista de prueba", ubicacion: "San Diego, CA", lista: "bruta", url: "", fecha: "2026-09-22" };
+    G("recompute")();
+    const eU = G("hidroPUEntrada")(kUSD); eq(eU.sinFx, true, "USD sin tipo de cambio fechado:"); eq(eU.precioM, 0, "no se convierte:");
+    eq(G("hidroDiametrosSinPrecio")().includes(dUSD), true, "cuenta como sin precio:"); eq(G("accEstado")("hidro").cot.ok, false, "la formal se bloquea:");
+    const pcU = (G("QUOTE").porCotizar || []).find((p) => p.clave === kUSD); if (!pcU) throw new Error("debía salir Por cotizar"); eq(pcU.motivo, "tipo de cambio sin capturar", "motivo:");
+    contiene((G("QUOTE").pendientes || []).map((p) => p.motivo).join("|"), "precio en USD sin tipo de cambio con fecha", "pendiente con motivo claro:");
+    contiene(Buffer.from(G("buildPropuestaXlsx")({ lang: "es", mon: "USD" })).toString("utf8"), "TIPO DE CAMBIO SIN CAPTURAR", "el Excel en USD lo dice:");
+    S.quote.fx = 18.25; S.quote.fxFecha = "2026-09-22"; S.quote.fxFuente = "Banxico FIX"; G("recompute")();
+    const eU2 = G("hidroPUEntrada")(kUSD); eq(eU2.sinFx, false, "con fecha ya convierte:"); cerca(eU2.precioM, 12.5 * 18.25, 1e-9, "12.5 USD × 18.25:");
+    eq(G("hidroDiametrosSinPrecio")().includes(dUSD), false, "ya tiene precio:");
+    const refU = (G("QUOTE").referencias || []).find((r) => r.clave === kUSD); eq(refU.moneda, "USD", "referencia en USD:"); eq(refU.ubicacion, "San Diego, CA", "ubicación:"); eq(refU.lista, "bruta", "lista bruta:");
+    const txtPdfU = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");
+    const pdfU = txtPdfU(G("buildPropuestaPdf")({ lang: "es", mon: "MXN" }));
+    contiene(pdfU, "18.25 MXN/USD del 2026-09-22 (Banxico FIX)", "tipo de cambio con fecha y fuente visible en la propuesta en MXN:");
+    contiene(pdfU, "San Diego, CA, 2026-09-22; 12.5 USD, antes de impuestos, lista bruta", "etiqueta completa: fuente, ubicacion, fecha, moneda, impuestos, lista:");
+    contiene(txtPdfU(G("buildPropuestaPdf")({ lang: "en", mon: "USD" })), "18.25 MXN/USD as of 2026-09-22", "en inglés:");
+    contiene(Buffer.from(G("buildPropuestaXlsx")({ lang: "es", mon: "MXN" })).toString("utf8"), "18.25 MXN/USD del 2026-09-22", "y en el Excel:");
+    /* Pantalla: cada renglón dice su origen (se restauran las referencias que la ruta 3 vació). */
+    S.quote.hidroPU = JSON.parse(JSON.stringify(REF));
     S.hidro = { ...G("defaultHidro")(), material: "cobre", tramos: [{ ...G("defaultTramoAgua")("AF-1"), um: 40, L: 25, alt: 0 }], muebles: [{ id: "wc_flux", cant: 4 }] }; G("recompute")();
     const html = G("hidroPUHtml")(); contiene(html, "Referencia Budget", "pantalla marca la referencia:"); contiene(html, "IUSA", "con su fuente:"); contiene(html, "Por cotizar", "y explica Por cotizar:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }

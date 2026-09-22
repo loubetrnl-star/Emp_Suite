@@ -354,31 +354,31 @@
  "her": {
   "vent.area": {
    "modo": "heredado",
-   "ts": 1790060420862,
+   "ts": 1790063465918,
    "valor": 700,
    "origen": "load"
   },
   "vent.height": {
    "modo": "heredado",
-   "ts": 1790060420863,
+   "ts": 1790063465918,
    "valor": 4.71,
    "origen": "load"
   },
   "vent.occ": {
    "modo": "heredado",
-   "ts": 1790060420863,
+   "ts": 1790063465918,
    "valor": 46,
    "origen": "load"
   },
   "fuego.area": {
    "modo": "heredado",
-   "ts": 1790060420863,
+   "ts": 1790063465918,
    "valor": 700,
    "origen": "load"
   },
   "fuego.altura": {
    "modo": "heredado",
-   "ts": 1790060420863,
+   "ts": 1790063465918,
    "valor": 4.71,
    "origen": "load"
   }
@@ -435,7 +435,7 @@
   },
   "segments": [
    {
-    "id": "snz40p9",
+    "id": "svii6bd",
     "tag": "TR-1",
     "service": "supply",
     "shape": "rect",
@@ -459,7 +459,7 @@
     ]
    },
    {
-    "id": "sbk3wdh",
+    "id": "s0exlz5",
     "tag": "TR-2",
     "service": "supply",
     "shape": "rect",
@@ -483,7 +483,7 @@
     ]
    },
    {
-    "id": "sc3ck3i",
+    "id": "saxmyq8",
     "tag": "RT-1",
     "service": "return",
     "shape": "rect",
@@ -526,6 +526,8 @@
  "quote": {
   "currency": "MXN",
   "fx": 18.5,
+  "fxFecha": "2026-09-22",
+  "fxFuente": "fixture de regresión",
   "plaza": "tijuana",
   "basePrecio": "casa",
   "fasar": 1.45,
@@ -557,14 +559,103 @@
   "tablero": 68000,
   "circuito": 4200,
   "hidroPU": {
-   "cpvc_1_": 182,
-   "cpvc_1_1_4_": 223,
-   "cpvc_3_4_": 151,
-   "cpvc_1_2_": 128,
-   "cpvc_1_1_2_": 260,
-   "cpvc_2_": 330,
-   "cpvc_2_1_2_": 410,
-   "cpvc_3_": 520
+   "cobre_1_2_": 128,
+   "cobre_3_4_": {
+    "precio": 1762,
+    "moneda": "MXN",
+    "iva": true,
+    "porTramo": 6.1,
+    "origen": "referencia",
+    "fuente": "Tienda IUSA, menudeo, tubo rígido tipo L tramo 6.10 m",
+    "ubicacion": "México",
+    "lista": "neta",
+    "url": "",
+    "fecha": "2026-09-21"
+   },
+   "cobre_1_": {
+    "precio": 2924.99,
+    "moneda": "MXN",
+    "iva": true,
+    "porTramo": 6.1,
+    "origen": "referencia",
+    "fuente": "Tienda IUSA, menudeo, tubo rígido tipo L tramo 6.10 m",
+    "ubicacion": "México",
+    "lista": "neta",
+    "url": "",
+    "fecha": "2026-09-21"
+   },
+   "cobre_1_1_4_": {
+    "precio": 6172.11,
+    "moneda": "MXN",
+    "iva": false,
+    "porTramo": 6.1,
+    "origen": "referencia",
+    "fuente": "IUSA lista de precios distribuidor plomería-cobre vigente 11-ago-2026, tipo L cód. 308765",
+    "ubicacion": "México",
+    "lista": "bruta",
+    "url": "https://www.iusa.com.mx/assets/descargables/listas/construccion/lista-de-precios-plomeria-cobre.pdf",
+    "fecha": "2026-09-21"
+   },
+   "cobre_1_1_2_": {
+    "precio": 8045.11,
+    "moneda": "MXN",
+    "iva": false,
+    "porTramo": 6.1,
+    "origen": "referencia",
+    "fuente": "IUSA lista de precios distribuidor plomería-cobre vigente 11-ago-2026, tipo L cód. 308766",
+    "ubicacion": "México",
+    "lista": "bruta",
+    "url": "https://www.iusa.com.mx/assets/descargables/listas/construccion/lista-de-precios-plomeria-cobre.pdf",
+    "fecha": "2026-09-21"
+   },
+   "cobre_2_": {
+    "precio": 12851.2,
+    "moneda": "MXN",
+    "iva": false,
+    "porTramo": 6.1,
+    "origen": "referencia",
+    "fuente": "IUSA lista de precios distribuidor plomería-cobre vigente 11-ago-2026, tipo L cód. 308767",
+    "ubicacion": "México",
+    "lista": "bruta",
+    "url": "https://www.iusa.com.mx/assets/descargables/listas/construccion/lista-de-precios-plomeria-cobre.pdf",
+    "fecha": "2026-09-21"
+   },
+   "cobre_2_1_2_": {
+    "precio": 22748.07,
+    "moneda": "MXN",
+    "iva": false,
+    "porTramo": 6.1,
+    "origen": "referencia",
+    "fuente": "IUSA lista de precios distribuidor plomería-cobre vigente 11-ago-2026, tipo L cód. 308768",
+    "ubicacion": "México",
+    "lista": "bruta",
+    "url": "https://www.iusa.com.mx/assets/descargables/listas/construccion/lista-de-precios-plomeria-cobre.pdf",
+    "fecha": "2026-09-21"
+   },
+   "cobre_3_": {
+    "precio": 30821.54,
+    "moneda": "MXN",
+    "iva": false,
+    "porTramo": 6.1,
+    "origen": "referencia",
+    "fuente": "IUSA lista de precios distribuidor plomería-cobre vigente 11-ago-2026, tipo L cód. 312964",
+    "ubicacion": "México",
+    "lista": "bruta",
+    "url": "https://www.iusa.com.mx/assets/descargables/listas/construccion/lista-de-precios-plomeria-cobre.pdf",
+    "fecha": "2026-09-21"
+   },
+   "cobre_4_": {
+    "precio": 57438.08,
+    "moneda": "MXN",
+    "iva": false,
+    "porTramo": 6.1,
+    "origen": "referencia",
+    "fuente": "IUSA lista de precios distribuidor plomería-cobre vigente 11-ago-2026, tipo L cód. 312967",
+    "ubicacion": "México",
+    "lista": "bruta",
+    "url": "https://www.iusa.com.mx/assets/descargables/listas/construccion/lista-de-precios-plomeria-cobre.pdf",
+    "fecha": "2026-09-21"
+   }
   },
   "hidroPUlog": [],
   "cisternaM3": 9500,
@@ -671,7 +762,7 @@
   "fpObjetivo": 0.95,
   "cargas": [
    {
-    "id": "c8758o5",
+    "id": "cdkntxf",
     "nombre": "Compresor de proceso",
     "tipo": "motor",
     "kW": 15,
@@ -683,7 +774,7 @@
     "fija": false
    },
    {
-    "id": "c4uej6w",
+    "id": "cv7jypw",
     "nombre": "Alumbrado",
     "tipo": "alumbrado",
     "kW": 9.5,
@@ -699,7 +790,7 @@
  },
  "hidro": {
   "uso": "publico",
-  "material": "cpvc",
+  "material": "cobre",
   "muebles": [
    {
     "id": "wc_flux",
@@ -725,7 +816,7 @@
   "presRed": 0,
   "tramos": [
    {
-    "id": "hrnnmju",
+    "id": "hxxhmqu",
     "tag": "AF-GENERAL",
     "servicio": "fria",
     "um": 72,
@@ -734,7 +825,7 @@
     "tipoUM": "auto"
    },
    {
-    "id": "h7eul85",
+    "id": "h9wmkz4",
     "tag": "AF-RAMAL BAÑOS",
     "servicio": "fria",
     "um": 20,
@@ -789,7 +880,7 @@
   "redundancia": "ninguna",
   "consumos": [
    {
-    "id": "afu9wac",
+    "id": "a8q2e6q",
     "tipo": "generico",
     "nombre": "Sopleteo",
     "cant": 2,
@@ -798,7 +889,7 @@
     "uso": 0.5
    },
    {
-    "id": "arrme9z",
+    "id": "aghhhq4",
     "tipo": "generico",
     "nombre": "Actuadores",
     "cant": 4,

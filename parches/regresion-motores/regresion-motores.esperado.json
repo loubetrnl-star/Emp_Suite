@@ -110,11 +110,11 @@
    }
   },
   "quote": {
-   "ver": "4",
+   "ver": "5",
    "cifras": {
-    "direct": 12336357.400167169,
-    "sub": 18647637.846092694,
-    "tot": 21631259.901467524,
+    "direct": 12402931.921478646,
+    "sub": 18748271.892507117,
+    "tot": 21747995.395308256,
     "aux": [
      [
       "Instalación mecánica, bases, izaje y arranque (35 % del equipo)",
@@ -172,19 +172,19 @@
       76400
      ],
      [
-      "Tubería de CPVC CTS SDR-11 de 2 1/2\" instalada y probada (25 m de los tramos calculados)",
+      "Tubería de Cobre tipo L de 2\" instalada y probada (25 m de los tramos calculados)",
       25,
-      10250
+      52668.8524590164
      ],
      [
-      "Tubería de CPVC CTS SDR-11 de 2\" instalada y probada (18 m de los tramos calculados)",
+      "Tubería de Cobre tipo L de 1 1/2\" instalada y probada (18 m de los tramos calculados)",
       18,
-      5940
+      23739.668852459017
      ],
      [
-      "Cisterna de 0 m³ y equipo de bombeo de 1.5 HP",
+      "Cisterna de 0 m³ y equipo de bombeo de 2 HP",
       1,
-      21750
+      29000
      ],
      [
       "Rociadores automáticos K80 · 1/2\" estándar (K5.6) con red de Acero negro cédula 40 (sistema húmedo) (58 rociadores)",
@@ -263,28 +263,28 @@
      ],
      [
       "Varilla roscada 3/8\" galvanizada, incluye corte y habilitado",
-      756,
-      49140
+      633.6,
+      41184
      ],
      [
       "Anclaje M10 a concreto, incluye barrenado y limpieza de barreno",
-      67,
-      6365
+      88,
+      8360
      ],
      [
       "Abrazadera de sujeción, incluye tornillería",
-      105,
-      29925
+      88,
+      25080
      ],
      [
       "Tuerca y rondana galvanizadas",
-      536,
-      4824
+      704,
+      6336
      ],
      [
       "Riostra sísmica NFPA 13 cap. 18, incluye herrajes y anclaje",
-      29,
-      121800
+      31,
+      130200
      ],
      [
       "Riel tipo canal para corridas múltiples de instalación",
@@ -432,19 +432,19 @@
    "ver": "4",
    "cifras": {
     "Qtotal": 3.699609328,
-    "cdt": 16.90082616125314,
-    "hpBomba": 1.5,
+    "cdt": 19.954799514554082,
+    "hpBomba": 2,
     "cisterna": 0,
     "tramos": [
      [
-      "2 1/2\" · SIN VERIFICAR, CTS/SDR-11 no llega aquí",
+      "2\"",
       3.699609328,
-      0.713449037216779
+      2.398653325436017
      ],
      [
-      "2\"",
+      "1 1/2\"",
       2.208157,
-      1.1873771240363589
+      2.556146189118067
      ]
     ]
    }
@@ -545,33 +545,33 @@
   "soporte": {
    "ver": "2",
    "cifras": {
-    "n": 105,
-    "total": 386654,
+    "n": 88,
+    "total": 385760,
     "part": [
      [
       "Varilla roscada 3/8\" galvanizada, incluye corte y habilitado",
-      756,
-      49140
+      633.6,
+      41184
      ],
      [
       "Anclaje M10 a concreto, incluye barrenado y limpieza de barreno",
-      67,
-      6365
+      88,
+      8360
      ],
      [
       "Abrazadera de sujeción, incluye tornillería",
-      105,
-      29925
+      88,
+      25080
      ],
      [
       "Tuerca y rondana galvanizadas",
-      536,
-      4824
+      704,
+      6336
      ],
      [
       "Riostra sísmica NFPA 13 cap. 18, incluye herrajes y anclaje",
-      29,
-      121800
+      31,
+      130200
      ],
      [
       "Riel tipo canal para corridas múltiples de instalación",

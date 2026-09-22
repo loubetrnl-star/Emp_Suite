@@ -34,14 +34,16 @@ w.eval(String.raw`
   S.vent = { ...S.vent, mode: "general", area: 400, height: 6, occ: 30 };
   S.elec.cargas = [{ ...defaultCarga("Compresor de proceso"), tipo: "motor", kW: 15, V: 220, ph: 3, cant: 1, L: 30, fp: .85 }, { ...defaultCarga("Alumbrado"), tipo: "alumbrado", kW: 9.5, V: 127, ph: 1, cant: 1, L: 40, fp: .95 }];
   S.elec.trafoKVA = 300;
-  S.hidro = { ...defaultHidro(), material: "cpvc", tramos: [{ ...defaultTramoAgua("AF-GENERAL"), um: 72, L: 25, alt: 3 }, { ...defaultTramoAgua("AF-RAMAL BAÑOS"), um: 20, L: 18, alt: 0 }],
+  /* rev 2.9.23 (decisión del dueño 22-sep-2026): la red es de COBRE tipo L para que el golden ejercite la ruta de precios de referencia (con IVA/por tramo → MXN/m) y, en un diámetro, la de proveedor local numérico. */
+  S.hidro = { ...defaultHidro(), material: "cobre", tramos: [{ ...defaultTramoAgua("AF-GENERAL"), um: 72, L: 25, alt: 3 }, { ...defaultTramoAgua("AF-RAMAL BAÑOS"), um: 20, L: 18, alt: 0 }],
     muebles: [{ id: "wc_flux", cant: 4 }, { id: "ming_flux", cant: 2 }, { id: "lavabo", cant: 4 }, { id: "fregadero", cant: 1 }, { id: "manguera", cant: 2 }] };
   S.fuego = { ...defaultFuego(), area: 600, altura: 6, Lramal: 30, Lmontante: 12, presFuente: 30 };
   S.aire = { ...defaultAire(), Lprincipal: 60, consumos: [{ ...defaultConsumo("Sopleteo"), cant: 2, lmin: 400, bar: 6, uso: .5 }, { ...defaultConsumo("Actuadores"), cant: 4, lmin: 250, bar: 6, uso: .3 }] };
   S.civil = { ...defaultCivil(), firmeM2: 120, puertasSimples: 3, puertasLimpias: 2, demoler: true, demolMuroM2: 40 };
   S.soporte = { ...defaultSoporte(), rielM: 60, mesesElevacion: 3 };
   const fam = FAMILIES[0], m = familyPool(fam.id)[0]; if (m) S.quote.items = [{ id: m.id, fam: fam.id, qty: 2, unit: null }];
-  S.quote.hidroPU = { cpvc_1_: 182, cpvc_1_1_4_: 223, cpvc_3_4_: 151, cpvc_1_2_: 128, cpvc_1_1_2_: 260, cpvc_2_: 330, cpvc_2_1_2_: 410, cpvc_3_: 520 };
+  S.quote.hidroPU = { ...S.quote.hidroPU, cobre_1_2_: 128 }; /* 1/2" proveedor local numérico; el resto del cobre por referencia de mercado */
+  S.quote.fx = 18.5; S.quote.fxFecha = "2026-09-22"; S.quote.fxFuente = "fixture de regresión";
   Object.keys(LINKS).forEach((k) => { S.perms[k] = { ts: 1, via: "regresión" }; });
   S.kaizen.items = [{ id: "k1", titulo: "Ajustar horario de FFU", estado: "hacer", owner: "", ahorro: 0, nota: "" }];
   S.tab = "tablero"; recompute();

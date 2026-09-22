@@ -1,46 +1,46 @@
-﻿material,clave,diametro,precio,por_tramo_m,iva_incluido,moneda,origen,fuente,url,fecha
-cobre,cobre_1_2_,"1/2""",1105,6.1,si,MXN,referencia,"Tienda IUSA, menudeo, tubo rígido tipo L tramo 6.10 m",,2026-09-21
-cobre,cobre_3_4_,"3/4""",1762,6.1,si,MXN,referencia,"Tienda IUSA, menudeo, tubo rígido tipo L tramo 6.10 m",,2026-09-21
-cobre,cobre_1_,"1""",2924.99,6.1,si,MXN,referencia,"Tienda IUSA, menudeo, tubo rígido tipo L tramo 6.10 m",,2026-09-21
-cobre,cobre_1_1_4_,"1 1/4""",6172.11,6.1,no,MXN,referencia,"IUSA lista de precios distribuidor plomería-cobre vigente 11-ago-2026, tipo L cód. 308765",https://www.iusa.com.mx/assets/descargables/listas/construccion/lista-de-precios-plomeria-cobre.pdf,2026-09-21
-cobre,cobre_1_1_2_,"1 1/2""",8045.11,6.1,no,MXN,referencia,"IUSA lista de precios distribuidor plomería-cobre vigente 11-ago-2026, tipo L cód. 308766",https://www.iusa.com.mx/assets/descargables/listas/construccion/lista-de-precios-plomeria-cobre.pdf,2026-09-21
-cobre,cobre_2_,"2""",12851.2,6.1,no,MXN,referencia,"IUSA lista de precios distribuidor plomería-cobre vigente 11-ago-2026, tipo L cód. 308767",https://www.iusa.com.mx/assets/descargables/listas/construccion/lista-de-precios-plomeria-cobre.pdf,2026-09-21
-cobre,cobre_2_1_2_,"2 1/2""",22748.07,6.1,no,MXN,referencia,"IUSA lista de precios distribuidor plomería-cobre vigente 11-ago-2026, tipo L cód. 308768",https://www.iusa.com.mx/assets/descargables/listas/construccion/lista-de-precios-plomeria-cobre.pdf,2026-09-21
-cobre,cobre_3_,"3""",30821.54,6.1,no,MXN,referencia,"IUSA lista de precios distribuidor plomería-cobre vigente 11-ago-2026, tipo L cód. 312964",https://www.iusa.com.mx/assets/descargables/listas/construccion/lista-de-precios-plomeria-cobre.pdf,2026-09-21
-cobre,cobre_4_,"4""",57438.08,6.1,no,MXN,referencia,"IUSA lista de precios distribuidor plomería-cobre vigente 11-ago-2026, tipo L cód. 312967",https://www.iusa.com.mx/assets/descargables/listas/construccion/lista-de-precios-plomeria-cobre.pdf,2026-09-21
-cpvc,cpvc_1_2_,"1/2""",,1,no,MXN,proveedor,,,
-cpvc,cpvc_3_4_,"3/4""",,1,no,MXN,proveedor,,,
-cpvc,cpvc_1_,"1""",,1,no,MXN,proveedor,,,
-cpvc,cpvc_1_1_4_,"1 1/4""",,1,no,MXN,proveedor,,,
-cpvc,cpvc_1_1_2_,"1 1/2""",,1,no,MXN,proveedor,,,
-cpvc,cpvc_2_,"2""",,1,no,MXN,proveedor,,,
-cpvc,cpvc_2_1_2_,"2 1/2""",,1,no,MXN,proveedor,,,
-cpvc,cpvc_3_,"3""",,1,no,MXN,proveedor,,,
-cpvc,cpvc_4_,"4""",,1,no,MXN,proveedor,,,
-acero,acero_1_2_,"1/2""",,1,no,MXN,proveedor,,,
-acero,acero_3_4_,"3/4""",,1,no,MXN,proveedor,,,
-acero,acero_1_,"1""",,1,no,MXN,proveedor,,,
-acero,acero_1_1_4_,"1 1/4""",,1,no,MXN,proveedor,,,
-acero,acero_1_1_2_,"1 1/2""",,1,no,MXN,proveedor,,,
-acero,acero_2_,"2""",,1,no,MXN,proveedor,,,
-acero,acero_2_1_2_,"2 1/2""",,1,no,MXN,proveedor,,,
-acero,acero_3_,"3""",,1,no,MXN,proveedor,,,
-acero,acero_4_,"4""",,1,no,MXN,proveedor,,,
-pead,pead_3_4_,"3/4""",,1,no,MXN,proveedor,,,
-pead,pead_1_,"1""",,1,no,MXN,proveedor,,,
-pead,pead_1_1_4_,"1 1/4""",,1,no,MXN,proveedor,,,
-pead,pead_1_1_2_,"1 1/2""",,1,no,MXN,proveedor,,,
-pead,pead_2_,"2""",,1,no,MXN,proveedor,,,
-pead,pead_2_1_2_,"2 1/2""",,1,no,MXN,proveedor,,,
-pead,pead_3_,"3""",,1,no,MXN,proveedor,,,
-pead,pead_4_,"4""",,1,no,MXN,proveedor,,,
-pead,pead_6_,"6""",,1,no,MXN,proveedor,,,
-ppr,ppr_20_mm,20 mm,,1,no,MXN,proveedor,,,
-ppr,ppr_25_mm,25 mm,,1,no,MXN,proveedor,,,
-ppr,ppr_32_mm,32 mm,,1,no,MXN,proveedor,,,
-ppr,ppr_40_mm,40 mm,,1,no,MXN,proveedor,,,
-ppr,ppr_50_mm,50 mm,,1,no,MXN,proveedor,,,
-ppr,ppr_63_mm,63 mm,,1,no,MXN,proveedor,,,
-ppr,ppr_75_mm,75 mm,,1,no,MXN,proveedor,,,
-ppr,ppr_90_mm,90 mm,,1,no,MXN,proveedor,,,
-ppr,ppr_110_mm,110 mm,,1,no,MXN,proveedor,,,
+﻿material,clave,diametro,precio,por_tramo_m,iva_incluido,moneda,origen,fuente,ubicacion,lista,url,fecha
+cobre,cobre_1_2_,"1/2""",1105,6.1,si,MXN,referencia,"Tienda IUSA, menudeo, tubo rígido tipo L tramo 6.10 m",México,neta,,2026-09-21
+cobre,cobre_3_4_,"3/4""",1762,6.1,si,MXN,referencia,"Tienda IUSA, menudeo, tubo rígido tipo L tramo 6.10 m",México,neta,,2026-09-21
+cobre,cobre_1_,"1""",2924.99,6.1,si,MXN,referencia,"Tienda IUSA, menudeo, tubo rígido tipo L tramo 6.10 m",México,neta,,2026-09-21
+cobre,cobre_1_1_4_,"1 1/4""",6172.11,6.1,no,MXN,referencia,"IUSA lista de precios distribuidor plomería-cobre vigente 11-ago-2026, tipo L cód. 308765",México,bruta,https://www.iusa.com.mx/assets/descargables/listas/construccion/lista-de-precios-plomeria-cobre.pdf,2026-09-21
+cobre,cobre_1_1_2_,"1 1/2""",8045.11,6.1,no,MXN,referencia,"IUSA lista de precios distribuidor plomería-cobre vigente 11-ago-2026, tipo L cód. 308766",México,bruta,https://www.iusa.com.mx/assets/descargables/listas/construccion/lista-de-precios-plomeria-cobre.pdf,2026-09-21
+cobre,cobre_2_,"2""",12851.2,6.1,no,MXN,referencia,"IUSA lista de precios distribuidor plomería-cobre vigente 11-ago-2026, tipo L cód. 308767",México,bruta,https://www.iusa.com.mx/assets/descargables/listas/construccion/lista-de-precios-plomeria-cobre.pdf,2026-09-21
+cobre,cobre_2_1_2_,"2 1/2""",22748.07,6.1,no,MXN,referencia,"IUSA lista de precios distribuidor plomería-cobre vigente 11-ago-2026, tipo L cód. 308768",México,bruta,https://www.iusa.com.mx/assets/descargables/listas/construccion/lista-de-precios-plomeria-cobre.pdf,2026-09-21
+cobre,cobre_3_,"3""",30821.54,6.1,no,MXN,referencia,"IUSA lista de precios distribuidor plomería-cobre vigente 11-ago-2026, tipo L cód. 312964",México,bruta,https://www.iusa.com.mx/assets/descargables/listas/construccion/lista-de-precios-plomeria-cobre.pdf,2026-09-21
+cobre,cobre_4_,"4""",57438.08,6.1,no,MXN,referencia,"IUSA lista de precios distribuidor plomería-cobre vigente 11-ago-2026, tipo L cód. 312967",México,bruta,https://www.iusa.com.mx/assets/descargables/listas/construccion/lista-de-precios-plomeria-cobre.pdf,2026-09-21
+cpvc,cpvc_1_2_,"1/2""",,1,no,MXN,proveedor,,,neta,,
+cpvc,cpvc_3_4_,"3/4""",,1,no,MXN,proveedor,,,neta,,
+cpvc,cpvc_1_,"1""",,1,no,MXN,proveedor,,,neta,,
+cpvc,cpvc_1_1_4_,"1 1/4""",,1,no,MXN,proveedor,,,neta,,
+cpvc,cpvc_1_1_2_,"1 1/2""",,1,no,MXN,proveedor,,,neta,,
+cpvc,cpvc_2_,"2""",,1,no,MXN,proveedor,,,neta,,
+cpvc,cpvc_2_1_2_,"2 1/2""",,1,no,MXN,proveedor,,,neta,,
+cpvc,cpvc_3_,"3""",,1,no,MXN,proveedor,,,neta,,
+cpvc,cpvc_4_,"4""",,1,no,MXN,proveedor,,,neta,,
+acero,acero_1_2_,"1/2""",,1,no,MXN,proveedor,,,neta,,
+acero,acero_3_4_,"3/4""",,1,no,MXN,proveedor,,,neta,,
+acero,acero_1_,"1""",,1,no,MXN,proveedor,,,neta,,
+acero,acero_1_1_4_,"1 1/4""",,1,no,MXN,proveedor,,,neta,,
+acero,acero_1_1_2_,"1 1/2""",,1,no,MXN,proveedor,,,neta,,
+acero,acero_2_,"2""",,1,no,MXN,proveedor,,,neta,,
+acero,acero_2_1_2_,"2 1/2""",,1,no,MXN,proveedor,,,neta,,
+acero,acero_3_,"3""",,1,no,MXN,proveedor,,,neta,,
+acero,acero_4_,"4""",,1,no,MXN,proveedor,,,neta,,
+pead,pead_3_4_,"3/4""",,1,no,MXN,proveedor,,,neta,,
+pead,pead_1_,"1""",,1,no,MXN,proveedor,,,neta,,
+pead,pead_1_1_4_,"1 1/4""",,1,no,MXN,proveedor,,,neta,,
+pead,pead_1_1_2_,"1 1/2""",,1,no,MXN,proveedor,,,neta,,
+pead,pead_2_,"2""",,1,no,MXN,proveedor,,,neta,,
+pead,pead_2_1_2_,"2 1/2""",,1,no,MXN,proveedor,,,neta,,
+pead,pead_3_,"3""",,1,no,MXN,proveedor,,,neta,,
+pead,pead_4_,"4""",,1,no,MXN,proveedor,,,neta,,
+pead,pead_6_,"6""",,1,no,MXN,proveedor,,,neta,,
+ppr,ppr_20_mm,20 mm,,1,no,MXN,proveedor,,,neta,,
+ppr,ppr_25_mm,25 mm,,1,no,MXN,proveedor,,,neta,,
+ppr,ppr_32_mm,32 mm,,1,no,MXN,proveedor,,,neta,,
+ppr,ppr_40_mm,40 mm,,1,no,MXN,proveedor,,,neta,,
+ppr,ppr_50_mm,50 mm,,1,no,MXN,proveedor,,,neta,,
+ppr,ppr_63_mm,63 mm,,1,no,MXN,proveedor,,,neta,,
+ppr,ppr_75_mm,75 mm,,1,no,MXN,proveedor,,,neta,,
+ppr,ppr_90_mm,90 mm,,1,no,MXN,proveedor,,,neta,,
+ppr,ppr_110_mm,110 mm,,1,no,MXN,proveedor,,,neta,,
