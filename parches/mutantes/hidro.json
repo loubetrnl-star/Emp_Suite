@@ -1,0 +1,298 @@
+[
+  {
+    "id": "hidro.m01",
+    "que": "Hunter E103.3(3): renglón de 70 WSFU de fluxómetro 58.0 → 50.0 gpm",
+    "logica": true,
+    "buscar": "[70, 58.0]",
+    "reemplazar": "[70, 50.0]",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m02",
+    "que": "conversión gpm → L/s (GPM_LS 0.0630902 → 0.06)",
+    "logica": true,
+    "buscar": "const GPM_LS = 0.0630902;",
+    "reemplazar": "const GPM_LS = 0.06;",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m03",
+    "que": "Hazen-Williams: exponente del diámetro 4.87 → 4.0",
+    "logica": true,
+    "buscar": "Math.pow(D, 4.87)",
+    "reemplazar": "Math.pow(D, 4.0)",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m04",
+    "que": "Hazen-Williams: exponente del gasto 1.852 → 1.8",
+    "logica": true,
+    "buscar": "return 10.67 * Math.pow(Q, 1.852)",
+    "reemplazar": "return 10.67 * Math.pow(Q, 1.8)",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m05",
+    "que": "C de Hazen-Williams del cobre 140 → 100",
+    "logica": true,
+    "buscar": "cobre:  { C: 140,",
+    "reemplazar": "cobre:  { C: 100,",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m06",
+    "que": "velocidad máxima en agua fría 2.4 → 3.0 m/s (selección de diámetro)",
+    "logica": true,
+    "buscar": "const V_MAX_FRIA = 2.4, V_MAX_CAL = 1.5;",
+    "reemplazar": "const V_MAX_FRIA = 3.0, V_MAX_CAL = 1.5;",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m07",
+    "que": "longitud equivalente por accesorios 1.3 → 1.0",
+    "logica": true,
+    "buscar": "const Leq = L * 1.3;",
+    "reemplazar": "const Leq = L * 1.0;",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m08",
+    "que": "eficiencia del conjunto bomba-motor 0.6 → 0.9",
+    "logica": true,
+    "buscar": "const kWbomba = 9.81 * Qtotal * cdt / 1000 / .6;",
+    "reemplazar": "const kWbomba = 9.81 * Qtotal * cdt / 1000 / .9;",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m09",
+    "que": "presión residual en la CDT topada a 10 m (15 → 10)",
+    "logica": true,
+    "buscar": "tramos.reduce((a, t) => a + t.hf, 0) + num(H.presResidual, 15);",
+    "reemplazar": "tramos.reduce((a, t) => a + t.hf, 0) + Math.min(10, num(H.presResidual, 15));",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m10",
+    "que": "DI de cobre tipo L de 2\" 50.42 → 45 mm (ASTM B88)",
+    "logica": true,
+    "buscar": "[50.42, \"2\\\"\"]",
+    "reemplazar": "[45, \"2\\\"\"]",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m11",
+    "que": "unidades mueble del WC con fluxómetro 10 → 5 (E103.3(2))",
+    "logica": true,
+    "buscar": "um: 10,  umPriv: 6,   ud: 8, presMin: 10.5, tipo: \"fluxometro\", cal: 0 },",
+    "reemplazar": "um: 5,  umPriv: 6,   ud: 8, presMin: 10.5, tipo: \"fluxometro\", cal: 0 },",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m12",
+    "que": "dotación de oficinas 70 → 50 L/persona/día (NTC-PA Tabla 3.1: 50 es lo correcto; sólo lo mataría afirmar 70)",
+    "logica": true,
+    "buscar": "{ id: \"oficina\",   label: \"Oficinas\", unidad: \"persona\", l: 70 }",
+    "reemplazar": "{ id: \"oficina\",   label: \"Oficinas\", unidad: \"persona\", l: 50 }",
+    "estado": "fase2:H-202"
+  },
+  {
+    "id": "hidro.m13",
+    "que": "presión mínima del WC con fluxómetro 10.5 → 24.6 m (IPC 604.3: 35 psi es lo correcto; sólo lo mataría afirmar 10.5)",
+    "logica": true,
+    "buscar": "ud: 8, presMin: 10.5,",
+    "reemplazar": "ud: 8, presMin: 24.6,",
+    "estado": "fase2:H-194"
+  },
+  {
+    "id": "hidro.m14",
+    "que": "piso de 0.5 día de reserva retirado (0 días capturados = 0 L)",
+    "logica": true,
+    "buscar": "Math.max(.5, num(H.diasReserva, 1))",
+    "reemplazar": "num(H.diasReserva, 1)",
+    "estado": "fase2:H-197"
+  },
+  {
+    "id": "hidro.m15",
+    "que": "Hunter: sin interpolación entre renglones (escalón al renglón inferior)",
+    "logica": true,
+    "buscar": "return y0 + (y1 - y0) * (x - x0) / (x1 - x0);",
+    "reemplazar": "return y0;",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m16",
+    "que": "velocidad sin el /4 del área (V cuatro veces menor → diámetros chicos)",
+    "logica": true,
+    "buscar": "(Math.PI * Math.pow(num(D_mm) / 1000, 2) / 4)",
+    "reemplazar": "(Math.PI * Math.pow(num(D_mm) / 1000, 2))",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m17",
+    "que": "selección por velocidad con el doble del límite",
+    "logica": true,
+    "buscar": "if (velAgua(Q_ls, d) <= vmax) return",
+    "reemplazar": "if (velAgua(Q_ls, d) <= vmax * 2) return",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m18",
+    "que": "drenaje: la tabla se compara con UD/4",
+    "logica": true,
+    "buscar": "(x[key] || 0) >= ud",
+    "reemplazar": "(x[key] || 0) >= ud / 4",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m19",
+    "que": "drenaje: sin el límite de WC por diámetro",
+    "logica": true,
+    "buscar": "wc <= x.wcMax",
+    "reemplazar": "true",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m20",
+    "que": "ventilación primaria un cuarto de la bajada en vez de la mitad (906.2)",
+    "logica": true,
+    "buscar": "Math.ceil(bajada.d / 2 / 5) * 5",
+    "reemplazar": "Math.ceil(bajada.d / 4 / 5) * 5",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m21",
+    "que": "HP nominales redondeados al más cercano en vez de hacia arriba",
+    "logica": true,
+    "buscar": "const hpBomba = Math.ceil(kWbomba / .746 * 2) / 2;",
+    "reemplazar": "const hpBomba = Math.round(kWbomba / .746 * 2) / 2;",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m22",
+    "que": "calor específico del agua 4.186 → 4.0 kJ/(kg·K)",
+    "logica": true,
+    "buscar": "const kWcal = Qcal * 4.186 * dT;",
+    "reemplazar": "const kWcal = Qcal * 4.0 * dT;",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m23",
+    "que": "dotación de industria 100 → 50 L/trabajador/día (NTC-PA Tabla 3.1)",
+    "logica": true,
+    "buscar": "{ id: \"industria\", label: \"Industria (sin proceso)\", unidad: \"trabajador por turno\", l: 100 }",
+    "reemplazar": "{ id: \"industria\", label: \"Industria (sin proceso)\", unidad: \"trabajador por turno\", l: 50 }",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m24",
+    "que": "gasto de agua caliente con la curva del sistema en vez de la de tanque (hoy sólo lo mataría afirmar 7.2 UM sin fuente)",
+    "logica": true,
+    "buscar": "const Qcal = hunterQ(umCal, \"tanque\");",
+    "reemplazar": "const Qcal = hunterQ(umCal, tipoSistema);",
+    "estado": "fase2:H-199"
+  },
+  {
+    "id": "hidro.m25",
+    "que": "tramo: se ignora el tipoUM capturado y siempre se usa la curva del sistema",
+    "logica": true,
+    "buscar": "const tipo = t.tipoUM === \"auto\" ? tipoSistema : t.tipoUM;",
+    "reemplazar": "const tipo = tipoSistema;",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m26",
+    "que": "drenaje 710.1(2): ramal de 100 mm 160 → 16 UD",
+    "logica": true,
+    "buscar": "{ d: 100, ramal: 160, bajada: 500, wcMax: 999, col1: 180, col2: 216 },",
+    "reemplazar": "{ d: 100, ramal: 16, bajada: 500, wcMax: 999, col1: 180, col2: 216 },",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m27",
+    "que": "unidades mueble sin multiplicar por la cantidad",
+    "logica": true,
+    "buscar": "umTot: m[uso] * cant",
+    "reemplazar": "umTot: m[uso]",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m28",
+    "que": "UD del WC con fluxómetro 8 → 4 (IPC 709.1: 4 es lo correcto; sólo lo mataría afirmar 52 UD)",
+    "logica": true,
+    "buscar": "ud: 8, presMin: 10.5, tipo: \"fluxometro\", cal: 0 },",
+    "reemplazar": "ud: 4, presMin: 10.5, tipo: \"fluxometro\", cal: 0 },",
+    "estado": "fase2:H-203"
+  },
+  {
+    "id": "hidro.m29",
+    "que": "piso de ΔT 5 K retirado",
+    "logica": true,
+    "buscar": "Math.max(5, num(H.tempSalida, 45) - num(H.tempEntrada, 18))",
+    "reemplazar": "Math.max(0, num(H.tempSalida, 45) - num(H.tempEntrada, 18))",
+    "estado": "fase2:H-197"
+  },
+  {
+    "id": "hidro.m30",
+    "que": "piso de pendiente 0.5 % retirado",
+    "logica": true,
+    "buscar": "Math.max(.5, num(H.pendiente, 2))",
+    "reemplazar": "num(H.pendiente, 2)",
+    "estado": "fase2:H-197"
+  },
+  {
+    "id": "hidro.m31",
+    "que": "CPVC 2 1/2\" «SIN VERIFICAR» con otro DI (63 → 55 mm): nada lo vigila porque el renglón se retira",
+    "logica": true,
+    "buscar": "[63, \"2 1/2\\\" · SIN VERIFICAR, CTS/SDR-11 no llega aquí\"]",
+    "reemplazar": "[55, \"2 1/2\\\" · SIN VERIFICAR, CTS/SDR-11 no llega aquí\"]",
+    "estado": "fase2:H-198"
+  },
+  {
+    "id": "hidro.m32",
+    "que": "lavaojos/regadera de emergencia 6 → 60 UM (H-195 saca el mueble de Hunter)",
+    "logica": true,
+    "buscar": "um: 6, umPriv: 6, ud: 4, presMin: 21, tipo: \"tanque\", cal: 0 },",
+    "reemplazar": "um: 60, umPriv: 6, ud: 4, presMin: 21, tipo: \"tanque\", cal: 0 },",
+    "estado": "fase2:H-195"
+  },
+  {
+    "id": "hidro.m33",
+    "que": "presión disponible descontando la mitad de la pérdida",
+    "logica": true,
+    "buscar": "const presDisp = num(H.presRed, 25) - hfTotal;",
+    "reemplazar": "const presDisp = num(H.presRed, 25) - hfTotal * 0.5;",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m34",
+    "que": "precio semilla de la bomba 14,500 → 0 MXN/HP (no es lógica: H-196 lo cambia a «Por cotizar»)",
+    "logica": false,
+    "buscar": "bombaHP: 14500,",
+    "reemplazar": "bombaHP: 0,",
+    "estado": "fase2:H-196"
+  },
+  {
+    "id": "hidro.m35",
+    "que": "CDT sin la altura del edificio",
+    "logica": true,
+    "buscar": "num(H.alturaEdificio, 6) + tramos.reduce",
+    "reemplazar": "num(H.alturaEdificio, 6) * 0 + tramos.reduce",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m36",
+    "que": "presión requerida = mínimo de los muebles en vez del máximo",
+    "logica": true,
+    "buscar": "Math.max(...lista.map((x) => x.presMin)) : 5.6",
+    "reemplazar": "Math.min(...lista.map((x) => x.presMin)) : 5.6",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m37",
+    "que": "unidades mueble de agua caliente sin multiplicar por la cantidad (H-199 rehace la columna «hot»)",
+    "logica": true,
+    "buscar": "calTot: m.cal * m[uso] * cant",
+    "reemplazar": "calTot: m.cal * m[uso]",
+    "estado": "fase2:H-199"
+  }
+]
