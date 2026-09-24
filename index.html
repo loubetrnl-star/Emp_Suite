@@ -5573,7 +5573,7 @@ function buildPropuestaXlsx(opt) {
     fila(L("Corriente de falla estimada", "Estimated fault current"), +(ELEC.IccTrafo / 1000).toFixed(1), "kA", L(`Transformador de ${num(S.elec.trafoKVA, 150)} kVA con Z ${num(S.elec.trafoZ, 4)} % — ESTIMACION para preseleccion, no es estudio de corto circuito`, `${num(S.elec.trafoKVA, 150)} kVA transformer at ${num(S.elec.trafoZ, 4)} % Z — ESTIMATE for preselection, not a short-circuit study`));
     fila(L("Capacidad interruptiva sugerida", "Suggested interrupting rating"), ELEC.kAIC, "kA", L("Primer valor comercial por encima de la corriente de falla estimada", "First standard rating above the estimated fault current"));
     ef.push([]);
-    ef.push([xT(ELEC.alim.nota, XS.NOTA)]);
+    ef.push([xT(L(ELEC.alim.nota, ELEC.alim.notaEn), XS.NOTA)]);
     ef.push([xT(L("Esta memoria no sustituye el dictamen de una unidad de verificacion ni un estudio de arco electrico: es el calculo que se le entrega a quien lo emite.",
       "This calculation does not replace an accredited inspection certificate or an arc-flash study: it is the calculation handed to whoever issues them."), XS.NOTA)]);
     hojas.push({ nombre: HN.MEMORIA_ELECTRICA, congelar: 0, anchos: [34, 26, 8, 12, 12, 12, 10, 14, 10], filas: ef });
@@ -9243,8 +9243,12 @@ const TUBO = [
 /* Capacidades nominales de fusibles e interruptores. NOM-001-SEDE 240-6(a). */
 const OCPD_STD = [15, 20, 25, 30, 35, 40, 45, 50, 60, 70, 80, 90, 100, 110, 125, 150, 175, 200, 225, 250, 300, 350, 400, 450, 500, 600, 700, 800, 1000, 1200, 1600, 2000];
 /* Conductor de puesta a tierra de equipos según la capacidad de la protección.
-   NOM-001-SEDE Tabla 250-122. */
-const TIERRA_T = [[15, "14"], [20, "12"], [60, "10"], [100, "8"], [200, "6"], [300, "4"], [400, "3"], [500, "2"], [600, "1"], [800, "1/0"], [1000, "2/0"], [1200, "3/0"], [1600, "4/0"], [2000, "250"]];
+   NOM-001-SEDE-2012 Tabla 250-122 (p. 151), columnas de cobre y de aluminio.
+   H-183 (rev 2.9.24): la tabla anterior era la del NEC (400 A → 3 AWG), sólo de cobre y cortada en 2000 A. La NOM da
+   400 A → 33.60 mm² (2 AWG), llega a 6000 A y trae aluminio. En 15, 20, 60 y 100 A la columna de aluminio trae «—»:
+   ahí la tabla sólo da el tamaño de cobre, y ése se usa (se declara en la nota del conductor). */
+const TIERRA_CU = [[15, "14"], [20, "12"], [60, "10"], [100, "8"], [200, "6"], [300, "4"], [400, "2"], [500, "2"], [600, "1"], [800, "1/0"], [1000, "2/0"], [1200, "3/0"], [1600, "4/0"], [2000, "250"], [2500, "350"], [3000, "400"], [4000, "500"], [5000, "700"], [6000, "800"]];
+const TIERRA_AL = [[200, "4"], [300, "2"], [400, "1"], [500, "1/0"], [600, "2/0"], [800, "3/0"], [1000, "4/0"], [1200, "250"], [1600, "350"], [2000, "400"], [2500, "600"], [3000, "600"], [4000, "750"], [5000, "1200"], [6000, "1200"]];
 /* Factor por temperatura ambiente sobre la ampacidad de 75 °C.
    NOM-001-SEDE Tabla 310-15(b)(2)(a). En Mexicali un tubo en azotea a 50 °C
    pierde una cuarta parte de la ampacidad: no es un detalle. */
@@ -9260,7 +9264,9 @@ const fTemp = (t) => { const x = F_TEMP.find(([lim]) => num(t, 30) <= lim); retu
 const fGrupo = (nc) => { const x = F_GRUPO.find(([lim]) => Math.max(1, num(nc, 3)) <= lim); return x ? x[1] : 0.35; };
 const ocpdArriba = (I) => OCPD_STD.find((x) => x >= I - 1e-9) ?? OCPD_STD[OCPD_STD.length - 1];
 const ocpdAbajo = (I) => [...OCPD_STD].reverse().find((x) => x <= I) ?? OCPD_STD[0];
-const tierraDe = (ocpd) => (TIERRA_T.find(([lim]) => ocpd <= lim) || TIERRA_T[TIERRA_T.length - 1])[1];
+const tierraMatDe = (ocpd, mat) => (mat === "aluminio" && ocpd > 100 ? "aluminio" : "cobre");
+/* Arriba de 6000 A la tabla no da tamaño: null (la lista de protecciones de la suite termina en 2000 A). */
+const tierraDe = (ocpd, mat) => { const x = (tierraMatDe(ocpd, mat) === "aluminio" ? TIERRA_AL : TIERRA_CU).find(([lim]) => ocpd <= lim); return x ? x[1] : null; };
 /* Regla del conductor pequeño: 14, 12 y 10 AWG no admiten protección por
    encima de 15, 20 y 30 A por más ampacidad que diga la tabla.
    NOM-001-SEDE 240-4(d). */
@@ -9370,7 +9376,7 @@ function selConductor(o) {
   const tope = TOPE_CHICO[awg];
   let topeAplicado = false;
   if (tope && ocpd > tope && !o.motor) { ocpd = tope; topeAplicado = true; }
-  const tierra = tierraDe(ocpd);
+  const tierra = tierraDe(ocpd, mat), tierraMat = tierraMatDe(ocpd, mat);
   const nFases = ph === 3 ? 3 : 2;
   const conductores = [];
   for (let i = 0; i < nFases; i++) conductores.push(AREAS[awg] || 0);
@@ -9379,9 +9385,10 @@ function selConductor(o) {
   const tubo = tuboPara(conductores);
   dv = dvDe(awg) / paralelo;
   return {
-    awg, material: mat, aislamiento: ais, ampBase, ampCorr, ft, fg, I, Idis, ocpd, tierra, tubo, dv, dvMax, rige,
+    awg, material: mat, aislamiento: ais, ampBase, ampCorr, ft, fg, I, Idis, ocpd, tierra, tierraMat, tubo, dv, dvMax, rige,
     topeAplicado, ph, V, L, fp, paralelo,
-    nota: `${paralelo > 1 ? `${paralelo} × ` : ""}${awg} AWG/kcmil ${mat}${paralelo > 1 ? ` por fase (art. 310-10(h)), ${paralelo} canalizaciones` : ""} · ampacidad ${n(ampBase, 0)} A × ${n(ft, 2)} (temp) × ${n(fg, 2)} (agrup.)${paralelo > 1 ? ` × ${paralelo}` : ""} = ${n(ampCorr, 0)} A · rige ${rige} · protección ${ocpd} A · tierra ${tierra} · ${tubo.d}${paralelo > 1 ? " cada una" : ""}`,
+    nota: `${paralelo > 1 ? `${paralelo} × ` : ""}${awg} AWG/kcmil ${mat}${paralelo > 1 ? ` por fase (art. 310-10(h)), ${paralelo} canalizaciones` : ""} · ampacidad ${n(ampBase, 0)} A × ${n(ft, 2)} (temp) × ${n(fg, 2)} (agrup.)${paralelo > 1 ? ` × ${paralelo}` : ""} = ${n(ampCorr, 0)} A · rige ${rige} · protección ${ocpd} A · tierra ${tierra}${tierraMat !== mat ? ` ${tierraMat} (la Tabla 250-122 no da aluminio hasta 100 A)` : ""} · ${tubo.d}${paralelo > 1 ? " cada una" : ""}`,
+    notaEn: `${paralelo > 1 ? `${paralelo} × ` : ""}${awg} AWG/kcmil ${mat === "aluminio" ? "aluminum" : "copper"}${paralelo > 1 ? ` per phase (art. 310-10(h)), ${paralelo} raceways` : ""} · ampacity ${n(ampBase, 0)} A × ${n(ft, 2)} (temp.) × ${n(fg, 2)} (grouping)${paralelo > 1 ? ` × ${paralelo}` : ""} = ${n(ampCorr, 0)} A · governed by ${{ "ampacidad": "ampacity", "caída de tensión": "voltage drop", "ampacidad con conductores en paralelo": "ampacity with parallel conductors", "caída de tensión con conductores en paralelo": "voltage drop with parallel conductors" }[rige] || rige} · OCPD ${ocpd} A · ground ${tierra}${tierraMat !== mat ? " copper (Table 250-122 gives no aluminum size up to 100 A)" : ""} · ${tubo.d}${paralelo > 1 ? " each" : ""}`,
   };
 }
 
@@ -17535,7 +17542,7 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "4", clean: "2", equip: "1", duct: "1", vent: "1", quote: "6", valor: "1", kaizen: "1", elec: "4", hidro: "4", fuego: "2", aire: "2", civil: "3", soporte: "2" };
+const MOTOR_VER = { load: "4", clean: "2", equip: "1", duct: "1", vent: "1", quote: "6", valor: "1", kaizen: "1", elec: "5", hidro: "4", fuego: "2", aire: "2", civil: "3", soporte: "2" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
@@ -17543,7 +17550,8 @@ const MOTOR_CAMBIOS = {
     { ver: "4", rev: "2.9.24", que: "H-120: el DET de muros y cubierta se corrige por la condición de diseño del sitio, (25.6 − ti) + (tm − 29.4) K con tm = to − rango/2 (corrección CLTD, ASHRAE Fundamentals 1997 cap. 28; ratificar con Carrier Tabla 20A)" }],
   clean: [{ ver: "2", rev: "2.9.16", que: "sin pisos de 1 m² ni 2.2 m; 5 Pa de ISO 14644-4 con aviso; ceros capturados respetados" }],
   quote: [{ ver: "2", rev: "2.9.16", que: "red hidráulica por diámetro con precio capturado; sin 50 m supuestos; partidas pendientes" }, { ver: "3", rev: "2.9.19", que: "tramo con longitud y sin unidades mueble queda pendiente" }, { ver: "4", rev: "2.9.23", que: "precio de tubería por renglón con origen (referencia de mercado o proveedor local), IVA desglosado y por metro; sin precio: partida Por cotizar en el Budget, bloqueo sólo en la formal" }, { ver: "5", rev: "2.9.23", que: "precios en USD sólo se convierten con tipo de cambio capturado con fecha; sin fecha salen Por cotizar y bloquean la formal (nada se estima)" }, { ver: "6", rev: "2.9.23", que: "referencias sólo de California y sólo material (mano de obra por capturar; combinados → Por cotizar); referencias IUSA retiradas; flete, aduana e importación como renglón propio siempre Por cotizar hasta capturarlo" }],
-  elec: [{ ver: "2", rev: "2.9.16", que: "canalización con las áreas del conductor de la memoria (THW-LS por omisión, NOM-001-SEDE Cap. 10 Tabla 5)" }, { ver: "3", rev: "2.9.18", que: "siete áreas THHN/THWN-2 corregidas a la Tabla 5" }, { ver: "4", rev: "2.9.19", que: "sin compresor de aire cuando no hay demanda" }],
+  elec: [{ ver: "2", rev: "2.9.16", que: "canalización con las áreas del conductor de la memoria (THW-LS por omisión, NOM-001-SEDE Cap. 10 Tabla 5)" }, { ver: "3", rev: "2.9.18", que: "siete áreas THHN/THWN-2 corregidas a la Tabla 5" }, { ver: "4", rev: "2.9.19", que: "sin compresor de aire cuando no hay demanda" },
+    { ver: "5", rev: "2.9.24", que: "H-183: conductor de puesta a tierra con la Tabla 250-122 de la NOM-001-SEDE-2012 (p. 151): 400 A → 2 AWG (antes 3 AWG, valor del NEC), renglones hasta 6000 A y columna de aluminio (hasta 100 A la tabla sólo da cobre)" }],
   hidro: [{ ver: "2", rev: "2.9.16", que: "tramo sin longitud ya no supone 10 m" }, { ver: "3", rev: "2.9.18", que: "curva de Hunter de IPC apéndice E Table E103.3(3)" }, { ver: "4", rev: "2.9.19", que: "renglones de 2500 a 5000 UM de la misma tabla" }],
   fuego: [{ ver: "2", rev: "2.9.16", que: "sin área no hay demanda, bomba ni reserva; área mínima de operación NFPA 13 con aviso" }],
   aire: [{ ver: "2", rev: "2.9.16", que: "sin demanda no se cuentan unidades" }],

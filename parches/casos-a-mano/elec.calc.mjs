@@ -28,6 +28,8 @@ const abajo = (I, lista = OCPD_CASA) => [...lista].reverse().find((x) => x <= I)
 const TIERRA_CU = [[15, "14"], [20, "12"], [60, "10"], [100, "8"], [200, "6"], [300, "4"], [400, "2"], [500, "2"], [600, "1"], [800, "1/0"], [1000, "2/0"], [1200, "3/0"], [1600, "4/0"], [2000, "250"], [2500, "350"], [3000, "400"], [4000, "500"], [5000, "700"], [6000, "800"]];
 const TIERRA_AL = [[200, "4"], [300, "2"], [400, "1"], [500, "1/0"], [600, "2/0"], [800, "3/0"], [1000, "4/0"], [1200, "250"], [1600, "350"], [2000, "400"], [2500, "600"], [3000, "600"], [4000, "750"], [5000, "1200"], [6000, "1200"]];
 const tierraDe = (ocpd, T = TIERRA_CU) => { const x = T.find(([lim]) => ocpd <= lim); if (!x) throw new Error("fuera de la Tabla 250-122"); return x[1]; };
+/* H-183: la columna de aluminio trae «—» en 15, 20, 60 y 100 A (p. 151): ahí la tabla sólo da el tamaño de cobre. */
+const tierraMat = (ocpd, mat) => (mat === "aluminio" && ocpd > 100 ? tierraDe(ocpd, TIERRA_AL) : tierraDe(ocpd, TIERRA_CU));
 /* ---------- 240-4(d) conductores pequeños de cobre (p. 102) ---------- */
 const TOPE_CHICO = { "14": 15, "12": 20, "10": 30 };
 /* ---------- Capítulo 10, Tabla 5 (p. 1006-1007), área total con aislamiento, mm² ---------- */
@@ -88,7 +90,7 @@ function sel(o) {
   if (ocpd > ampCorr && !motor) { const ab = abajo(ampCorr, ocpdLista); ocpd = ab >= Idis ? ab : arriba(ampCorr, ocpdLista); }
   if (motor) ocpd = Math.max(ocpd, arriba(I * PCT_MOTOR, ocpdLista));
   if (!motor && TOPE_CHICO[awg] && ocpd > TOPE_CHICO[awg]) ocpd = TOPE_CHICO[awg];
-  const tierra = tierraDe(ocpd, mat === "aluminio" ? TIERRA_AL : TIERRA_CU);
+  const tierra = tierraMat(ocpd, mat);
   const cond = []; for (let i = 0; i < (ph === 3 ? 3 : 2); i++) cond.push(AREAS[awg]); if (neutro && ph === 3) cond.push(AREAS[awg]); cond.push(AREAS[tierra]);
   const tubo = tuboPara(cond);
   return { I, Idis, ft, fg, awg, idx: ORD.indexOf(awg), ampBase, ampCorr, dv: dvDe(awg) / paralelo, ocpd, tierra, tierraIdx: ORD.indexOf(tierra), tubo, paralelo, rige };
@@ -183,6 +185,13 @@ const fila = (id, valor, nota) => { out.push([id, valor, nota]); };
 for (const [id, A] of [["CM.elec.4.a", 300], ["CM.elec.4.b", 400], ["CM.elec.4.c", 100], ["CM.elec.4.d", 1000], ["CM.elec.4.e", 2500], ["CM.elec.4.f", 200]]) {
   const t = tierraDe(A); fila(id, ORD.indexOf(t), `tierraDe(${A}) = ${t} (p. 151)`);
 }
+/* H-183: renglones arriba de 2000 A (kcmil como número) y columna de aluminio. */
+fila("CM.elec.4.g", Number(tierraDe(5000)), "5000 A → 355 mm² = 700 kcmil (p. 151)");
+fila("CM.elec.4.h", Number(tierraDe(6000)), "6000 A → 405 mm² = 800 kcmil (p. 151)");
+fila("CM.elec.4.i", ORD.indexOf(tierraMat(400, "aluminio")), `aluminio 400 A → ${tierraMat(400, "aluminio")} (p. 151)`);
+fila("CM.elec.4.j", ORD.indexOf(tierraMat(200, "aluminio")), `aluminio 200 A → ${tierraMat(200, "aluminio")} (p. 151)`);
+fila("CM.elec.4.k", Number(tierraMat(2000, "aluminio")), `aluminio 2000 A → ${tierraMat(2000, "aluminio")} kcmil (p. 151)`);
+fila("CM.elec.4.l", ORD.indexOf(tierraMat(100, "aluminio")), `aluminio 100 A: «—» en la columna de aluminio → cobre ${tierraMat(100, "aluminio")} (p. 151)`);
 
 /* ===================== CM.elec.5 · equipo HVAC con MOP (fase2:H-177) ===================== */
 {
@@ -213,6 +222,7 @@ for (const [id, A] of [["CM.elec.4.a", 300], ["CM.elec.4.b", 400], ["CM.elec.4.c
   const a = sel({ I: 100, V: 220, ph: 3, L: 5, fp: 0.9, mat: "aluminio", tempAmb: 30 });
   fila("CM.elec.7.a", a.idx, `awg ${a.awg} Al: 125 A ≤ 135`);
   fila("CM.elec.7.b", a.ampBase, "Tabla 310-15(b)(16) aluminio 75 °C, 2/0");
+  fila("CM.elec.7.d", a.tierraIdx, `tierra ${a.tierra} de aluminio (ocpd ${a.ocpd} A, Tabla 250-122 p. 151)`);
   fila("CM.elec.7.c", ORD.indexOf("6"), "I 15 A aluminio: mínimo 6 AWG (Tabla 310-106(a), p. 216; Tabla 310-15(b)(16) sin renglón < 6 AWG en Al)");
 }
 

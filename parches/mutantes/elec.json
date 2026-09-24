@@ -1,8 +1,8 @@
 [
   { "id": "elec.m01", "que": "Tabla 5: área THW-LS del 2 AWG 86.00 → 80.00 mm² (relleno de canalización)", "logica": true, "estado": "vigente",
     "buscar": "\"2\": 86.00, \"1\": 122.6", "reemplazar": "\"2\": 80.00, \"1\": 122.6" },
-  { "id": "elec.m02", "que": "Tabla 250-122: tierra de 400 A 3 → 2 AWG (el valor de la NOM); sólo muere afirmando 3 AWG, que la NOM p. 151 no da", "logica": true, "estado": "fase2:H-183",
-    "buscar": "[400, \"3\"]", "reemplazar": "[400, \"2\"]" },
+  { "id": "elec.m02", "que": "Tabla 250-122 (H-183): tierra de cobre de 400 A 2 → 3 AWG (regresa al valor del NEC); lo mata CM.elec.4.b", "logica": true, "estado": "vigente",
+    "buscar": "[300, \"4\"], [400, \"2\"]", "reemplazar": "[300, \"4\"], [400, \"3\"]" },
   { "id": "elec.m03", "que": "220-44: resto de contactos al 100 % en vez de 50 %", "logica": true, "estado": "vigente",
     "buscar": "Math.max(0, kVA - 10) * 0.5", "reemplazar": "Math.max(0, kVA - 10) * 1.0" },
   { "id": "elec.m04", "que": "corriente de falla a la mitad", "logica": true, "estado": "vigente",
@@ -54,5 +54,13 @@
   { "id": "elec.m27", "que": "lista de capacidad interruptiva sin el escalón de 22 kA", "logica": true, "estado": "vigente",
     "buscar": "[10, 14, 18, 22, 25, 35, 42, 65, 100]", "reemplazar": "[10, 14, 18, 25, 35, 42, 65, 100]" },
   { "id": "elec.m28", "que": "240-4(b): siempre el normalizado inferior a la ampacidad (sin el redondeo hacia arriba ≤ 800 A)", "logica": true, "estado": "vigente",
-    "buscar": "if (abajo >= Idis) ocpd = abajo; else ocpd = ocpdArriba(ampCorr);", "reemplazar": "ocpd = abajo;" }
+    "buscar": "if (abajo >= Idis) ocpd = abajo; else ocpd = ocpdArriba(ampCorr);", "reemplazar": "ocpd = abajo;" },
+  { "id": "elec.m29", "que": "Tabla 250-122 columna aluminio (H-183): 400 A 1 → 1/0", "logica": true, "estado": "vigente",
+    "buscar": "[300, \"2\"], [400, \"1\"]", "reemplazar": "[300, \"2\"], [400, \"1/0\"]" },
+  { "id": "elec.m30", "que": "Tabla 250-122 (H-183): la tierra de un circuito de aluminio se toma de la columna de cobre", "logica": true, "estado": "vigente",
+    "buscar": "(mat === \"aluminio\" && ocpd > 100 ? \"aluminio\" : \"cobre\")", "reemplazar": "(\"cobre\")" },
+  { "id": "elec.m31", "que": "Tabla 250-122 (H-183): aluminio también hasta 100 A, donde la tabla trae «—»", "logica": true, "estado": "vigente",
+    "buscar": "mat === \"aluminio\" && ocpd > 100 ?", "reemplazar": "mat === \"aluminio\" && ocpd > 0 ?" },
+  { "id": "elec.m32", "que": "Tabla 250-122 (H-183): renglón de 5000 A cobre 700 → 750 kcmil", "logica": true, "estado": "vigente",
+    "buscar": "[5000, \"700\"]", "reemplazar": "[5000, \"750\"]" }
 ]

@@ -5,18 +5,18 @@
      awgIdx(awg)  índice del calibre en la serie 14, 12, 10, 8, 6, 4, 3, 2, 1, 1/0, 2/0, 3/0, 4/0, 250, 300, 350, 400, 500,
                   600, 750 (para comparar calibres como NÚMERO, no como texto);
      sel(o)       selConductor(o) de la suite (casos directos de selección);
-     tierraDe(A)  tierraDe de la suite (Tabla 250-122).
+     tierraDe(A, mat)  tierraDe de la suite (Tabla 250-122; mat «aluminio» usa la columna de aluminio, H-183).
    Filas «fase2:H-nnn» = valor correcto por norma que hoy la suite NO da; se exigen sólo con CM_FASE2=1.
 
    PRUEBAS QUE PROTEGEN VALORES INCORRECTOS O NO PRUEBAN (se corrigen en la Fase 2 con su hallazgo, aquí sólo se marcan):
-   - pruebas.mjs:3022 22.4 · tautológica: Iref repite la fórmula del código (kW/fp y P/(√3·V·fp) sin Tabla 430-250) y fija
+   - pruebas.mjs:3026 22.4 · tautológica: Iref repite la fórmula del código (kW/fp y P/(√3·V·fp) sin Tabla 430-250) y fija
      el principal en 175 A «porque domina el alimentador» → H-178 (corriente de tabla) y H-188 (430-63 pide la suma:
      175 A del alimentador + ramal del motor mayor, no el mayor de los dos).
-   - pruebas.mjs:3694 J.1 · consagra principal = max(alim.ocpd, ocpd del motor mayor) → H-188 (430-63, p. 426: suma).
-   - pruebas.mjs:3708 J.2 · sin motores principal = alim.ocpd: no prueba nada que no sea la propia regla → H-188.
-   - pruebas.mjs:5495 S.29 · fija tierra 6 AWG para 100 A/125 A con la tabla del NEC (TIERRA_T) → H-183 (la fila
-     400 A → 3 AWG es del NEC; la NOM da 2 AWG, p. 151); protege además 250 % en motores sin tocar 440-22 → H-177.
-   - pruebas.mjs:773 11.6 · «las hojas se alimentan de los resultados reales»: sólo busca el número del principal como
+   - pruebas.mjs:3698 J.1 · consagra principal = max(alim.ocpd, ocpd del motor mayor) → H-188 (430-63, p. 426: suma).
+   - pruebas.mjs:3712 J.2 · sin motores principal = alim.ocpd: no prueba nada que no sea la propia regla → H-188.
+   - (retirada, rev 2.9.24) pruebas.mjs:5502 S.29 se había marcado como protectora de H-183/H-177: no lo es. Sus tierras
+     (100 A → 8 y 125 A → 6 AWG) son iguales en la NOM y en el NEC, y nunca pasa motor:true (sondas de la Fase 2).
+   - pruebas.mjs:777 11.6 · «las hojas se alimentan de los resultados reales»: sólo busca el número del principal como
      texto en el libro; no comprueba ningún cálculo → no prueba (H-188 pasa igual).
    Lista completa y motivo: parches/casos-a-mano/elec.pendientes.md */
 export default async function ({ t, G, S, CM }) {
@@ -24,7 +24,7 @@ export default async function ({ t, G, S, CM }) {
   const ORD = ["14", "12", "10", "8", "6", "4", "3", "2", "1", "1/0", "2/0", "3/0", "4/0", "250", "300", "350", "400", "500", "600", "750"];
   const awgIdx = (a) => ORD.indexOf(String(a));
   const sel = (o) => G("selConductor")(o);
-  const tierraDe = (A) => G("tierraDe")(A);
+  const tierraDe = (A, mat) => G("tierraDe")(A, mat);
   const evalua = (expr) => new Function("ELEC", "S", "awgIdx", "sel", "tierraDe", `return (${expr});`)(G("ELEC"), S, awgIdx, sel, tierraDe);
   const comprobar = (prefijo) => {
     const grupo = filas.filter((f) => f.id === prefijo || f.id.startsWith(prefijo + "."));
@@ -49,7 +49,7 @@ export default async function ({ t, G, S, CM }) {
     () => conEstado(FIXTURE, () => comprobar("CM.elec.2")));
   t("CM.elec.3 (NOM-001-SEDE-2012 430-24 p. 415, 215-2(a)(1) p. 61, Tabla 310-15(b)(16) p. 190, Cap. 10 Tabla 5 p. 1006) alimentador del proyecto de regresión: 32.059 kVA, 84.13 A, 2 AWG, 100 A, principal 125, falla 19.68 kA → 22 kA; fase2:H-188 principal 175 A (430-63 p. 426)",
     () => conEstado(FIXTURE, () => comprobar("CM.elec.3")));
-  t("CM.elec.4 (NOM-001-SEDE-2012 Tabla 250-122 p. 151) tierraDe directa: 100 → 8, 200 → 6, 300 → 4, 1000 → 2/0; fase2:H-183 400 A → 2 AWG (hoy 3) y 2500 A → 350 kcmil (hoy 250)",
+  t("CM.elec.4 (H-183) (NOM-001-SEDE-2012 Tabla 250-122 p. 151) tierraDe directa: 100 → 8, 200 → 6, 300 → 4, 400 → 2 AWG (antes 3, NEC), 1000 → 2/0, 2500 → 350, 5000 → 700, 6000 → 800 kcmil; aluminio 200 → 4, 400 → 1, 2000 → 400 kcmil, ≤ 100 A sólo cobre",
     () => comprobar("CM.elec.4"));
   t("CM.elec.5 (NOM-001-SEDE-2012 440-22(a) p. 449, 430-62(a) p. 426) fase2:H-177 equipo HVAC con MOP: 40VMA-240 (MOP 90 A, hoy 150 A) y 40MBC-24 (MOP 15 A, hoy 25 A) no deben pasar del MOP",
     () => conEstado({ trafoKVA: 300, cargas: [
@@ -58,7 +58,7 @@ export default async function ({ t, G, S, CM }) {
     ] }, () => comprobar("CM.elec.5")));
   t("CM.elec.6 (NOM-001-SEDE-2012 Cap. 10 Tabla 5 p. 1006-1007, Tabla 1 p. 1001, Tabla 4 p. 1002) 100 A 220 V 3F 40 °C: THW-LS 620.44 mm² → EMT 2\" y THHN 511.51 mm² → EMT 1½\"; 1/0 AWG, 125 A",
     () => comprobar("CM.elec.6"));
-  t("CM.elec.7 (NOM-001-SEDE-2012 Tabla 310-15(b)(16) p. 190 columna aluminio, Tabla 310-106(a) p. 216) aluminio 100 A → 2/0 (135 A); fase2:H-186 aluminio 15 A → mínimo 6 AWG (hoy 12 AWG)",
+  t("CM.elec.7 (NOM-001-SEDE-2012 Tabla 310-15(b)(16) p. 190 columna aluminio, Tabla 310-106(a) p. 216, Tabla 250-122 p. 151) aluminio 100 A → 2/0 (135 A), tierra de aluminio 4 AWG (H-183); fase2:H-186 aluminio 15 A → mínimo 6 AWG (hoy 12 AWG)",
     () => comprobar("CM.elec.7"));
   t("CM.elec.8 (NOM-001-SEDE-2012 310-10(h) p. 182, 240-4(c) p. 102, 240-6(a) p. 104) 660 A 440 V: 2 × 750 kcmil = 836 A; fase2:H-184 protección 1000 A > 836 A; fase2:H-185 1900 A → 2500 A (hoy la lista se corta en 2000)",
     () => comprobar("CM.elec.8"));

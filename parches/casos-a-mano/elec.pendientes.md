@@ -8,11 +8,11 @@ Norma: NOM-001-SEDE-2012, texto del DOF en `parches/normas-texto/NOM-001-SEDE-20
 
 | pruebas.mjs | prueba | qué protege | hallazgo |
 |---|---|---|---|
-| 3022 | 22.4 | Tautológica: `Iref` repite la fórmula del código (kW/fp, sin Tabla 430-250, sin eficiencia) y fija el principal en 175 A «porque domina el alimentador» (mayor de dos valores) | H-178, H-188 |
-| 3694 | J.1 | Consagra `principal = max(alim.ocpd, ocpd del motor mayor)`; 430-63 (p. 426) pide la **suma** de la otra carga más la protección del motor | H-188 |
-| 3708 | J.2 | Sin motores `principal = alim.ocpd`: repite la regla del código, no la norma | H-188 |
-| 5495 | S.29 | Fija tierra 6 AWG para 100/125 A usando `TIERRA_T` (tabla del NEC: 400 A → 3 AWG; la NOM p. 151 da 2 AWG) y la protección al 250 % general sin 440-22 | H-183, H-177 |
-| 773 | 11.6 | «Las hojas se alimentan de los resultados reales»: sólo busca el texto del principal en el libro; no comprueba cálculo alguno | — (no prueba) |
+| 3026 | 22.4 | Tautológica: `Iref` repite la fórmula del código (kW/fp, sin Tabla 430-250, sin eficiencia) y fija el principal en 175 A «porque domina el alimentador» (mayor de dos valores) | H-178, H-188 |
+| 3698 | J.1 | Consagra `principal = max(alim.ocpd, ocpd del motor mayor)`; 430-63 (p. 426) pide la **suma** de la otra carga más la protección del motor | H-188 |
+| 3712 | J.2 | Sin motores `principal = alim.ocpd`: repite la regla del código, no la norma | H-188 |
+| 5502 | S.29 | ~~Fija tierra 6 AWG para 100/125 A con la tabla del NEC y la protección al 250 % sin 440-22~~ **Retirada (rev 2.9.24, Fase 2):** sus tierras (100 → 8, 125 → 6 AWG) son iguales en NOM y NEC y nunca pasa `motor:true`; las sondas de H-183 y H-177 la dejan verde. No protege valores incorrectos. | — |
+| 777 | 11.6 | «Las hojas se alimentan de los resultados reales»: sólo busca el texto del principal en el libro; no comprueba cálculo alguno | — (no prueba) |
 
 ## 2. Filas fase2 de la hoja (valor correcto por norma que hoy la suite NO da; se exigen sólo con `CM_FASE2=1`)
 
@@ -22,8 +22,8 @@ Norma: NOM-001-SEDE-2012, texto del DOF en `parches/normas-texto/NOM-001-SEDE-20
 | CM.elec.2.i | H-182 | tierra 6 AWG cuando la fase sube de 2 a 1 AWG por caída (250-122(b) p. 150) | 8 AWG |
 | CM.elec.2.j | H-190 | caída 2.740 % con la columna de tubo de acero de la Tabla 9 (p. 1011: R 0.52, XL 0.187) | 2.603 % (columna PVC, X fijo 0.19) |
 | CM.elec.3.p | H-188 | principal 175 A = 125 A del ramal del motor + 26.24 A de alumbrado (430-63 p. 426) | 125 A (el mayor de dos) |
-| CM.elec.4.b | H-183 | tierraDe(400) = 2 AWG (Tabla 250-122 p. 151) | 3 AWG (NEC) |
-| CM.elec.4.e | H-183 | tierraDe(2500) = 350 kcmil (p. 151) | 250 kcmil (tabla cortada en 2000 A) |
+| CM.elec.4.b | H-183 | tierraDe(400) = 2 AWG (Tabla 250-122 p. 151) | **cerrado** (vigente desde H-183, elec v5) |
+| CM.elec.4.e | H-183 | tierraDe(2500) = 350 kcmil (p. 151) | **cerrado** (vigente desde H-183, elec v5) |
 | CM.elec.5.a/b | H-177 | 40VMA-240: protección ≤ MOP 90 A; 40MBC-24: ≤ 15 A (440-22(a) p. 449) | 150 A y 25 A (250 % general) |
 | CM.elec.7.c | H-186 | aluminio 15 A → mínimo 6 AWG (Tabla 310-106(a) p. 216; sin renglón < 6 AWG en Tabla 310-15(b)(16) p. 190) | 12 AWG |
 | CM.elec.8.c | H-184 | 660 A a 440 V: protección ≤ ampacidad (240-4(c) p. 102); hay que subir el conductor | 1000 A sobre 2 × 750 = 836 A |
@@ -63,5 +63,6 @@ Norma: NOM-001-SEDE-2012, texto del DOF en `parches/normas-texto/NOM-001-SEDE-20
 | Cargas automáticas (tomarHVAC, cédula, ventilación, aire, hidro, fuego, FFU) | No se cubren: dependen de otros motores; los casos usan sólo cargas capturadas (`tomarHVAC:false`), como 22.4 y J.1. |
 
 ## 4. Compuerta de mutantes
-`node parches/mutantes/mutantes.mjs elec` → ver la tabla en el commit. `elec.m02` (tierra 400 A 3 → 2) queda
-`fase2:H-183`: sólo muere afirmando 3 AWG, que la NOM (p. 151) no da; la fila CM.elec.4.b lo exige en la Fase 2.
+`node parches/mutantes/mutantes.mjs elec` → ver la tabla en el commit. H-183 (elec v5): `elec.m02` se reapuntó al valor
+correcto (tierra 400 A 2 → 3, lo mata CM.elec.4.b) y pasó a vigente; nuevos `elec.m29`–`m32` (columna de aluminio, respaldo de
+cobre hasta 100 A, renglón de 5000 A).

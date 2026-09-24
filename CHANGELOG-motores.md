@@ -61,7 +61,7 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 |---|---|---|
 | 1 | 2.9.15 | lógica de partida |
 
-## Eléctrico (`elec`) · v4
+## Eléctrico (`elec`) · v5
 
 | Versión | Rev | Hallazgo / cambio de lógica |
 |---|---|---|
@@ -69,6 +69,7 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 | 2 | 2.9.16 | canalización con las áreas del conductor de la memoria (THW-LS por omisión, NOM-001-SEDE Cap. 10 Tabla 5) |
 | 3 | 2.9.18 | siete áreas THHN/THWN-2 corregidas a la Tabla 5 |
 | 4 | 2.9.19 | sin compresor de aire cuando no hay demanda |
+| 5 | 2.9.24 | H-183: conductor de puesta a tierra con la Tabla 250-122 de la NOM-001-SEDE-2012 (p. 151): 400 A → 2 AWG (antes 3 AWG, valor del NEC), renglones hasta 6000 A y columna de aluminio (hasta 100 A la tabla sólo da cobre) |
 
 ## Hidráulico sanitario (`hidro`) · v4
 
