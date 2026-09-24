@@ -429,7 +429,7 @@ t("4.6 aceptada, cada carga queda como carga propia del cuadro con su origen", (
 });
 /* H-177 (rev 2.9.24): el equipo con motocompresor se rige por el art. 440 con sus datos de placa; aceptar la cédula
    descartaba MCA y MOP y el cuadro protegía al 250 % de la Tabla 430-52, por arriba del MOP. */
-t("S.41 (H-177) aceptada la cédula, cada equipo con motocompresor conserva su MCA y su MOP; el conductor cubre la MCA y la protección no pasa del MOP (NOM-001-SEDE-2012 440-4(b), 440-22(a) y (c), 440-35, p. 445-450)", () => {
+t("S.45 (H-177) aceptada la cédula, cada equipo con motocompresor conserva su MCA y su MOP; el conductor cubre la MCA y la protección no pasa del MOP (NOM-001-SEDE-2012 440-4(b), 440-22(a) y (c), 440-35, p. 445-450)", () => {
   const prop = G("propuestaElecFilas")().filter((c) => Number(c.mop) > 0);
   if (!prop.length) throw new Error("la cédula del banco no trae equipos con MOP: la prueba no probaría nada");
   const ced = (S.elec.cargas || []).filter((c) => c.origen === "cedula" && Number(c.mop) > 0);
@@ -449,7 +449,7 @@ t("S.41 (H-177) aceptada la cédula, cada equipo con motocompresor conserva su M
   if (!G("ELEC").avisos.some((a) => /estimad/i.test(a.msg) && /placa/.test(a.msg))) throw new Error("sin aviso de MCA/MOP estimados");
 });
 /* H-177: datos de placa incompletos o incongruentes, placa capturada por el usuario y equipo sin kW. */
-t("S.42 (H-177) art. 440 con placa: sólo el MOP → aviso y se protege como motor general; MCA de placa manda sola; MOP 10 A → fusible de 10 A, nunca 15; sin kW no fija el principal", () => {
+t("S.46 (H-177) art. 440 con placa: sólo el MOP → aviso y se protege como motor general; MCA de placa manda sola; MOP 10 A → fusible de 10 A, nunca 15; sin kW no fija el principal", () => {
   const guardado = JSON.stringify(S.elec);
   const dc = (x) => ({ ...G("defaultCarga")(x.nombre), tipo: "motor", V: 220, ph: 3, cant: 1, L: 20, fp: .85, ...x });
   const arma = (cargas) => { S.elec = { ...G("defaultElec")(), tomarHVAC: false, trafoKVA: 300, Ltablero: 30, trafoZ: 4, cargas }; G("recompute")(); return G("ELEC"); };
@@ -476,6 +476,131 @@ t("S.42 (H-177) art. 440 con placa: sólo el MOP → aviso y se protege como mot
     if (R.avisos.some((a) => /antes de la rev/.test(a.msg))) throw new Error("aviso que afirma una fecha que no conoce");
   } finally { S.elec = JSON.parse(guardado); G("recompute")(); }
 });
+/* H-179 (rev 2.9.24): «nada se estima» (CLAUDE.md regla 6). Ltablero 30 m, transformador 150 kVA / Z 4 %, distancias automáticas
+   Ltablero + 15/25/20/15/30/10 m y 25 m por carga se imprimían como si fueran captura. Cubre también H-189 (L = 0 imprimía
+   una caída de 0.00 % sin aviso). Se comprueba renglón por renglón en motor, memoria, PDF, libro y pantalla, en las dos
+   direcciones: sin captura dice «pendiente»; con captura vuelve el número con su procedencia. */
+const txtPdfE = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");
+t("S.47 (H-179, H-189) sin captura no hay distancia al tablero, transformador ni longitud supuestos: caída y falla quedan «pendiente» con aviso en motor, memoria, PDF, libro y pantalla; con captura vuelven los números con su procedencia", () => {
+  const guardado = JSON.stringify(S.elec), tab0 = S.tab;
+  try {
+    const d = G("defaultElec")();
+    eq([d.Ltablero, d.trafoKVA, d.trafoZ].map((v) => (v == null ? "vacío" : v)).join("|"), "vacío|vacío|vacío", "defaultElec sin distancia ni transformador:");
+    /* Proyecto vacío: sin cargas no hay nada que pedir. */
+    S.elec = { ...d, tomarHVAC: false, cargas: [] }; G("recompute")();
+    if (G("ELEC").avisos.some((a) => a.lvl === "err")) throw new Error("un proyecto sin cargas no debe mostrar errores de distancia ni de transformador");
+    S.elec = { ...d, tomarHVAC: false, cargas: [
+      { ...G("defaultCarga")("Motor sin distancia"), tipo: "motor", kW: 7.5, V: 220, ph: 3, fp: .85 },
+      { ...G("defaultCarga")("Alumbrado nave"), tipo: "alumbrado", kW: 4, V: 127, ph: 1, fp: .95, L: 35 }] };
+    G("recompute")();
+    let R = G("ELEC");
+    eq(R.calc[0].cond.dv, null, "caída del ramal con L = 0 (H-189): pendiente, no 0.00 % ni 25 m supuestos:");
+    eq(R.alim.dv, null, "caída del alimentador sin distancia: pendiente (no 30 m):");
+    eq(R.IccTrafo, null, "corriente de falla sin transformador: pendiente (no 150 kVA / Z 4 %):");
+    eq(R.kAIC, null, "capacidad interruptiva: pendiente:");
+    contiene(R.alim.rige, "pendiente de longitud", "sin distancia el calibre del alimentador se declara mínimo, no «rige ampacidad» a secas:");
+    contiene(R.calc[0].cond.nota, "pendiente de longitud", "y el del ramal:");
+    const err = (k) => R.avisos.some((a) => a.lvl === "err" && a.msg.includes(k));
+    ["sin longitud capturada (Motor sin distancia)", "Falta la distancia al tablero", "Falta el transformador de la acometida"].forEach((k) => { if (!err(k)) throw new Error(`sin aviso «${k}»`); });
+    if (R.avisos.some((a) => /80 %|\(0 kVA\)/.test(a.msg))) throw new Error("sin transformador no puede haber aviso de «80 % del transformador»");
+    const memo = R.memo.join(" ");
+    contiene(memo, "Caída de tensión PENDIENTE (falta la distancia al tablero)", "memoria, alimentador:");
+    contiene(memo, "Corriente de falla PENDIENTE: falta el transformador de la acometida", "memoria, falla:");
+    contiene(memo, "Motor sin distancia pendiente", "memoria, L de cada carga (pendiente):"); contiene(memo, "Alumbrado nave 35 m", "y la capturada:");
+    if (/\b30 m\b|150 kVA|Z 4 %|\bnull\b|—|en 0 m|de 0 kVA|datos capturados/.test(memo)) throw new Error("la memoria imprime un valor por omisión o un hueco como dato");
+    const pdf = txtPdfE(G("buildElecPdf")());
+    if (/undefined|NaN|\bnull\b/.test(pdf)) throw new Error("el PDF imprime «undefined», «NaN» o «null»");
+    contiene(pdf, "Caida de tension del alimentador pendiente: falta la distancia al tablero", "PDF, alimentador:");
+    contiene(pdf, "Corriente de falla estimada pendiente: falta el transformador", "PDF, falla:");
+    contiene(pdf, "Distancia al tablero pendiente", "PDF, bases:"); contiene(pdf, "Transformador pendiente", "PDF, bases del transformador:");
+    if (!/Motor sin distancia .*pend\. pend\./.test(pdf)) throw new Error("PDF: la fila de la carga sin L no dice «pend.» en L y en e %");
+    if (/minima (null|\d+) kA/.test(pdf)) throw new Error("PDF: capacidad interruptiva sin transformador");
+    const x = leerXlsx(G("buildPropuestaXlsx")({ lang: "es", mon: "MXN" })).txt;
+    if (/undefined|NaN|Transformador de 0 kVA|Z 0 %/.test(x)) throw new Error("el libro imprime un hueco como dato");
+    const cumpl = celdasXlsxFila(x, "Caida de tension del alimentador", /3 % maximo recomendado/);
+    if (!cumpl || !cumpl.c.includes("PENDIENTE") || cumpl.c.includes("SI")) throw new Error(`libro, cumplimiento de caída: ${cumpl && cumpl.c.join(" | ")}`);
+    const hojaMem = /MEMORIA ELECTRICA/;
+    const filaMotor = celdasXlsxFila(x, "Motor sin distancia", hojaMem);
+    if (!filaMotor || !filaMotor.c.includes("pendiente")) throw new Error(`libro, L de la carga sin distancia: ${filaMotor && filaMotor.c.join(" | ")}`);
+    ["Corriente de falla estimada", "Capacidad interruptiva sugerida"].forEach((k) => { const f = celdasXlsxFila(x, k, hojaMem); if (!f || !f.c.includes("PENDIENTE")) throw new Error(`libro, ${k}: ${f && f.c.join(" | ")}`); });
+    S.tab = "electrico"; G("render")();
+    const h = w.document.querySelector("#view").textContent;
+    contiene(h, "Caída del alimentadorpendiente", "pantalla, alimentador:"); contiene(h, "Falla estimadapendiente", "pantalla, falla:");
+    if (!/Motor sin distancia[\s\S]*?pendiente/.test(h)) throw new Error("pantalla: la carga sin L no dice pendiente");
+    if (/null kA|— %/.test(h)) throw new Error("pantalla: hueco impreso como número");
+    /* Transformador a medias: sin falla ni capacidad interruptiva, y el aviso dice cuál dato falta. El 80 % sólo necesita el kVA. */
+    S.elec = { ...S.elec, trafoKVA: 5, trafoZ: null }; G("recompute")(); R = G("ELEC");
+    eq(R.IccTrafo, null, "kVA sin Z: falla pendiente:"); eq(R.kAIC, null, "kVA sin Z: interruptiva pendiente:");
+    if (!err("Falta la impedancia Z de placa del transformador (kVA capturado: 5)")) throw new Error("kVA sin Z: el aviso no dice que falta la Z");
+    if (!R.avisos.some((a) => a.lvl === "err" && /supera el 80 % del transformador/.test(a.msg))) throw new Error("con kVA capturado la sobrecarga del transformador debe avisarse aunque falte la Z");
+    S.elec = { ...S.elec, trafoKVA: null, trafoZ: 4 }; G("recompute")(); R = G("ELEC");
+    eq(R.IccTrafo, null, "Z sin kVA: falla pendiente:");
+    if (!err("Falta la capacidad en kVA del transformador (Z capturada: 4 %)")) throw new Error("Z sin kVA: el aviso no dice que falta el kVA");
+    /* Con todo capturado vuelve el número con su procedencia, en todas las salidas. */
+    S.elec = { ...S.elec, Ltablero: 30, trafoKVA: 300, trafoZ: 4, cargas: S.elec.cargas.map((c) => ({ ...c, L: c.L || 20 })) }; G("recompute")(); R = G("ELEC");
+    if (!(R.alim.dv > 0) || !(R.calc[0].cond.dv > 0) || !(R.IccTrafo > 0) || !(R.kAIC > 0)) throw new Error("con captura completa la caída y la falla deben calcularse");
+    if (/pendiente/.test(R.alim.rige)) throw new Error("con distancia el alimentador ya no es «mínimo»");
+    const memo2 = R.memo.join(" ");
+    contiene(memo2, "% en 30 m de los", "memoria con distancia:"); contiene(memo2, "transformador de 300 kVA e impedancia 4 % (datos capturados)", "memoria con transformador:");
+    if (/PENDIENTE/.test(memo2)) throw new Error("con captura completa la memoria sigue diciendo PENDIENTE");
+    const pdf2 = txtPdfE(G("buildElecPdf")());
+    contiene(pdf2, "Distancia al tablero 30 m (capturada)", "PDF con distancia:"); contiene(pdf2, "300 kVA, Z 4 % (placa capturada)", "PDF con transformador:");
+    if (!/Corriente de falla estimada [\d.,]+ kA · capacidad interruptiva minima \d+ kA/.test(pdf2)) throw new Error("PDF: la falla no volvió a ser número");
+    const x2 = leerXlsx(G("buildPropuestaXlsx")({ lang: "es", mon: "MXN" })).txt;
+    const f2 = celdasXlsxFila(x2, "Corriente de falla estimada", /MEMORIA ELECTRICA/);
+    if (!f2 || f2.c.includes("PENDIENTE") || !f2.c.some((v) => /300 kVA con Z 4 % — placa capturada/.test(v))) throw new Error(`libro con transformador: ${f2 && f2.c.join(" | ")}`);
+    G("render")();
+    const h2 = w.document.querySelector("#view").textContent;
+    if (/Caída del alimentadorpendiente|Falla estimadapendiente/.test(h2)) throw new Error("pantalla con captura completa sigue en pendiente");
+  } finally { S.elec = JSON.parse(guardado); S.tab = tab0; G("recompute")(); }
+});
+t("S.48 (H-179) las seis cargas que entran de otros motores (cédula HVAC, extracción, compresor de aire, bomba de agua, bomba contra incendio, FFU) no traen distancia supuesta: sin L quedan pendientes de longitud", () => {
+  const R = G(`(() => { const sv = { AIRE, HIDRO, CLEAN };
+    try {
+      AIRE = { ...(AIRE || {}), principal: { ...((AIRE && AIRE.principal) || {}), tipo: "tornillo", hp: 10, kW: 7.46 }, nUnidades: 1 };
+      HIDRO = { ...(HIDRO || {}), kWbomba: 1.87, hpBomba: 2.5 };
+      CLEAN = { ...(CLEAN || {}), sum: { ...((CLEAN && CLEAN.sum) || {}), ffu: 12 } };
+      return conPermisoTemporal(CRUCES_ELEC, () => computeElec({ ...defaultElec(), tomarHVAC: true, cargas: [] }));
+    } finally { AIRE = sv.AIRE; HIDRO = sv.HIDRO; CLEAN = sv.CLEAN; } })()`);
+  const ids = R.calc.map((c) => c.id);
+  ["vent-1", "aire-1", "hidro-1", "fuego-1", "ffu-1"].forEach((id) => { if (!ids.includes(id)) throw new Error(`falta la carga ${id}: la prueba no probaría esa rama (hay ${ids.join(", ")})`); });
+  if (!ids.some((id) => id.startsWith("hvac-"))) throw new Error("falta la cédula HVAC");
+  R.calc.forEach((c) => { eq(c.L, null, `${c.id}, L:`); eq(c.cond.dv, null, `${c.id}, caída:`); });
+  const a = R.avisos.find((x) => x.lvl === "err" && /sin longitud capturada/.test(x.msg));
+  if (!a || !/acepta la propuesta «Cargas eléctricas de los demás motores»/.test(a.msg)) throw new Error("el aviso de las cargas en vivo debe decir cómo capturar su distancia");
+  G("recompute")();
+  const f = G("propuestaElecFilas")();
+  f.forEach((c) => { if (c.L != null && c.L !== 0) throw new Error(`${c.nombre}: la propuesta la entrega con L = ${c.L} m que nadie capturó`); });
+});
+t("S.49 (H-179) un proyecto guardado antes de la rev 2.9.24 conserva sus números, pero los valores por omisión viejos (30 m, 150 kVA, Z 4 %, distancia al tablero + 10 a 30 m de la cédula) salen «sin confirmar», nunca como captura; la marca cae al capturar", () => {
+  const guardado = JSON.stringify(S);
+  const txtPdf = txtPdfE;
+  try {
+    const viejo = JSON.parse(JSON.stringify(S));
+    viejo.elec = { sistema: "3F4H-220", material: "cobre", aislamiento: "thw-ls", tempAmb: 40, nCond: 3, dvRamal: 3, dvTotal: 5, trafoKVA: 150, trafoZ: 4, Ltablero: 30, fpObjetivo: .95, tomarHVAC: false,
+      cargas: [{ id: "cedA", nombre: "Condensadora", tipo: "motor", kW: 7.6, V: 220, ph: 3, cant: 1, L: 45, fp: .85, origen: "cedula", ts: 1, modelo: "40VMA-096" },
+        { id: "u1", nombre: "Bomba capturada", tipo: "proceso", kW: 3, V: 220, ph: 3, cant: 1, L: 45, fp: .85 }] };
+    G("reemplazarEstado")(viejo); G("recompute")();
+    let R = G("ELEC");
+    const memo = R.memo.join(" ");
+    contiene(memo, "Condensadora 45 m (sin confirmar)", "memoria, carga:"); contiene(memo, "alimentador general 30 m (sin confirmar)", "memoria, alimentador:");
+    contiene(memo, "SIN CONFIRMAR", "memoria, falla:");
+    eq(S.elec.Ltablero, 30, "el valor se conserva (no se mueve ningún número):");
+    eq(R.sinConf.Ltablero && R.sinConf.trafoKVA && R.sinConf.trafoZ, true, "distancia, kVA y Z marcados sin confirmar:");
+    eq(R.calc[0].Lsin, true, "la distancia automática de la cédula (30 + 15) sale sin confirmar:");
+    eq(R.calc[1].Lsin, false, "la de una carga capturada a mano no:");
+    if (/datos capturados/.test(memo)) throw new Error("la memoria da como captura un valor por omisión viejo");
+    if (!R.avisos.some((a) => a.lvl === "warn" && /sin confirmar/.test(a.msg))) throw new Error("sin aviso para confirmar los valores viejos");
+    const pdf = txtPdf(G("buildElecPdf")());
+    if (/\(capturada\)|placa capturada/.test(pdf)) throw new Error("el PDF da como captura un valor por omisión viejo");
+    contiene(pdf, "sin confirmar", "PDF:");
+    /* Al capturar otro valor la marca cae. */
+    S.elec.Ltablero = 32; S.elec.trafoZ = 5.5; G("recompute")(); R = G("ELEC");
+    eq(R.sinConf.Ltablero || R.sinConf.trafoZ, false, "capturados, dejan de estar sin confirmar:");
+    eq(R.sinConf.trafoKVA, true, "el kVA que no se tocó sigue sin confirmar:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 
 /* ====== 5. Regla 3 · si cambia el origen, el destino no se recalcula ===== */
 t("5.1 cambiar la carga térmica marca ductos como desactualizado, sin tocarlo", () => {
@@ -5749,8 +5874,8 @@ t("S.35 (rev 2.9.19, revisión adversarial de 2.9.16–2.9.18) pendientes en Exc
 t("S.36 (rev 2.9.20, decisión del dueño) versión por motor en el sello: sólo se desactualiza la disciplina cuyo motor cambió; aviso al abrir con vX → vY y el cambio; nada se recalcula solo; la memoria muestra antes y después", () => {
   llenarTodoS();
   const MV = G("MOTOR_VER");
-  /* H-107: carga v3 = lógica de la rev 2.9.21 (declarada en la 2.9.24); H-120: carga v4 = corrección CLTD por sitio. H-183: eléctrico v5 = Tabla 250-122 de la NOM; H-177: v6 = art. 440 con MCA/MOP. */
-  eq(MV.elec, "6", "eléctrico v6 (H-177):"); eq(MV.hidro, "4", "hidro v4:"); eq(MV.load, "4", "carga v4:"); eq(MV.duct, "1", "ductos sin cambio de lógica: v1:");
+  /* H-107: carga v3 = lógica de la rev 2.9.21 (declarada en la 2.9.24); H-120: carga v4 = corrección CLTD por sitio. H-183: eléctrico v5 = Tabla 250-122 de la NOM; H-177: v6 = art. 440 con MCA/MOP; H-179: v7 = nada se supone (pendientes). */
+  eq(MV.elec, "7", "eléctrico v7 (H-179):"); eq(MV.hidro, "4", "hidro v4:"); eq(MV.load, "4", "carga v4:"); eq(MV.duct, "1", "ductos sin cambio de lógica: v1:");
   Object.keys(MV).forEach((id) => { const c = G("MOTOR_CAMBIOS")[id] || []; if (MV[id] !== "1" && !c.some((x) => x.ver === MV[id])) throw new Error(`${id}: la versión ${MV[id]} no tiene hallazgo registrado`); });
   const s0 = JSON.stringify(S.sellos || {});
   try {

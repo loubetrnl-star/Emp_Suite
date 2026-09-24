@@ -34,6 +34,9 @@ w.eval(String.raw`
   S.vent = { ...S.vent, mode: "general", area: 400, height: 6, occ: 30 };
   S.elec.cargas = [{ ...defaultCarga("Compresor de proceso"), tipo: "motor", kW: 15, V: 220, ph: 3, cant: 1, L: 30, fp: .85 }, { ...defaultCarga("Alumbrado"), tipo: "alumbrado", kW: 9.5, V: 127, ph: 1, cant: 1, L: 40, fp: .95 }];
   S.elec.trafoKVA = 300;
+  /* H-179 (rev 2.9.24): defaultElec() ya no trae distancia al tablero ni transformador supuestos; el proyecto fijo los captura
+     explícitos con los mismos valores que siempre tuvo (30 m, Z 4 %, fp objetivo 0.95). */
+  S.elec.Ltablero = 30; S.elec.trafoZ = 4; S.elec.fpObjetivo = .95;
   /* rev 2.9.23 (decisión del dueño 22-sep-2026): la red es de COBRE tipo L para que el golden ejercite la ruta de precios de referencia (con IVA/por tramo → MXN/m) y, en un diámetro, la de proveedor local numérico. */
   S.hidro = { ...defaultHidro(), material: "cobre", tramos: [{ ...defaultTramoAgua("AF-GENERAL"), um: 72, L: 25, alt: 3 }, { ...defaultTramoAgua("AF-RAMAL BAÑOS"), um: 20, L: 18, alt: 0 }],
     muebles: [{ id: "wc_flux", cant: 4 }, { id: "ming_flux", cant: 2 }, { id: "lavabo", cant: 4 }, { id: "fregadero", cant: 1 }, { id: "manguera", cant: 2 }] };

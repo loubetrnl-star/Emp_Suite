@@ -56,11 +56,10 @@ de la MCA/RLA de placa (440-33, 430-25, 430-62(a)); la revisión lo confirmó co
 
 | hallazgo | motivo |
 |---|---|
-| H-179 (valores por omisión impresos como captura: Ltablero 30 m, trafo 150 kVA/Z 4 %, distancias automáticas) | El valor correcto es «pendiente», no un número: la hoja sólo compara números. Queda para la Fase 2 con prueba de texto. |
+| H-179 (valores por omisión impresos como captura: Ltablero 30 m, trafo 150 kVA/Z 4 %, distancias automáticas) | **Cerrado en el motor eléctrico** (elec v7, pruebas S.47, S.48 y S.49). Cubre también **H-189** (L = 0 ya no imprime 0.00 %: pendiente con aviso; la prueba S.47 lleva los dos ID). Proyectos guardados antes: conservan 30/150/4 y las distancias automáticas de la cédula, marcados «sin confirmar» (sanearEstado). **Dependencias fuera de elec**, para sus fases: `computeQuote` cotiza el alimentador con `num(S.elec.Ltablero, 30)` (sin distancia debe ir a «pendiente de longitud», con H-181) y `computeKaizen` estima la pérdida del alimentador con los mismos 30 m. |
 | H-180 (kWe estimados con `estimado:false`, fp por tipo sin fuente) | Igual: es trazabilidad/etiquetas, no un número comprobable contra la norma. |
 | H-181 (cotización eléctrica no sigue al cálculo: juegos × metros, tablero por capacidad) | Es del motor `quote` (partidas); fuera del alcance de `elec`. Dependencia para el integrador. |
 | H-187 (bomba contra incendio como motor general, art. 695) | El texto del art. 695 (p. 827-831) está en la NOM, pero la corrección es una rama propia (no un número del cuadro actual): sin caso numérico posible hasta que exista la rama. |
-| H-189 (L = 0 imprime caída 0.00 % sin aviso) | El valor correcto es «pendiente de longitud»; no es número. |
 | H-192 (equivalencia THW-LS ↔ THW no declarada; sin columna de cantidad) | No mueve números; texto de memoria. Se anota en la fila CM.elec.1.k como equivalencia usada. |
 | H-193 (tubo 3½" designación 89 vs 91; «factor de demanda 1.16»; resistencia Al 8 AWG) | Cosméticos; sólo el factor < 25 °C tiene fila (CM.elec.11.f). La designación 91 mm se evita en la hoja usando `tubo.area`. |
 | Neutro contado en el circuito del motor de 3F4H-220 (CM.elec.1.k/l) | Se deja **vigente** como criterio de la casa declarado (index.html:9368): la NOM no dice que un motor trifásico lleve neutro, pero tampoco lo prohíbe en un sistema de 4 hilos; H-191 sólo se exige para 3F3H (CM.elec.13.d/e). Decisión pendiente del dueño. |

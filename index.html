@@ -1737,13 +1737,16 @@ function buildElecPdf() {
     ["Agrupamiento", `${num(E.nCond, 3)} portadores · factor ${n(fGrupo(E.nCond), 2)} (Tabla 310-15(b)(3)(a))`],
     ["Caida de tension", `${n(num(E.dvRamal, 3), 1)} % en derivado y ${n(num(E.dvTotal, 5), 1)} % acumulada (recomendacion de los art. 210-19 y 215-2)`],
     ["Carga continua", "125 % segun art. 210-19(a)"],
+    ["Distancia al tablero", R.Lalim != null ? `${n(R.Lalim, 0)} m (${R.sinConf.Ltablero ? "valor por omision de una revision anterior, sin confirmar" : "capturada"})` : "pendiente: no capturada (no se supone)"],
+    ["Transformador", R.trafoKVA != null && R.trafoZ != null ? `${n(R.trafoKVA, 0)} kVA, Z ${n(R.trafoZ, 1)} % (${R.sinConf.trafoKVA || R.sinConf.trafoZ ? "valores por omision de una revision anterior, sin confirmar" : "placa capturada"})`
+      : R.trafoKVA != null ? `${n(R.trafoKVA, 0)} kVA; Z de placa pendiente (no se supone)` : R.trafoZ != null ? `Z ${n(R.trafoZ, 1)} %; kVA pendiente (no se supone)` : "pendiente: kVA y Z de placa no capturados (no se supone)"],
     ["Motores", "125 % del motor mayor mas el resto al 100 % (art. 430-24); proteccion al 250 % de la corriente a plena carga, a la capacidad normalizada inmediata superior (art. 430-52)"],
     ["Equipo con motocompresor", "Con MCA y MOP: conductor por la MCA de placa (440-4(b), 440-35) y proteccion hasta el MOP, al valor normalizado de 240-6(a) que no lo excede (440-22); sin la Tabla 430-52. MCA y MOP estimados por la suite se marcan como tales en la memoria y no bajan el conductor del 125 %"],
   ]);
   pdfHeading(d, "3. Cuadro de cargas");
-  pdfTable(d, ["Carga", "kW", "V/F", "A", "Cal.", "Prot.", "Tierra", "Tubo", "e %"],
-    R.calc.map((c) => [c.nombre.slice(0, 40), n(c.kWtot, 2), `${c.V}/${c.ph}`, n(c.I, 1), c.cond.awg, String(c.cond.ocpd), c.cond.tierra, c.cond.tubo.d, n(c.cond.dv, 2)]),
-    [150, 44, 44, 40, 44, 40, 44, 46, 40]);
+  pdfTable(d, ["Carga", "kW", "V/F", "A", "Cal.", "Prot.", "Tierra", "Tubo", "L m", "e %"],
+    R.calc.map((c) => [c.nombre.slice(0, 36), n(c.kWtot, 2), `${c.V}/${c.ph}`, n(c.I, 1), c.cond.awg, String(c.cond.ocpd), c.cond.tierra, c.cond.tubo.d, c.sinL ? "pend." : `${n(c.L, 0)}${c.Lsin ? "*" : ""}`, c.cond.dv == null ? "pend." : n(c.cond.dv, 2)]),
+    [130, 40, 40, 38, 40, 38, 40, 44, 40, 42]);
   pdfHeading(d, "4. Demanda y balanceo");
   pdfRows(d, [
     ...R.demTipo.map((t) => [`Demanda ${t.label}`, `${n(t.kVA, 2)} kVA conectados -> ${n(t.dem, 2)} kVA de demanda`]),
@@ -1756,9 +1759,9 @@ function buildElecPdf() {
   pdfRows(d, [
     ["Corriente de demanda", `${n(R.Itab, 1)} A`],
     ["Alimentador", R.alim.nota],
-    ["Caida de tension del alimentador", `${n(R.alim.dv, 2)} % · rige ${R.alim.rige}`],
+    ["Caida de tension del alimentador", R.alim.dv == null ? "pendiente: falta la distancia al tablero" : `${n(R.alim.dv, 2)} % · rige ${R.alim.rige}`],
     ["Interruptor principal", `${R.principal} A`],
-    ["Corriente de falla estimada", `${n(R.IccTrafo / 1000, 1)} kA · capacidad interruptiva minima ${R.kAIC} kA simetricos`],
+    ["Corriente de falla estimada", R.IccTrafo == null ? "pendiente: falta el transformador (kVA y Z de placa)" : `${n(R.IccTrafo / 1000, 1)} kA · capacidad interruptiva minima ${R.kAIC} kA simetricos`],
   ]);
   pdfHeading(d, "6. Memoria");
   R.memo.forEach((m) => pdfParagraph(d, "· " + m));
@@ -5462,7 +5465,7 @@ function buildPropuestaXlsx(opt) {
   if (ELEC && ELEC.calc.length) {
     pushU(L("Electrico", "Electrical"), L("Caida de tension del alimentador", "Feeder voltage drop"),
       L("NOM-001-SEDE · 3 % maximo recomendado", "NOM-001-SEDE · 3 % maximum recommended"),
-      `${n(ELEC.alim.dv, 2)} %`, ELEC.alim.dv <= 3 ? L("SI", "YES") : L("NO", "NO"),
+      ELEC.alim.dv == null ? L("pendiente de longitud", "length pending") : `${n(ELEC.alim.dv, 2)} %`, ELEC.alim.dv == null ? L("PENDIENTE", "PENDING") : ELEC.alim.dv <= 3 ? L("SI", "YES") : L("NO", "NO"),
       L(`Hoja ${HN.MEMORIA_ELECTRICA}`, `Tab ${HN.MEMORIA_ELECTRICA}`));
     pushU(L("Electrico", "Electrical"), L("Desbalance entre fases", "Phase imbalance"),
       L("5 % maximo recomendado", "5 % maximum recommended"), `${n(ELEC.desbalance, 1)} %`,
@@ -5547,19 +5550,19 @@ function buildPropuestaXlsx(opt) {
     ef.push([xT(L(`NOM-001-SEDE: art. 220 (cargas y demanda), 430 (motores), 440 (motocompresores), 310-15 (ampacidad), 250-122 (tierra) · sistema ${ELEC.sis.V} V ${ELEC.sis.ph}F · conductor de ${ELEC.mat} tipo ${AISLAMIENTOS[aislamientoDe(S.elec.aislamiento)].pdf} · ${num(S.elec.tempAmb, 40)} °C ambiente`,
       `NOM-001-SEDE (Mexican electrical code): art. 220 (loads and demand), 430 (motors), 440 (motor-compressors), 310-15 (ampacity), 250-122 (grounding) · ${ELEC.sis.V} V ${ELEC.sis.ph}-phase system · ${ELEC.mat} ${AISLAMIENTOS[aislamientoDe(S.elec.aislamiento)].pdf} conductor · ${num(S.elec.tempAmb, 40)} °C ambient`), XS.SUB)]);
     ef.push([]);
-    ef.push([xT(L("CEDULA DE CARGAS", "PANEL SCHEDULE"), XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC)]);
+    ef.push([xT(L("CEDULA DE CARGAS", "PANEL SCHEDULE"), XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC)]);
     ef.push([L("CARGA", "LOAD"), L("TIPO", "TYPE"), L("CANT", "QTY"), L("kW UNIT", "kW EACH"), L("kW TOT", "kW TOTAL"),
-      L("V / F", "V / PH"), L("I A", "I A"), L("CALIBRE", "SIZE"), L("PROT. A", "OCPD A")].map((x) => xT(x, XS.TH)));
+      L("V / F", "V / PH"), L("I A", "I A"), L("CALIBRE", "SIZE"), L("PROT. A", "OCPD A"), L("L m", "L m")].map((x) => xT(x, XS.TH)));
     const ini = ef.length + 1;
     ELEC.calc.forEach((c) => ef.push([
       xT(c.nombre, XS.TD), xT(c.label, XS.TD), xN(c.cant, XS.NUM),
       xN(+c.kW.toFixed(2), XS.NUM), xN(+c.kWtot.toFixed(2), XS.NUM),
       xT(`${c.V} / ${c.ph}F`, XS.TD), xN(+c.I.toFixed(1), XS.NUM),
       xT(`${c.cond.awg}${c.cond.paralelo > 1 ? ` ×${c.cond.paralelo}` : ""}`, XS.TD),
-      xN(c.cond.ocpd, XS.NUM)]));
+      xN(c.cond.ocpd, XS.NUM), c.sinL ? xT(L("pendiente", "pending"), XS.TD) : c.Lsin ? xT(`${n(c.L, 0)} ${L("(sin confirmar)", "(unconfirmed)")}`, XS.TD) : xN(c.L, XS.NUM)]));
     const fin = ef.length;
     ef.push([xT(L("CARGA CONECTADA", "CONNECTED LOAD"), XS.SUBT), xV(XS.SUBT), xV(XS.SUBT), xV(XS.SUBT), xF(`SUM(E${ini}:E${fin})`, XS.SUBT),
-      xV(XS.SUBT), xV(XS.SUBT), xV(XS.SUBT), xV(XS.SUBT)]);
+      xV(XS.SUBT), xV(XS.SUBT), xV(XS.SUBT), xV(XS.SUBT), xV(XS.SUBT)]);
     ef.push([]);
     ef.push([xT(L("DEMANDA Y ALIMENTADOR GENERAL", "DEMAND AND MAIN FEEDER"), XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC)]);
     ef.push([xT(L("CONCEPTO", "ITEM"), XS.TH), xT(L("VALOR", "VALUE"), XS.TH), xT(L("UNIDAD", "UNIT"), XS.TH), xT(L("BASE DE CALCULO", "CALCULATION BASIS"), XS.TH)]);
@@ -5570,9 +5573,19 @@ function buildPropuestaXlsx(opt) {
     fila(L("Corriente del tablero", "Panel current"), +ELEC.Itab.toFixed(1), "A", L("kVA de demanda a la tension del sistema", "Demand kVA at system voltage"));
     fila(L("Interruptor principal", "Main breaker"), ELEC.principal, "A", L("Mayor entre la proteccion del alimentador (125 % solo sobre las cargas continuas que no son motor; el 25 % del motor mayor ya va en la demanda) y la del ramal del motor mayor (art. 430-63)", "Larger of the feeder protection (125 % only on continuous non-motor loads; the largest motor's 25 % is already in the demand) and the largest motor's branch protection (art. 430-63)"));
     fila(L("Desbalance entre fases", "Phase imbalance"), +ELEC.desbalance.toFixed(1), "%", `A ${n(ELEC.fases.A, 1)} · B ${n(ELEC.fases.B, 1)} · C ${n(ELEC.fases.C, 1)} kVA`);
-    fila(L("Caida de tension del alimentador", "Feeder voltage drop"), +ELEC.alim.dv.toFixed(2), "%", `${ELEC.alim.awg} ${L("de", "of")} ${ELEC.mat}, ${num(S.elec.Ltablero, 30)} m`);
-    fila(L("Corriente de falla estimada", "Estimated fault current"), +(ELEC.IccTrafo / 1000).toFixed(1), "kA", L(`Transformador de ${num(S.elec.trafoKVA, 150)} kVA con Z ${num(S.elec.trafoZ, 4)} % — ESTIMACION para preseleccion, no es estudio de corto circuito`, `${num(S.elec.trafoKVA, 150)} kVA transformer at ${num(S.elec.trafoZ, 4)} % Z — ESTIMATE for preselection, not a short-circuit study`));
-    fila(L("Capacidad interruptiva sugerida", "Suggested interrupting rating"), ELEC.kAIC, "kA", L("Primer valor comercial por encima de la corriente de falla estimada", "First standard rating above the estimated fault current"));
+    /* H-179: lo no capturado sale «PENDIENTE», nunca un valor por omisión. */
+    const filaP = (k, u, b) => ef.push([xT(k, XS.TD), xT(L("PENDIENTE", "PENDING"), XS.TD), xT(u, XS.TD), xT(b, XS.TD)]);
+    if (ELEC.alim.dv == null) filaP(L("Caida de tension del alimentador", "Feeder voltage drop"), "%", L("Falta la distancia al tablero: no se supone", "Panel distance not captured: not assumed"));
+    else fila(L("Caida de tension del alimentador", "Feeder voltage drop"), +ELEC.alim.dv.toFixed(2), "%", `${ELEC.alim.awg} ${L("de", "of")} ${ELEC.mat}, ${n(ELEC.Lalim, 0)} m${ELEC.sinConf.Ltablero ? L(" (sin confirmar)", " (unconfirmed)") : ""}`);
+    if (ELEC.IccTrafo == null) {
+      filaP(L("Corriente de falla estimada", "Estimated fault current"), "kA", ELEC.trafoKVA != null ? L(`Falta la Z de placa del transformador (${n(ELEC.trafoKVA, 0)} kVA capturados): no se supone`, `Transformer nameplate Z not captured (${n(ELEC.trafoKVA, 0)} kVA captured): not assumed`)
+        : ELEC.trafoZ != null ? L(`Falta la capacidad del transformador en kVA (Z ${n(ELEC.trafoZ, 1)} % capturada): no se supone`, `Transformer kVA not captured (Z ${n(ELEC.trafoZ, 1)} % captured): not assumed`)
+        : L("Falta el transformador (kVA y Z de placa): no se supone", "Transformer (nameplate kVA and Z) not captured: not assumed"));
+      filaP(L("Capacidad interruptiva sugerida", "Suggested interrupting rating"), "kA", L("Pendiente de la corriente de falla", "Pending the fault current"));
+    } else {
+      fila(L("Corriente de falla estimada", "Estimated fault current"), +(ELEC.IccTrafo / 1000).toFixed(1), "kA", L(`Transformador de ${n(ELEC.trafoKVA, 0)} kVA con Z ${n(ELEC.trafoZ, 1)} % — ${ELEC.sinConf.trafoKVA || ELEC.sinConf.trafoZ ? "valores por omision de una revision anterior SIN CONFIRMAR" : "placa capturada"} — ESTIMACION para preseleccion, no es estudio de corto circuito`, `${n(ELEC.trafoKVA, 0)} kVA transformer at ${n(ELEC.trafoZ, 1)} % Z (${ELEC.sinConf.trafoKVA || ELEC.sinConf.trafoZ ? "previous-revision defaults, UNCONFIRMED" : "nameplate captured"}) — ESTIMATE for preselection, not a short-circuit study`));
+      fila(L("Capacidad interruptiva sugerida", "Suggested interrupting rating"), ELEC.kAIC, "kA", L("Primer valor comercial por encima de la corriente de falla estimada", "First standard rating above the estimated fault current"));
+    }
     ef.push([]);
     ef.push([xT(L(ELEC.alim.nota, ELEC.alim.notaEn), XS.NOTA)]);
     /* H-177: equipo con motocompresor por el art. 440, con la marca de MCA/MOP estimados por la suite. */
@@ -5581,7 +5594,7 @@ function buildPropuestaXlsx(opt) {
       `Equipment with hermetic motor-compressor (art. 440): ${c440.map((c) => `${c.nombre}: MCA ${n(c.mca, 1)} A ${c.mcaEst ? "ESTIMATED" : "nameplate"}, MOP ${n(c.mop, 0)} A ${c.mopEst ? "ESTIMATED" : "nameplate"} -> OCPD ${c.cond.ocpd} A`).join("; ")}. Conductor sized to the MCA (440-4(b), 440-35); protection up to the MOP (440-22), without Table 430-52. ESTIMATED values were computed by the suite from the catalog kW: they are not nameplate data.`), XS.NOTA)]);
     ef.push([xT(L("Esta memoria no sustituye el dictamen de una unidad de verificacion ni un estudio de arco electrico: es el calculo que se le entrega a quien lo emite.",
       "This calculation does not replace an accredited inspection certificate or an arc-flash study: it is the calculation handed to whoever issues them."), XS.NOTA)]);
-    hojas.push({ nombre: HN.MEMORIA_ELECTRICA, congelar: 0, anchos: [34, 26, 8, 12, 12, 12, 10, 14, 10], filas: ef });
+    hojas.push({ nombre: HN.MEMORIA_ELECTRICA, congelar: 0, anchos: [34, 26, 8, 12, 12, 12, 10, 14, 10, 10], filas: ef });
   }
 
   /* ---------- 10) INGENIERIA DE VALOR ---------- */
@@ -9305,7 +9318,9 @@ function selConductor(o) {
   const I = Math.max(0.1, num(o.I));
   const V = Math.max(100, num(o.V, 220));
   const ph = num(o.ph, 3) === 1 ? 1 : 3;
-  const L = Math.max(0, num(o.L, 20));
+  /* H-179: sin longitud la caída no se evalúa: el calibre sale sólo por ampacidad (mínimo) y la caída queda null. */
+  const sinL = o.sinL === true;
+  const L = sinL ? 0 : Math.max(0, num(o.L, 20));
   const fp = Math.min(1, Math.max(.5, num(o.fp, .9)));
   const mat = o.material === "aluminio" ? "aluminio" : "cobre";
   const ais = aislamientoDe(o.aislamiento), AREAS = AISLAMIENTOS[ais].areas;
@@ -9400,12 +9415,14 @@ function selConductor(o) {
   if (o.neutro !== false && ph === 3) conductores.push(AREAS[awg] || 0);
   conductores.push(AREAS[tierra] || 0);
   const tubo = tuboPara(conductores);
-  dv = dvDe(awg) / paralelo;
+  dv = sinL ? null : dvDe(awg) / paralelo;
+  const rigeBase = rige;
+  if (sinL) rige = `${rige}; caída de tensión pendiente de longitud (calibre mínimo)`;
   return {
     awg, material: mat, aislamiento: ais, ampBase, ampCorr, ft, fg, I, Idis, ocpd, tierra, tierraMat, tubo, dv, dvMax, rige,
-    topeAplicado, ph, V, L, fp, paralelo, mop: mop > 0 ? mop : null, fusible: mop > 0 && SOLO_FUSIBLE.includes(ocpd),
+    topeAplicado, ph, V, L: sinL ? null : L, fp, paralelo, sinL, mop: mop > 0 ? mop : null, fusible: mop > 0 && SOLO_FUSIBLE.includes(ocpd),
     nota: `${paralelo > 1 ? `${paralelo} × ` : ""}${awg} AWG/kcmil ${mat}${paralelo > 1 ? ` por fase (art. 310-10(h)), ${paralelo} canalizaciones` : ""} · ampacidad ${n(ampBase, 0)} A × ${n(ft, 2)} (temp) × ${n(fg, 2)} (agrup.)${paralelo > 1 ? ` × ${paralelo}` : ""} = ${n(ampCorr, 0)} A · rige ${rige} · protección ${ocpd} A${mop > 0 ? ` (MOP ${n(mop, 0)} A, art. 440-22${SOLO_FUSIBLE.includes(ocpd) ? "; fusible" : ""})` : ""} · tierra ${tierra}${tierraMat !== mat ? ` ${tierraMat} (la Tabla 250-122 no da aluminio hasta 100 A)` : ""} · ${tubo.d}${paralelo > 1 ? " cada una" : ""}`,
-    notaEn: `${paralelo > 1 ? `${paralelo} × ` : ""}${awg} AWG/kcmil ${mat === "aluminio" ? "aluminum" : "copper"}${paralelo > 1 ? ` per phase (art. 310-10(h)), ${paralelo} raceways` : ""} · ampacity ${n(ampBase, 0)} A × ${n(ft, 2)} (temp.) × ${n(fg, 2)} (grouping)${paralelo > 1 ? ` × ${paralelo}` : ""} = ${n(ampCorr, 0)} A · governed by ${{ "ampacidad": "ampacity", "caída de tensión": "voltage drop", "ampacidad con conductores en paralelo": "ampacity with parallel conductors", "caída de tensión con conductores en paralelo": "voltage drop with parallel conductors" }[rige] || rige} · OCPD ${ocpd} A${mop > 0 ? ` (MOP ${n(mop, 0)} A, art. 440-22${SOLO_FUSIBLE.includes(ocpd) ? "; fuse" : ""})` : ""} · ground ${tierra}${tierraMat !== mat ? " copper (Table 250-122 gives no aluminum size up to 100 A)" : ""} · ${tubo.d}${paralelo > 1 ? " each" : ""}`,
+    notaEn: `${paralelo > 1 ? `${paralelo} × ` : ""}${awg} AWG/kcmil ${mat === "aluminio" ? "aluminum" : "copper"}${paralelo > 1 ? ` per phase (art. 310-10(h)), ${paralelo} raceways` : ""} · ampacity ${n(ampBase, 0)} A × ${n(ft, 2)} (temp.) × ${n(fg, 2)} (grouping)${paralelo > 1 ? ` × ${paralelo}` : ""} = ${n(ampCorr, 0)} A · governed by ${{ "ampacidad": "ampacity", "caída de tensión": "voltage drop", "ampacidad con conductores en paralelo": "ampacity with parallel conductors", "caída de tensión con conductores en paralelo": "voltage drop with parallel conductors" }[rigeBase] || rigeBase}${sinL ? "; voltage drop pending length (minimum size)" : ""} · OCPD ${ocpd} A${mop > 0 ? ` (MOP ${n(mop, 0)} A, art. 440-22${SOLO_FUSIBLE.includes(ocpd) ? "; fuse" : ""})` : ""} · ground ${tierra}${tierraMat !== mat ? " copper (Table 250-122 gives no aluminum size up to 100 A)" : ""} · ${tubo.d}${paralelo > 1 ? " each" : ""}`,
   };
 }
 
@@ -9488,8 +9505,13 @@ function defaultElec() {
     tempAmb: 40,               // Baja California: tubo en azotea, no 30 °C
     nCond: 3,
     dvRamal: 3, dvTotal: 5,
-    trafoKVA: 150, trafoZ: 4,  // para estimar la corriente de falla
-    Ltablero: 30,              // distancia de la subestación al tablero, m
+    /* H-179 (rev 2.9.24, «nada se estima»): sin valores por omisión. La distancia al tablero y el transformador (kVA y Z de
+       placa) se capturan; mientras, la caída del alimentador y la corriente de falla quedan «pendiente». Antes 30 m, 150 kVA
+       y Z 4 % se imprimían como si fueran captura. Los proyectos guardados conservan lo que traen. */
+    trafoKVA: null, trafoZ: null,  // placa del transformador, para estimar la corriente de falla
+    Ltablero: null,                // distancia de la subestación al tablero, m
+    h179: true,                    // proyecto creado o migrado con la regla H-179 (sanearEstado)
+    sinConfirmar: {},              // valores por omisión viejos guardados como dato, sin confirmar (sanearEstado)
     fpObjetivo: .95,
     cargas: [],                // capturadas por el usuario
     tomarHVAC: false,          // rev 2.7.0: la cédula ya no entra sola, entra como propuesta aceptada
@@ -9519,7 +9541,9 @@ function computeElec(E) {
   const filas = [];
 
   /* 1) Cargas automáticas: los equipos de la cédula HVAC. Es un cruce entre
-        motores y por eso pasa por el permiso declarado. */
+        motores y por eso pasa por el permiso declarado.
+     H-179 (rev 2.9.24): ninguna carga automática trae distancia (antes Ltablero + 15/25/20/15/30/10 m, supuestas): entran
+     con L vacía y su caída queda pendiente de longitud hasta que se capture. */
   const verHVAC = linkAllowed("equip>elec");
   if (E.tomarHVAC && verHVAC && SYS && SYS.chosen) {
     const eqs = [];
@@ -9529,7 +9553,7 @@ function computeElec(E) {
       const el = elecOf(x.m);
       if (!(el.kWe > 0)) return;   // manejadoras y fan coils no traen compresor: su consumo es del ventilador y se captura aparte
       filas.push({ id: `hvac-${i}`, nombre: `${x.m.model} · ${x.rol}`, tipo: "motor", kW: el.kWe, V: el.volts,
-        ph: el.ph, cant: x.q, L: num(E.Ltablero, 30) + 15, fp: el.fp, auto: true, mca: el.mca, mop: el.mop, placaEstimada: !!el.estimado, modelo: x.m });
+        ph: el.ph, cant: x.q, L: null, fp: el.fp, auto: true, mca: el.mca, mop: el.mop, placaEstimada: !!el.estimado, modelo: x.m });
     });
   }
   /* 2) Ventiladores y extractores del motor de ventilación, con su permiso. */
@@ -9540,7 +9564,7 @@ function computeElec(E) {
     const cfm = VENT.demand, sp = Math.max(.1, VENT.sp);
     const kW = cfm * sp / (6356 * 0.6) * 0.7457;
     filas.push({ id: "vent-1", nombre: `${VENT.eq.primary.model} · extracción ${n(cfm, 0)} CFM`, tipo: "motor",
-      kW: +kW.toFixed(2), V: 220, ph: kW > 1.5 ? 3 : 1, cant: 1, L: num(E.Ltablero, 30) + 25, fp: .85, auto: true, estimado: true });
+      kW: +kW.toFixed(2), V: 220, ph: kW > 1.5 ? 3 : 1, cant: 1, L: null, fp: .85, auto: true, estimado: true });
   }
   /* 3)-6) Balance global (decisión del dueño, 15-sep-2026): compresor de aire,
      bomba de agua, bomba contra incendio y FFU de cuartos limpios, cada uno
@@ -9562,17 +9586,17 @@ function computeElec(E) {
        compresor por fila, no kVA×cant — con cant>1 aquí los demás compresores
        ya entran al 100% como el resto de los motores, sin tocar esa regla. */
     filas.push({ id: "aire-1", nombre: `Compresor ${AIRE.principal.tipo} · ${AIRE.principal.hp} HP × ${AIRE.nUnidades} en servicio${AIRE.redund ? " (más 1 de relevo N+1, no incluida: no corre en simultáneo)" : ""}`, tipo: "motor",
-      kW: AIRE.principal.kW, V: sis.V, ph: sis.ph, cant: Math.max(1, num(AIRE.nUnidades, 1)), L: num(E.Ltablero, 30) + 20, fp: .85, auto: true, estimado: false });
+      kW: AIRE.principal.kW, V: sis.V, ph: sis.ph, cant: Math.max(1, num(AIRE.nUnidades, 1)), L: null, fp: .85, auto: true, estimado: false });
   }
   const verHidro = linkAllowed("hidro>elec");
   if (E.tomarHVAC && verHidro && HIDRO && HIDRO.kWbomba > 0) {
     filas.push({ id: "hidro-1", nombre: `Bomba de agua · ${n(HIDRO.hpBomba, 1)} HP`, tipo: "motor",
-      kW: +HIDRO.kWbomba.toFixed(2), V: sis.V, ph: sis.ph, cant: 1, L: num(E.Ltablero, 30) + 15, fp: .85, auto: true, estimado: true });
+      kW: +HIDRO.kWbomba.toFixed(2), V: sis.V, ph: sis.ph, cant: 1, L: null, fp: .85, auto: true, estimado: true });
   }
   const verFuego = linkAllowed("fuego>elec");
   if (E.tomarHVAC && verFuego && FUEGO && FUEGO.kWbomba > 0) {
     filas.push({ id: "fuego-1", nombre: `Bomba contra incendio · ${n(FUEGO.hpBomba, 0)} HP`, tipo: "motor",
-      kW: +FUEGO.kWbomba.toFixed(2), V: sis.V, ph: sis.ph, cant: 1, L: num(E.Ltablero, 30) + 30, fp: .85, auto: true, estimado: true });
+      kW: +FUEGO.kWbomba.toFixed(2), V: sis.V, ph: sis.ph, cant: 1, L: null, fp: .85, auto: true, estimado: true });
   }
   const verClean = linkAllowed("clean>elec");
   if (E.tomarHVAC && verClean && CLEAN && CLEAN.sum && CLEAN.sum.ffu > 0) {
@@ -9580,7 +9604,7 @@ function computeElec(E) {
        reparten en varios circuitos derivados, pero para el alimentador general
        y la demanda del tablero la suma es lo que importa. */
     filas.push({ id: "ffu-1", nombre: `Módulos FFU · ${CLEAN.sum.ffu} × ${FFU.watts} W`, tipo: "motor",
-      kW: +(CLEAN.sum.ffu * FFU.watts / 1000).toFixed(2), V: sis.Vf, ph: 1, cant: 1, L: num(E.Ltablero, 30) + 10, fp: .85, auto: true, estimado: false });
+      kW: +(CLEAN.sum.ffu * FFU.watts / 1000).toFixed(2), V: sis.Vf, ph: 1, cant: 1, L: null, fp: .85, auto: true, estimado: false });
   }
   /* 7) Cargas capturadas por el usuario */
   (E.cargas || []).forEach((c, i) => filas.push({ ...c, id: c.id || `u-${i}`, auto: false }));
@@ -9605,10 +9629,15 @@ function computeElec(E) {
        calcula la carga (210-19(a), 430-22): sólo la MCA de placa manda sola. */
     const est = placaEstDe(c);
     const Idis440 = art440 ? (est.mca ? Math.max(mca, I * 1.25) : mca) : undefined;
-    const cond = selConductor({ I, V, ph, L: num(c.L, 25), fp, material: mat, aislamiento: E.aislamiento, tempAmb: E.tempAmb,
+    /* H-179: sin longitud capturada (vacía o 0) la caída queda «pendiente de longitud»: el conductor sale sólo por
+       ampacidad y la caída no se supone (antes 25 m) ni se imprime como 0.00 %. */
+    const Lc = num(c.L, 0), sinL = !(Lc > 0);
+    const cond = selConductor({ I, V, ph, L: Lc, sinL, fp, material: mat, aislamiento: E.aislamiento, tempAmb: E.tempAmb,
       nCond: E.nCond, dvMax: num(E.dvRamal, 3), continua: meta.continua, motor: tipo === "motor",
       Idis: Idis440, mop: art440 ? mop : 0 });
-    return { ...c, tipo, label: meta.label, V, ph, fp, cant, kW, kVA, kWtot: kW * cant, kVAtot: kVA * cant, I, cond,
+    /* Distancia que un proyecto viejo guardó sin que nadie la capturara (sanearEstado, H-179): se conserva, marcada. */
+    const Lsin = !sinL && c.Lsupuesta != null && num(c.L) === num(c.Lsupuesta);
+    return { ...c, tipo, label: meta.label, V, ph, fp, cant, kW, kVA, kWtot: kW * cant, kVAtot: kVA * cant, I, cond, sinL, Lsin, L: sinL ? null : Lc,
       art440, mca: art440 ? mca : c.mca, mop: art440 ? mop : c.mop, mcaEst: art440 && est.mca, mopEst: art440 && est.mop };
   });
 
@@ -9663,7 +9692,9 @@ function computeElec(E) {
      de kVAdemanda para el motor mayor (430-24) y aquí solo falta el de las
      cargas continuas que no son motor. Pasarlo dos veces sobredimensionaba
      conductor e interruptor (H-2.1 de la auditoría de rev 2.9.5). */
-  const alim = selConductor({ I: Itab, V: sis.V, ph: sis.ph, L: num(E.Ltablero, 30), fp: num(E.fpObjetivo, .95),
+  /* H-179: sin distancia al tablero capturada la caída del alimentador queda pendiente (antes 30 m supuestos). */
+  const Lalim = num(E.Ltablero, 0), alimSinL = !(Lalim > 0);
+  const alim = selConductor({ I: Itab, V: sis.V, ph: sis.ph, L: Lalim, sinL: alimSinL, fp: num(E.fpObjetivo, .95),
     material: mat, aislamiento: E.aislamiento, tempAmb: E.tempAmb, nCond: E.nCond, dvMax: Math.max(1, num(E.dvTotal, 5) - num(E.dvRamal, 3)),
     continua: true, Idis: IdisAlim });
   /* Interruptor principal con motores en el alimentador (art. 430-63): no debe
@@ -9682,9 +9713,15 @@ function computeElec(E) {
      transformador. Es una cota superior: no descuenta la impedancia del
      alimentador ni el aporte de motores. NO sustituye un estudio de corto
      circuito ni un análisis de arco eléctrico. */
-  const kVAtr = Math.max(1, num(E.trafoKVA, 150)), z = Math.max(1, num(E.trafoZ, 4));
-  const IccTrafo = kVAtr * 1000 / (Math.sqrt(3) * sis.V) / (z / 100);
-  const kAIC = [10, 14, 18, 22, 25, 35, 42, 65, 100].find((x) => x * 1000 >= IccTrafo) || 100;
+  /* H-179: sin kVA y Z de placa del transformador no hay corriente de falla ni capacidad interruptiva (antes 150 kVA y Z 4 %
+     supuestos): quedan pendientes. */
+  const kVAtr = num(E.trafoKVA, 0), z = num(E.trafoZ, 0), conTrafo = kVAtr > 0 && z > 0;
+  /* Valores por omisión que un proyecto viejo guardó como dato (sanearEstado): siguen, marcados «sin confirmar». */
+  const sc = E.sinConfirmar || {};
+  const sinConf = { Ltablero: !alimSinL && sc.Ltablero != null && Lalim === num(sc.Ltablero),
+    trafoKVA: kVAtr > 0 && sc.trafoKVA != null && kVAtr === num(sc.trafoKVA), trafoZ: z > 0 && sc.trafoZ != null && z === num(sc.trafoZ) };
+  const IccTrafo = conTrafo ? kVAtr * 1000 / (Math.sqrt(3) * sis.V) / (z / 100) : null;
+  const kAIC = conTrafo ? ([10, 14, 18, 22, 25, 35, 42, 65, 100].find((x) => x * 1000 >= IccTrafo) || 100) : null;
 
   /* Avisos */
   calc.forEach((c) => {
@@ -9705,24 +9742,36 @@ function computeElec(E) {
       avisos.push({ lvl: "warn", msg: `${c.nombre}: equipo con motocompresor sin MCA ni MOP; se protege al 250 % de la Tabla 430-52 y puede quedar arriba de su MOP. Captura los datos de placa o vuelve a aceptar la cédula (art. 440).` });
   });
   if (desbalance > 5) avisos.push({ lvl: "warn", msg: `Desbalance entre fases de ${n(desbalance, 1)} %. Arriba de 5 % calienta el neutro y castiga la vida de los motores: reacomoda las cargas monofásicas.` });
-  if (kVAdemanda > kVAtr * .8) avisos.push({ lvl: "err", msg: `La demanda calculada (${n(kVAdemanda, 1)} kVA) supera el 80 % del transformador capturado (${n(kVAtr, 0)} kVA). El transformador queda corto: revisar capacidad contratada antes de seguir.` });
+  const sinLong = calc.filter((c) => c.sinL);
+  if (sinLong.length) avisos.push({ lvl: "err", msg: `${sinLong.length} carga(s) sin longitud capturada (${sinLong.slice(0, 4).map((c) => c.nombre).join(", ")}${sinLong.length > 4 ? "…" : ""}): su caída de tensión queda pendiente; no se supone una distancia ni se toma como 0 %. Captura la distancia de cada una a su tablero${sinLong.some((c) => c.auto) ? "; las que entran en vivo de otros motores no tienen campo de distancia: acepta la propuesta «Cargas eléctricas de los demás motores» y captúrala en «Editar cargas capturadas»" : ""}.` });
+  if (calc.length && alimSinL) avisos.push({ lvl: "err", msg: "Falta la distancia al tablero (de la subestación al tablero general): la caída de tensión del alimentador queda pendiente; no se supone." });
+  if (calc.length && !conTrafo) avisos.push({ lvl: "err", msg: !(kVAtr > 0) && !(z > 0)
+    ? "Falta el transformador de la acometida (kVA y Z de placa): la corriente de falla y la capacidad interruptiva quedan pendientes; no se supone un transformador."
+    : !(z > 0) ? `Falta la impedancia Z de placa del transformador (kVA capturado: ${n(kVAtr, 0)}): la corriente de falla y la capacidad interruptiva quedan pendientes; no se supone una Z.`
+    : `Falta la capacidad en kVA del transformador (Z capturada: ${n(z, 1)} %): la corriente de falla y la capacidad interruptiva quedan pendientes.` });
+  if (sinConf.Ltablero || sinConf.trafoKVA || sinConf.trafoZ || calc.some((c) => c.Lsin))
+    avisos.push({ lvl: "warn", msg: `Valores que este proyecto guardó por omisión en una revisión anterior, sin confirmar: ${[sinConf.Ltablero ? `distancia al tablero ${n(Lalim, 0)} m` : "", sinConf.trafoKVA ? `transformador ${n(kVAtr, 0)} kVA` : "", sinConf.trafoZ ? `Z ${n(z, 1)} %` : "", calc.some((c) => c.Lsin) ? `distancia de ${calc.filter((c) => c.Lsin).length} carga(s) aceptadas de otros motores` : ""].filter(Boolean).join(", ")}. Confírmalos o captura los reales: hoy nada se supone (H-179).` });
+  if (kVAtr > 0 && kVAdemanda > kVAtr * .8) avisos.push({ lvl: "err", msg: `La demanda calculada (${n(kVAdemanda, 1)} kVA) supera el 80 % del transformador capturado (${n(kVAtr, 0)} kVA). El transformador queda corto: revisar capacidad contratada antes de seguir.` });
   if (E.tomarHVAC && !verHVAC) avisos.push({ lvl: "info", msg: "Las cargas del equipo HVAC no están incluidas: el cruce entre la cédula de equipos y el motor eléctrico no está autorizado." });
 
   memo.push(`Sistema ${SISTEMAS.find(([k]) => k === E.sistema)?.[1] || sis.V + " V"} · conductor de ${mat} tipo ${AISLAMIENTOS[aislamientoDe(E.aislamiento)].nombre} con ampacidad de la columna de 75 °C · relleno de canalización con las áreas de ese mismo conductor (NOM-001-SEDE, Capítulo 10, Tabla 5) · temperatura ambiente de diseño ${num(E.tempAmb, 40)} °C (factor ${n(fTemp(E.tempAmb), 2)}) · ${num(E.nCond, 3)} portadores por canalización (factor ${n(fGrupo(E.nCond), 2)}).`);
   memo.push(`Carga conectada ${n(kVAconectada, 2)} kVA · demanda ${n(kVAdemanda, 2)} kVA (factor de demanda ${n(fdem, 2)}), incluyendo el 25 % adicional del motor mayor que pide el art. 430-24 (${n(extraMotor, 2)} kVA).`);
   memo.push(`Balanceo: fase A ${n(fases.A, 2)} · B ${n(fases.B, 2)} · C ${n(fases.C, 2)} kVA · desbalance ${n(desbalance, 1)} %.`);
-  memo.push(`Alimentador general: ${alim.nota}. Caída de tensión ${n(alim.dv, 2)} % de los ${n(num(E.dvTotal, 5), 1)} % acumulados admisibles. Interruptor principal ${principal} A.`);
+  memo.push(`Alimentador general: ${alim.nota}. Caída de tensión ${alim.dv == null ? "PENDIENTE (falta la distancia al tablero)" : `${n(alim.dv, 2)} % en ${n(Lalim, 0)} m${sinConf.Ltablero ? " (sin confirmar)" : ""}`} de los ${n(num(E.dvTotal, 5), 1)} % acumulados admisibles. Interruptor principal ${principal} A.`);
+  memo.push(`Distancias al tablero (H-179: ninguna se supone; «sin confirmar» = valor por omisión de una revisión anterior): ${calc.map((c) => `${c.nombre} ${c.sinL ? "pendiente" : `${n(c.L, 0)} m${c.Lsin ? " (sin confirmar)" : ""}`}`).join(" · ")} · alimentador general ${alimSinL ? "pendiente" : `${n(Lalim, 0)} m${sinConf.Ltablero ? " (sin confirmar)" : ""}`}.`);
   const con440 = calc.filter((c) => c.art440);
   if (con440.length) memo.push(`Equipo con motocompresor (art. 440): ${con440.map((c) => `${c.nombre} MCA ${n(c.mca, 1)} A${c.mcaEst ? " ESTIMADA" : " de placa"} / MOP ${n(c.mop, 0)} A${c.mopEst ? " ESTIMADO" : " de placa"} → protección ${c.cond.ocpd} A${c.cond.fusible ? " (fusible)" : ""}`).join("; ")}. El conductor cubre la MCA de placa (440-4(b), 440-35); una MCA ESTIMADA no lo baja del 125 % de la corriente calculada (210-19(a)). La protección no pasa del MOP (440-4(b), 440-22(b) y (c)); no se usa la Tabla 430-52.${con440.some((c) => c.mcaEst || c.mopEst) ? " Los valores ESTIMADOS los calculó la suite desde el kW de catálogo (RLA = 0.85·FLA, MCA = 125 % de la RLA, MOP = 175 % de la RLA al normalizado superior; criterio de la casa, no de placa): sustituirlos por los de placa antes de firmar." : ""}`);
   if (alim.paralelo > 1) {
     memo.push(`El alimentador va en ${alim.paralelo} conductores por fase, en canalizaciones separadas. El art. 310-10(h) lo permite a partir de 1/0 y exige que todos sean del mismo calibre, material, longitud y tipo de terminal: si uno queda más largo, se lleva menos corriente y los demás se sobrecargan.`);
     avisos.push({ lvl: "info", msg: `El alimentador exige ${alim.paralelo} conductores por fase. Antes de fabricarlo, evaluar subir la tensión de distribución o acercar el tablero: casi siempre sale más barato que multiplicar el cobre.` });
   }
-  memo.push(`Corriente de falla ESTIMADA en barras: ${n(IccTrafo / 1000, 1)} kA con transformador de ${n(kVAtr, 0)} kVA e impedancia ${n(z, 1)} %. Capacidad interruptiva mínima sugerida ${kAIC} kA simétricos. Es una cota superior para preselección, no un estudio de corto circuito.`);
+  if (!conTrafo) memo.push(`Corriente de falla PENDIENTE: falta ${!(kVAtr > 0) && !(z > 0) ? "el transformador de la acometida (kVA y Z de placa)" : !(z > 0) ? `la Z de placa del transformador (kVA capturado: ${n(kVAtr, 0)})` : `la capacidad en kVA del transformador (Z capturada: ${n(z, 1)} %)`}; no se supone, así que tampoco hay capacidad interruptiva sugerida.`);
+  else memo.push(`Corriente de falla ESTIMADA en barras: ${n(IccTrafo / 1000, 1)} kA con transformador de ${n(kVAtr, 0)} kVA e impedancia ${n(z, 1)} % (${sinConf.trafoKVA || sinConf.trafoZ ? "valores por omisión de una revisión anterior, SIN CONFIRMAR" : "datos capturados"}). Capacidad interruptiva mínima sugerida ${kAIC} kA simétricos. Es una cota superior para preselección, no un estudio de corto circuito.`);
   memo.push("Criterio de caída de tensión: el capturado para circuito derivado y el acumulado desde la acometida (3 % y 5 % por omisión). No es requisito obligatorio de la NOM-001-SEDE sino recomendación de las notas de los artículos 210-19 y 215-2; se aplica como criterio duro de la casa.");
 
   return { calc, demTipo, fases, desbalance, kVAconectada, kVAdemanda, fdem, extraMotor,
     Itab, IdisAlim, alim, principal, IccTrafo, kAIC, sis, mat, memo, avisos, verHVAC, verVent,
+    Lalim: alimSinL ? null : Lalim, trafoKVA: kVAtr > 0 ? kVAtr : null, trafoZ: z > 0 ? z : null, sinConf,
     kWtot: calc.reduce((a, c) => a + c.kWtot, 0) };
 }
 
@@ -17591,7 +17640,7 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "4", clean: "2", equip: "1", duct: "1", vent: "1", quote: "6", valor: "1", kaizen: "1", elec: "6", hidro: "4", fuego: "2", aire: "2", civil: "3", soporte: "2" };
+const MOTOR_VER = { load: "4", clean: "2", equip: "1", duct: "1", vent: "1", quote: "6", valor: "1", kaizen: "1", elec: "7", hidro: "4", fuego: "2", aire: "2", civil: "3", soporte: "2" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
@@ -17601,7 +17650,8 @@ const MOTOR_CAMBIOS = {
   quote: [{ ver: "2", rev: "2.9.16", que: "red hidráulica por diámetro con precio capturado; sin 50 m supuestos; partidas pendientes" }, { ver: "3", rev: "2.9.19", que: "tramo con longitud y sin unidades mueble queda pendiente" }, { ver: "4", rev: "2.9.23", que: "precio de tubería por renglón con origen (referencia de mercado o proveedor local), IVA desglosado y por metro; sin precio: partida Por cotizar en el Budget, bloqueo sólo en la formal" }, { ver: "5", rev: "2.9.23", que: "precios en USD sólo se convierten con tipo de cambio capturado con fecha; sin fecha salen Por cotizar y bloquean la formal (nada se estima)" }, { ver: "6", rev: "2.9.23", que: "referencias sólo de California y sólo material (mano de obra por capturar; combinados → Por cotizar); referencias IUSA retiradas; flete, aduana e importación como renglón propio siempre Por cotizar hasta capturarlo" }],
   elec: [{ ver: "2", rev: "2.9.16", que: "canalización con las áreas del conductor de la memoria (THW-LS por omisión, NOM-001-SEDE Cap. 10 Tabla 5)" }, { ver: "3", rev: "2.9.18", que: "siete áreas THHN/THWN-2 corregidas a la Tabla 5" }, { ver: "4", rev: "2.9.19", que: "sin compresor de aire cuando no hay demanda" },
     { ver: "5", rev: "2.9.24", que: "H-183: conductor de puesta a tierra con la Tabla 250-122 de la NOM-001-SEDE-2012 (p. 151): 400 A → 2 AWG (antes 3 AWG, valor del NEC), renglones hasta 6000 A y columna de aluminio (hasta 100 A la tabla sólo da cobre)" },
-    { ver: "6", rev: "2.9.24", que: "H-177: equipo con motocompresor hermético con MCA y MOP por el art. 440: conductor por la MCA de placa (440-4(b), 440-35; una MCA estimada por la suite no lo baja del 125 %) y protección igual al MOP o al valor inmediato inferior de 240-6(a) completo (16, 32, 63 A; abajo de 15 A sólo fusibles de 1, 3, 6, 10 A), sin el 250 % de la Tabla 430-52 (40VMA-240: 150 → 90 A; 40MBC-24: 25 → 15 A). Aceptar la cédula conserva MCA y MOP (marcados estimados); una carga sin kW no fija el principal" }],
+    { ver: "6", rev: "2.9.24", que: "H-177: equipo con motocompresor hermético con MCA y MOP por el art. 440: conductor por la MCA de placa (440-4(b), 440-35; una MCA estimada por la suite no lo baja del 125 %) y protección igual al MOP o al valor inmediato inferior de 240-6(a) completo (16, 32, 63 A; abajo de 15 A sólo fusibles de 1, 3, 6, 10 A), sin el 250 % de la Tabla 430-52 (40VMA-240: 150 → 90 A; 40MBC-24: 25 → 15 A). Aceptar la cédula conserva MCA y MOP (marcados estimados); una carga sin kW no fija el principal" },
+    { ver: "7", rev: "2.9.24", que: "H-179: nada se supone. Sin distancia al tablero, sin transformador (kVA y Z de placa) o sin longitud de una carga, la caída del alimentador, la corriente de falla con su capacidad interruptiva y la caída del ramal quedan «pendiente» con aviso (antes 30 m, 150 kVA / Z 4 % y 25 m supuestos; 0 m daba 0.00 %). Las cargas de otros motores ya no traen distancia automática (Ltablero + 10 a 30 m). Sin longitud el calibre se declara mínimo por ampacidad. El 80 % del transformador se revisa con sólo el kVA. Proyectos guardados antes conservan sus valores, marcados «sin confirmar». La memoria, el PDF y el libro dan la L de cada carga. Cubre H-189" }],
   hidro: [{ ver: "2", rev: "2.9.16", que: "tramo sin longitud ya no supone 10 m" }, { ver: "3", rev: "2.9.18", que: "curva de Hunter de IPC apéndice E Table E103.3(3)" }, { ver: "4", rev: "2.9.19", que: "renglones de 2500 a 5000 UM de la misma tabla" }],
   fuego: [{ ver: "2", rev: "2.9.16", que: "sin área no hay demanda, bomba ni reserva; área mínima de operación NFPA 13 con aviso" }],
   aire: [{ ver: "2", rev: "2.9.16", que: "sin demanda no se cuentan unidades" }],
@@ -19967,7 +20017,7 @@ function viewElec() {
     <td class="num">${c.cond.ocpd}</td>
     <td class="num">${esc(c.cond.tierra)}</td>
     <td class="num">${esc(c.cond.tubo.d)}</td>
-    <td class="num" style="color:${c.cond.dv > num(E.dvRamal, 3) ? "var(--warn);font-weight:700;text-decoration:underline dotted" : "var(--dato)"}">${M(c.cond.dv, 2)} %</td>
+    <td class="num" style="color:${c.cond.dv > num(E.dvRamal, 3) ? "var(--warn);font-weight:700;text-decoration:underline dotted" : "var(--dato)"}">${c.cond.dv == null ? `<span title="Sin longitud capturada: la caída no se supone">pendiente</span>` : `${M(c.cond.dv, 2)} %`}</td>
     <td>${c.auto ? `<span class="badge">auto</span>` : `<button class="icon-btn" data-act="ec-del" data-i="${(E.cargas || []).findIndex((x) => x.id === c.id)}" aria-label="Eliminar carga">×</button>`}</td>
   </tr>`;
   const cargasUsuario = (E.cargas || []);
@@ -19986,7 +20036,7 @@ function viewElec() {
         ${inp("Caída máxima en ramal (%)", "elec.dvRamal", "number", "0.5", "elec.dv", E)}
         ${inp("Caída máxima acumulada (%)", "elec.dvTotal", "number", "0.5", "elec.dvTot", E)}
       </div>
-      <details><summary>Transformador de la acometida</summary>
+      <details${num(E.trafoKVA, 0) > 0 && num(E.trafoZ, 0) > 0 ? "" : " open"}><summary>Transformador de la acometida${num(E.trafoKVA, 0) > 0 && num(E.trafoZ, 0) > 0 ? "" : " · pendiente"}</summary>
         <div class="row">${inp("Capacidad (kVA)", "elec.trafoKVA", "number", "5", "elec.trafo", E)}
         ${inp("Impedancia Z (%)", "elec.trafoZ", "number", "0.5", "elec.trafoZ", E)}</div>
       </details>
@@ -20008,9 +20058,9 @@ function viewElec() {
           <div class="metric"><div class="k">Demanda</div><div class="v">${M(R.kVAdemanda, 1)} <small>kVA</small></div><div class="sub">factor ${M(R.fdem, 2)}</div></div>
           <div class="metric"><div class="k">Corriente</div><div class="v">${M(R.Itab, 0)} <small>A</small></div></div>
           <div class="metric"><div class="k">Interruptor principal</div><div class="v">${R.principal} <small>A</small></div></div>
-          <div class="metric"><div class="k">Alimentador</div><div class="v" style="font-size:19px">${R.alim.paralelo > 1 ? `${R.alim.paralelo} × ` : ""}${esc(R.alim.awg)}</div><div class="sub">${esc(R.mat)} · ${esc(R.alim.tubo.d)}${R.alim.paralelo > 1 ? ` × ${R.alim.paralelo}` : ""}</div></div>
-          <div class="metric"><div class="k">Caída del alimentador</div><div class="v">${M(R.alim.dv, 2)} <small>%</small></div><div class="sub">rige ${esc(R.alim.rige)}</div></div>
-          <div class="metric"><div class="k">Falla estimada</div><div class="v">${M(R.IccTrafo / 1000, 1)} <small>kA</small></div><div class="sub">interruptivo ≥ ${R.kAIC} kA</div></div>
+          <div class="metric"><div class="k">Alimentador</div><div class="v" style="font-size:19px">${R.alim.paralelo > 1 ? `${R.alim.paralelo} × ` : ""}${esc(R.alim.awg)}</div><div class="sub">${esc(R.mat)} · ${esc(R.alim.tubo.d)}${R.alim.paralelo > 1 ? ` × ${R.alim.paralelo}` : ""}${R.alim.dv == null ? " · mínimo por ampacidad" : ""}</div></div>
+          <div class="metric"><div class="k">Caída del alimentador</div>${R.alim.dv == null ? `<div class="v" style="font-size:17px">pendiente</div><div class="sub">falta la distancia al tablero</div>` : `<div class="v">${M(R.alim.dv, 2)} <small>%</small></div><div class="sub">rige ${esc(R.alim.rige)}</div>`}</div>
+          <div class="metric"><div class="k">Falla estimada</div>${R.IccTrafo == null ? `<div class="v" style="font-size:17px">pendiente</div><div class="sub">falta el transformador (kVA y Z)</div>` : `<div class="v">${M(R.IccTrafo / 1000, 1)} <small>kA</small></div><div class="sub">interruptivo ≥ ${R.kAIC} kA</div>`}</div>
           <div class="metric"><div class="k">Desbalance</div><div class="v" style="color:${R.desbalance > 5 ? "var(--warn);font-weight:700;text-decoration:underline dotted" : "var(--dato)"}">${M(R.desbalance, 1)} <small>%</small></div></div>
         </div>
         <div class="viz-t" style="margin-top:16px">Balanceo por fase (kVA)</div>
@@ -21559,7 +21609,24 @@ function sanearEstado(d) {
      estado por omisión sin perder lo que sí venga bien. */
   s.sel = { sistema: null, motivo: "", ts: null, recAlElegir: null, modelos: {}, ...(s.sel && typeof s.sel === "object" ? s.sel : {}) };
   if (!s.sel.modelos || typeof s.sel.modelos !== "object") s.sel.modelos = {};
+  /* H-179 (rev 2.9.24): un proyecto guardado antes trae como dato los valores por omisión viejos (distancia al tablero 30 m,
+     transformador 150 kVA, Z 4 %) y las distancias automáticas de las cargas aceptadas de otros motores (distancia al tablero
+     + 10 a 30 m). Se conservan (no se mueve ningún número) pero se marcan «sin confirmar» con el valor que traían; la marca
+     cae sola en cuanto el usuario captura otro valor. */
+  const elecViejo = !!(s.elec && typeof s.elec === "object" && !("h179" in s.elec));
   s.elec = { ...defaultElec(), ...(s.elec && typeof s.elec === "object" ? s.elec : {}) };
+  if (elecViejo) {
+    const sc = {};
+    if (num(s.elec.Ltablero) === 30) sc.Ltablero = 30;
+    if (num(s.elec.trafoKVA) === 150) sc.trafoKVA = 150;
+    if (num(s.elec.trafoZ) === 4) sc.trafoZ = 4;
+    s.elec.sinConfirmar = sc;
+    const Lt = num(s.elec.Ltablero, 30);
+    (Array.isArray(s.elec.cargas) ? s.elec.cargas : []).forEach((c) => {
+      if (c && c.origen === "cedula" && [10, 15, 20, 25, 30].includes(Math.round((num(c.L) - Lt) * 1000) / 1000)) c.Lsupuesta = num(c.L);
+    });
+    s.elec.h179 = true;
+  }
      if (!Array.isArray(s.elec.cargas)) s.elec.cargas = [];
    s.elec.aislamiento = aislamientoDe(s.elec.aislamiento);
   s.hidro = { ...defaultHidro(), ...(s.hidro && typeof s.hidro === "object" ? s.hidro : {}) };

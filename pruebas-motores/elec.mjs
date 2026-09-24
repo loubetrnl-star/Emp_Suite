@@ -38,7 +38,8 @@ export default async function ({ t, G, S, CM }) {
     try { S.elec = { ...G("defaultElec")(), tomarHVAC: false, ...elec }; G("recompute")(); fn(); }
     finally { S.elec = JSON.parse(guardado); G("recompute")(); }
   };
-  const FIXTURE = { trafoKVA: 300, cargas: [
+  /* H-179: defaultElec() ya no supone distancia al tablero ni transformador; el caso los captura (entradas de la hoja). */
+  const FIXTURE = { trafoKVA: 300, Ltablero: 30, trafoZ: 4, fpObjetivo: .95, cargas: [
     { ...dc("Compresor de proceso"), tipo: "motor", kW: 15, V: 220, ph: 3, cant: 1, L: 30, fp: .85 },
     { ...dc("Alumbrado"), tipo: "alumbrado", kW: 9.5, V: 127, ph: 1, cant: 1, L: 40, fp: .95 },
   ] };
