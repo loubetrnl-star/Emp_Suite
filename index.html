@@ -1735,6 +1735,7 @@ function buildElecPdf() {
     ["Conductor", `${R.mat === "aluminio" ? "Aluminio" : "Cobre"} tipo ${AISLAMIENTOS[aislamientoDe((S.elec || {}).aislamiento)].pdf} (ampacidad a 75 C, Tabla 310-15(b)(16)) · canalizacion con las areas de ese mismo conductor (NOM-001-SEDE, Cap. 10, Tabla 5)`],
     ["Temperatura ambiente", `${num(E.tempAmb, 40)} C · factor ${n(fTemp(E.tempAmb), 2)} (Tabla 310-15(b)(2)(a))`],
     ["Agrupamiento", `${num(E.nCond, 3)} portadores · factor ${n(fGrupo(E.nCond), 2)} (Tabla 310-15(b)(3)(a))`],
+    ["Factor de potencia", `por carga: el capturado o, sin el, el que trae el motor de origen o el del tipo (criterio de la casa: ${Object.values(TIPO_CARGA).map((x) => `${x.label} ${n(x.fp, 2)}`).join(", ")}); alimentador ${n(R.fpAlim, 2)} (${R.fpAlimOrigen === "casa" ? "criterio de la casa" : "capturado"})`],
     ["Caida de tension", `${n(num(E.dvRamal, 3), 1)} % en derivado y ${n(num(E.dvTotal, 5), 1)} % acumulada (recomendacion de los art. 210-19 y 215-2)`],
     ["Carga continua", "125 % segun art. 210-19(a)"],
     ["Distancia al tablero", R.Lalim != null ? `${n(R.Lalim, 0)} m (${R.sinConf.Ltablero ? "valor por omision de una revision anterior, sin confirmar" : "capturada"})` : "pendiente: no capturada (no se supone)"],
@@ -1744,9 +1745,10 @@ function buildElecPdf() {
     ["Equipo con motocompresor", "Con MCA y MOP: conductor por la MCA de placa (440-4(b), 440-35) y proteccion hasta el MOP, al valor normalizado de 240-6(a) que no lo excede (440-22); sin la Tabla 430-52. MCA y MOP estimados por la suite se marcan como tales en la memoria y no bajan el conductor del 125 %"],
   ]);
   pdfHeading(d, "3. Cuadro de cargas");
-  pdfTable(d, ["Carga", "kW", "V/F", "A", "Cal.", "Prot.", "Tierra", "Tubo", "L m", "e %"],
-    R.calc.map((c) => [c.nombre.slice(0, 36), c.kWsin ? "pend." : n(c.kWtot, 2), `${c.V}/${c.ph}`, ...(c.sinI ? ["pend.", "pend.", "pend.", "pend.", "pend."] : [n(c.I, 1), c.cond.awg, String(c.cond.ocpd), c.cond.tierra, c.cond.tubo.d]), c.sinL ? "pend." : `${n(c.L, 0)}${c.Lsin ? "*" : ""}`, c.cond.dv == null ? "pend." : n(c.cond.dv, 2)]),
-    [130, 40, 40, 38, 40, 38, 40, 44, 40, 42]);
+  pdfTable(d, ["Carga", "kW", "fp", "V/F", "A", "Cal.", "Prot.", "Tierra", "Tubo", "L m", "e %"],
+    R.calc.map((c) => [c.nombre.slice(0, 34), c.kWsin ? "pend." : `${n(c.kWtot, 2)}${c.kWEst ? " e" : c.kWOrigen !== "capturado" ? " c" : ""}`, `${n(c.fp, 2)}${c.fpOrigen === "casa" ? "*" : ""}`, `${c.V}/${c.ph}`, ...(c.sinI ? ["pend.", "pend.", "pend.", "pend.", "pend."] : [n(c.I, 1), c.cond.awg, String(c.cond.ocpd), c.cond.tierra, c.cond.tubo.d]), c.sinL ? "pend." : `${n(c.L, 0)}${c.Lsin ? "*" : ""}`, c.cond.dv == null ? "pend." : n(c.cond.dv, 2)]),
+    [118, 42, 28, 36, 34, 36, 34, 38, 40, 36, 40]);
+  pdfParagraph(d, "kW: e = ESTIMADO por el motor de origen, c = de catalogo de la casa, sin marca = capturado. fp: * = el del tipo de carga o el supuesto del motor de origen, criterio de la casa (no capturado). La procedencia de cada carga va en la memoria (seccion 6).");
   pdfHeading(d, "4. Demanda y balanceo");
   pdfRows(d, [
     ...R.demTipo.map((t) => [`Demanda ${t.label}`, `${n(t.kVA, 2)} kVA conectados -> ${n(t.dem, 2)} kVA de demanda`]),
@@ -5550,19 +5552,20 @@ function buildPropuestaXlsx(opt) {
     ef.push([xT(L(`NOM-001-SEDE: art. 220 (cargas y demanda), 430 (motores), 440 (motocompresores), 310-15 (ampacidad), 250-122 (tierra) · sistema ${ELEC.sis.V} V ${ELEC.sis.ph}F · conductor de ${ELEC.mat} tipo ${AISLAMIENTOS[aislamientoDe(S.elec.aislamiento)].pdf} · ${num(S.elec.tempAmb, 40)} °C ambiente`,
       `NOM-001-SEDE (Mexican electrical code): art. 220 (loads and demand), 430 (motors), 440 (motor-compressors), 310-15 (ampacity), 250-122 (grounding) · ${ELEC.sis.V} V ${ELEC.sis.ph}-phase system · ${ELEC.mat} ${AISLAMIENTOS[aislamientoDe(S.elec.aislamiento)].pdf} conductor · ${num(S.elec.tempAmb, 40)} °C ambient`), XS.SUB)]);
     ef.push([]);
-    ef.push([xT(L("CEDULA DE CARGAS", "PANEL SCHEDULE"), XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC)]);
+    ef.push([xT(L("CEDULA DE CARGAS", "PANEL SCHEDULE"), XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC)]);
     ef.push([L("CARGA", "LOAD"), L("TIPO", "TYPE"), L("CANT", "QTY"), L("kW UNIT", "kW EACH"), L("kW TOT", "kW TOTAL"),
-      L("V / F", "V / PH"), L("I A", "I A"), L("CALIBRE", "SIZE"), L("PROT. A", "OCPD A"), L("L m", "L m")].map((x) => xT(x, XS.TH)));
+      L("V / F", "V / PH"), L("I A", "I A"), L("CALIBRE", "SIZE"), L("PROT. A", "OCPD A"), L("L m", "L m"), L("fp", "PF"), L("ORIGEN kW / fp", "SOURCE kW / PF")].map((x) => xT(x, XS.TH)));
     const ini = ef.length + 1;
     ELEC.calc.forEach((c) => ef.push([
       xT(c.nombre, XS.TD), xT(c.label, XS.TD), xN(c.cant, XS.NUM),
       ...(c.kWsin ? [xT(L("pendiente", "pending"), XS.TD), xT(L("pendiente", "pending"), XS.TD)] : [xN(+c.kW.toFixed(2), XS.NUM), xN(+c.kWtot.toFixed(2), XS.NUM)]),
       xT(`${c.V} / ${c.ph}F`, XS.TD),
       ...(c.sinI ? [xT(L("pendiente", "pending"), XS.TD), xT(L("pendiente", "pending"), XS.TD), xT(L("pendiente", "pending"), XS.TD)]
-        : [xN(+c.I.toFixed(1), XS.NUM), xT(`${c.cond.awg}${c.cond.paralelo > 1 ? ` ×${c.cond.paralelo}` : ""}`, XS.TD), xN(c.cond.ocpd, XS.NUM)]), c.sinL ? xT(L("pendiente", "pending"), XS.TD) : c.Lsin ? xT(`${n(c.L, 0)} ${L("(sin confirmar)", "(unconfirmed)")}`, XS.TD) : xN(c.L, XS.NUM)]));
+        : [xN(+c.I.toFixed(1), XS.NUM), xT(`${c.cond.awg}${c.cond.paralelo > 1 ? ` ×${c.cond.paralelo}` : ""}`, XS.TD), xN(c.cond.ocpd, XS.NUM)]), c.sinL ? xT(L("pendiente", "pending"), XS.TD) : c.Lsin ? xT(`${n(c.L, 0)} ${L("(sin confirmar)", "(unconfirmed)")}`, XS.TD) : xN(c.L, XS.NUM),
+      xN(+c.fp.toFixed(2), XS.NUM), xT(L(`kW ${kWOrigenTexto(c, false)}; fp ${fpOrigenTexto(c, false)}`, `kW ${kWOrigenTexto(c, true)}; PF ${fpOrigenTexto(c, true)}`), XS.TD)]));
     const fin = ef.length;
     ef.push([xT(L("CARGA CONECTADA", "CONNECTED LOAD"), XS.SUBT), xV(XS.SUBT), xV(XS.SUBT), xV(XS.SUBT), xF(`SUM(E${ini}:E${fin})`, XS.SUBT),
-      xV(XS.SUBT), xV(XS.SUBT), xV(XS.SUBT), xV(XS.SUBT), xV(XS.SUBT)]);
+      xV(XS.SUBT), xV(XS.SUBT), xV(XS.SUBT), xV(XS.SUBT), xV(XS.SUBT), xV(XS.SUBT), xV(XS.SUBT)]);
     ef.push([]);
     ef.push([xT(L("DEMANDA Y ALIMENTADOR GENERAL", "DEMAND AND MAIN FEEDER"), XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC)]);
     ef.push([xT(L("CONCEPTO", "ITEM"), XS.TH), xT(L("VALOR", "VALUE"), XS.TH), xT(L("UNIDAD", "UNIT"), XS.TH), xT(L("BASE DE CALCULO", "CALCULATION BASIS"), XS.TH)]);
@@ -5572,6 +5575,7 @@ function buildPropuestaXlsx(opt) {
     fila(L("Factor de demanda", "Demand factor"), +ELEC.fdem.toFixed(3), "—", L("Demanda / conectada", "Demand / connected"));
     fila(L("Corriente del tablero", "Panel current"), +ELEC.Itab.toFixed(1), "A", L("kVA de demanda a la tension del sistema", "Demand kVA at system voltage"));
     fila(L("Interruptor principal", "Main breaker"), ELEC.principal, "A", L("Mayor entre la proteccion del alimentador (125 % solo sobre las cargas continuas que no son motor; el 25 % del motor mayor ya va en la demanda) y la del ramal del motor mayor (art. 430-63)", "Larger of the feeder protection (125 % only on continuous non-motor loads; the largest motor's 25 % is already in the demand) and the largest motor's branch protection (art. 430-63)"));
+    fila(L("fp del alimentador", "Feeder power factor"), +ELEC.fpAlim.toFixed(2), "—", ELEC.fpAlimOrigen === "casa" ? L("Criterio de la casa (0.95 sin capturar), para la caida de tension del alimentador", "House criterion (0.95, not captured), for the feeder voltage drop") : L("Capturado, para la caida de tension del alimentador", "Captured, for the feeder voltage drop"));
     fila(L("Desbalance entre fases", "Phase imbalance"), +ELEC.desbalance.toFixed(1), "%", `A ${n(ELEC.fases.A, 1)} · B ${n(ELEC.fases.B, 1)} · C ${n(ELEC.fases.C, 1)} kVA`);
     /* H-179: lo no capturado sale «PENDIENTE», nunca un valor por omisión. */
     const filaP = (k, u, b) => ef.push([xT(k, XS.TD), xT(L("PENDIENTE", "PENDING"), XS.TD), xT(u, XS.TD), xT(b, XS.TD)]);
@@ -5598,7 +5602,7 @@ function buildPropuestaXlsx(opt) {
       `General-purpose motors (430-6(a)(1)): full-load current from Table 430-250 (three-phase) or 430-248 (single-phase), not kW/pf; their kVA comes from it (1.732·V·I three-phase, V·I single-phase). ${cMot.map((c) => `${c.nombre}: ${motorFilaTexto(c, true)}`).join("; ")}.${cMot.some((c) => c.kWsin) ? " The connected load in kW leaves out motors without captured kW; the kVA demand includes them." : ""}`), XS.NOTA)]);
     ef.push([xT(L("Esta memoria no sustituye el dictamen de una unidad de verificacion ni un estudio de arco electrico: es el calculo que se le entrega a quien lo emite.",
       "This calculation does not replace an accredited inspection certificate or an arc-flash study: it is the calculation handed to whoever issues them."), XS.NOTA)]);
-    hojas.push({ nombre: HN.MEMORIA_ELECTRICA, congelar: 0, anchos: [34, 26, 8, 12, 12, 12, 10, 14, 10, 10], filas: ef });
+    hojas.push({ nombre: HN.MEMORIA_ELECTRICA, congelar: 0, anchos: [34, 26, 8, 12, 12, 12, 10, 14, 10, 10, 8, 48], filas: ef });
   }
 
   /* ---------- 10) INGENIERIA DE VALOR ---------- */
@@ -9573,6 +9577,8 @@ function elecOf(e, fanA = 0) {
    una fase, y eso es exactamente lo que hay que ver en el cuadro. El banco de
    pruebas encontró esto: la primera versión cargaba los contactos completos a
    una sola fase y reportaba 60 % de desbalance que no existe en obra. */
+/* H-180 (rev 2.9.24): el fp de cada tipo es criterio de la casa (valores típicos de anteproyecto, no de la NOM): se usa sólo
+   cuando la carga no trae el suyo capturado, y la memoria, el PDF y el libro lo dicen. */
 const TIPO_CARGA = {
   motor:      { label: "Motor / equipo HVAC", fp: .85, continua: true, reparte: false },
   alumbrado:  { label: "Alumbrado", fp: .95, continua: true, reparte: true },
@@ -9581,6 +9587,22 @@ const TIPO_CARGA = {
   resistiva:  { label: "Resistiva (calefacción, cocción)", fp: 1, continua: true, reparte: false },
   ups:        { label: "Cómputo / UPS / cuarto limpio", fp: .95, continua: true, reparte: true },
 };
+/* H-180: de dónde sale el kW de cada carga. Sólo «capturado» es dato; lo demás es ESTIMADO por el motor de origen o de
+   catálogo de la casa, y así se imprime. [texto ES, texto EN, estimado] */
+const KW_ORIGEN = {
+  capturado: ["capturado", "captured", false],
+  hvac: ["ESTIMADO por familia de equipo (kW/TR de catálogo)", "ESTIMATED by equipment family (catalog kW/TR)", true],
+  vent: ["ESTIMADO por caudal y presión (60 % de eficiencia)", "ESTIMATED from airflow and pressure (60 % efficiency)", true],
+  aire: ["de catálogo de compresores de la casa", "from the house compressor catalog", false],
+  hidro: ["ESTIMADO por el módulo hidrosanitario (kW al eje de la bomba)", "ESTIMATED by the plumbing module (pump shaft kW)", true],
+  fuego: ["ESTIMADO por el módulo contra incendio (kW al eje de la bomba)", "ESTIMATED by the fire-protection module (pump shaft kW)", true],
+  ffu: [`de catálogo de la casa (${FFU.watts} W por módulo FFU)`, `from the house catalog (${FFU.watts} W per FFU module)`, false],
+  otro: ["ESTIMADO o de catálogo de otro módulo (sin identificar; no es de placa)", "ESTIMATED or catalog value from another module (unidentified; not nameplate)", true],
+};
+const kWOrigenTexto = (c, en) => (KW_ORIGEN[c.kWOrigen] || KW_ORIGEN.capturado)[en ? 1 : 0];
+const fpOrigenTexto = (c, en) => (c.fpOrigen === "capturado" ? (en ? "captured" : "capturado")
+  : c.auto || c.fpCasa != null || c.origen === "cedula" ? (en ? "house criterion (source module assumption)" : "criterio de la casa (supuesto del motor de origen)")
+  : (en ? "house criterion (load type default)" : `criterio de la casa (tipo «${c.label}»)`));
 function demandaDe(tipo, kVA) {
   /* Art. 220-44: en contactos de uso general de local no habitacional, los
      primeros 10 kVA al 100 % y el resto al 50 %. El resto de los tipos entra
@@ -9613,7 +9635,9 @@ function defaultElec() {
     h179: true,                    // proyecto creado o migrado con la regla H-179 (sanearEstado)
     h178: true,                    // cargas de la cédula con hp de referencia y FFU como aparato (sanearEstado)
     sinConfirmar: {},              // valores por omisión viejos guardados como dato, sin confirmar (sanearEstado)
-    fpObjetivo: .95,
+    /* H-180: fp del alimentador para su caída de tensión; vacío = 0.95, criterio de la casa (antes 0.95 guardado y oculto). */
+    fpObjetivo: null,
+    h180: true,                    // cargas de la cédula con procedencia de kW y fp (sanearEstado)
     cargas: [],                // capturadas por el usuario
     tomarHVAC: false,          // rev 2.7.0: la cédula ya no entra sola, entra como propuesta aceptada
   };
@@ -9654,7 +9678,7 @@ function computeElec(E) {
       const el = elecOf(x.m);
       if (!(el.kWe > 0)) return;   // manejadoras y fan coils no traen compresor: su consumo es del ventilador y se captura aparte
       filas.push({ id: `hvac-${i}`, nombre: `${x.m.model} · ${x.rol}`, tipo: "motor", kW: el.kWe, V: el.volts,
-        ph: el.ph, cant: x.q, L: null, fp: el.fp, auto: true, mca: el.mca, mop: el.mop, placaEstimada: !!el.estimado, modelo: x.m });
+        ph: el.ph, cant: x.q, L: null, fp: el.fp, auto: true, mca: el.mca, mop: el.mop, placaEstimada: !!el.estimado, modelo: x.m, kWOrigen: "hvac", estimado: true });
     });
   }
   /* 2) Ventiladores y extractores del motor de ventilación, con su permiso. */
@@ -9665,7 +9689,7 @@ function computeElec(E) {
     const cfm = VENT.demand, sp = Math.max(.1, VENT.sp);
     const kW = cfm * sp / (6356 * 0.6) * 0.7457;
     filas.push({ id: "vent-1", nombre: `${VENT.eq.primary.model} · extracción ${n(cfm, 0)} CFM`, tipo: "motor",
-      kW: +kW.toFixed(2), V: 220, ph: kW > 1.5 ? 3 : 1, cant: 1, L: null, fp: .85, auto: true, estimado: true });
+      kW: +kW.toFixed(2), V: 220, ph: kW > 1.5 ? 3 : 1, cant: 1, L: null, fp: .85, auto: true, estimado: true, kWOrigen: "vent" });
   }
   /* 3)-6) Balance global (decisión del dueño, 15-sep-2026): compresor de aire,
      bomba de agua, bomba contra incendio y FFU de cuartos limpios, cada uno
@@ -9687,17 +9711,17 @@ function computeElec(E) {
        compresor por fila, no kVA×cant — con cant>1 aquí los demás compresores
        ya entran al 100% como el resto de los motores, sin tocar esa regla. */
     filas.push({ id: "aire-1", nombre: `Compresor ${AIRE.principal.tipo} · ${AIRE.principal.hp} HP × ${AIRE.nUnidades} en servicio${AIRE.redund ? " (más 1 de relevo N+1, no incluida: no corre en simultáneo)" : ""}`, tipo: "motor",
-      kW: AIRE.principal.kW, hpRef: num(AIRE.principal.hp, 0) || null, hpRefOrigen: "catalogo", V: sis.V, ph: sis.ph, cant: Math.max(1, num(AIRE.nUnidades, 1)), L: null, fp: .85, auto: true, estimado: false });
+      kW: AIRE.principal.kW, hpRef: num(AIRE.principal.hp, 0) || null, hpRefOrigen: "catalogo", V: sis.V, ph: sis.ph, cant: Math.max(1, num(AIRE.nUnidades, 1)), L: null, fp: .85, auto: true, estimado: false, kWOrigen: "aire" });
   }
   const verHidro = linkAllowed("hidro>elec");
   if (E.tomarHVAC && verHidro && HIDRO && HIDRO.kWbomba > 0) {
     filas.push({ id: "hidro-1", nombre: `Bomba de agua · ${n(HIDRO.hpBomba, 1)} HP`, tipo: "motor",
-      kW: +HIDRO.kWbomba.toFixed(2), hpRef: num(HIDRO.hpBomba, 0) || null, hpRefOrigen: "hidro", V: sis.V, ph: sis.ph, cant: 1, L: null, fp: .85, auto: true, estimado: true });
+      kW: +HIDRO.kWbomba.toFixed(2), hpRef: num(HIDRO.hpBomba, 0) || null, hpRefOrigen: "hidro", V: sis.V, ph: sis.ph, cant: 1, L: null, fp: .85, auto: true, estimado: true, kWOrigen: "hidro" });
   }
   const verFuego = linkAllowed("fuego>elec");
   if (E.tomarHVAC && verFuego && FUEGO && FUEGO.kWbomba > 0) {
     filas.push({ id: "fuego-1", nombre: `Bomba contra incendio · ${n(FUEGO.hpBomba, 0)} HP`, tipo: "motor",
-      kW: +FUEGO.kWbomba.toFixed(2), hpRef: num(FUEGO.hpBomba, 0) || null, hpRefOrigen: "fuego", V: sis.V, ph: sis.ph, cant: 1, L: null, fp: .85, auto: true, estimado: true });
+      kW: +FUEGO.kWbomba.toFixed(2), hpRef: num(FUEGO.hpBomba, 0) || null, hpRefOrigen: "fuego", V: sis.V, ph: sis.ph, cant: 1, L: null, fp: .85, auto: true, estimado: true, kWOrigen: "fuego" });
   }
   const verClean = linkAllowed("clean>elec");
   if (E.tomarHVAC && verClean && CLEAN && CLEAN.sum && CLEAN.sum.ffu > 0) {
@@ -9705,7 +9729,7 @@ function computeElec(E) {
        reparten en varios circuitos derivados, pero para el alimentador general
        y la demanda del tablero la suma es lo que importa. */
     filas.push({ id: "ffu-1", nombre: `Módulos FFU · ${CLEAN.sum.ffu} × ${FFU.watts} W`, tipo: "motor",
-      kW: +(CLEAN.sum.ffu * FFU.watts / 1000).toFixed(2), V: sis.Vf, ph: 1, cant: 1, L: null, fp: .85, auto: true, estimado: false, aparato: true });
+      kW: +(CLEAN.sum.ffu * FFU.watts / 1000).toFixed(2), V: sis.Vf, ph: 1, cant: 1, L: null, fp: .85, auto: true, estimado: false, aparato: true, kWOrigen: "ffu" });
   }
   /* 7) Cargas capturadas por el usuario */
   (E.cargas || []).forEach((c, i) => filas.push({ ...c, id: c.id || `u-${i}`, auto: false }));
@@ -9716,7 +9740,14 @@ function computeElec(E) {
     const meta = TIPO_CARGA[tipo];
     const V = Math.max(100, num(c.V, sis.V));
     const ph = num(c.ph, sis.ph) === 1 ? 1 : 3;
-    const fp = Math.min(1, Math.max(.5, num(c.fp, meta.fp)));
+    /* H-180: fp capturado; sin él, el que trajo la cédula (fpCasa) o el del tipo, los dos criterio de la casa. El kW que trae
+       procedencia (cédula u otro motor) deja de serlo en cuanto el usuario lo cambia. */
+    const fpCap = !c.auto && num(c.fp, 0) > 0 ? num(c.fp) : null;          // 0 o vacío = sin capturar
+    const fpFuera = fpCap != null && (fpCap < .5 || fpCap > 1);            // p. ej. 85 en vez de 0.85: no se usa
+    const fpUsaCap = fpCap != null && !fpFuera;
+    const fp = Math.min(1, Math.max(.5, fpUsaCap ? fpCap : c.auto ? num(c.fp, meta.fp) : num(c.fpCasa, meta.fp)));
+    const fpOrigen = fpUsaCap ? "capturado" : "casa";
+    const kWOrigen = KW_ORIGEN[c.kWOrigen] && (c.auto || num(c.kW) === num(c.kWRef)) ? c.kWOrigen : "capturado";
     const cant = Math.max(1, Math.round(num(c.cant, 1)));
     const kW = Math.max(0, num(c.kW));
     /* H-178 (rev 2.9.24): el motor de uso general (tipo motor sin MCA/MOP de placa del art. 440) toma su corriente de la
@@ -9748,7 +9779,7 @@ function computeElec(E) {
       Idis: Idis440, mop: art440 ? mop : 0 });
     /* Distancia que un proyecto viejo guardó sin que nadie la capturara (sanearEstado, H-179): se conserva, marcada. */
     const Lsin = !sinL && c.Lsupuesta != null && num(c.L) === num(c.Lsupuesta);
-    return { ...c, tipo, label: meta.label, V, ph, fp, cant, kW, kVA, kWtot: kW * cant, kVAtot: kVA * cant, I, cond, sinL, Lsin, L: sinL ? null : Lc, motorTabla: tab, sinI, kWsin,
+    return { ...c, tipo, label: meta.label, V, ph, fp, cant, kW, kVA, kWtot: kW * cant, kVAtot: kVA * cant, I, cond, sinL, Lsin, L: sinL ? null : Lc, motorTabla: tab, sinI, kWsin, fpOrigen, fpFuera, fpCap, kWOrigen, kWEst: KW_ORIGEN[kWOrigen][2],
       art440, mca: art440 ? mca : c.mca, mop: art440 ? mop : c.mop, mcaEst: art440 && est.mca, mopEst: art440 && est.mop };
   });
 
@@ -9805,7 +9836,9 @@ function computeElec(E) {
      conductor e interruptor (H-2.1 de la auditoría de rev 2.9.5). */
   /* H-179: sin distancia al tablero capturada la caída del alimentador queda pendiente (antes 30 m supuestos). */
   const Lalim = num(E.Ltablero, 0), alimSinL = !(Lalim > 0);
-  const alim = selConductor({ I: Itab, V: sis.V, ph: sis.ph, L: Lalim, sinL: alimSinL, fp: num(E.fpObjetivo, .95),
+  const fpAlimCap = num(E.fpObjetivo, 0) > 0 ? num(E.fpObjetivo) : null, fpAlimFuera = fpAlimCap != null && (fpAlimCap < .5 || fpAlimCap > 1);
+  const fpAlim = fpAlimCap != null && !fpAlimFuera ? fpAlimCap : .95, fpAlimOrigen = fpAlimCap != null && !fpAlimFuera ? "capturado" : "casa";
+  const alim = selConductor({ I: Itab, V: sis.V, ph: sis.ph, L: Lalim, sinL: alimSinL, fp: fpAlim,
     material: mat, aislamiento: E.aislamiento, tempAmb: E.tempAmb, nCond: E.nCond, dvMax: Math.max(1, num(E.dvTotal, 5) - num(E.dvRamal, 3)),
     continua: true, Idis: IdisAlim });
   /* Interruptor principal con motores en el alimentador (art. 430-63): no debe
@@ -9864,6 +9897,10 @@ function computeElec(E) {
     if (c.tipo === "motor" && !c.art440 && c.modelo && !(num(c.mca, 0) > 0) && !(num(c.mop, 0) > 0))
       avisos.push({ lvl: "warn", msg: `${c.nombre}: equipo con motocompresor sin MCA ni MOP; su corriente se ESTIMÓ con ${formulaKw(c.ph)} (${n(c.I, 1)} A) y se protege al 250 % de la Tabla 430-52: puede quedar arriba de su MOP. Captura los datos de placa o vuelve a aceptar la cédula (art. 440).` });
   });
+  calc.filter((c) => c.fpFuera).forEach((c) => avisos.push({ lvl: "err", msg: `${c.nombre}: el fp capturado (${c.fpCap}) está fuera de 0.5 a 1 (¿en porcentaje?) y no se usa: se calcula con ${n(c.fp, 2)}, ${fpOrigenTexto(c, false)}. Captúralo como fracción (0.85, no 85).` }));
+  if (fpAlimFuera) avisos.push({ lvl: "err", msg: `El fp del alimentador capturado (${fpAlimCap}) está fuera de 0.5 a 1 (¿en porcentaje?) y no se usa: la caída se calcula con 0.95, criterio de la casa. Captúralo como fracción (0.95, no 95).` });
+  const kWest = calc.filter((c) => c.kWEst && !(c.motorTabla && num(c.hp, 0) > 0));
+  if (kWest.length) avisos.push({ lvl: "info", msg: `${kWest.length} carga(s) con kW ESTIMADO, no de placa (${kWest.slice(0, 4).map((c) => c.nombre).join(", ")}${kWest.length > 4 ? "…" : ""}): su demanda y su ramal salen de esa estimación. Captura la potencia de placa antes de firmar el cuadro.` });
   if (desbalance > 5) avisos.push({ lvl: "warn", msg: `Desbalance entre fases de ${n(desbalance, 1)} %. Arriba de 5 % calienta el neutro y castiga la vida de los motores: reacomoda las cargas monofásicas.` });
   const sinLong = calc.filter((c) => c.sinL);
   if (sinLong.length) avisos.push({ lvl: "err", msg: `${sinLong.length} carga(s) sin longitud capturada (${sinLong.slice(0, 4).map((c) => c.nombre).join(", ")}${sinLong.length > 4 ? "…" : ""}): su caída de tensión queda pendiente; no se supone una distancia ni se toma como 0 %. Captura la distancia de cada una a su tablero${sinLong.some((c) => c.auto) ? "; las que entran en vivo de otros motores no tienen campo de distancia: acepta la propuesta «Cargas eléctricas de los demás motores» y captúrala en «Editar cargas capturadas»" : ""}.` });
@@ -9893,11 +9930,12 @@ function computeElec(E) {
   }
   if (!conTrafo) memo.push(`Corriente de falla PENDIENTE: falta ${!(kVAtr > 0) && !(z > 0) ? "el transformador de la acometida (kVA y Z de placa)" : !(z > 0) ? `la Z de placa del transformador (kVA capturado: ${n(kVAtr, 0)})` : `la capacidad en kVA del transformador (Z capturada: ${n(z, 1)} %)`}; no se supone, así que tampoco hay capacidad interruptiva sugerida.`);
   else memo.push(`Corriente de falla ESTIMADA en barras: ${n(IccTrafo / 1000, 1)} kA con transformador de ${n(kVAtr, 0)} kVA e impedancia ${n(z, 1)} % (${sinConf.trafoKVA || sinConf.trafoZ ? "valores por omisión de una revisión anterior, SIN CONFIRMAR" : "datos capturados"}). Capacidad interruptiva mínima sugerida ${kAIC} kA simétricos. Es una cota superior para preselección, no un estudio de corto circuito.`);
+  memo.push(`Procedencia de cada carga (H-180; sólo «capturado» es dato): ${calc.map((c) => `${c.nombre}: kW ${kWOrigenTexto(c, false)}, fp ${n(c.fp, 2)} ${fpOrigenTexto(c, false)}`).join("; ")}. fp del alimentador ${n(fpAlim, 2)} (${fpAlimOrigen === "casa" ? "criterio de la casa" : "capturado"}), para su caída de tensión.`);
   memo.push("Criterio de caída de tensión: el capturado para circuito derivado y el acumulado desde la acometida (3 % y 5 % por omisión). No es requisito obligatorio de la NOM-001-SEDE sino recomendación de las notas de los artículos 210-19 y 215-2; se aplica como criterio duro de la casa.");
 
   return { calc, demTipo, fases, desbalance, kVAconectada, kVAdemanda, fdem, extraMotor,
     Itab, IdisAlim, alim, principal, IccTrafo, kAIC, sis, mat, memo, avisos, verHVAC, verVent,
-    Lalim: alimSinL ? null : Lalim, trafoKVA: kVAtr > 0 ? kVAtr : null, trafoZ: z > 0 ? z : null, sinConf,
+    Lalim: alimSinL ? null : Lalim, trafoKVA: kVAtr > 0 ? kVAtr : null, trafoZ: z > 0 ? z : null, sinConf, fpAlim, fpAlimOrigen,
     kWtot: calc.reduce((a, c) => a + c.kWtot, 0) };
 }
 
@@ -17017,7 +17055,7 @@ function propuestaElecFilasCalc() {
   return R.calc.filter((c) => c.auto).map((c) => ({
     nombre: c.nombre, tipo: c.tipo, kW: c.kW, V: c.V, ph: c.ph, cant: c.cant, L: c.L, fp: c.fp,
     mca: c.mca, mop: c.mop, placaEstimada: !!c.placaEstimada, estimado: !!c.estimado, modelo: c.modelo ? c.modelo.model : null,
-    hpRef: num(c.hpRef, 0) || null, hpRefOrigen: c.hpRefOrigen || null, aparato: !!c.aparato,
+    hpRef: num(c.hpRef, 0) || null, hpRefOrigen: c.hpRefOrigen || null, aparato: !!c.aparato, kWOrigen: c.kWOrigen || null,
   }));
 }
 function snapshotSoporte() {
@@ -17130,10 +17168,10 @@ const PROPUESTAS = {
       const ts = Date.now();
       /* H-178: volver a aceptar conserva lo que el usuario capturó en la carga del mismo nombre (distancia y hp de placa). */
       const previas = new Map((S.elec.cargas || []).filter((c) => c.origen === "cedula").map((c) => [c.nombre, c]));
-      const conserva = (p) => (p ? { ...(num(p.L, 0) > 0 ? { L: p.L, ...(p.Lsupuesta != null ? { Lsupuesta: p.Lsupuesta } : {}) } : {}), ...(num(p.hp, 0) > 0 ? { hp: p.hp } : {}) } : {});
+      const conserva = (p) => (p ? { ...(num(p.L, 0) > 0 ? { L: p.L, ...(p.Lsupuesta != null ? { Lsupuesta: p.Lsupuesta } : {}) } : {}), ...(num(p.hp, 0) > 0 ? { hp: p.hp } : {}), ...(num(p.fp, 0) > 0 ? { fp: p.fp } : {}) } : {});
       S.elec.cargas = (S.elec.cargas || []).filter((c) => c.origen !== "cedula");
       /* H-177: el equipo con motocompresor entra con su MCA y su MOP (art. 440); antes se descartaban. */
-      f.forEach((c, i) => S.elec.cargas.push({ id: `ced${ts.toString(36)}${i}`, nombre: c.nombre, tipo: c.tipo, kW: c.kW, V: c.V, ph: c.ph, cant: c.cant, L: c.L, fp: c.fp, fija: false, origen: "cedula", ts, modelo: c.modelo, estimado: c.estimado,
+      f.forEach((c, i) => S.elec.cargas.push({ id: `ced${ts.toString(36)}${i}`, nombre: c.nombre, tipo: c.tipo, kW: c.kW, V: c.V, ph: c.ph, cant: c.cant, L: c.L, fp: null, fpCasa: c.fp, ...(c.kWOrigen ? { kWOrigen: c.kWOrigen, kWRef: c.kW } : {}), fija: false, origen: "cedula", ts, modelo: c.modelo, estimado: c.estimado,
         ...(num(c.hpRef, 0) > 0 ? { hpRef: c.hpRef, hpRefOrigen: c.hpRefOrigen } : {}), ...(c.aparato ? { aparato: true } : {}),
         ...(num(c.mop, 0) > 0 ? { mca: c.mca, mop: c.mop, ...(c.placaEstimada ? { placaEst: { mca: c.mca, mop: c.mop } } : {}) } : {}), ...conserva(previas.get(c.nombre)) }));
       S.elec.tomarHVAC = false;
@@ -20143,7 +20181,7 @@ function viewElec() {
   const M = (v, d = 1) => n(v, d);
   const fila = (c, i) => `<tr>
     <td><div style="font-weight:600">${esc(c.nombre)}</div>
-      <div class="sub">${esc(c.label)}${c.auto ? " · desde otro motor" : ""}${num(c.hpRef, 0) > 0 ? ` · ${esc(String(c.hpRef))} hp del ${esc(hpRefTexto(c, false))}, no de placa` : ""}${c.fase ? ` · fase ${c.fase}` : " · 3F"}</div></td>
+      <div class="sub">${esc(c.label)}${c.auto ? " · desde otro motor" : ""}${num(c.hpRef, 0) > 0 ? ` · ${esc(String(c.hpRef))} hp del ${esc(hpRefTexto(c, false))}, no de placa` : ""}${c.kWOrigen !== "capturado" ? ` · kW ${esc(kWOrigenTexto(c, false))}` : ""} · fp ${M(c.fp, 2)}${c.fpOrigen === "casa" ? " (criterio de la casa)" : ""}${c.fase ? ` · fase ${c.fase}` : " · 3F"}</div></td>
     <td class="num">${c.cant > 1 ? `${c.cant} ×` : ""} ${c.kWsin ? `<span title="Sin kW capturado: la demanda usa la corriente de la tabla">pendiente</span>` : M(c.kW, 2)}</td>
     <td class="num">${c.V} / ${c.ph}F</td>
     ${c.sinI ? `<td class="num" colspan="5" style="color:var(--warn)" title="Sin corriente de tabla ni kW: el ramal no está dimensionado">pendiente</td>` : `<td class="num">${M(c.I, 1)}</td>
@@ -20169,6 +20207,7 @@ function viewElec() {
       <div class="row">
         ${inp("Caída máxima en ramal (%)", "elec.dvRamal", "number", "0.5", "elec.dv", E)}
         ${inp("Caída máxima acumulada (%)", "elec.dvTotal", "number", "0.5", "elec.dvTot", E)}
+        ${inp("fp del alimentador (vacío: 0.95, criterio de la casa)", "elec.fpObjetivo", "number", "0.01")}
       </div>
       <details${num(E.trafoKVA, 0) > 0 && num(E.trafoZ, 0) > 0 ? "" : " open"}><summary>Transformador de la acometida${num(E.trafoKVA, 0) > 0 && num(E.trafoZ, 0) > 0 ? "" : " · pendiente"}</summary>
         <div class="row">${inp("Capacidad (kVA)", "elec.trafoKVA", "number", "5", "elec.trafo", E)}
@@ -20209,17 +20248,19 @@ function viewElec() {
         ${R.avisos.map((a) => `<div class="${a.lvl === "err" ? "warnline" : "hint"}" style="margin-bottom:8px">${esc(a.msg)}</div>`).join("")}
       </div></div>` : ""}
       ${cargasUsuario.length ? `<div class="card"><h3>Editar cargas capturadas</h3><div class="body">
-        ${cargasUsuario.map((c, i) => `<div class="row" style="grid-template-columns:1.4fr 1fr 1fr;align-items:end;margin-bottom:6px">
+        ${cargasUsuario.map((c, i) => `<div class="row" style="grid-template-columns:1.4fr 1fr 1fr 1fr;align-items:end;margin-bottom:6px">
           ${inp("Nombre", `elec.cargas.${i}.nombre`, "text")}
           ${sel("Tipo", `elec.cargas.${i}.tipo`, Object.entries(TIPO_CARGA).map(([k, v]) => [k, v.label]))}
           ${inp("kW", `elec.cargas.${i}.kW`, "number", "0.1")}
+          ${inp(`fp (vacío: ${n(num(c.fpCasa, (TIPO_CARGA[c.tipo] || TIPO_CARGA.proceso).fp), 2)}, criterio de la casa)`, `elec.cargas.${i}.fp`, "number", "0.01")}
         </div>
         <div class="row" style="grid-template-columns:1fr 1fr 1fr 1fr;margin-bottom:14px">
           ${inp("Tensión", `elec.cargas.${i}.V`, "number", "10")}
           ${inp("Fases", `elec.cargas.${i}.ph`, "number", "1")}
           ${inp("Cantidad", `elec.cargas.${i}.cant`, "number", "1")}
           ${inp("Distancia (m)", `elec.cargas.${i}.L`, "number", "5")}
-        </div>${c.tipo === "motor" ? `
+        </div>${KW_ORIGEN[c.kWOrigen] && num(c.kW) === num(c.kWRef) ? `
+        <div class="sub" style="margin:-8px 0 14px">kW ${esc(kWOrigenTexto(c, false))}. <button class="btn-ghost" data-act="ec-kwplaca" data-i="${i}">El kW es de placa</button></div>` : ""}${c.tipo === "motor" ? `
         <div class="row" style="grid-template-columns:1fr 1fr 1fr 2fr;align-items:end;margin:-8px 0 14px">
           ${inp("hp de placa", `elec.cargas.${i}.hp`, "number", "any")}
           ${inp("MCA de placa (A)", `elec.cargas.${i}.mca`, "number", "0.1")}
@@ -21275,6 +21316,7 @@ document.addEventListener("click", (e) => {
     case "pdf-cot-motor": accCotizacion(b.dataset.motor); break;
     case "ec-add": S.elec.cargas.push(defaultCarga(`Carga ${S.elec.cargas.length + 1}`)); projAutosave(); render(); break;
     case "ec-del": S.elec.cargas.splice(+b.dataset.i, 1); projAutosave(); render(); break;
+    case "ec-kwplaca": { const c = S.elec.cargas[+b.dataset.i]; if (c) { delete c.kWOrigen; delete c.kWRef; } projAutosave(); render(); break; }
     case "ht-add": S.hidro.tramos.push(defaultTramoAgua(`AF-${S.hidro.tramos.length + 1}`)); projAutosave(); render(); break;
     case "ht-del": S.hidro.tramos.splice(+b.dataset.i, 1); projAutosave(); render(); break;
     case "chain-duct": {
@@ -21750,6 +21792,7 @@ function sanearEstado(d) {
      cae sola en cuanto el usuario captura otro valor. */
   const elecViejo = !!(s.elec && typeof s.elec === "object" && !("h179" in s.elec));
   const elecSin178 = !!(s.elec && typeof s.elec === "object" && !("h178" in s.elec));
+  const elecSin180 = !!(s.elec && typeof s.elec === "object" && !("h180" in s.elec));
   s.elec = { ...defaultElec(), ...(s.elec && typeof s.elec === "object" ? s.elec : {}) };
   if (elecViejo) {
     const sc = {};
@@ -21771,6 +21814,24 @@ function sanearEstado(d) {
       if (c && c.origen === "cedula" && c.tipo === "motor" && /^Módulos FFU/.test(String(c.nombre || ""))) c.aparato = true;
     });
     s.elec.h178 = true;
+  }
+  /* H-180: el fp que la cédula guardaba como dato era el supuesto del motor de origen (pasa a fpCasa, mismo valor) y su kW no
+     traía procedencia: se reconoce por el nombre o el modelo que la propia cédula escribe. El 0.95 del alimentador era el de
+     la casa. Ningún número cambia. */
+  if (elecSin180) {
+    if (num(s.elec.fpObjetivo) === .95) s.elec.fpObjetivo = null;
+    (Array.isArray(s.elec.cargas) ? s.elec.cargas : []).forEach((c) => {
+      /* Una carga de la cédula trae «estimado» (la guarda aplicar); una capturada a mano no. Sirve aunque se haya renombrado
+         o se le hayan quitado origen y modelo al reutilizar el proyecto (etiquetasGenericas). */
+      if (!c || !(c.origen === "cedula" || "estimado" in c)) return;
+      if (c.fp != null && c.fpCasa == null) { c.fpCasa = c.fp; c.fp = null; }
+      const nom = String(c.nombre || "");
+      const o = c.modelo ? "hvac" : c.hpRefOrigen === "catalogo" ? "aire" : c.hpRefOrigen === "hidro" || c.hpRefOrigen === "fuego" ? c.hpRefOrigen : c.aparato ? "ffu"
+        : /^Compresor /.test(nom) ? "aire" : /^Bomba de agua/.test(nom) ? "hidro" : /^Bomba contra incendio/.test(nom) ? "fuego"
+        : /^Módulos FFU/.test(nom) ? "ffu" : / · extracción [\d,.]+ CFM$/.test(nom) ? "vent" : "otro";
+      if (!c.kWOrigen) { c.kWOrigen = o; c.kWRef = c.kW; }
+    });
+    s.elec.h180 = true;
   }
      if (!Array.isArray(s.elec.cargas)) s.elec.cargas = [];
    s.elec.aislamiento = aislamientoDe(s.elec.aislamiento);

@@ -706,6 +706,133 @@ t("S.51 (H-178) proyecto que aceptó la cédula antes de la rev 2.9.24: los FFU 
     eq(ced.every((c) => c.L === 23), true, "volver a aceptar conserva la distancia capturada en cada carga:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
+/* H-180 (rev 2.9.24): trazabilidad de lo que no es dato. El kW que no es de placa (familia de equipo, caudal × presión, bombas
+   estimadas, catálogo de la casa) sale con su procedencia; el fp de cada carga se captura y se imprime con su origen (capturado o
+   criterio de la casa por tipo); el fp del alimentador (antes 0.95 oculto) se ve, se captura y se imprime. No mueve números. */
+const fpOrigenTxt = (c) => G("fpOrigenTexto")(c, false);
+t("S.52 (H-180) kW estimados y de catálogo con su procedencia; fp por carga editable e impreso con su origen (vacío = el de la casa; fuera de 0.5–1 no se usa); fp del alimentador visible, editable e impreso; filas en vivo; proyecto viejo (aun renombrado) sin mover números", () => {
+  const guardado = JSON.stringify(S), tab0 = S.tab;
+  try {
+    const dm = (nombre, x) => ({ ...G("defaultCarga")(nombre), V: 220, ph: 3, cant: 1, L: 20, ...x });
+    S.elec = { ...G("defaultElec")(), tomarHVAC: false, trafoKVA: 300, trafoZ: 4, Ltablero: 30,
+      cargas: [dm("Motor sin fp", { tipo: "motor", kW: 11 }), dm("Proceso fp 0.8", { tipo: "proceso", kW: 10, fp: 0.8 })] };
+    G("recompute")();
+    const v = G("viewElec")();
+    contiene(v, 'data-path="elec.cargas.0.fp"', "pantalla: el fp de cada carga se captura:");
+    contiene(v, 'data-path="elec.fpObjetivo"', "pantalla: el fp del alimentador se ve y se captura:");
+    let R = G("ELEC");
+    eq(R.calc[0].fpOrigen, "casa", "sin fp capturado, el del tipo es criterio de la casa:");
+    eq(R.calc[1].fpOrigen, "capturado", "el fp capturado se declara capturado:"); eq(R.calc[1].fp, 0.8, "y se usa:");
+    let memo = R.memo.join(" ");
+    contiene(memo, "Motor sin fp: kW capturado, fp 0.85 criterio de la casa (tipo «Motor / equipo HVAC»)", "memoria, fp por tipo:");
+    if (!/Proceso fp 0\.8: kW capturado, fp 0\.80? capturado/.test(memo)) throw new Error("la memoria no dice que el fp de 0.8 es capturado");
+    contiene(memo, "fp del alimentador 0.95 (criterio de la casa)", "memoria, alimentador:");
+    let pdf = txtPdfE(G("buildElecPdf")());
+    contiene(pdf, "alimentador 0.95 (criterio de la casa)", "PDF, bases:");
+    if (!/(^| )0\.85\*( |$)/.test(pdf)) throw new Error("el PDF no marca el fp por tipo (criterio de la casa) en el cuadro");
+    const libro = () => { const hojas = G(`(() => { const o = xlsxBuild; let h = null; xlsxBuild = (x) => { h = x; return o(x); }; try { buildPropuestaXlsx({ lang: "en", mon: "USD" }); } finally { xlsxBuild = o; } return h; })()`);
+      return JSON.stringify((hojas.find((h) => JSON.stringify(h.filas).includes("PANEL SCHEDULE AND FEEDERS")) || {}).filas); };
+    let me = libro();
+    contiene(me, "house criterion (load type default)", "libro EN, fp por tipo:"); contiene(me, "Feeder power factor", "libro EN, fp del alimentador:");
+    /* Vaciar el campo por la pantalla (el manejador guarda 0): vuelve al de la casa, no a 0.5. */
+    S.tab = "electrico"; G("render")();
+    const inpFp = w.document.querySelector('input[data-path="elec.cargas.1.fp"]');
+    if (!inpFp) throw new Error("no se encontró el campo fp de la carga");
+    inpFp.value = ""; inpFp.dispatchEvent(new w.Event("input", { bubbles: true })); G("recompute")(); R = G("ELEC");
+    eq(R.calc[1].fp, 0.85, "fp vacío: el del tipo «Proceso» (0.85), no 0.5:"); eq(R.calc[1].fpOrigen, "casa", "declarado criterio de la casa:");
+    if (R.avisos.some((a) => a.msg.startsWith("Proceso fp 0.8") && /fuera de 0.5 a 1/.test(a.msg))) throw new Error("un campo vacío no es un fp fuera de rango");
+    /* Fuera de 0.5 a 1 (85 por 0.85): no se usa y se avisa. */
+    S.elec.cargas[1].fp = 85; S.elec.fpObjetivo = 95; G("recompute")(); R = G("ELEC");
+    eq(R.calc[1].fp, 0.85, "fp 85: no se usa; el del tipo:"); eq(R.calc[1].fpOrigen, "casa", "declarado criterio de la casa:");
+    if (!R.avisos.some((a) => a.lvl === "err" && a.msg.startsWith("Proceso fp 0.8") && /fuera de 0\.5 a 1/.test(a.msg))) throw new Error("sin aviso del fp fuera de rango");
+    eq(R.fpAlim, 0.95, "fp del alimentador 95: no se usa; 0.95 de la casa:"); eq(R.fpAlimOrigen, "casa", "declarado:");
+    if (!R.avisos.some((a) => a.lvl === "err" && /fp del alimentador capturado \(95\)/.test(a.msg))) throw new Error("sin aviso del fp del alimentador fuera de rango");
+    S.elec.cargas[1].fp = 0.8; S.elec.fpObjetivo = 0.9; G("recompute")(); R = G("ELEC");
+    if (!/fp del alimentador 0\.90? \(capturado\)/.test(R.memo.join(" "))) throw new Error("fp del alimentador capturado: la memoria no lo dice");
+    eq(R.fpAlim, 0.9, "la caída del alimentador usa el fp capturado:"); eq(R.fpAlimOrigen, "capturado", "y lo declara:");
+    pdf = txtPdfE(G("buildElecPdf")()); if (!/alimentador 0\.90? \(capturado\)/.test(pdf)) throw new Error("el PDF no imprime el fp del alimentador capturado");
+    contiene(libro(), "Captured, for the feeder voltage drop", "libro EN, fp del alimentador capturado:");
+    /* Filas en vivo (tomarHVAC, modo anterior): procedencia por fila, fp de la casa. */
+    G("reemplazarEstado")(JSON.parse(fs.readFileSync("parches/regresion-motores/regresion-motores.emp.json", "utf8"))); G("recompute")();
+    const RV = G(`conPermisoTemporal(CRUCES_ELEC, () => computeElec({ ...S.elec, tomarHVAC: true, cargas: [] }))`);
+    const esperado = { hvac: "hvac", vent: "vent", aire: "aire", hidro: "hidro", fuego: "fuego", ffu: "ffu" };
+    const vivas = RV.calc.filter((c) => c.auto);
+    if (vivas.length < 6) throw new Error(`el proyecto de regresión trae ${vivas.length} filas en vivo`);
+    vivas.forEach((c) => { eq(c.kWOrigen, esperado[c.id.split("-")[0]], `${c.id}, procedencia del kW:`); eq(c.fpOrigen, "casa", `${c.id}, fp:`); });
+    vivas.forEach((c) => eq(c.kWEst, ["hvac", "vent", "hidro", "fuego"].includes(c.id.split("-")[0]), c.id + ", estimado (equipo HVAC, extractor y bombas):"));
+    /* La cédula aceptada: kW de familia estimado, compresor y FFU de catálogo de la casa. */
+    G("propAceptar")("cedula>elec"); G("recompute")();
+    R = G("ELEC"); memo = R.memo.join(" ");
+    const cf = (re) => { const c = R.calc.find((x) => x.origen === "cedula" && re.test(x.nombre)); if (!c) throw new Error(`la cédula no trae ${re}`); return c; };
+    const hv = R.calc.find((x) => x.origen === "cedula" && x.modelo);
+    if (!hv) throw new Error("la cédula del proyecto de regresión no trae equipo HVAC");
+    eq(hv.kWOrigen, "hvac", "kW del equipo HVAC: estimado por familia:"); eq(hv.kWEst, true, "marcado estimado:");
+    contiene(memo, `${hv.nombre}: kW ESTIMADO por familia de equipo`, "memoria, equipo HVAC:");
+    eq(hv.fpOrigen, "casa", "el fp del equipo es supuesto de anteproyecto:");
+    eq(cf(/^Compresor/).kWOrigen, "aire", "compresor: kW del catálogo de la casa:"); eq(cf(/^Compresor/).kWEst, false, "de catálogo, no estimado:");
+    eq(cf(/^Módulos FFU/).kWOrigen, "ffu", "FFU: kW del catálogo de la casa:");
+    eq(cf(/^Bomba de agua/).kWEst, true, "bomba de agua: estimado:");
+    const hv1f = R.calc.find((x) => x.origen === "cedula" && x.modelo && x.ph === 1);
+    if (!hv1f) throw new Error("la cédula del proyecto de regresión no trae equipo monofásico");
+    eq(hv1f.fp, 0.9, "el fp de anteproyecto de la cédula se conserva (0.90 en monofásico), aunque ya no se guarde como captura:");
+    if (!R.avisos.some((a) => a.lvl === "info" && /con kW ESTIMADO, no de placa/.test(a.msg) && a.msg.includes(hv.nombre))) throw new Error("sin aviso de las cargas con kW estimado");
+    /* Con hp de placa la corriente y la demanda salen de la Tabla 430-250: ese kW estimado ya no manda y no se avisa. */
+    const iBci = S.elec.cargas.findIndex((c) => c.origen === "cedula" && /^Bomba contra incendio/.test(c.nombre));
+    const nBci = S.elec.cargas[iBci].nombre;
+    const nEst = () => { const x = G("ELEC").avisos.find((a) => /con kW ESTIMADO, no de placa/.test(a.msg)); return x ? +x.msg.match(/^(\d+) carga/)[1] : 0; };
+    const n0 = nEst();
+    if (!(n0 > 0)) throw new Error("sin aviso de kW estimado antes de capturar el hp");
+    S.elec.cargas[iBci].hp = 40; G("recompute")();
+    eq(nEst(), n0 - 1, `con hp de placa, ${nBci} sale del aviso de kW estimado:`);
+    delete S.elec.cargas[iBci].hp; G("recompute")(); R = G("ELEC");
+    pdf = txtPdfE(G("buildElecPdf")());
+    contiene(pdf, `${G("n")(hv.kWtot, 2)} e`, "PDF: kW estimado con «e»:"); contiene(pdf, `${G("n")(cf(/^Compresor/).kWtot, 2)} c`, "PDF: kW de catálogo con «c»:");
+    /* El usuario captura kW y fp sobre la cédula: dejan de ser estimado / de la casa, y el fp capturado se usa. */
+    const i = S.elec.cargas.findIndex((c) => c.origen === "cedula" && c.modelo);
+    const kW0 = S.elec.cargas[i].kW, dem0 = R.kVAdemanda, pri0 = R.principal;
+    S.elec.cargas[i].kW = kW0 + 1; S.elec.cargas[i].fp = 0.9; G("recompute")();
+    const hv2 = G("ELEC").calc.find((x) => x.id === S.elec.cargas[i].id);
+    eq(hv2.kWOrigen, "capturado", "kW capturado sobre la cédula:"); eq(hv2.fpOrigen, "capturado", "fp capturado sobre la cédula:");
+    eq(hv2.fp, 0.9, "y el fp capturado se usa aunque la cédula traiga el suyo:");
+    cerca(hv2.I, (kW0 + 1) * 1000 / ((hv2.ph === 3 ? Math.sqrt(3) : 1) * hv2.V * 0.9), 1e-6, "la corriente sale del kW y el fp capturados:");
+    S.elec.cargas[i].kW = kW0; G("recompute")();
+    /* Volver a aceptar la cédula conserva el fp capturado en la carga del mismo nombre. */
+    const nom = S.elec.cargas[i].nombre;
+    G("propAceptar")("cedula>elec"); G("recompute")();
+    eq(S.elec.cargas.find((c) => c.origen === "cedula" && c.nombre === nom).fp, 0.9, "volver a aceptar conserva el fp capturado:");
+    S.elec.cargas.find((c) => c.origen === "cedula" && c.nombre === nom).fp = null; G("recompute")();
+    /* Proyecto guardado antes de H-180 (fp de la cédula como dato, sin procedencia del kW, fp del alimentador 0.95), con cargas
+       renombradas y una anonimizada (sin origen ni modelo, como la deja etiquetasGenericas): abren con procedencia, mismos números. */
+    const viejo = JSON.parse(JSON.stringify(S));
+    delete viejo.elec.h180; viejo.elec.fpObjetivo = .95;
+    const calcAntes = G("ELEC").calc;
+    const ced = viejo.elec.cargas.filter((c) => c.origen === "cedula");
+    ced.forEach((c, k) => { const x = calcAntes.find((y) => y.id === c.id); c.fp = x.fp; delete c.fpCasa; delete c.kWOrigen; delete c.kWRef; if (!c.modelo) c.nombre = `Renombrada ${k}`; });
+    const hvs = ced.filter((c) => c.modelo);
+    if (hvs.length < 2) throw new Error("se necesitan dos equipos HVAC en la cédula");
+    const anon = hvs[1]; delete anon.modelo; delete anon.origen; anon.nombre = "Motor / equipo HVAC 9";
+    G("reemplazarEstado")(viejo); G("recompute")(); R = G("ELEC");
+    const por = (id) => R.calc.find((x) => x.id === id);
+    eq(por(hvs[0].id).kWOrigen, "hvac", "equipo HVAC (por su modelo):"); eq(por(hvs[0].id).fpOrigen, "casa", "y su fp de la casa:");
+    eq(por(anon.id).kWOrigen, "otro", "equipo anonimizado: de otro módulo, nunca «capturado»:"); eq(por(anon.id).kWEst, true, "marcado no de placa:");
+    eq(por(anon.id).fpOrigen, "casa", "su fp, de la casa:"); if (/tipo «/.test(fpOrigenTxt(por(anon.id)))) throw new Error("el fp de la cédula anonimizada se rotula como el del tipo");
+    const ren = (re) => { const c0 = ced.find((c) => !c.modelo && c !== anon && re(c)); if (!c0) throw new Error("falta una carga renombrada"); return por(c0.id); };
+    eq(ren((c) => c.hpRefOrigen === "catalogo").kWOrigen, "aire", "compresor renombrado (por su hp de referencia):");
+    eq(ren((c) => c.hpRefOrigen === "hidro").kWOrigen, "hidro", "bomba de agua renombrada:");
+    eq(ren((c) => c.hpRefOrigen === "fuego").kWOrigen, "fuego", "bomba contra incendio renombrada:");
+    eq(ren((c) => c.aparato).kWOrigen, "ffu", "FFU renombrado (por su marca de aparato):");
+    eq(ren((c) => !c.hpRefOrigen && !c.aparato).kWOrigen, "otro", "extractor renombrado: de otro módulo, nunca «capturado»:");
+    cerca(R.kVAdemanda, dem0, 1e-9, "sin mover la demanda:"); eq(R.principal, pri0, "ni el principal:");
+    contiene(R.memo.join(" "), "fp del alimentador 0.95 (criterio de la casa)", "el 0.95 guardado por omisión abre como criterio de la casa:");
+    /* Un kW de placa tecleado en una revisión vieja: el botón «El kW es de placa» lo declara capturado. */
+    S.tab = "electrico"; G("render")();
+    const k0 = S.elec.cargas.findIndex((c) => c.id === hvs[0].id);
+    const btn = w.document.querySelector(`button[data-act="ec-kwplaca"][data-i="${k0}"]`);
+    if (!btn) throw new Error("sin botón para declarar el kW de placa");
+    btn.dispatchEvent(new w.Event("click", { bubbles: true })); G("recompute")();
+    eq(G("ELEC").calc.find((x) => x.id === hvs[0].id).kWOrigen, "capturado", "declarado de placa:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); S.tab = tab0; G("recompute")(); }
+});
 
 /* ====== 5. Regla 3 · si cambia el origen, el destino no se recalcula ===== */
 t("5.1 cambiar la carga térmica marca ductos como desactualizado, sin tocarlo", () => {
@@ -880,6 +1007,8 @@ if (baseFile) {
       }
       Gb("S").elec = JSON.parse(JSON.stringify(S.elec));
       Gb("S").elec.tomarHVAC = false;
+      /* H-180: la cédula guarda su fp como fpCasa (el mismo valor); la base no conoce ese campo. */
+      Gb("S").elec.cargas.forEach((c) => { if (c.fp == null && c.fpCasa != null) c.fp = c.fpCasa; });
       Gb("recompute")(); G("recompute")();
       cerca(G("ELEC").kVAdemanda, Gb("ELEC").kVAdemanda, 0.01, "kVA de demanda:");
       eq(G("ELEC").principal, Gb("ELEC").principal, "interruptor principal:");
