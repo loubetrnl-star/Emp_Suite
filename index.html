@@ -1738,6 +1738,7 @@ function buildElecPdf() {
     ["Caida de tension", `${n(num(E.dvRamal, 3), 1)} % en derivado y ${n(num(E.dvTotal, 5), 1)} % acumulada (recomendacion de los art. 210-19 y 215-2)`],
     ["Carga continua", "125 % segun art. 210-19(a)"],
     ["Motores", "125 % del motor mayor mas el resto al 100 % (art. 430-24); proteccion al 250 % de la corriente a plena carga, a la capacidad normalizada inmediata superior (art. 430-52)"],
+    ["Equipo con motocompresor", "Con MCA y MOP: conductor por la MCA de placa (440-4(b), 440-35) y proteccion hasta el MOP, al valor normalizado de 240-6(a) que no lo excede (440-22); sin la Tabla 430-52. MCA y MOP estimados por la suite se marcan como tales en la memoria y no bajan el conductor del 125 %"],
   ]);
   pdfHeading(d, "3. Cuadro de cargas");
   pdfTable(d, ["Carga", "kW", "V/F", "A", "Cal.", "Prot.", "Tierra", "Tubo", "e %"],
@@ -5543,8 +5544,8 @@ function buildPropuestaXlsx(opt) {
   if (ELEC && ELEC.calc.length) {
     const ef = [];
     ef.push([xT(L("MEMORIA ELECTRICA — CEDULA DE CARGAS Y ALIMENTADORES", "ELECTRICAL CALCULATION — PANEL SCHEDULE AND FEEDERS"), XS.TIT)]);
-    ef.push([xT(L(`NOM-001-SEDE: art. 220 (cargas y demanda), 430 (motores), 310-15 (ampacidad), 250-122 (tierra) · sistema ${ELEC.sis.V} V ${ELEC.sis.ph}F · conductor de ${ELEC.mat} tipo ${AISLAMIENTOS[aislamientoDe(S.elec.aislamiento)].pdf} · ${num(S.elec.tempAmb, 40)} °C ambiente`,
-      `NOM-001-SEDE (Mexican electrical code): art. 220 (loads and demand), 430 (motors), 310-15 (ampacity), 250-122 (grounding) · ${ELEC.sis.V} V ${ELEC.sis.ph}-phase system · ${ELEC.mat} ${AISLAMIENTOS[aislamientoDe(S.elec.aislamiento)].pdf} conductor · ${num(S.elec.tempAmb, 40)} °C ambient`), XS.SUB)]);
+    ef.push([xT(L(`NOM-001-SEDE: art. 220 (cargas y demanda), 430 (motores), 440 (motocompresores), 310-15 (ampacidad), 250-122 (tierra) · sistema ${ELEC.sis.V} V ${ELEC.sis.ph}F · conductor de ${ELEC.mat} tipo ${AISLAMIENTOS[aislamientoDe(S.elec.aislamiento)].pdf} · ${num(S.elec.tempAmb, 40)} °C ambiente`,
+      `NOM-001-SEDE (Mexican electrical code): art. 220 (loads and demand), 430 (motors), 440 (motor-compressors), 310-15 (ampacity), 250-122 (grounding) · ${ELEC.sis.V} V ${ELEC.sis.ph}-phase system · ${ELEC.mat} ${AISLAMIENTOS[aislamientoDe(S.elec.aislamiento)].pdf} conductor · ${num(S.elec.tempAmb, 40)} °C ambient`), XS.SUB)]);
     ef.push([]);
     ef.push([xT(L("CEDULA DE CARGAS", "PANEL SCHEDULE"), XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC)]);
     ef.push([L("CARGA", "LOAD"), L("TIPO", "TYPE"), L("CANT", "QTY"), L("kW UNIT", "kW EACH"), L("kW TOT", "kW TOTAL"),
@@ -5574,6 +5575,10 @@ function buildPropuestaXlsx(opt) {
     fila(L("Capacidad interruptiva sugerida", "Suggested interrupting rating"), ELEC.kAIC, "kA", L("Primer valor comercial por encima de la corriente de falla estimada", "First standard rating above the estimated fault current"));
     ef.push([]);
     ef.push([xT(L(ELEC.alim.nota, ELEC.alim.notaEn), XS.NOTA)]);
+    /* H-177: equipo con motocompresor por el art. 440, con la marca de MCA/MOP estimados por la suite. */
+    const c440 = ELEC.calc.filter((c) => c.art440);
+    if (c440.length) ef.push([xT(L(`Equipo con motocompresor (art. 440): ${c440.map((c) => `${c.nombre}: MCA ${n(c.mca, 1)} A ${c.mcaEst ? "ESTIMADA" : "de placa"}, MOP ${n(c.mop, 0)} A ${c.mopEst ? "ESTIMADO" : "de placa"} -> proteccion ${c.cond.ocpd} A`).join("; ")}. Conductor por la MCA (440-4(b), 440-35); proteccion hasta el MOP (440-22), sin la Tabla 430-52. Los valores ESTIMADOS los calculo la suite desde el kW de catalogo: no son de placa.`,
+      `Equipment with hermetic motor-compressor (art. 440): ${c440.map((c) => `${c.nombre}: MCA ${n(c.mca, 1)} A ${c.mcaEst ? "ESTIMATED" : "nameplate"}, MOP ${n(c.mop, 0)} A ${c.mopEst ? "ESTIMATED" : "nameplate"} -> OCPD ${c.cond.ocpd} A`).join("; ")}. Conductor sized to the MCA (440-4(b), 440-35); protection up to the MOP (440-22), without Table 430-52. ESTIMATED values were computed by the suite from the catalog kW: they are not nameplate data.`), XS.NOTA)]);
     ef.push([xT(L("Esta memoria no sustituye el dictamen de una unidad de verificacion ni un estudio de arco electrico: es el calculo que se le entrega a quien lo emite.",
       "This calculation does not replace an accredited inspection certificate or an arc-flash study: it is the calculation handed to whoever issues them."), XS.NOTA)]);
     hojas.push({ nombre: HN.MEMORIA_ELECTRICA, congelar: 0, anchos: [34, 26, 8, 12, 12, 12, 10, 14, 10], filas: ef });
@@ -9242,6 +9247,12 @@ const TUBO = [
 ];
 /* Capacidades nominales de fusibles e interruptores. NOM-001-SEDE 240-6(a). */
 const OCPD_STD = [15, 20, 25, 30, 35, 40, 45, 50, 60, 70, 80, 90, 100, 110, 125, 150, 175, 200, 225, 250, 300, 350, 400, 450, 500, 600, 700, 800, 1000, 1200, 1600, 2000];
+/* 240-6(a) completo (NOM-001-SEDE-2012 p. 104): valores normalizados de fusibles e interruptores de tiempo inverso, con 16, 32
+   y 63 A, más los adicionales SÓLO de fusible: 1, 3, 6, 10 y 601 A. H-177: la protección de un equipo con MOP se busca aquí;
+   OCPD_STD (lista de la casa, sin 16/32/63 ni fusibles chicos) sigue para lo demás. */
+const OCPD_240_6 = [1, 3, 6, 10, 15, 16, 20, 25, 30, 32, 35, 40, 45, 50, 60, 63, 70, 80, 90, 100, 110, 125, 150, 175, 200, 225, 250, 300, 350, 400, 450, 500, 600, 601, 700, 800, 1000, 1200, 1600, 2000, 2500, 3000, 4000, 5000, 6000];
+const SOLO_FUSIBLE = [1, 3, 6, 10, 601];
+const ocpdHastaMop = (mop) => [...OCPD_240_6].reverse().find((x) => x <= mop) ?? OCPD_240_6[0];
 /* Conductor de puesta a tierra de equipos según la capacidad de la protección.
    NOM-001-SEDE-2012 Tabla 250-122 (p. 151), columnas de cobre y de aluminio.
    H-183 (rev 2.9.24): la tabla anterior era la del NEC (400 A → 3 AWG), sólo de cobre y cortada en 2000 A. La NOM da
@@ -9372,7 +9383,13 @@ function selConductor(o) {
   /* Motores: la protección contra cortocircuito y falla a tierra se ajusta
      hasta 250 % de la corriente a plena carga con interruptor de tiempo
      inverso (430-52 Tabla), porque tiene que dejar pasar el arranque. */
-  if (o.motor) ocpd = Math.max(ocpd, ocpdArriba(I * 2.5));
+  /* H-177 (rev 2.9.24) · Equipo con motocompresor hermético (art. 440) con MOP: la protección no pasa del MOP (440-4(b)
+     p. 445; 440-22(b) Exc. 1 y (c) p. 449-450; 110-3(b)). Se toma el MOP si es valor normalizado de 240-6(a) o el inmediato
+     inferior; abajo de 15 A sólo quedan fusibles (1, 3, 6, 10 A): nunca se sube a 15 A por encima de lo marcado. Aquí no
+     rige la Tabla 430-52 ni el tope de 240-4(d) (Tabla 240-4(g)). */
+  const mop = num(o.mop, 0);
+  if (mop > 0) ocpd = ocpdHastaMop(mop);
+  else if (o.motor) ocpd = Math.max(ocpd, ocpdArriba(I * 2.5));
   const tope = TOPE_CHICO[awg];
   let topeAplicado = false;
   if (tope && ocpd > tope && !o.motor) { ocpd = tope; topeAplicado = true; }
@@ -9386,9 +9403,9 @@ function selConductor(o) {
   dv = dvDe(awg) / paralelo;
   return {
     awg, material: mat, aislamiento: ais, ampBase, ampCorr, ft, fg, I, Idis, ocpd, tierra, tierraMat, tubo, dv, dvMax, rige,
-    topeAplicado, ph, V, L, fp, paralelo,
-    nota: `${paralelo > 1 ? `${paralelo} × ` : ""}${awg} AWG/kcmil ${mat}${paralelo > 1 ? ` por fase (art. 310-10(h)), ${paralelo} canalizaciones` : ""} · ampacidad ${n(ampBase, 0)} A × ${n(ft, 2)} (temp) × ${n(fg, 2)} (agrup.)${paralelo > 1 ? ` × ${paralelo}` : ""} = ${n(ampCorr, 0)} A · rige ${rige} · protección ${ocpd} A · tierra ${tierra}${tierraMat !== mat ? ` ${tierraMat} (la Tabla 250-122 no da aluminio hasta 100 A)` : ""} · ${tubo.d}${paralelo > 1 ? " cada una" : ""}`,
-    notaEn: `${paralelo > 1 ? `${paralelo} × ` : ""}${awg} AWG/kcmil ${mat === "aluminio" ? "aluminum" : "copper"}${paralelo > 1 ? ` per phase (art. 310-10(h)), ${paralelo} raceways` : ""} · ampacity ${n(ampBase, 0)} A × ${n(ft, 2)} (temp.) × ${n(fg, 2)} (grouping)${paralelo > 1 ? ` × ${paralelo}` : ""} = ${n(ampCorr, 0)} A · governed by ${{ "ampacidad": "ampacity", "caída de tensión": "voltage drop", "ampacidad con conductores en paralelo": "ampacity with parallel conductors", "caída de tensión con conductores en paralelo": "voltage drop with parallel conductors" }[rige] || rige} · OCPD ${ocpd} A · ground ${tierra}${tierraMat !== mat ? " copper (Table 250-122 gives no aluminum size up to 100 A)" : ""} · ${tubo.d}${paralelo > 1 ? " each" : ""}`,
+    topeAplicado, ph, V, L, fp, paralelo, mop: mop > 0 ? mop : null, fusible: mop > 0 && SOLO_FUSIBLE.includes(ocpd),
+    nota: `${paralelo > 1 ? `${paralelo} × ` : ""}${awg} AWG/kcmil ${mat}${paralelo > 1 ? ` por fase (art. 310-10(h)), ${paralelo} canalizaciones` : ""} · ampacidad ${n(ampBase, 0)} A × ${n(ft, 2)} (temp) × ${n(fg, 2)} (agrup.)${paralelo > 1 ? ` × ${paralelo}` : ""} = ${n(ampCorr, 0)} A · rige ${rige} · protección ${ocpd} A${mop > 0 ? ` (MOP ${n(mop, 0)} A, art. 440-22${SOLO_FUSIBLE.includes(ocpd) ? "; fusible" : ""})` : ""} · tierra ${tierra}${tierraMat !== mat ? ` ${tierraMat} (la Tabla 250-122 no da aluminio hasta 100 A)` : ""} · ${tubo.d}${paralelo > 1 ? " cada una" : ""}`,
+    notaEn: `${paralelo > 1 ? `${paralelo} × ` : ""}${awg} AWG/kcmil ${mat === "aluminio" ? "aluminum" : "copper"}${paralelo > 1 ? ` per phase (art. 310-10(h)), ${paralelo} raceways` : ""} · ampacity ${n(ampBase, 0)} A × ${n(ft, 2)} (temp.) × ${n(fg, 2)} (grouping)${paralelo > 1 ? ` × ${paralelo}` : ""} = ${n(ampCorr, 0)} A · governed by ${{ "ampacidad": "ampacity", "caída de tensión": "voltage drop", "ampacidad con conductores en paralelo": "ampacity with parallel conductors", "caída de tensión con conductores en paralelo": "voltage drop with parallel conductors" }[rige] || rige} · OCPD ${ocpd} A${mop > 0 ? ` (MOP ${n(mop, 0)} A, art. 440-22${SOLO_FUSIBLE.includes(ocpd) ? "; fuse" : ""})` : ""} · ground ${tierra}${tierraMat !== mat ? " copper (Table 250-122 gives no aluminum size up to 100 A)" : ""} · ${tubo.d}${paralelo > 1 ? " each" : ""}`,
   };
 }
 
@@ -9490,6 +9507,11 @@ const sistemaDe = (k) => {
   return m[k] || m["3F4H-220"];
 };
 
+/* H-177: MCA y MOP estimados por la suite (elecOf, desde el kW de catálogo) mientras no se sustituyan por los de placa;
+   cada dato por separado (el usuario puede capturar uno solo). */
+const placaEstDe = (c) => ({
+  mca: c.placaEstimada === true || !!(c.placaEst && num(c.mca) === num(c.placaEst.mca)),
+  mop: c.placaEstimada === true || !!(c.placaEst && num(c.mop) === num(c.placaEst.mop)) });
 function computeElec(E) {
   const memo = [], avisos = [];
   const sis = sistemaDe(E.sistema);
@@ -9507,7 +9529,7 @@ function computeElec(E) {
       const el = elecOf(x.m);
       if (!(el.kWe > 0)) return;   // manejadoras y fan coils no traen compresor: su consumo es del ventilador y se captura aparte
       filas.push({ id: `hvac-${i}`, nombre: `${x.m.model} · ${x.rol}`, tipo: "motor", kW: el.kWe, V: el.volts,
-        ph: el.ph, cant: x.q, L: num(E.Ltablero, 30) + 15, fp: el.fp, auto: true, mca: el.mca, mop: el.mop, modelo: x.m });
+        ph: el.ph, cant: x.q, L: num(E.Ltablero, 30) + 15, fp: el.fp, auto: true, mca: el.mca, mop: el.mop, placaEstimada: !!el.estimado, modelo: x.m });
     });
   }
   /* 2) Ventiladores y extractores del motor de ventilación, con su permiso. */
@@ -9574,9 +9596,20 @@ function computeElec(E) {
     const kW = Math.max(0, num(c.kW));
     const kVA = kW / fp;
     const I = ph === 3 ? kW * 1000 / (Math.sqrt(3) * V * fp) : kW * 1000 / (V * fp);
+    /* H-177 (rev 2.9.24) · Equipo con motocompresor hermético: con MCA y MOP de placa rige el art. 440. El conductor se
+       dimensiona con la MCA (440-4(b) p. 445, 440-35 p. 450; la MCA ya trae el 125 % de 440-32) y la protección no pasa
+       del MOP (440-22). Con uno solo de los dos datos no se aplica: aviso y queda como motor. */
+    const mca = tipo === "motor" ? num(c.mca, 0) : 0, mop = tipo === "motor" ? num(c.mop, 0) : 0;
+    const art440 = mca > 0 && mop > 0;
+    /* Una MCA que estimó la suite (no de placa) no puede bajar el conductor del 125 % de la corriente con que la propia suite
+       calcula la carga (210-19(a), 430-22): sólo la MCA de placa manda sola. */
+    const est = placaEstDe(c);
+    const Idis440 = art440 ? (est.mca ? Math.max(mca, I * 1.25) : mca) : undefined;
     const cond = selConductor({ I, V, ph, L: num(c.L, 25), fp, material: mat, aislamiento: E.aislamiento, tempAmb: E.tempAmb,
-      nCond: E.nCond, dvMax: num(E.dvRamal, 3), continua: meta.continua, motor: tipo === "motor" });
-    return { ...c, tipo, label: meta.label, V, ph, fp, cant, kW, kVA, kWtot: kW * cant, kVAtot: kVA * cant, I, cond };
+      nCond: E.nCond, dvMax: num(E.dvRamal, 3), continua: meta.continua, motor: tipo === "motor",
+      Idis: Idis440, mop: art440 ? mop : 0 });
+    return { ...c, tipo, label: meta.label, V, ph, fp, cant, kW, kVA, kWtot: kW * cant, kVAtot: kVA * cant, I, cond,
+      art440, mca: art440 ? mca : c.mca, mop: art440 ? mop : c.mop, mcaEst: art440 && est.mca, mopEst: art440 && est.mop };
   });
 
   /* Demanda por tipo (art. 220) */
@@ -9640,7 +9673,8 @@ function computeElec(E) {
      conductor). Se usa el mayor de los dos, sin techo artificial: la propia
      protección del motor ya es su límite superior normativo. Es un criterio de
      preselección — no sustituye el estudio de coordinación de protecciones. */
-  const motorMayor = motores.reduce((best, c) => (!best || c.kVA > best.kVA) ? c : best, null);
+  /* H-177: una carga sin kW no entra a la demanda; tampoco puede fijar el principal por la protección de su ramal. */
+  const motorMayor = motores.filter((c) => c.kVA > 0).reduce((best, c) => (!best || c.kVA > best.kVA) ? c : best, null);
   const principal = motorMayor ? Math.max(alim.ocpd, motorMayor.cond.ocpd) : alim.ocpd;
 
   /* Corriente de falla estimada en las barras del tablero, para elegir la
@@ -9658,6 +9692,17 @@ function computeElec(E) {
       avisos.push({ lvl: "warn", msg: `${c.nombre}: caída de tensión ${n(c.cond.dv, 2)} % con ${c.cond.awg} AWG a ${n(c.L, 0)} m. Ya se subió el calibre hasta el máximo de la tabla; hay que acercar el tablero o subir la tensión.` });
     if (c.cond.topeAplicado)
       avisos.push({ lvl: "info", msg: `${c.nombre}: la protección quedó limitada a ${c.cond.ocpd} A por la regla del conductor pequeño (240-4(d)), no por ampacidad.` });
+    /* H-177: datos de placa del art. 440 incompletos o incongruentes; carga aceptada antes de que la cédula trajera MCA y MOP. */
+    if (c.tipo === "motor" && !c.art440 && (num(c.mca, 0) > 0) !== (num(c.mop, 0) > 0))
+      avisos.push({ lvl: "err", msg: `${c.nombre}: falta ${num(c.mca, 0) > 0 ? "el MOP" : "la MCA"} de placa. Con motocompresor rige el art. 440 con los dos datos (440-4(b)); mientras, se protege como motor general (Tabla 430-52) y puede quedar arriba del MOP real.` });
+    if (c.art440 && c.cond.ocpd < c.mca)
+      avisos.push({ lvl: "warn", msg: `${c.nombre}: la protección (${c.cond.ocpd} A, lo más que permite el MOP de ${n(c.mop, 0)} A con los valores de 240-6(a)) queda debajo de la MCA (${n(c.mca, 1)} A). Revisar la placa: puede no sostener el arranque (440-22(a)).` });
+    if (c.art440 && !(c.kW > 0))
+      avisos.push({ lvl: "err", msg: `${c.nombre}: equipo con MCA y MOP pero sin kW: su ramal se dimensiona, pero no entra a la demanda ni al alimentador general. Captura la potencia del equipo.` });
+    if (c.art440 && (c.mcaEst || c.mopEst))
+      avisos.push({ lvl: "warn", msg: `${c.nombre}: ${c.mcaEst && c.mopEst ? "MCA y MOP estimados" : c.mcaEst ? "MCA estimada" : "MOP estimado"} por la suite desde el kW de catálogo, no de placa. Captura los datos de placa antes de firmar el cuadro (art. 440).` });
+    if (c.tipo === "motor" && !c.art440 && c.modelo && !(num(c.mca, 0) > 0) && !(num(c.mop, 0) > 0))
+      avisos.push({ lvl: "warn", msg: `${c.nombre}: equipo con motocompresor sin MCA ni MOP; se protege al 250 % de la Tabla 430-52 y puede quedar arriba de su MOP. Captura los datos de placa o vuelve a aceptar la cédula (art. 440).` });
   });
   if (desbalance > 5) avisos.push({ lvl: "warn", msg: `Desbalance entre fases de ${n(desbalance, 1)} %. Arriba de 5 % calienta el neutro y castiga la vida de los motores: reacomoda las cargas monofásicas.` });
   if (kVAdemanda > kVAtr * .8) avisos.push({ lvl: "err", msg: `La demanda calculada (${n(kVAdemanda, 1)} kVA) supera el 80 % del transformador capturado (${n(kVAtr, 0)} kVA). El transformador queda corto: revisar capacidad contratada antes de seguir.` });
@@ -9667,6 +9712,8 @@ function computeElec(E) {
   memo.push(`Carga conectada ${n(kVAconectada, 2)} kVA · demanda ${n(kVAdemanda, 2)} kVA (factor de demanda ${n(fdem, 2)}), incluyendo el 25 % adicional del motor mayor que pide el art. 430-24 (${n(extraMotor, 2)} kVA).`);
   memo.push(`Balanceo: fase A ${n(fases.A, 2)} · B ${n(fases.B, 2)} · C ${n(fases.C, 2)} kVA · desbalance ${n(desbalance, 1)} %.`);
   memo.push(`Alimentador general: ${alim.nota}. Caída de tensión ${n(alim.dv, 2)} % de los ${n(num(E.dvTotal, 5), 1)} % acumulados admisibles. Interruptor principal ${principal} A.`);
+  const con440 = calc.filter((c) => c.art440);
+  if (con440.length) memo.push(`Equipo con motocompresor (art. 440): ${con440.map((c) => `${c.nombre} MCA ${n(c.mca, 1)} A${c.mcaEst ? " ESTIMADA" : " de placa"} / MOP ${n(c.mop, 0)} A${c.mopEst ? " ESTIMADO" : " de placa"} → protección ${c.cond.ocpd} A${c.cond.fusible ? " (fusible)" : ""}`).join("; ")}. El conductor cubre la MCA de placa (440-4(b), 440-35); una MCA ESTIMADA no lo baja del 125 % de la corriente calculada (210-19(a)). La protección no pasa del MOP (440-4(b), 440-22(b) y (c)); no se usa la Tabla 430-52.${con440.some((c) => c.mcaEst || c.mopEst) ? " Los valores ESTIMADOS los calculó la suite desde el kW de catálogo (RLA = 0.85·FLA, MCA = 125 % de la RLA, MOP = 175 % de la RLA al normalizado superior; criterio de la casa, no de placa): sustituirlos por los de placa antes de firmar." : ""}`);
   if (alim.paralelo > 1) {
     memo.push(`El alimentador va en ${alim.paralelo} conductores por fase, en canalizaciones separadas. El art. 310-10(h) lo permite a partir de 1/0 y exige que todos sean del mismo calibre, material, longitud y tipo de terminal: si uno queda más largo, se lleva menos corriente y los demás se sobrecargan.`);
     avisos.push({ lvl: "info", msg: `El alimentador exige ${alim.paralelo} conductores por fase. Antes de fabricarlo, evaluar subir la tensión de distribución o acercar el tablero: casi siempre sale más barato que multiplicar el cobre.` });
@@ -16794,7 +16841,7 @@ function propuestaElecFilasCalc() {
   if (!R || !Array.isArray(R.calc)) return [];
   return R.calc.filter((c) => c.auto).map((c) => ({
     nombre: c.nombre, tipo: c.tipo, kW: c.kW, V: c.V, ph: c.ph, cant: c.cant, L: c.L, fp: c.fp,
-    mca: c.mca, mop: c.mop, estimado: !!c.estimado, modelo: c.modelo ? c.modelo.model : null,
+    mca: c.mca, mop: c.mop, placaEstimada: !!c.placaEstimada, estimado: !!c.estimado, modelo: c.modelo ? c.modelo.model : null,
   }));
 }
 function snapshotSoporte() {
@@ -16904,7 +16951,9 @@ const PROPUESTAS = {
       const f = propuestaElecFilas();
       const ts = Date.now();
       S.elec.cargas = (S.elec.cargas || []).filter((c) => c.origen !== "cedula");
-      f.forEach((c, i) => S.elec.cargas.push({ id: `ced${ts.toString(36)}${i}`, nombre: c.nombre, tipo: c.tipo, kW: c.kW, V: c.V, ph: c.ph, cant: c.cant, L: c.L, fp: c.fp, fija: false, origen: "cedula", ts, modelo: c.modelo, estimado: c.estimado }));
+      /* H-177: el equipo con motocompresor entra con su MCA y su MOP (art. 440); antes se descartaban. */
+      f.forEach((c, i) => S.elec.cargas.push({ id: `ced${ts.toString(36)}${i}`, nombre: c.nombre, tipo: c.tipo, kW: c.kW, V: c.V, ph: c.ph, cant: c.cant, L: c.L, fp: c.fp, fija: false, origen: "cedula", ts, modelo: c.modelo, estimado: c.estimado,
+        ...(num(c.mop, 0) > 0 ? { mca: c.mca, mop: c.mop, ...(c.placaEstimada ? { placaEst: { mca: c.mca, mop: c.mop } } : {}) } : {}) }));
       S.elec.tomarHVAC = false;
     },
     propio: () => { S.elec.tomarHVAC = false; },
@@ -17542,7 +17591,7 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "4", clean: "2", equip: "1", duct: "1", vent: "1", quote: "6", valor: "1", kaizen: "1", elec: "5", hidro: "4", fuego: "2", aire: "2", civil: "3", soporte: "2" };
+const MOTOR_VER = { load: "4", clean: "2", equip: "1", duct: "1", vent: "1", quote: "6", valor: "1", kaizen: "1", elec: "6", hidro: "4", fuego: "2", aire: "2", civil: "3", soporte: "2" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
@@ -17551,7 +17600,8 @@ const MOTOR_CAMBIOS = {
   clean: [{ ver: "2", rev: "2.9.16", que: "sin pisos de 1 m² ni 2.2 m; 5 Pa de ISO 14644-4 con aviso; ceros capturados respetados" }],
   quote: [{ ver: "2", rev: "2.9.16", que: "red hidráulica por diámetro con precio capturado; sin 50 m supuestos; partidas pendientes" }, { ver: "3", rev: "2.9.19", que: "tramo con longitud y sin unidades mueble queda pendiente" }, { ver: "4", rev: "2.9.23", que: "precio de tubería por renglón con origen (referencia de mercado o proveedor local), IVA desglosado y por metro; sin precio: partida Por cotizar en el Budget, bloqueo sólo en la formal" }, { ver: "5", rev: "2.9.23", que: "precios en USD sólo se convierten con tipo de cambio capturado con fecha; sin fecha salen Por cotizar y bloquean la formal (nada se estima)" }, { ver: "6", rev: "2.9.23", que: "referencias sólo de California y sólo material (mano de obra por capturar; combinados → Por cotizar); referencias IUSA retiradas; flete, aduana e importación como renglón propio siempre Por cotizar hasta capturarlo" }],
   elec: [{ ver: "2", rev: "2.9.16", que: "canalización con las áreas del conductor de la memoria (THW-LS por omisión, NOM-001-SEDE Cap. 10 Tabla 5)" }, { ver: "3", rev: "2.9.18", que: "siete áreas THHN/THWN-2 corregidas a la Tabla 5" }, { ver: "4", rev: "2.9.19", que: "sin compresor de aire cuando no hay demanda" },
-    { ver: "5", rev: "2.9.24", que: "H-183: conductor de puesta a tierra con la Tabla 250-122 de la NOM-001-SEDE-2012 (p. 151): 400 A → 2 AWG (antes 3 AWG, valor del NEC), renglones hasta 6000 A y columna de aluminio (hasta 100 A la tabla sólo da cobre)" }],
+    { ver: "5", rev: "2.9.24", que: "H-183: conductor de puesta a tierra con la Tabla 250-122 de la NOM-001-SEDE-2012 (p. 151): 400 A → 2 AWG (antes 3 AWG, valor del NEC), renglones hasta 6000 A y columna de aluminio (hasta 100 A la tabla sólo da cobre)" },
+    { ver: "6", rev: "2.9.24", que: "H-177: equipo con motocompresor hermético con MCA y MOP por el art. 440: conductor por la MCA de placa (440-4(b), 440-35; una MCA estimada por la suite no lo baja del 125 %) y protección igual al MOP o al valor inmediato inferior de 240-6(a) completo (16, 32, 63 A; abajo de 15 A sólo fusibles de 1, 3, 6, 10 A), sin el 250 % de la Tabla 430-52 (40VMA-240: 150 → 90 A; 40MBC-24: 25 → 15 A). Aceptar la cédula conserva MCA y MOP (marcados estimados); una carga sin kW no fija el principal" }],
   hidro: [{ ver: "2", rev: "2.9.16", que: "tramo sin longitud ya no supone 10 m" }, { ver: "3", rev: "2.9.18", que: "curva de Hunter de IPC apéndice E Table E103.3(3)" }, { ver: "4", rev: "2.9.19", que: "renglones de 2500 a 5000 UM de la misma tabla" }],
   fuego: [{ ver: "2", rev: "2.9.16", que: "sin área no hay demanda, bomba ni reserva; área mínima de operación NFPA 13 con aviso" }],
   aire: [{ ver: "2", rev: "2.9.16", que: "sin demanda no se cuentan unidades" }],
@@ -19985,7 +20035,12 @@ function viewElec() {
           ${inp("Fases", `elec.cargas.${i}.ph`, "number", "1")}
           ${inp("Cantidad", `elec.cargas.${i}.cant`, "number", "1")}
           ${inp("Distancia (m)", `elec.cargas.${i}.L`, "number", "5")}
-        </div>`).join("")}
+        </div>${c.tipo === "motor" ? `
+        <div class="row" style="grid-template-columns:1fr 1fr 2fr;align-items:end;margin:-8px 0 14px">
+          ${inp("MCA de placa (A)", `elec.cargas.${i}.mca`, "number", "0.1")}
+          ${inp("MOP de placa (A)", `elec.cargas.${i}.mop`, "number", "5")}
+          <div class="sub">Equipo con motocompresor: con los dos datos de placa rige el art. 440 (conductor por la MCA, protección hasta el MOP).${placaEstDe(c).mca || placaEstDe(c).mop ? ` ${placaEstDe(c).mca && placaEstDe(c).mop ? "MCA y MOP" : placaEstDe(c).mca ? "La MCA" : "El MOP"} los estimó la suite desde el catálogo: sustitúyelos por los de placa.` : ""}</div>
+        </div>` : ""}`).join("")}
       </div></div>` : ""}
     </div>
   </div>

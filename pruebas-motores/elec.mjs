@@ -51,10 +51,16 @@ export default async function ({ t, G, S, CM }) {
     () => conEstado(FIXTURE, () => comprobar("CM.elec.3")));
   t("CM.elec.4 (H-183) (NOM-001-SEDE-2012 Tabla 250-122 p. 151) tierraDe directa: 100 → 8, 200 → 6, 300 → 4, 400 → 2 AWG (antes 3, NEC), 1000 → 2/0, 2500 → 350, 5000 → 700, 6000 → 800 kcmil; aluminio 200 → 4, 400 → 1, 2000 → 400 kcmil, ≤ 100 A sólo cobre",
     () => comprobar("CM.elec.4"));
-  t("CM.elec.5 (NOM-001-SEDE-2012 440-22(a) p. 449, 430-62(a) p. 426) fase2:H-177 equipo HVAC con MOP: 40VMA-240 (MOP 90 A, hoy 150 A) y 40MBC-24 (MOP 15 A, hoy 25 A) no deben pasar del MOP",
+  t("CM.elec.5 (H-177) (NOM-001-SEDE-2012 440-4(b) p. 445, 440-22(a)/(c) p. 449-450, 440-35 p. 450) equipo con motocompresor y placa: conductor por la MCA y protección = MOP (40VMA-240 90 A, antes 150; 40MBC-24 15 A, antes 25; condensadora MCA 50/MOP 80 → 6 AWG, 80 A; MOP 42 → 40 A; placa MCA 40 → 8 AWG; MOP 10 → fusible 10 A; MOP 32 → 32 A; MCA/MOP estimados no bajan del 125 %)",
     () => conEstado({ trafoKVA: 300, cargas: [
       { ...dc("40VMA-240 · Planta"), tipo: "motor", kW: 19, V: 220, ph: 3, cant: 1, L: 45, fp: .85, mca: 62.4, mop: 90, modelo: "40VMA-240" },
       { ...dc("40MBC-24 · Terminal"), tipo: "motor", kW: 1.9, V: 220, ph: 1, cant: 1, L: 45, fp: .9, mca: 10.3, mop: 15, modelo: "40MBC-24" },
+      { ...dc("Condensadora con placa"), tipo: "motor", kW: 10, V: 220, ph: 3, cant: 1, L: 20, fp: .85, mca: 50, mop: 80 },
+      { ...dc("Condensadora MOP 42"), tipo: "motor", kW: 5, V: 220, ph: 3, cant: 1, L: 15, fp: .85, mca: 24, mop: 42 },
+      { ...dc("Condensadora placa MCA 40"), tipo: "motor", kW: 12, V: 220, ph: 3, cant: 1, L: 20, fp: .85, mca: 40, mop: 60 },
+      { ...dc("Mini split MOP 10"), tipo: "motor", kW: 1, V: 220, ph: 1, cant: 1, L: 10, fp: .9, mca: 6, mop: 10 },
+      { ...dc("Equipo IEC MOP 32"), tipo: "motor", kW: 7, V: 220, ph: 1, cant: 1, L: 10, fp: .9, mca: 31, mop: 32 },
+      { ...dc("40VMA-192 estimado"), tipo: "motor", kW: 15.2, V: 220, ph: 3, cant: 1, L: 45, fp: .85, mca: 49.8, mop: 70, modelo: "40VMA-192", placaEst: { mca: 49.8, mop: 70 } },
     ] }, () => comprobar("CM.elec.5")));
   t("CM.elec.6 (NOM-001-SEDE-2012 Cap. 10 Tabla 5 p. 1006-1007, Tabla 1 p. 1001, Tabla 4 p. 1002) 100 A 220 V 3F 40 °C: THW-LS 620.44 mm² → EMT 2\" y THHN 511.51 mm² → EMT 1½\"; 1/0 AWG, 125 A",
     () => comprobar("CM.elec.6"));

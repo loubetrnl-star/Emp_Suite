@@ -61,7 +61,7 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 |---|---|---|
 | 1 | 2.9.15 | lógica de partida |
 
-## Eléctrico (`elec`) · v5
+## Eléctrico (`elec`) · v6
 
 | Versión | Rev | Hallazgo / cambio de lógica |
 |---|---|---|
@@ -70,6 +70,7 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 | 3 | 2.9.18 | siete áreas THHN/THWN-2 corregidas a la Tabla 5 |
 | 4 | 2.9.19 | sin compresor de aire cuando no hay demanda |
 | 5 | 2.9.24 | H-183: conductor de puesta a tierra con la Tabla 250-122 de la NOM-001-SEDE-2012 (p. 151): 400 A → 2 AWG (antes 3 AWG, valor del NEC), renglones hasta 6000 A y columna de aluminio (hasta 100 A la tabla sólo da cobre) |
+| 6 | 2.9.24 | H-177: equipo con motocompresor hermético con MCA y MOP por el art. 440: conductor por la MCA de placa (440-4(b), 440-35; una MCA estimada por la suite no lo baja del 125 %) y protección igual al MOP o al valor inmediato inferior de 240-6(a) completo (16, 32, 63 A; abajo de 15 A sólo fusibles de 1, 3, 6, 10 A), sin el 250 % de la Tabla 430-52 (40VMA-240: 150 → 90 A; 40MBC-24: 25 → 15 A). Aceptar la cédula conserva MCA y MOP (marcados estimados); una carga sin kW no fija el principal |
 
 ## Hidráulico sanitario (`hidro`) · v4
 

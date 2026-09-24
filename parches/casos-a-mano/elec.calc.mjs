@@ -204,6 +204,35 @@ fila("CM.elec.4.l", ORD.indexOf(tierraMat(100, "aluminio")), `aluminio 100 A: «
   const hoy2 = sel({ I: 1900 / (220 * 0.9), V: 220, ph: 1, L: 45, fp: 0.9, motor: true }).ocpd;
   fila("CM.elec.5.b", 1, `40MBC-24: FLA ${fla2}, RLA ${rla2}, MOP → ${mop2} A; hoy ${hoy2} A → indicador ocpd ≤ MOP`);
   fila("(info) MOPs", `${mop} / ${mop2}`, "valores de mop que la hoja captura en la fila");
+  /* H-177 · art. 440 con placa: conductor con ampacidad corregida ≥ MCA (440-4(b), 440-35); protección = el mayor valor
+     normalizado de 240-6(a) que no pasa del MOP (440-22(a) y (c)); no aplica la Tabla 430-52 ni 240-4(d) (Tabla 240-4(g)). */
+  /* 240-6(a) completo (p. 104): con 16, 32, 63 A y los adicionales de fusible 1, 3, 6, 10 y 601 A. */
+  const OCPD_NOM = [1, 3, 6, 10, ...OCPD.slice(0, OCPD.indexOf(600) + 1), 601, ...OCPD.slice(OCPD.indexOf(700))];
+  const hastaMop = (mop) => [...OCPD_NOM].reverse().find((x) => x <= mop);
+  /* MCA de placa: manda sola (440-35). MCA estimada por la suite: nunca abajo de 1.25·I (criterio de la casa, 210-19(a)). */
+  const sel440 = (o) => { const s = sel({ ...o, Idis: o.est ? Math.max(o.mca, 1.25 * o.I) : o.mca, motor: true }); const ocpd = hastaMop(o.mop); return { ...s, ocpd, tierra: tierraMat(ocpd, "cobre"), tierraIdx: ORD.indexOf(tierraMat(ocpd, "cobre")) }; };
+  const e1 = sel440({ I: 19000 / (Math.sqrt(3) * 220 * 0.85), V: 220, ph: 3, L: 45, fp: 0.85, mca: 62.4, mop: 90 });
+  const e2 = sel440({ I: 1900 / (220 * 0.9), V: 220, ph: 1, L: 45, fp: 0.9, mca: 10.3, mop: 15 });
+  const e3 = sel440({ I: 10000 / (Math.sqrt(3) * 220 * 0.85), V: 220, ph: 3, L: 20, fp: 0.85, mca: 50, mop: 80 });
+  fila("CM.elec.5.c", e1.ocpd, "abajo(MOP 90) = 90");
+  fila("CM.elec.5.d", e2.ocpd, `abajo(MOP 15) = 15 sobre ${e2.awg} AWG`);
+  fila("CM.elec.5.e", e1.tierraIdx, `tierra ${e1.tierra} con 90 A`);
+  fila("CM.elec.5.f", e3.idx, `MCA 50 → ${e3.awg} AWG`);
+  fila("CM.elec.5.g", r(e3.ampCorr, 2), "65·0.88");
+  fila("CM.elec.5.h", e3.ocpd, "abajo(MOP 80) = 80");
+  const e4 = sel440({ I: 5000 / (Math.sqrt(3) * 220 * 0.85), V: 220, ph: 3, L: 15, fp: 0.85, mca: 24, mop: 42 });
+  fila("CM.elec.5.i", e4.ocpd, `abajo(MOP 42) = ${e4.ocpd} (240-6(a) no lista 42)`);
+  const e5 = sel440({ I: 12000 / (Math.sqrt(3) * 220 * 0.85), V: 220, ph: 3, L: 20, fp: 0.85, mca: 40, mop: 60 });
+  fila("CM.elec.5.j", e5.idx, `MCA de placa 40 → ${e5.awg} AWG (1.25·I = ${r(1.25 * 12000 / (Math.sqrt(3) * 220 * 0.85), 2)} no manda)`);
+  fila("CM.elec.5.k", e5.ocpd, "MOP 60 → 60");
+  const e6 = sel440({ I: 1000 / (220 * 0.9), V: 220, ph: 1, L: 10, fp: 0.9, mca: 6, mop: 10 });
+  fila("CM.elec.5.l", e6.ocpd, "MOP 10 → fusible 10 A (240-6(a))");
+  const e7 = sel440({ I: 7000 / (220 * 0.9), V: 220, ph: 1, L: 10, fp: 0.9, mca: 31, mop: 32 });
+  fila("CM.elec.5.m", e7.ocpd, "MOP 32 → 32 (240-6(a))");
+  const I8 = 15200 / (Math.sqrt(3) * 220 * 0.85);
+  const e8 = sel440({ I: I8, V: 220, ph: 3, L: 45, fp: 0.85, mca: 49.8, mop: 70, est: true });
+  fila("CM.elec.5.n", e8.idx, `max(49.8, 1.25·${r(I8, 2)}) → ${e8.awg} AWG`);
+  fila("CM.elec.5.o", e8.ocpd, "MOP est. 70 → 70");
 }
 
 /* ===================== CM.elec.6 · aislamiento y canalización, I 100 A, 220 V 3F, L 25, fp 0.9, 40 °C ===================== */

@@ -24,7 +24,7 @@ Norma: NOM-001-SEDE-2012, texto del DOF en `parches/normas-texto/NOM-001-SEDE-20
 | CM.elec.3.p | H-188 | principal 175 A = 125 A del ramal del motor + 26.24 A de alumbrado (430-63 p. 426) | 125 A (el mayor de dos) |
 | CM.elec.4.b | H-183 | tierraDe(400) = 2 AWG (Tabla 250-122 p. 151) | **cerrado** (vigente desde H-183, elec v5) |
 | CM.elec.4.e | H-183 | tierraDe(2500) = 350 kcmil (p. 151) | **cerrado** (vigente desde H-183, elec v5) |
-| CM.elec.5.a/b | H-177 | 40VMA-240: protección ≤ MOP 90 A; 40MBC-24: ≤ 15 A (440-22(a) p. 449) | 150 A y 25 A (250 % general) |
+| CM.elec.5.a/b | H-177 | 40VMA-240: protección ≤ MOP 90 A; 40MBC-24: ≤ 15 A (440-22(a) p. 449) | **cerrado** (vigente desde H-177, elec v6; nuevas 5.c–5.i y S.41) |
 | CM.elec.7.c | H-186 | aluminio 15 A → mínimo 6 AWG (Tabla 310-106(a) p. 216; sin renglón < 6 AWG en Tabla 310-15(b)(16) p. 190) | 12 AWG |
 | CM.elec.8.c | H-184 | 660 A a 440 V: protección ≤ ampacidad (240-4(c) p. 102); hay que subir el conductor | 1000 A sobre 2 × 750 = 836 A |
 | CM.elec.8.d | H-185 | 1900 A: protección 2500 A (240-6(a) p. 104) | 2000 A (lista cortada; queda por debajo de Idis 2375) |
@@ -44,6 +44,13 @@ Norma: NOM-001-SEDE-2012, texto del DOF en `parches/normas-texto/NOM-001-SEDE-20
   150 A, 430-63 da 150 + 26.24 = 176.2 → **200 A**. Al cerrar ambos hay que actualizar la fila.
 - **Erratas del DOF** detectadas al transcribir (no afectan valores usados): Tabla 5 (p. 1006) trae «55.68» para 10 AWG
   THW (diámetro 4.470 mm → 15.69 mm²; la suite usa 15.68, correcto); Tabla 430-250 (p. 443) trae «44» en 10 hp / 575 V.
+
+## 2b. Dependencia resuelta en H-177
+`PROPUESTAS["cedula>elec"].aplicar` descartaba MCA y MOP al aceptar la cédula: se corrigió en el mismo commit (es la entrada del
+motor eléctrico). Las cargas aceptadas antes de la rev 2.9.24 no los traen: el cuadro avisa y se protegen como motor general
+hasta que se vuelva a aceptar la cédula o se capture la placa. La firma de la propuesta no cambió (no se marca desactualizada).
+Pendiente para H-188 (revisión adversarial de H-177): el alimentador y el principal siguen saliendo del kW de cada carga, no
+de la MCA/RLA de placa (440-33, 430-25, 430-62(a)); la revisión lo confirmó como defecto previo, no introducido por H-177.
 
 ## 3. No cubierto en la Fase 1, con motivo
 
