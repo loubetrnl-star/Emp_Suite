@@ -63,10 +63,10 @@ export default async function ({ t, G, S, CM, REG_PROY }) {
   caso(1, "(ASHRAE Fundamentals 2017 cap. 1 vía PsychroLib; 62.1-2016 Tabla 6.2.2.1; criterio de la casa) oficina 100 m² / 10 pers / 1 kW luz / 0.5 kW equipo, Tijuana 16 h; H-121 particiones y piso, H-123 piso ΔW", [
     [null, zona("tijuana", OFICINA)],
   ]);
-  caso(2, "(criterio de la casa DET/SOLAR/SHGC; H-120 ASHRAE 1997 CLTD, secundaria) envolvente N/W/cubierta/vidrio W en Tijuana a las 16 h", [
+  caso(2, "(criterio de la casa DET/SOLAR/SHGC; H-120 corrección CLTD ASHRAE 1997, secundaria, vigente desde load v4) envolvente N/W/cubierta/vidrio W en Tijuana a las 16 h", [
     [null, zona("tijuana", ENV)],
   ]);
-  caso(3, "(H-120 ASHRAE 1997 CLTD, secundaria) la misma envolvente en Mexicali: hoy el DET opaco no cambia con el sitio", [
+  caso(3, "(H-120 ASHRAE 1997 CLTD, secundaria) la misma envolvente en Mexicali: el DET opaco se corrige por sitio (+9.0 K)", [
     [null, zona("mexicali", ENV)],
   ]);
   caso(4, "(criterio de la casa SUN_H/DET_PEAK/DRANGE_H, H-122) barrido 8–18 h de una fachada oriente", [

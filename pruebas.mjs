@@ -570,6 +570,10 @@ if (baseFile) {
     Gb("S").site = JSON.parse(JSON.stringify(S.site));
     Gb("recompute")();
     G("recompute")();
+    /* rev 2.9.24 (H-120): si el motor de carga subió de versión respecto a la base, el cambio está permitido y declarado
+       (MOTOR_CAMBIOS); la igualdad sólo se exige con la misma versión. R.3 vigila que nada cambie sin subir versión. */
+    const vb = String(Gb("typeof MOTOR_VER !== 'undefined' ? MOTOR_VER.load : '1'")), va = String(G("MOTOR_VER").load);
+    if (vb !== va) { if (!(G("MOTOR_CAMBIOS").load || []).some((c) => +c.ver > +vb)) throw new Error(`carga v${vb} → v${va} sin hallazgo en MOTOR_CAMBIOS`); return; }
     const a = Gb("totals")(), b = G("totals")();
     cerca(b.grand, a.grand, 0.01, "carga total (W):");
     cerca(b.cfm, a.cfm, 0.01, "caudal:");
@@ -5059,7 +5063,10 @@ t("S.20 un proyecto guardado con la versión anterior (formato 1, rev 2.9.13) ab
   /* rev 2.9.18 · además, DECISIONES DEL DUEÑO: Tijuana a ASHRAE 2021 (32.8/17.5 °C, 149 m, 9.2 K) y curva de Hunter del IPC
      E103.3(3). Este proyecto está en Tijuana: la carga baja (el bulbo húmedo de 24 a 17.5 °C recorta el latente), el caudal
      sube (el calor sensible pesa más) y el gasto hidráulico sube con Hunter. Antes (2.9.13) → después (2.9.18): */
-  const MOVIDOS_2916 = { tons: [18.584787, 12.904762], cfm: [5114.572875, 5790.236072], sysTarget: [20.443265161623447, 14.19523796089015],
+  /* rev 2.9.24 · H-120 (load v4): el DET de muros y cubierta se corrige por sitio (Tijuana +0.31 K). Antes → después:
+     tons 12.904762 → 12.943837 · cfm 5790.236072 → 5815.981512 · planta 14.19523796089015 → 14.238221145934492; la cotización
+     de este proyecto no cambia. Lo verifican a mano CM.load.2/3/9 (parches/casos-a-mano/load.calc.mjs). */
+  const MOVIDOS_2916 = { tons: [18.584787, 12.943837], cfm: [5114.572875, 5815.981512], sysTarget: [20.443265161623447, 14.238221145934492],
     hidroQ: [3.924, 4.05985437], quoteDirect: [6704014.747352686, 6678714.747352686], partidas: [6704014.747352686, 6678714.747352686],
     quoteSub: [10133788.69209832, 10095545.21209832], quoteTot: [11755194.88283405, 11710832.44603405] };
   Object.entries(MOVIDOS_2916).forEach(([k, [antes]]) => eq(esperado.resumen[k], antes, `${k}: el «antes» es el de la 2.9.13:`));
@@ -5693,8 +5700,8 @@ t("S.35 (rev 2.9.19, revisión adversarial de 2.9.16–2.9.18) pendientes en Exc
 t("S.36 (rev 2.9.20, decisión del dueño) versión por motor en el sello: sólo se desactualiza la disciplina cuyo motor cambió; aviso al abrir con vX → vY y el cambio; nada se recalcula solo; la memoria muestra antes y después", () => {
   llenarTodoS();
   const MV = G("MOTOR_VER");
-  /* H-107: carga v3 = lógica de la rev 2.9.21 (declarada en la 2.9.24). */
-  eq(MV.elec, "4", "eléctrico v4:"); eq(MV.hidro, "4", "hidro v4:"); eq(MV.load, "3", "carga v3:"); eq(MV.duct, "1", "ductos sin cambio de lógica: v1:");
+  /* H-107: carga v3 = lógica de la rev 2.9.21 (declarada en la 2.9.24); H-120: carga v4 = corrección CLTD por sitio. */
+  eq(MV.elec, "4", "eléctrico v4:"); eq(MV.hidro, "4", "hidro v4:"); eq(MV.load, "4", "carga v4:"); eq(MV.duct, "1", "ductos sin cambio de lógica: v1:");
   Object.keys(MV).forEach((id) => { const c = G("MOTOR_CAMBIOS")[id] || []; if (MV[id] !== "1" && !c.some((x) => x.ver === MV[id])) throw new Error(`${id}: la versión ${MV[id]} no tiene hallazgo registrado`); });
   const s0 = JSON.stringify(S.sellos || {});
   try {

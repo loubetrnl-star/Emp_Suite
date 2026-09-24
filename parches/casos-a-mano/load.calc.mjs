@@ -92,7 +92,8 @@ const M3H_CFM = 1.699;                                                        //
 const sitio = (key) => { const s = SITIOS[key], p = pAtm(s.alt), ratio = p / 101.325;
   return { ...s, key, p, ratio, caso: "enfriamiento", Wfijo: null, wb: Math.min(s.wb, s.db - .5), QS: QS0 * ratio, QL: QL0 * ratio }; };
 const sitioDes = (s) => ({ ...s, caso: "deshumidificacion", db: s.dpDB, wb: Math.min(s.dp, s.dpDB - .5), range: 0, Wfijo: s.dpHR });
-const HOY = { pisoDW: true, particiones: true, cltd: false, bdZona: true, rp621: false };
+/* H-120 cerrado en la rev 2.9.24 (MOTOR_VER.load 4): la corrección CLTD por sitio ya es la regla vigente. */
+const HOY = { pisoDW: true, particiones: true, cltd: true, bdZona: true, rp621: false };
 
 /* ADP: punto donde la recta del ESHF que pasa por el cuarto (ti, Wi) toca la saturación, bajando desde el cuarto (el PRIMER
    cruce por debajo de ti). g(t) = Wrecta(t) − Wsat(máx(t, 1.7)) vale < 0 en ti − 0.5; se baja en pasos de 0.05 K hasta que
@@ -286,18 +287,15 @@ const ENV_TXT = "peakScan false (16 h), office, area 300, height 3, occ/luz/equi
   const corr = (25.556 - TI) + ((TJ.db - TJ.range / 2) - 29.444);
   const ent = "Tijuana, " + ENV_TXT;
   fila("CM.load.2.a", "masa constructiva por m² de piso → clase media", ent, `(200 × 176 + 100 × 320 + 10 × 25) / 300 = ${f(a.wFloor)} kg/m² (150–350 = media)`, CASA("3352-3353", "vidrio a 25 kg/m²"), "criterio de la casa", "LOADS[0].weightFloor", r(a.wFloor), 0.01, "vigente");
-  fila("CM.load.2.b", "muro N a las 16 h: DET de sombra 7.8 K", ent, `0.849 × 100 × 7.8 = ${f(a.L["Muro N"])} W`, CASA("877, 2992, 3306-3324", "DET «Carrier» sin edición"), "criterio de la casa", LINEA("Muro N"), r(a.L["Muro N"]), 0.05, "vigente");
-  fila("CM.load.2.c", "muro W a las 16 h: DET 7.8 + 0.78 × (22.2 − 7.8) = 19.03 K", ent, `0.849 × 100 × ${(a.L["Muro W"] / 84.9).toFixed(3)} = ${f(a.L["Muro W"])} W`, CASA("877, 2987, 3313-3316"), "criterio de la casa", LINEA("Muro W"), r(a.L["Muro W"]), 0.05, "vigente");
-  fila("CM.load.2.d", "cubierta a las 16 h: DET 7.8 + 0.78 × (23.9 − 7.8) × 0.712 = 16.74 K", ent, `0.55 × 100 × ${(a.L.Cubierta / 55).toFixed(3)} = ${f(a.L.Cubierta)} W`, CASA("2992, 3253, 3327-3334", "ROOF_H sin fuente"), "criterio de la casa", LINEA("Cubierta"), r(a.L.Cubierta), 0.05, "vigente");
   fila("CM.load.2.e", "vidrio W: transmisión con ΔT del sitio", ent, `2.8 × 10 × (32.8 − 24) = ${f(a.L["Vidrio transmisión W"])} W`, CASA("874, 3392"), "criterio de la casa", LINEA("Vidrio transmisión W"), r(a.L["Vidrio transmisión W"]), 0.02, "vigente");
   fila("CM.load.2.f", "vidrio W: insolación a las 16 h", ent, `10 × 680 W/m² × SUN_H 1.00 × SHGC 0.70 × alm 0.66 (16 h media) = ${f(a.L["Insolación vidrio W"])} W`, CASA("876, 878, 2994, 3243-3252, 3392", "SOLAR «Carrier» sin edición; SUN_H estimación EMP"), "criterio de la casa", LINEA("Insolación vidrio W"), r(a.L["Insolación vidrio W"]), 0.05, "vigente");
-  fila("CM.load.2.g", "gran total de la zona (incluye particiones H-121 y ΔW 0.5 H-123)", ent, `${f(a.grand)} W`, CASA("3338-3475"), "criterio de la casa", "LOADS[0].grand", r(a.grand), 0.1, "vigente");
-  fila("CM.load.2.h", "H-120: muro N corregido por sitio (+0.31 K en Tijuana)", ent, `corrección (25.556 − 24) + ((32.8 − 9.2/2) − 29.444) = ${corr.toFixed(3)} K → 0.849 × 100 × ${(7.8 + corr).toFixed(3)} = ${f(c.L["Muro N"])} W`, CLTD, "secundaria", LINEA("Muro N"), r(c.L["Muro N"]), "1%", "fase2:H-120");
-  fila("CM.load.2.i", "H-120: muro W corregido por sitio", ent, `0.849 × 100 × (19.032 + ${corr.toFixed(3)}) = ${f(c.L["Muro W"])} W`, CLTD, "secundaria", LINEA("Muro W"), r(c.L["Muro W"]), "1%", "fase2:H-120");
-  fila("CM.load.2.j", "H-120: cubierta corregida por sitio", ent, `0.55 × 100 × (16.741 + ${corr.toFixed(3)}) = ${f(c.L.Cubierta)} W`, CLTD, "secundaria", LINEA("Cubierta"), r(c.L.Cubierta), "1%", "fase2:H-120");
+  fila("CM.load.2.g", "gran total de la zona (con la corrección CLTD por sitio H-120; incluye particiones H-121 y ΔW 0.5 H-123)", ent, `${f(a.grand)} W`, CASA("3338-3475"), "criterio de la casa", "LOADS[0].grand", r(a.grand), 0.1, "vigente");
+  fila("CM.load.2.h", "H-120: muro N corregido por sitio (+0.31 K en Tijuana)", ent, `corrección (25.556 − 24) + ((32.8 − 9.2/2) − 29.444) = ${corr.toFixed(3)} K → 0.849 × 100 × ${(7.8 + corr).toFixed(3)} = ${f(c.L["Muro N"])} W`, CLTD, "secundaria", LINEA("Muro N"), r(c.L["Muro N"]), "1%", "vigente");
+  fila("CM.load.2.i", "H-120: muro W corregido por sitio", ent, `0.849 × 100 × (19.032 + ${corr.toFixed(3)}) = ${f(c.L["Muro W"])} W`, CLTD, "secundaria", LINEA("Muro W"), r(c.L["Muro W"]), "1%", "vigente");
+  fila("CM.load.2.j", "H-120: cubierta corregida por sitio", ent, `0.55 × 100 × (16.741 + ${corr.toFixed(3)}) = ${f(c.L.Cubierta)} W`, CLTD, "secundaria", LINEA("Cubierta"), r(c.L.Cubierta), "1%", "vigente");
 }
 
-/* ===== 3 · La misma envolvente en Mexicali (44 °C, 14.2 K, 23 m): hoy el DET opaco NO cambia (H-120) ===== */
+/* ===== 3 · La misma envolvente en Mexicali (44 °C, 14.2 K, 23 m): el DET opaco se corrige por sitio (H-120, +9.0 K) ===== */
 {
   const a = zona(ENV, MX, 16), c = zona(ENV, MX, 16, { ...HOY, cltd: true });
   const corr = (25.556 - TI) + ((MX.db - MX.range / 2) - 29.444);
@@ -305,12 +303,9 @@ const ENV_TXT = "peakScan false (16 h), office, area 300, height 3, occ/luz/equi
   fila("CM.load.3.a", "presión barométrica a 23 m (kPa)", ent, `101.325·(1 − 2.25577e-5·23)^5.2559 = ${a.s.p.toFixed(4)}`, PSY, "secundaria", "SITE.pAtm", r(a.s.p, 4), 0.001, "vigente");
   fila("CM.load.3.b", "razón de humedad exterior 44 °C / 24.8 °C BH (g/kg)", ent, `ec. 33 → ${(a.Wo * 1000).toFixed(4)}`, PSY, "secundaria", "LOADS[0].psy.Wo * 1000", r(a.Wo * 1000, 4), 0.001, "vigente");
   fila("CM.load.3.c", "ΔW usado (exterior más húmedo: sin piso)", ent, `${(a.Wo * 1000).toFixed(4)} − ${(a.Wi * 1000).toFixed(4)} = ${a.dW.toFixed(4)} g/kg`, PSY, "secundaria", "LOADS[0].psy.dW", r(a.dW, 4), 0.001, "vigente");
-  fila("CM.load.3.d", "muro N en Mexicali: hoy el mismo DET 7.8 K que en Tijuana", ent, `0.849 × 100 × 7.8 = ${f(a.L["Muro N"])} W (idéntico a CM.load.2.b)`, CASA("3301-3305", "sólo escala por hora; a las 16 h la razón vale 1"), "criterio de la casa", LINEA("Muro N"), r(a.L["Muro N"]), 0.05, "vigente");
-  fila("CM.load.3.e", "H-120: muro N corregido por sitio (+9.0 K)", ent, `(25.556 − 24) + ((44 − 14.2/2) − 29.444) = ${corr.toFixed(3)} K → 0.849 × 100 × ${(7.8 + corr).toFixed(3)} = ${f(c.L["Muro N"])} W`, CLTD, "secundaria", LINEA("Muro N"), r(c.L["Muro N"]), "1%", "fase2:H-120");
-  fila("CM.load.3.f", "muro W en Mexicali: hoy igual que en Tijuana", ent, `${f(a.L["Muro W"])} W`, CASA("3306-3316"), "criterio de la casa", LINEA("Muro W"), r(a.L["Muro W"]), 0.05, "vigente");
-  fila("CM.load.3.g", "H-120: muro W corregido por sitio", ent, `0.849 × 100 × (19.032 + ${corr.toFixed(3)}) = ${f(c.L["Muro W"])} W`, CLTD, "secundaria", LINEA("Muro W"), r(c.L["Muro W"]), "1%", "fase2:H-120");
-  fila("CM.load.3.h", "cubierta en Mexicali: hoy igual que en Tijuana", ent, `${f(a.L.Cubierta)} W`, CASA("3327-3334"), "criterio de la casa", LINEA("Cubierta"), r(a.L.Cubierta), 0.05, "vigente");
-  fila("CM.load.3.i", "H-120: cubierta corregida por sitio", ent, `0.55 × 100 × (16.741 + ${corr.toFixed(3)}) = ${f(c.L.Cubierta)} W`, CLTD, "secundaria", LINEA("Cubierta"), r(c.L.Cubierta), "1%", "fase2:H-120");
+  fila("CM.load.3.e", "H-120: muro N corregido por sitio (+9.0 K)", ent, `(25.556 − 24) + ((44 − 14.2/2) − 29.444) = ${corr.toFixed(3)} K → 0.849 × 100 × ${(7.8 + corr).toFixed(3)} = ${f(c.L["Muro N"])} W`, CLTD, "secundaria", LINEA("Muro N"), r(c.L["Muro N"]), "1%", "vigente");
+  fila("CM.load.3.g", "H-120: muro W corregido por sitio", ent, `0.849 × 100 × (19.032 + ${corr.toFixed(3)}) = ${f(c.L["Muro W"])} W`, CLTD, "secundaria", LINEA("Muro W"), r(c.L["Muro W"]), "1%", "vigente");
+  fila("CM.load.3.i", "H-120: cubierta corregida por sitio", ent, `0.55 × 100 × (16.741 + ${corr.toFixed(3)}) = ${f(c.L.Cubierta)} W`, CLTD, "secundaria", LINEA("Cubierta"), r(c.L.Cubierta), "1%", "vigente");
   fila("CM.load.3.j", "vidrio W: la transmisión sí usa el ΔT del sitio", ent, `2.8 × 10 × (44 − 24) = ${f(a.L["Vidrio transmisión W"])} W`, CASA("3392"), "criterio de la casa", LINEA("Vidrio transmisión W"), r(a.L["Vidrio transmisión W"]), 0.02, "vigente");
   fila("CM.load.3.k", "aire exterior sensible (540 m³/h por área)", ent, `540 × 0.34 × ${a.s.ratio.toFixed(5)} × 20 = ${f(a.oaS)} W`, CASA("2986, 3335"), "criterio de la casa", "LOADS[0].oaS", r(a.oaS), 0.05, "vigente");
   fila("CM.load.3.l", "aire exterior latente con ΔW real", ent, `540 × 0.83 × ${a.s.ratio.toFixed(5)} × ${a.dW.toFixed(4)} = ${f(a.oaL)} W`, CASA("2986, 3336"), "criterio de la casa", "LOADS[0].oaL", r(a.oaL), 0.05, "vigente");

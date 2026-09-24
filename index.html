@@ -3298,10 +3298,18 @@ const DET_PEAK = { N: 9.5, NE: 14.5, E: 18.5, SE: 17.0, S: 15.5, SW: 25.5, W: 23
    Ahora el piso de sombra sigue la temperatura exterior de la hora, con el mismo
    perfil DRANGE_H que ya usa el vidrio. A las 16 h la razón vale 1 exactamente,
    así que la tabla protegida se sigue reproduciendo sin cambio alguno. */
+/* H-120 (auditoría 22-sep-2026): el DET de muros y cubierta no se corregía por la condición de diseño del sitio: Mexicali
+   (44 °C, rango 14.2 K) daba el mismo DET que Tijuana. Corrección por sitio del método CLTD, ASHRAE Handbook—Fundamentals
+   1997 cap. 28: CLTDc = CLTD + (78 − TR) + (TM − 85) °F = CLTD + (25.556 − ti) + (tm − 29.444) K, con tm = to − DR/2
+   (texto secundario: parches/normas-texto/ASHRAE-1997_CLTD-correccion_extracto-curso-CED.txt). Es constante a toda hora y
+   se suma al piso de sombra, así que corrige el DET de sol y de sombra de muros y cubierta. PENDIENTE: ratificar la base de la
+   tabla protegida contra Carrier Parte 1 Tabla 20A (la tabla DET de la casa se declara «Carrier» sin edición). */
+const CLTD_BASE_TR = 25.556, CLTD_BASE_TM = 29.444;
+const corrDETsitio = () => (CLTD_BASE_TR - P.T_IN_DB) + ((SITE.db - dailyRangeOf() / 2) - CLTD_BASE_TM);
 function shadeAt(hr) {
   const dTdis = SITE.db - P.T_IN_DB;
-  if (dTdis <= 0) return DET_SHADE;
-  return DET_SHADE * Math.max(0, (dbAtHour(hr) - P.T_IN_DB) / dTdis);
+  if (dTdis <= 0) return DET_SHADE + corrDETsitio();
+  return DET_SHADE * Math.max(0, (dbAtHour(hr) - P.T_IN_DB) / dTdis) + corrDETsitio();
 }
 function detWall(o, hr = P.HOUR) {
   const base = shadeAt(hr);                    // piso de sombra de ESTA hora (H-10)
@@ -3371,6 +3379,7 @@ function computeLoad(z, bldDiv, forceTech, hour = P.HOUR) {
   memo.push(`Sitio ${SITE.label}: ${SITE.db} °C BS / ${SITE.wb} °C BH ext · rango diario ${dailyRangeOf()} K · altitud ${SITE.alt} m → ${SITE.pAtm.toFixed(1)} kPa (qs ${SITE.QS.toFixed(3)} · ql ${SITE.QL.toFixed(3)}) · interior ${P.T_IN_DB} °C con ${P.RH_IN * 100} % HR · lat ${P.LAT}° · hora solar ${hour}.`);
   memo.push(`A las ${hour} h la temperatura exterior es ${dbH.toFixed(1)} °C, no la máxima: se resta ${(dailyRangeOf() * (DRANGE_H[hIx(hour)] ?? 0)).toFixed(1)} K del rango diario (ASHRAE Fundamentals cap. 14).`);
   memo.push(`Psicrometría: Wext ${(psy.Wo * 1000).toFixed(2)} · Wint ${(psy.Wi * 1000).toFixed(2)} g/kg · ΔW ${dW.toFixed(2)} g/kg · Δh ${psy.dH.toFixed(1)} kJ/kg.`);
+  memo.push(`DET de muros y cubierta corregido por sitio ${corrDETsitio() >= 0 ? "+" : ""}${corrDETsitio().toFixed(2)} K = (25.6 − ${P.T_IN_DB}) + ((${SITE.db} − ${dailyRangeOf()}/2) − 29.4), corrección CLTD de ASHRAE Fundamentals 1997 cap. 28 (ratificar con Carrier Parte 1 Tabla 20A).`);
   memo.push(`Masa constructiva ${wFloor.toFixed(0)} kg/m² piso → clase ${mass.toUpperCase()} · ${run} h/día (Tab. 7–12).`);
   memo.push(`Almacenamiento: solar ${stor.solar.toFixed(2)} · luces ${stor.lights.toFixed(2)} · personas ${stor.people.toFixed(2)} · equipo ${stor.equip.toFixed(2)}${swing > 0 ? ` · swing ${swing} °C` : ""}.`);
   memo.push(`Diversidad ${spaceOf(sp).label}: personas ${div.people} · luces ${div.lights} · equipo ${div.equip} · edificio ${bd}.`);
@@ -17526,11 +17535,12 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "3", clean: "2", equip: "1", duct: "1", vent: "1", quote: "6", valor: "1", kaizen: "1", elec: "4", hidro: "4", fuego: "2", aire: "2", civil: "3", soporte: "2" };
+const MOTOR_VER = { load: "4", clean: "2", equip: "1", duct: "1", vent: "1", quote: "6", valor: "1", kaizen: "1", elec: "4", hidro: "4", fuego: "2", aire: "2", civil: "3", soporte: "2" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
-    { ver: "3", rev: "2.9.21", que: "cuarto limpio con presión positiva sin infiltración; unidad de aire exterior dedicada + serpentín seco (ADP desde la latente interna); crédito sensible del aire exterior topado en deshumidificación; cambios por hora obligatorios; calor del ventilador Q·ΔP/η" }],
+    { ver: "3", rev: "2.9.21", que: "cuarto limpio con presión positiva sin infiltración; unidad de aire exterior dedicada + serpentín seco (ADP desde la latente interna); crédito sensible del aire exterior topado en deshumidificación; cambios por hora obligatorios; calor del ventilador Q·ΔP/η" },
+    { ver: "4", rev: "2.9.24", que: "H-120: el DET de muros y cubierta se corrige por la condición de diseño del sitio, (25.6 − ti) + (tm − 29.4) K con tm = to − rango/2 (corrección CLTD, ASHRAE Fundamentals 1997 cap. 28; ratificar con Carrier Tabla 20A)" }],
   clean: [{ ver: "2", rev: "2.9.16", que: "sin pisos de 1 m² ni 2.2 m; 5 Pa de ISO 14644-4 con aviso; ceros capturados respetados" }],
   quote: [{ ver: "2", rev: "2.9.16", que: "red hidráulica por diámetro con precio capturado; sin 50 m supuestos; partidas pendientes" }, { ver: "3", rev: "2.9.19", que: "tramo con longitud y sin unidades mueble queda pendiente" }, { ver: "4", rev: "2.9.23", que: "precio de tubería por renglón con origen (referencia de mercado o proveedor local), IVA desglosado y por metro; sin precio: partida Por cotizar en el Budget, bloqueo sólo en la formal" }, { ver: "5", rev: "2.9.23", que: "precios en USD sólo se convierten con tipo de cambio capturado con fecha; sin fecha salen Por cotizar y bloquean la formal (nada se estima)" }, { ver: "6", rev: "2.9.23", que: "referencias sólo de California y sólo material (mano de obra por capturar; combinados → Por cotizar); referencias IUSA retiradas; flete, aduana e importación como renglón propio siempre Por cotizar hasta capturarlo" }],
   elec: [{ ver: "2", rev: "2.9.16", que: "canalización con las áreas del conductor de la memoria (THW-LS por omisión, NOM-001-SEDE Cap. 10 Tabla 5)" }, { ver: "3", rev: "2.9.18", que: "siete áreas THHN/THWN-2 corregidas a la Tabla 5" }, { ver: "4", rev: "2.9.19", que: "sin compresor de aire cuando no hay demanda" }],

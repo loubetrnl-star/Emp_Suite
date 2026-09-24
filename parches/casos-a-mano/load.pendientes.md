@@ -177,3 +177,15 @@ contra cada copia mutada: todos los mutantes mueren por los casos a mano sin dep
   de cálculo (equip / entregables); sólo se detectó el defecto de texto N-load-2.
 - **H-122** (SUN_H/DET_PEAK/ROOF_H publicados): sin tabla ASHRAE/Carrier en texto no hay valor correcto; las filas del
   caso 4 son vigentes «criterio de la casa» y se tendrán que recalcular cuando se sustituyan las tablas.
+
+## Cierre de H-120 (Fase 2, rev 2.9.24, load v4)
+- **Corregido** en `index.html` (`shadeAt` + `corrDETsitio`, constantes `CLTD_BASE_TR` 25.556 / `CLTD_BASE_TM` 29.444): el DET de
+  muros y cubierta se corrige por sitio con la corrección CLTD de ASHRAE Fundamentals 1997 cap. 28 (texto secundario).
+  También en la rama `dTdis ≤ 0` (caso de deshumidificación), lo que atiende N-load-3.
+- Filas: CM.load.2.h/.i/.j y 3.e/.g/.i pasan a `vigente`; se retiran 2.b/.c/.d y 3.d/.f/.h (fijaban el DET sin corregir).
+  `HOY.cltd = true` en `load.calc.mjs`; hoja regenerada (fixture 54,057.49 → 54,206.66 W; 15.37034 → 15.41276 TR;
+  16,040.63 → 16,068.60 CFM).
+- Mutantes: m44 y m78 re-apuntados a la línea nueva; m85 (tm con el máximo en vez de la media) y m86 (base interior 24 °C) nuevos;
+  los cuatro MUERTOS.
+- **Sigue abierto**: ratificar la base de la tabla protegida contra Carrier Parte 1 Tabla 20A (la corrección supone la base
+  CLTD de ASHRAE 78 °F / 85 °F); N-load-4 a N-load-8 sin cambio.
