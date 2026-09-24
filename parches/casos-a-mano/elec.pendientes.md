@@ -89,3 +89,9 @@ Tres lentes (norma, consumidores, pruebas) y verificación con sonda: 27 hallazg
 `node parches/mutantes/mutantes.mjs elec` → ver la tabla en el commit. H-183 (elec v5): `elec.m02` se reapuntó al valor
 correcto (tierra 400 A 2 → 3, lo mata CM.elec.4.b) y pasó a vigente; nuevos `elec.m29`–`m32` (columna de aluminio, respaldo de
 cobre hasta 100 A, renglón de 5000 A).
+
+**Compuerta completa al cierre de la Fase 2 (24-sep-2026, elec v8, tras H-180):** 139 mutantes (`elec.m01`–`m139`), corridos
+todos. 137 muertos en la corrida completa; vivos `elec.m01` (área THW-LS del 2 AWG) y `elec.m10` (ampacidad del 4 AWG cobre):
+con H-178 el caso 1 pasó de 4 a 3 AWG y el alimentador de 2 a 1/0 AWG, y ninguna prueba volvía a pasar por esos renglones.
+Se agregaron CM.elec.10.e (80 A → 2 AWG, área 372.19 mm²) y CM.elec.14.v (hp de placa 20 → 54 A → 4 AWG); los dos murieron.
+Resultado: **139 de 139 muertos, cero vivos de lógica.**
