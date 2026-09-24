@@ -1,7 +1,7 @@
 # elec · pendientes de la Fase 1 (rev 2.9.24)
 
-Motor eléctrico (`elec`, v4). Hoja: `elec.csv` (85 filas: 65 vigentes, 20 fase2). Cálculo independiente: `elec.calc.mjs`.
-Módulo: `pruebas-motores/elec.mjs` (13 pruebas CM.elec.1–13). Compuerta: `parches/mutantes/elec.json` (28 mutantes).
+Motor eléctrico (`elec`, v8). Hoja: `elec.csv` (127 filas: 116 vigentes, 11 fase2). Cálculo independiente: `elec.calc.mjs`.
+Módulo: `pruebas-motores/elec.mjs` (15 pruebas CM.elec.1–15). Compuerta: `parches/mutantes/elec.json` (139 mutantes).
 Norma: NOM-001-SEDE-2012, texto del DOF en `parches/normas-texto/NOM-001-SEDE-2012_DOF_texto.txt` (página en cada fila).
 
 ## 1. Pruebas de `pruebas.mjs` que protegen valores incorrectos o no prueban (NO se arreglan en la Fase 1)
