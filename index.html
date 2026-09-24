@@ -1740,12 +1740,12 @@ function buildElecPdf() {
     ["Distancia al tablero", R.Lalim != null ? `${n(R.Lalim, 0)} m (${R.sinConf.Ltablero ? "valor por omision de una revision anterior, sin confirmar" : "capturada"})` : "pendiente: no capturada (no se supone)"],
     ["Transformador", R.trafoKVA != null && R.trafoZ != null ? `${n(R.trafoKVA, 0)} kVA, Z ${n(R.trafoZ, 1)} % (${R.sinConf.trafoKVA || R.sinConf.trafoZ ? "valores por omision de una revision anterior, sin confirmar" : "placa capturada"})`
       : R.trafoKVA != null ? `${n(R.trafoKVA, 0)} kVA; Z de placa pendiente (no se supone)` : R.trafoZ != null ? `Z ${n(R.trafoZ, 1)} %; kVA pendiente (no se supone)` : "pendiente: kVA y Z de placa no capturados (no se supone)"],
-    ["Motores", "125 % del motor mayor mas el resto al 100 % (art. 430-24); proteccion al 250 % de la corriente a plena carga, a la capacidad normalizada inmediata superior (art. 430-52)"],
+    ["Motores", "Corriente a plena carga de la Tabla 430-250 (trifasicos) o 430-248 (monofasicos), no de kW/fp (art. 430-6(a)(1)): hp de placa o, sin el, el renglon inmediato superior al kW capturado; un hp de catalogo o estimado por otro modulo (no de placa) solo puede subir ese renglon. Su kVA sale de esa corriente. Fuera de la tabla: corriente ESTIMADA con kW/fp, o PENDIENTE sin kW. 125 % del motor mayor mas el resto al 100 % (art. 430-24); proteccion al 250 % de esa corriente, a la capacidad normalizada inmediata superior (art. 430-52)"],
     ["Equipo con motocompresor", "Con MCA y MOP: conductor por la MCA de placa (440-4(b), 440-35) y proteccion hasta el MOP, al valor normalizado de 240-6(a) que no lo excede (440-22); sin la Tabla 430-52. MCA y MOP estimados por la suite se marcan como tales en la memoria y no bajan el conductor del 125 %"],
   ]);
   pdfHeading(d, "3. Cuadro de cargas");
   pdfTable(d, ["Carga", "kW", "V/F", "A", "Cal.", "Prot.", "Tierra", "Tubo", "L m", "e %"],
-    R.calc.map((c) => [c.nombre.slice(0, 36), n(c.kWtot, 2), `${c.V}/${c.ph}`, n(c.I, 1), c.cond.awg, String(c.cond.ocpd), c.cond.tierra, c.cond.tubo.d, c.sinL ? "pend." : `${n(c.L, 0)}${c.Lsin ? "*" : ""}`, c.cond.dv == null ? "pend." : n(c.cond.dv, 2)]),
+    R.calc.map((c) => [c.nombre.slice(0, 36), c.kWsin ? "pend." : n(c.kWtot, 2), `${c.V}/${c.ph}`, ...(c.sinI ? ["pend.", "pend.", "pend.", "pend.", "pend."] : [n(c.I, 1), c.cond.awg, String(c.cond.ocpd), c.cond.tierra, c.cond.tubo.d]), c.sinL ? "pend." : `${n(c.L, 0)}${c.Lsin ? "*" : ""}`, c.cond.dv == null ? "pend." : n(c.cond.dv, 2)]),
     [130, 40, 40, 38, 40, 38, 40, 44, 40, 42]);
   pdfHeading(d, "4. Demanda y balanceo");
   pdfRows(d, [
@@ -5556,10 +5556,10 @@ function buildPropuestaXlsx(opt) {
     const ini = ef.length + 1;
     ELEC.calc.forEach((c) => ef.push([
       xT(c.nombre, XS.TD), xT(c.label, XS.TD), xN(c.cant, XS.NUM),
-      xN(+c.kW.toFixed(2), XS.NUM), xN(+c.kWtot.toFixed(2), XS.NUM),
-      xT(`${c.V} / ${c.ph}F`, XS.TD), xN(+c.I.toFixed(1), XS.NUM),
-      xT(`${c.cond.awg}${c.cond.paralelo > 1 ? ` ×${c.cond.paralelo}` : ""}`, XS.TD),
-      xN(c.cond.ocpd, XS.NUM), c.sinL ? xT(L("pendiente", "pending"), XS.TD) : c.Lsin ? xT(`${n(c.L, 0)} ${L("(sin confirmar)", "(unconfirmed)")}`, XS.TD) : xN(c.L, XS.NUM)]));
+      ...(c.kWsin ? [xT(L("pendiente", "pending"), XS.TD), xT(L("pendiente", "pending"), XS.TD)] : [xN(+c.kW.toFixed(2), XS.NUM), xN(+c.kWtot.toFixed(2), XS.NUM)]),
+      xT(`${c.V} / ${c.ph}F`, XS.TD),
+      ...(c.sinI ? [xT(L("pendiente", "pending"), XS.TD), xT(L("pendiente", "pending"), XS.TD), xT(L("pendiente", "pending"), XS.TD)]
+        : [xN(+c.I.toFixed(1), XS.NUM), xT(`${c.cond.awg}${c.cond.paralelo > 1 ? ` ×${c.cond.paralelo}` : ""}`, XS.TD), xN(c.cond.ocpd, XS.NUM)]), c.sinL ? xT(L("pendiente", "pending"), XS.TD) : c.Lsin ? xT(`${n(c.L, 0)} ${L("(sin confirmar)", "(unconfirmed)")}`, XS.TD) : xN(c.L, XS.NUM)]));
     const fin = ef.length;
     ef.push([xT(L("CARGA CONECTADA", "CONNECTED LOAD"), XS.SUBT), xV(XS.SUBT), xV(XS.SUBT), xV(XS.SUBT), xF(`SUM(E${ini}:E${fin})`, XS.SUBT),
       xV(XS.SUBT), xV(XS.SUBT), xV(XS.SUBT), xV(XS.SUBT), xV(XS.SUBT)]);
@@ -5592,6 +5592,10 @@ function buildPropuestaXlsx(opt) {
     const c440 = ELEC.calc.filter((c) => c.art440);
     if (c440.length) ef.push([xT(L(`Equipo con motocompresor (art. 440): ${c440.map((c) => `${c.nombre}: MCA ${n(c.mca, 1)} A ${c.mcaEst ? "ESTIMADA" : "de placa"}, MOP ${n(c.mop, 0)} A ${c.mopEst ? "ESTIMADO" : "de placa"} -> proteccion ${c.cond.ocpd} A`).join("; ")}. Conductor por la MCA (440-4(b), 440-35); proteccion hasta el MOP (440-22), sin la Tabla 430-52. Los valores ESTIMADOS los calculo la suite desde el kW de catalogo: no son de placa.`,
       `Equipment with hermetic motor-compressor (art. 440): ${c440.map((c) => `${c.nombre}: MCA ${n(c.mca, 1)} A ${c.mcaEst ? "ESTIMATED" : "nameplate"}, MOP ${n(c.mop, 0)} A ${c.mopEst ? "ESTIMATED" : "nameplate"} -> OCPD ${c.cond.ocpd} A`).join("; ")}. Conductor sized to the MCA (440-4(b), 440-35); protection up to the MOP (440-22), without Table 430-52. ESTIMATED values were computed by the suite from the catalog kW: they are not nameplate data.`), XS.NOTA)]);
+    /* H-178: de dónde sale la corriente de cada motor de uso general (tabla y renglón, o ESTIMADA / PENDIENTE). */
+    const cMot = ELEC.calc.filter((c) => c.motorTabla);
+    if (cMot.length) ef.push([xT(L(`Motores de uso general (430-6(a)(1)): corriente de la Tabla 430-250 (trifasicos) o 430-248 (monofasicos), no de kW/fp; su kVA sale de ella (1.732·V·I en trifasico, V·I en monofasico). ${cMot.map((c) => `${c.nombre}: ${motorFilaTexto(c, false)}`).join("; ")}.${cMot.some((c) => c.kWsin) ? " La carga conectada en kW no suma los motores sin kW capturado; la demanda en kVA si." : ""}`,
+      `General-purpose motors (430-6(a)(1)): full-load current from Table 430-250 (three-phase) or 430-248 (single-phase), not kW/pf; their kVA comes from it (1.732·V·I three-phase, V·I single-phase). ${cMot.map((c) => `${c.nombre}: ${motorFilaTexto(c, true)}`).join("; ")}.${cMot.some((c) => c.kWsin) ? " The connected load in kW leaves out motors without captured kW; the kVA demand includes them." : ""}`), XS.NOTA)]);
     ef.push([xT(L("Esta memoria no sustituye el dictamen de una unidad de verificacion ni un estudio de arco electrico: es el calculo que se le entrega a quien lo emite.",
       "This calculation does not replace an accredited inspection certificate or an arc-flash study: it is the calculation handed to whoever issues them."), XS.NOTA)]);
     hojas.push({ nombre: HN.MEMORIA_ELECTRICA, congelar: 0, anchos: [34, 26, 8, 12, 12, 12, 10, 14, 10, 10], filas: ef });
@@ -9284,6 +9288,102 @@ const F_TEMP = [[30, 1.00], [35, 0.94], [40, 0.88], [45, 0.82], [50, 0.75], [55,
    NOM-001-SEDE Tabla 310-15(b)(3)(a). */
 const F_GRUPO = [[3, 1.00], [6, 0.80], [9, 0.70], [20, 0.50], [30, 0.45], [40, 0.40], [999, 0.35]];
 
+/* Corriente a plena carga de motores de uso general. NOM-001-SEDE-2012 430-6(a)(1) (p. 405): para conductor y protección
+   contra cortocircuito se usan las Tablas 430-248 y 430-250, no la corriente de placa ni kW/(√3·V·fp). H-178 (rev 2.9.24):
+   transcritas dos veces de forma independiente del texto del DOF (parches/normas-texto), sin diferencias.
+   Tabla 430-250, motores trifásicos de inducción (p. 442-443): [kW de la tabla, hp, amperes por columna de tensión nominal
+   del motor]. «Las corrientes enumeradas se permitirán para sistemas con intervalos de tensión de 110 a 120, 220 a 240, 440
+   a 480 y 550 a 600 volts.» El DOF trae 44 A en 10 hp / 575 V (errata evidente: 9 → 44 → 17); esa celda no se usa (null). */
+const T430_250 = { tabla: "430-250", cols: [115, 200, 208, 230, 460, 575, 2300], filas: [
+  [0.37, 0.5, [4.4, 2.5, 2.4, 2.2, 1.1, 0.9, null]], [0.56, 0.75, [6.4, 3.7, 3.5, 3.2, 1.6, 1.3, null]], [0.75, 1, [8.4, 4.8, 4.6, 4.2, 2.1, 1.7, null]],
+  [1.12, 1.5, [12, 6.9, 6.6, 6, 3, 2.4, null]], [1.5, 2, [13.6, 7.8, 7.5, 6.8, 3.4, 2.7, null]], [2.25, 3, [null, 11, 10.6, 9.6, 4.8, 3.9, null]],
+  [3.75, 5, [null, 17.5, 16.7, 15.2, 7.6, 6.1, null]], [5.6, 7.5, [null, 25.3, 24.2, 22, 11, 9, null]], [7.5, 10, [null, 32.3, 30.8, 28, 14, null, null]],
+  [11.2, 15, [null, 48.3, 46.2, 42, 21, 17, null]], [14.9, 20, [null, 62.1, 59.4, 54, 27, 22, null]], [18.7, 25, [null, 78.2, 74.8, 68, 34, 27, null]],
+  [22.4, 30, [null, 92, 88, 80, 40, 32, null]], [29.8, 40, [null, 120, 114, 104, 52, 41, null]], [37.3, 50, [null, 150, 143, 130, 65, 52, null]],
+  [44.8, 60, [null, 177, 169, 154, 77, 62, 16]], [56, 75, [null, 221, 211, 192, 96, 77, 20]], [75, 100, [null, 285, 273, 248, 124, 99, 26]],
+  [93, 125, [null, 359, 343, 312, 156, 125, 31]], [112, 150, [null, 414, 396, 360, 180, 144, 37]], [150, 200, [null, 552, 528, 480, 240, 192, 49]],
+  [187, 250, [null, null, null, null, 302, 242, 60]], [224, 300, [null, null, null, null, 361, 289, 72]], [261, 350, [null, null, null, null, 414, 336, 83]],
+  [298, 400, [null, null, null, null, 477, 382, 95]], [336, 450, [null, null, null, null, 515, 412, 103]], [373, 500, [null, null, null, null, 590, 472, 118]]] };
+/* Tabla 430-248, motores monofásicos (p. 441-442). El DOF trae columna de 127 V (no la de 200 V del NEC). */
+const T430_248 = { tabla: "430-248", cols: [115, 127, 208, 230], filas: [
+  [0.12, 1 / 6, [4.4, 4, 2.4, 2.2]], [0.19, 0.25, [5.8, 5.3, 3.2, 2.9]], [0.25, 1 / 3, [7.2, 6.5, 4, 3.6]], [0.37, 0.5, [9.8, 8.9, 5.4, 4.9]],
+  [0.56, 0.75, [13.8, 11.5, 7.6, 6.9]], [0.75, 1, [16, 14, 8.8, 8]], [1.12, 1.5, [20, 18, 11, 10]], [1.5, 2, [24, 22, 13.2, 12]],
+  [2.25, 3, [34, 31, 18.7, 17]], [3.75, 5, [56, 51, 30.8, 28]], [5.6, 7.5, [80, 72, 44, 40]], [7.5, 10, [100, 91, 55, 50]]] };
+/* Columna de la tabla para la tensión del circuito: los intervalos del encabezado (110-120, 220-240, 440-480, 550-600 V) y las
+   columnas nominales exactas (127, 200, 208, 2300 V). Fuera de eso no hay columna. */
+function colMotor(V, ph) {
+  const v = num(V);
+  if (v >= 110 && v <= 120) return 115;
+  if (ph === 1) return v === 127 ? 127 : v === 208 ? 208 : v >= 220 && v <= 240 ? 230 : null;
+  return v === 200 ? 200 : v === 208 ? 208 : v >= 220 && v <= 240 ? 230 : v >= 440 && v <= 480 ? 460 : v >= 550 && v <= 600 ? 575 : v === 2300 ? 2300 : null;
+}
+/* hp de placa manda; si no hay, el kW capturado se toma como potencia en el eje y se usa el primer renglón cuyo kW (columna
+   kW de la propia tabla) lo alcanza: el hp normalizado inmediato superior, nunca el más cercano (decisión del dueño 2,
+   22-sep-2026; lectura literal confirmada 23-sep-2026: 15 kW > 14.9 kW del renglón de 20 hp → 25 hp). Un hp de placa que no
+   es renglón de la tabla toma el renglón inmediato superior; escrito con dos decimales (0.17 por 1/6, 0.33 por 1/3) es su
+   renglón (±0.005 hp). hpRef = hp que NO es de placa (catálogo de la casa o estimado por otro motor): criterio de la casa,
+   como la MCA estimada de H-177, sólo puede subir el renglón que da el kW, nunca bajarlo. Sin renglón, sin columna o con la
+   celda en blanco («—» del DOF, o la errata de 10 hp/575 V) no se salta a otro motor: I null y el cuadro avisa. */
+const HP_REF_ORIGEN = {
+  catalogo: ["catálogo de compresores de la casa", "house compressor catalog"],
+  hidro: ["estimado del módulo hidrosanitario (60 % de eficiencia)", "estimated by the plumbing module (60 % efficiency)"],
+  fuego: ["estimado del módulo contra incendio (65 % de eficiencia)", "estimated by the fire-protection module (65 % efficiency)"],
+};
+function corrienteMotorTabla(hpPlaca, kW, V, ph, hpRef) {
+  const T = ph === 1 ? T430_248 : T430_250, col = colMotor(V, ph);
+  if (col == null) return { I: null, tabla: T.tabla, fuera: "columna", V: num(V), motivo: `la Tabla ${T.tabla} no tiene columna para ${n(num(V), 0)} V` };
+  const k = T.cols.indexOf(col), hp = num(hpPlaca, 0), ref = num(hpRef, 0), kw = num(kW, 0);
+  const esRenglon = (f, h) => Math.abs(f[1] - h) <= 0.005;
+  const porHp = (h) => T.filas.find((f) => esRenglon(f, h)) || T.filas.find((f) => f[1] >= h);
+  const porKw = (x) => T.filas.find((f) => f[0] >= x - 1e-9);
+  let fila = null, origen = "";
+  if (hp > 0) { fila = porHp(hp); origen = fila && esRenglon(fila, hp) ? "hp de placa" : "hp de placa fuera de la tabla, renglón inmediato superior"; }
+  else if (kw > 0 || ref > 0) {
+    const fk = kw > 0 ? porKw(kw) : null, fr = ref > 0 ? porHp(ref) : null;
+    if ((kw > 0 && !fk) || (ref > 0 && !fr)) fila = null;
+    else if (fr && (!fk || fr[1] > fk[1])) { fila = fr; origen = "hp de referencia"; }
+    else { fila = fk; origen = "hp inferido de kW (inmediato superior por la columna kW de la tabla)"; }
+  }
+  else return { I: 0, tabla: T.tabla, col, origen: "sin potencia" };
+  const pot = hp > 0 ? `${hp} hp` : kw > 0 ? `${n(kw, 2)} kW` : `${ref} hp`;
+  if (!fila) return { I: null, tabla: T.tabla, col, fuera: "rango", pot, motivo: `${pot} queda fuera de la Tabla ${T.tabla} a ${col} V` };
+  const errata = T === T430_250 && fila[1] === 10 && col === 575;
+  if (fila[2][k] == null) return { I: null, tabla: T.tabla, col, hp: fila[1], fuera: "celda", errata,
+    motivo: `la Tabla ${T.tabla} no da corriente para ${hpTexto(fila[1])} hp a ${col} V${errata ? " (el DOF trae 44 A, errata evidente; no se usa)" : ""}` };
+  return { I: fila[2][k], hp: fila[1], kWtabla: fila[0], tabla: T.tabla, col, origen };
+}
+const hpTexto = (hp) => (Math.abs(hp - 1 / 6) < 1e-9 ? "1/6" : Math.abs(hp - 1 / 3) < 1e-9 ? "1/3" : String(hp));
+const formulaKw = (ph) => (ph === 3 ? "kW/(1.732·V·fp)" : "kW/(V·fp)");
+const hpRefTexto = (c, en) => { const o = HP_REF_ORIGEN[c.hpRefOrigen]; return o ? o[en ? 1 : 0] : (en ? "a reference that is not nameplate" : "una referencia que no es de placa"); };
+/* De dónde sale la corriente de un motor de uso general (memoria, avisos y libro; ES y EN). */
+function origenMotorTexto(c, en) {
+  const mt = c.motorTabla, h = hpTexto(mt.hp), ref = num(c.hpRef, 0) > 0 ? num(c.hpRef) : 0, o = hpRefTexto(c, en);
+  if (mt.origen === "hp de placa") return en ? `${h} hp nameplate` : `${h} hp de placa`;
+  if (mt.origen.startsWith("hp de placa")) return en ? `nameplate ${c.hp} hp is not a table row → ${h} hp` : `hp de placa ${c.hp} fuera de la tabla → ${h} hp`;
+  if (mt.origen === "hp de referencia") return en ? `${ref} hp from the ${o} (not nameplate) → row of ${h} hp, above the one the kW gives` : `${ref} hp del ${o} (no es de placa) → renglón de ${h} hp, arriba del que da el kW`;
+  return en ? `${n(c.kW, 2)} kW → ${h} hp inferred from kW (row of ${n(mt.kWtabla, 2)} kW, the next one up)` : `${n(c.kW, 2)} kW → ${h} hp inferido de kW (renglón de ${n(mt.kWtabla, 2)} kW, el inmediato superior)`;
+}
+/* hp de referencia que no subió el renglón: se dice que existe y por qué no manda. */
+function notaRefTexto(c, en) {
+  const ref = num(c.hpRef, 0); if (!(ref > 0) || !c.motorTabla || c.motorTabla.origen === "hp de referencia" || num(c.hp, 0) > 0) return "";
+  const o = hpRefTexto(c, en);
+  return en ? ` (the ${ref} hp from the ${o} is not nameplate and does not lower the row)` : ` (los ${ref} hp del ${o} no son de placa y no bajan el renglón)`;
+}
+function motivoMotorTexto(mt, en) {
+  if (!en) return mt.motivo;
+  if (mt.fuera === "columna") return `Table ${mt.tabla} has no column for ${n(mt.V, 0)} V`;
+  if (mt.fuera === "rango") return `${mt.pot} is outside Table ${mt.tabla} at ${mt.col} V`;
+  return `Table ${mt.tabla} gives no current for ${hpTexto(mt.hp)} hp at ${mt.col} V${mt.errata ? " (the DOF prints 44 A, an evident misprint; not used)" : ""}`;
+}
+/* Una fila del libro: tabla y renglón, o ESTIMADA / PENDIENTE (regla 6: nada se estima sin decirlo). */
+function motorFilaTexto(c, en) {
+  const mt = c.motorTabla;
+  if (mt.I > 0) return `${origenMotorTexto(c, en)} → ${n(mt.I, 1)} A ${en ? "at" : "a"} ${mt.col} V (${en ? "Table" : "Tabla"} ${mt.tabla})${notaRefTexto(c, en)}`;
+  if (mt.I === 0) return en ? "no kW or hp captured: current PENDING, branch not sized" : "sin kW ni hp capturados: corriente PENDIENTE, ramal sin dimensionar";
+  return `${motivoMotorTexto(mt, en)}; ${c.sinI ? (en ? "no kW to estimate it: current PENDING, branch not sized" : "sin kW con qué estimarla: corriente PENDIENTE, ramal sin dimensionar")
+    : (en ? `current ESTIMATED with ${formulaKw(c.ph)} = ${n(c.I, 1)} A (not the code value)` : `corriente ESTIMADA con ${formulaKw(c.ph)} = ${n(c.I, 1)} A (no es la de la norma)`)}`;
+}
+
 const fTemp = (t) => { const x = F_TEMP.find(([lim]) => num(t, 30) <= lim); return x ? x[1] : 0.35; };
 const fGrupo = (nc) => { const x = F_GRUPO.find(([lim]) => Math.max(1, num(nc, 3)) <= lim); return x ? x[1] : 0.35; };
 const ocpdArriba = (I) => OCPD_STD.find((x) => x >= I - 1e-9) ?? OCPD_STD[OCPD_STD.length - 1];
@@ -9511,6 +9611,7 @@ function defaultElec() {
     trafoKVA: null, trafoZ: null,  // placa del transformador, para estimar la corriente de falla
     Ltablero: null,                // distancia de la subestación al tablero, m
     h179: true,                    // proyecto creado o migrado con la regla H-179 (sanearEstado)
+    h178: true,                    // cargas de la cédula con hp de referencia y FFU como aparato (sanearEstado)
     sinConfirmar: {},              // valores por omisión viejos guardados como dato, sin confirmar (sanearEstado)
     fpObjetivo: .95,
     cargas: [],                // capturadas por el usuario
@@ -9586,17 +9687,17 @@ function computeElec(E) {
        compresor por fila, no kVA×cant — con cant>1 aquí los demás compresores
        ya entran al 100% como el resto de los motores, sin tocar esa regla. */
     filas.push({ id: "aire-1", nombre: `Compresor ${AIRE.principal.tipo} · ${AIRE.principal.hp} HP × ${AIRE.nUnidades} en servicio${AIRE.redund ? " (más 1 de relevo N+1, no incluida: no corre en simultáneo)" : ""}`, tipo: "motor",
-      kW: AIRE.principal.kW, V: sis.V, ph: sis.ph, cant: Math.max(1, num(AIRE.nUnidades, 1)), L: null, fp: .85, auto: true, estimado: false });
+      kW: AIRE.principal.kW, hpRef: num(AIRE.principal.hp, 0) || null, hpRefOrigen: "catalogo", V: sis.V, ph: sis.ph, cant: Math.max(1, num(AIRE.nUnidades, 1)), L: null, fp: .85, auto: true, estimado: false });
   }
   const verHidro = linkAllowed("hidro>elec");
   if (E.tomarHVAC && verHidro && HIDRO && HIDRO.kWbomba > 0) {
     filas.push({ id: "hidro-1", nombre: `Bomba de agua · ${n(HIDRO.hpBomba, 1)} HP`, tipo: "motor",
-      kW: +HIDRO.kWbomba.toFixed(2), V: sis.V, ph: sis.ph, cant: 1, L: null, fp: .85, auto: true, estimado: true });
+      kW: +HIDRO.kWbomba.toFixed(2), hpRef: num(HIDRO.hpBomba, 0) || null, hpRefOrigen: "hidro", V: sis.V, ph: sis.ph, cant: 1, L: null, fp: .85, auto: true, estimado: true });
   }
   const verFuego = linkAllowed("fuego>elec");
   if (E.tomarHVAC && verFuego && FUEGO && FUEGO.kWbomba > 0) {
     filas.push({ id: "fuego-1", nombre: `Bomba contra incendio · ${n(FUEGO.hpBomba, 0)} HP`, tipo: "motor",
-      kW: +FUEGO.kWbomba.toFixed(2), V: sis.V, ph: sis.ph, cant: 1, L: null, fp: .85, auto: true, estimado: true });
+      kW: +FUEGO.kWbomba.toFixed(2), hpRef: num(FUEGO.hpBomba, 0) || null, hpRefOrigen: "fuego", V: sis.V, ph: sis.ph, cant: 1, L: null, fp: .85, auto: true, estimado: true });
   }
   const verClean = linkAllowed("clean>elec");
   if (E.tomarHVAC && verClean && CLEAN && CLEAN.sum && CLEAN.sum.ffu > 0) {
@@ -9604,7 +9705,7 @@ function computeElec(E) {
        reparten en varios circuitos derivados, pero para el alimentador general
        y la demanda del tablero la suma es lo que importa. */
     filas.push({ id: "ffu-1", nombre: `Módulos FFU · ${CLEAN.sum.ffu} × ${FFU.watts} W`, tipo: "motor",
-      kW: +(CLEAN.sum.ffu * FFU.watts / 1000).toFixed(2), V: sis.Vf, ph: 1, cant: 1, L: null, fp: .85, auto: true, estimado: false });
+      kW: +(CLEAN.sum.ffu * FFU.watts / 1000).toFixed(2), V: sis.Vf, ph: 1, cant: 1, L: null, fp: .85, auto: true, estimado: false, aparato: true });
   }
   /* 7) Cargas capturadas por el usuario */
   (E.cargas || []).forEach((c, i) => filas.push({ ...c, id: c.id || `u-${i}`, auto: false }));
@@ -9618,12 +9719,22 @@ function computeElec(E) {
     const fp = Math.min(1, Math.max(.5, num(c.fp, meta.fp)));
     const cant = Math.max(1, Math.round(num(c.cant, 1)));
     const kW = Math.max(0, num(c.kW));
-    const kVA = kW / fp;
-    const I = ph === 3 ? kW * 1000 / (Math.sqrt(3) * V * fp) : kW * 1000 / (V * fp);
+    /* H-178 (rev 2.9.24): el motor de uso general (tipo motor sin MCA/MOP de placa del art. 440) toma su corriente de la
+       Tabla 430-250 / 430-248 (430-6(a)(1)), no de kW/(√3·V·fp) sin eficiencia; su kVA sale de esa corriente. Los FFU entran
+       como aparato (430-6(a)(1) Exc. 2: ventilador, corriente de placa del equipo): siguen con W/(V·fp) hasta capturar la placa.
+       El equipo con motocompresor de la cédula (con modelo) no es motor de uso general (440-6(a)): sin MCA y MOP sigue con
+       kW/(√3·V·fp) y el aviso de H-177. Sin corriente de tabla ni kW con qué estimarla, la corriente queda pendiente. */
+    const mcaC = tipo === "motor" ? num(c.mca, 0) : 0, mopC = tipo === "motor" ? num(c.mop, 0) : 0;
+    const general = tipo === "motor" && !(mcaC > 0 && mopC > 0) && !c.aparato && !c.modelo;
+    const tab = general ? corrienteMotorTabla(c.hp, kW, V, ph, c.hpRef) : null;
+    const Ikw = ph === 3 ? kW * 1000 / (Math.sqrt(3) * V * fp) : kW * 1000 / (V * fp);
+    const I = tab && tab.I != null ? tab.I : Ikw;
+    const kVA = tab && tab.I != null ? (ph === 3 ? Math.sqrt(3) : 1) * V * I / 1000 : kW / fp;
+    const sinI = !!tab && !(I > 0), kWsin = !!tab && !(kW > 0);
     /* H-177 (rev 2.9.24) · Equipo con motocompresor hermético: con MCA y MOP de placa rige el art. 440. El conductor se
        dimensiona con la MCA (440-4(b) p. 445, 440-35 p. 450; la MCA ya trae el 125 % de 440-32) y la protección no pasa
        del MOP (440-22). Con uno solo de los dos datos no se aplica: aviso y queda como motor. */
-    const mca = tipo === "motor" ? num(c.mca, 0) : 0, mop = tipo === "motor" ? num(c.mop, 0) : 0;
+    const mca = mcaC, mop = mopC;
     const art440 = mca > 0 && mop > 0;
     /* Una MCA que estimó la suite (no de placa) no puede bajar el conductor del 125 % de la corriente con que la propia suite
        calcula la carga (210-19(a), 430-22): sólo la MCA de placa manda sola. */
@@ -9637,7 +9748,7 @@ function computeElec(E) {
       Idis: Idis440, mop: art440 ? mop : 0 });
     /* Distancia que un proyecto viejo guardó sin que nadie la capturara (sanearEstado, H-179): se conserva, marcada. */
     const Lsin = !sinL && c.Lsupuesta != null && num(c.L) === num(c.Lsupuesta);
-    return { ...c, tipo, label: meta.label, V, ph, fp, cant, kW, kVA, kWtot: kW * cant, kVAtot: kVA * cant, I, cond, sinL, Lsin, L: sinL ? null : Lc,
+    return { ...c, tipo, label: meta.label, V, ph, fp, cant, kW, kVA, kWtot: kW * cant, kVAtot: kVA * cant, I, cond, sinL, Lsin, L: sinL ? null : Lc, motorTabla: tab, sinI, kWsin,
       art440, mca: art440 ? mca : c.mca, mop: art440 ? mop : c.mop, mcaEst: art440 && est.mca, mopEst: art440 && est.mop };
   });
 
@@ -9738,8 +9849,20 @@ function computeElec(E) {
       avisos.push({ lvl: "err", msg: `${c.nombre}: equipo con MCA y MOP pero sin kW: su ramal se dimensiona, pero no entra a la demanda ni al alimentador general. Captura la potencia del equipo.` });
     if (c.art440 && (c.mcaEst || c.mopEst))
       avisos.push({ lvl: "warn", msg: `${c.nombre}: ${c.mcaEst && c.mopEst ? "MCA y MOP estimados" : c.mcaEst ? "MCA estimada" : "MOP estimado"} por la suite desde el kW de catálogo, no de placa. Captura los datos de placa antes de firmar el cuadro (art. 440).` });
+    if (c.motorTabla && c.motorTabla.I == null)
+      avisos.push({ lvl: "err", msg: `${c.nombre}: ${c.motorTabla.motivo}; ${c.sinI ? "sin kW capturado no hay con qué estimar su corriente: queda PENDIENTE y su ramal no está dimensionado" : `su corriente se ESTIMÓ con ${formulaKw(c.ph)} (${n(c.I, 1)} A), que no es la de la norma (430-6(a)(1))`}. ${num(c.hp, 0) > 0 ? "Revisa el hp y la tensión nominal del motor: la tabla no cubre esa combinación." : "Captura el hp de placa y la tensión nominal del motor."}` });
+    if (c.motorTabla && c.motorTabla.I === 0)
+      avisos.push({ lvl: "err", msg: `${c.nombre}: motor sin kW ni hp capturados: su corriente queda PENDIENTE y su ramal no está dimensionado. Captura el hp de placa o el kW.` });
+    if (c.motorTabla && c.motorTabla.I > 0 && !(num(c.hp, 0) > 0)) {
+      const mt = c.motorTabla, ref = num(c.hpRef, 0) > 0 ? `${c.hpRef} hp del ${hpRefTexto(c, false)}` : "";
+      avisos.push({ lvl: "info", msg: `${c.nombre}: sin hp de placa; ${mt.origen === "hp de referencia" ? `se tomó el renglón de ${hpTexto(mt.hp)} hp por los ${ref} (no es de placa), arriba del que da el kW` : `se tomó ${hpTexto(mt.hp)} hp, el renglón de la Tabla ${mt.tabla} inmediato superior a ${n(c.kW, 2)} kW${ref ? `; los ${ref} no son de placa y no bajan el renglón` : ""}`} (${n(mt.I, 1)} A). Captura el hp de placa: manda sobre el kW.` });
+    }
+    if (c.kWsin && c.I > 0)
+      avisos.push({ lvl: "info", msg: `${c.nombre}: sin kW capturado; la demanda toma su kVA de la corriente de la tabla (${n(c.kVA, 2)} kVA = ${c.ph === 3 ? "1.732·" : ""}V·I) y su kW se imprime «pendiente».` });
+    if (c.tipo === "motor" && c.aparato)
+      avisos.push({ lvl: "info", msg: `${c.nombre}: ventiladores (430-6(a)(1) Exc. 2): la corriente es la de placa del equipo; mientras no se capture, se calculó con W/(V·fp) (${n(c.I, 1)} A).` });
     if (c.tipo === "motor" && !c.art440 && c.modelo && !(num(c.mca, 0) > 0) && !(num(c.mop, 0) > 0))
-      avisos.push({ lvl: "warn", msg: `${c.nombre}: equipo con motocompresor sin MCA ni MOP; se protege al 250 % de la Tabla 430-52 y puede quedar arriba de su MOP. Captura los datos de placa o vuelve a aceptar la cédula (art. 440).` });
+      avisos.push({ lvl: "warn", msg: `${c.nombre}: equipo con motocompresor sin MCA ni MOP; su corriente se ESTIMÓ con ${formulaKw(c.ph)} (${n(c.I, 1)} A) y se protege al 250 % de la Tabla 430-52: puede quedar arriba de su MOP. Captura los datos de placa o vuelve a aceptar la cédula (art. 440).` });
   });
   if (desbalance > 5) avisos.push({ lvl: "warn", msg: `Desbalance entre fases de ${n(desbalance, 1)} %. Arriba de 5 % calienta el neutro y castiga la vida de los motores: reacomoda las cargas monofásicas.` });
   const sinLong = calc.filter((c) => c.sinL);
@@ -9759,6 +9882,9 @@ function computeElec(E) {
   memo.push(`Balanceo: fase A ${n(fases.A, 2)} · B ${n(fases.B, 2)} · C ${n(fases.C, 2)} kVA · desbalance ${n(desbalance, 1)} %.`);
   memo.push(`Alimentador general: ${alim.nota}. Caída de tensión ${alim.dv == null ? "PENDIENTE (falta la distancia al tablero)" : `${n(alim.dv, 2)} % en ${n(Lalim, 0)} m${sinConf.Ltablero ? " (sin confirmar)" : ""}`} de los ${n(num(E.dvTotal, 5), 1)} % acumulados admisibles. Interruptor principal ${principal} A.`);
   memo.push(`Distancias al tablero (H-179: ninguna se supone; «sin confirmar» = valor por omisión de una revisión anterior): ${calc.map((c) => `${c.nombre} ${c.sinL ? "pendiente" : `${n(c.L, 0)} m${c.Lsin ? " (sin confirmar)" : ""}`}`).join(" · ")} · alimentador general ${alimSinL ? "pendiente" : `${n(Lalim, 0)} m${sinConf.Ltablero ? " (sin confirmar)" : ""}`}.`);
+  /* H-178: motores de uso general con la corriente de la tabla. */
+  const conTabla = calc.filter((c) => c.motorTabla && c.motorTabla.I > 0);
+  if (conTabla.length) memo.push(`Motores de uso general (430-6(a)(1)): corriente de la tabla, no de kW/fp; su kVA sale de ella (1.732·V·I en trifásico, V·I en monofásico): ${conTabla.map((c) => `${c.nombre}${c.cant > 1 ? ` (${c.cant} ×)` : ""}: ${origenMotorTexto(c, false)} → ${n(c.motorTabla.I, 1)} A a ${c.motorTabla.col} V (Tabla ${c.motorTabla.tabla})${notaRefTexto(c, false)}`).join("; ")}.`);
   const con440 = calc.filter((c) => c.art440);
   if (con440.length) memo.push(`Equipo con motocompresor (art. 440): ${con440.map((c) => `${c.nombre} MCA ${n(c.mca, 1)} A${c.mcaEst ? " ESTIMADA" : " de placa"} / MOP ${n(c.mop, 0)} A${c.mopEst ? " ESTIMADO" : " de placa"} → protección ${c.cond.ocpd} A${c.cond.fusible ? " (fusible)" : ""}`).join("; ")}. El conductor cubre la MCA de placa (440-4(b), 440-35); una MCA ESTIMADA no lo baja del 125 % de la corriente calculada (210-19(a)). La protección no pasa del MOP (440-4(b), 440-22(b) y (c)); no se usa la Tabla 430-52.${con440.some((c) => c.mcaEst || c.mopEst) ? " Los valores ESTIMADOS los calculó la suite desde el kW de catálogo (RLA = 0.85·FLA, MCA = 125 % de la RLA, MOP = 175 % de la RLA al normalizado superior; criterio de la casa, no de placa): sustituirlos por los de placa antes de firmar." : ""}`);
   if (alim.paralelo > 1) {
@@ -16891,6 +17017,7 @@ function propuestaElecFilasCalc() {
   return R.calc.filter((c) => c.auto).map((c) => ({
     nombre: c.nombre, tipo: c.tipo, kW: c.kW, V: c.V, ph: c.ph, cant: c.cant, L: c.L, fp: c.fp,
     mca: c.mca, mop: c.mop, placaEstimada: !!c.placaEstimada, estimado: !!c.estimado, modelo: c.modelo ? c.modelo.model : null,
+    hpRef: num(c.hpRef, 0) || null, hpRefOrigen: c.hpRefOrigen || null, aparato: !!c.aparato,
   }));
 }
 function snapshotSoporte() {
@@ -16992,17 +17119,23 @@ const PROPUESTAS = {
     titulo: "Cargas eléctricas de los demás motores",
     que: "Cada equipo de la cédula con compresor entra como carga tipo motor con su kW, tensión y fases; el ventilador de extracción, el compresor de aire, la bomba de agua, la bomba contra incendio y los FFU de cuartos limpios entran con su potencia estimada, cada uno solo si su motor ya lo calculó (la propuesta se arma con todos los cruces hacia el eléctrico). Al aceptarlas quedan autorizados esos cruces y se vuelven cargas de este cuadro, con origen y fecha, y ya no cambian solas.",
     disponible: () => propuestaElecFilas().length > 0,
-    firma: () => JSON.stringify(propuestaElecFilas().map((c) => [c.nombre, +num(c.kW).toFixed(2), c.cant, c.V, c.ph])),
+    /* H-178: el hp de referencia y la marca de aparato entran a la firma: un proyecto que aceptó antes de la rev 2.9.24 las cargas
+       que los traen sale «Desactualizada» y se vuelve a aceptar; sin ellos la firma no cambia. */
+    firma: () => JSON.stringify(propuestaElecFilas().map((c) => [c.nombre, +num(c.kW).toFixed(2), c.cant, c.V, c.ph, ...(num(c.hpRef, 0) > 0 ? [num(c.hpRef)] : []), ...(c.aparato ? ["aparato"] : [])])),
     resumen: () => { const f = propuestaElecFilas(); return `${f.length} carga(s) · ${n(f.reduce((a, c) => a + num(c.kW) * num(c.cant, 1), 0), 1)} kW · ${f.map((c) => c.nombre.split(" · ")[0]).slice(0, 4).join(", ")}${f.length > 4 ? "…" : ""}`; },
     actual: () => { const cs = (S.elec.cargas || []); const ced = cs.filter((c) => c.origen === "cedula"); return `${ced.length} carga(s) aceptadas de otros motores · ${cs.length - ced.length} capturada(s) a mano${S.elec.tomarHVAC ? " · además entran EN VIVO por el modo de revisiones anteriores" : ""}`; },
     enVivo: () => S.elec.tomarHVAC === true && CRUCES_ELEC.some(linkAllowed),
     aplicar: () => {
       const f = propuestaElecFilas();
       const ts = Date.now();
+      /* H-178: volver a aceptar conserva lo que el usuario capturó en la carga del mismo nombre (distancia y hp de placa). */
+      const previas = new Map((S.elec.cargas || []).filter((c) => c.origen === "cedula").map((c) => [c.nombre, c]));
+      const conserva = (p) => (p ? { ...(num(p.L, 0) > 0 ? { L: p.L, ...(p.Lsupuesta != null ? { Lsupuesta: p.Lsupuesta } : {}) } : {}), ...(num(p.hp, 0) > 0 ? { hp: p.hp } : {}) } : {});
       S.elec.cargas = (S.elec.cargas || []).filter((c) => c.origen !== "cedula");
       /* H-177: el equipo con motocompresor entra con su MCA y su MOP (art. 440); antes se descartaban. */
       f.forEach((c, i) => S.elec.cargas.push({ id: `ced${ts.toString(36)}${i}`, nombre: c.nombre, tipo: c.tipo, kW: c.kW, V: c.V, ph: c.ph, cant: c.cant, L: c.L, fp: c.fp, fija: false, origen: "cedula", ts, modelo: c.modelo, estimado: c.estimado,
-        ...(num(c.mop, 0) > 0 ? { mca: c.mca, mop: c.mop, ...(c.placaEstimada ? { placaEst: { mca: c.mca, mop: c.mop } } : {}) } : {}) }));
+        ...(num(c.hpRef, 0) > 0 ? { hpRef: c.hpRef, hpRefOrigen: c.hpRefOrigen } : {}), ...(c.aparato ? { aparato: true } : {}),
+        ...(num(c.mop, 0) > 0 ? { mca: c.mca, mop: c.mop, ...(c.placaEstimada ? { placaEst: { mca: c.mca, mop: c.mop } } : {}) } : {}), ...conserva(previas.get(c.nombre)) }));
       S.elec.tomarHVAC = false;
     },
     propio: () => { S.elec.tomarHVAC = false; },
@@ -17640,7 +17773,7 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "4", clean: "2", equip: "1", duct: "1", vent: "1", quote: "6", valor: "1", kaizen: "1", elec: "7", hidro: "4", fuego: "2", aire: "2", civil: "3", soporte: "2" };
+const MOTOR_VER = { load: "4", clean: "2", equip: "1", duct: "1", vent: "1", quote: "6", valor: "1", kaizen: "1", elec: "8", hidro: "4", fuego: "2", aire: "2", civil: "3", soporte: "2" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
@@ -17651,7 +17784,8 @@ const MOTOR_CAMBIOS = {
   elec: [{ ver: "2", rev: "2.9.16", que: "canalización con las áreas del conductor de la memoria (THW-LS por omisión, NOM-001-SEDE Cap. 10 Tabla 5)" }, { ver: "3", rev: "2.9.18", que: "siete áreas THHN/THWN-2 corregidas a la Tabla 5" }, { ver: "4", rev: "2.9.19", que: "sin compresor de aire cuando no hay demanda" },
     { ver: "5", rev: "2.9.24", que: "H-183: conductor de puesta a tierra con la Tabla 250-122 de la NOM-001-SEDE-2012 (p. 151): 400 A → 2 AWG (antes 3 AWG, valor del NEC), renglones hasta 6000 A y columna de aluminio (hasta 100 A la tabla sólo da cobre)" },
     { ver: "6", rev: "2.9.24", que: "H-177: equipo con motocompresor hermético con MCA y MOP por el art. 440: conductor por la MCA de placa (440-4(b), 440-35; una MCA estimada por la suite no lo baja del 125 %) y protección igual al MOP o al valor inmediato inferior de 240-6(a) completo (16, 32, 63 A; abajo de 15 A sólo fusibles de 1, 3, 6, 10 A), sin el 250 % de la Tabla 430-52 (40VMA-240: 150 → 90 A; 40MBC-24: 25 → 15 A). Aceptar la cédula conserva MCA y MOP (marcados estimados); una carga sin kW no fija el principal" },
-    { ver: "7", rev: "2.9.24", que: "H-179: nada se supone. Sin distancia al tablero, sin transformador (kVA y Z de placa) o sin longitud de una carga, la caída del alimentador, la corriente de falla con su capacidad interruptiva y la caída del ramal quedan «pendiente» con aviso (antes 30 m, 150 kVA / Z 4 % y 25 m supuestos; 0 m daba 0.00 %). Las cargas de otros motores ya no traen distancia automática (Ltablero + 10 a 30 m). Sin longitud el calibre se declara mínimo por ampacidad. El 80 % del transformador se revisa con sólo el kVA. Proyectos guardados antes conservan sus valores, marcados «sin confirmar». La memoria, el PDF y el libro dan la L de cada carga. Cubre H-189" }],
+    { ver: "7", rev: "2.9.24", que: "H-179: nada se supone. Sin distancia al tablero, sin transformador (kVA y Z de placa) o sin longitud de una carga, la caída del alimentador, la corriente de falla con su capacidad interruptiva y la caída del ramal quedan «pendiente» con aviso (antes 30 m, 150 kVA / Z 4 % y 25 m supuestos; 0 m daba 0.00 %). Las cargas de otros motores ya no traen distancia automática (Ltablero + 10 a 30 m). Sin longitud el calibre se declara mínimo por ampacidad. El 80 % del transformador se revisa con sólo el kVA. Proyectos guardados antes conservan sus valores, marcados «sin confirmar». La memoria, el PDF y el libro dan la L de cada carga. Cubre H-189" },
+    { ver: "8", rev: "2.9.24", que: "H-178: la corriente de un motor de uso general sale de la Tabla 430-250 (trifásico) o 430-248 (monofásico, con su columna de 127 V) de la NOM-001-SEDE-2012 (430-6(a)(1)), no de kW/(1.732·V·fp): hp de placa (campo nuevo) o, sin él, el renglón inmediato superior al kW por la columna kW de la propia tabla (decisión del dueño 2; 15 kW → 25 hp → 68 A, antes 46.31 A → 4 AWG/125 A, ahora 3 AWG/175 A). Su kVA en la demanda sale de esa corriente. El hp de catálogo o estimado por otro motor (compresor, bombas) no es de placa: sólo puede subir el renglón. Los FFU entran como aparato (Exc. 2). Fuera de la tabla, corriente ESTIMADA con aviso, o PENDIENTE sin kW. Los proyectos que aceptaron la cédula antes salen con la propuesta «Desactualizada»" }],
   hidro: [{ ver: "2", rev: "2.9.16", que: "tramo sin longitud ya no supone 10 m" }, { ver: "3", rev: "2.9.18", que: "curva de Hunter de IPC apéndice E Table E103.3(3)" }, { ver: "4", rev: "2.9.19", que: "renglones de 2500 a 5000 UM de la misma tabla" }],
   fuego: [{ ver: "2", rev: "2.9.16", que: "sin área no hay demanda, bomba ni reserva; área mínima de operación NFPA 13 con aviso" }],
   aire: [{ ver: "2", rev: "2.9.16", que: "sin demanda no se cuentan unidades" }],
@@ -20009,14 +20143,14 @@ function viewElec() {
   const M = (v, d = 1) => n(v, d);
   const fila = (c, i) => `<tr>
     <td><div style="font-weight:600">${esc(c.nombre)}</div>
-      <div class="sub">${esc(c.label)}${c.auto ? " · desde otro motor" : ""}${c.fase ? ` · fase ${c.fase}` : " · 3F"}</div></td>
-    <td class="num">${c.cant > 1 ? `${c.cant} ×` : ""} ${M(c.kW, 2)}</td>
+      <div class="sub">${esc(c.label)}${c.auto ? " · desde otro motor" : ""}${num(c.hpRef, 0) > 0 ? ` · ${esc(String(c.hpRef))} hp del ${esc(hpRefTexto(c, false))}, no de placa` : ""}${c.fase ? ` · fase ${c.fase}` : " · 3F"}</div></td>
+    <td class="num">${c.cant > 1 ? `${c.cant} ×` : ""} ${c.kWsin ? `<span title="Sin kW capturado: la demanda usa la corriente de la tabla">pendiente</span>` : M(c.kW, 2)}</td>
     <td class="num">${c.V} / ${c.ph}F</td>
-    <td class="num">${M(c.I, 1)}</td>
+    ${c.sinI ? `<td class="num" colspan="5" style="color:var(--warn)" title="Sin corriente de tabla ni kW: el ramal no está dimensionado">pendiente</td>` : `<td class="num">${M(c.I, 1)}</td>
     <td class="num">${esc(c.cond.awg)}</td>
     <td class="num">${c.cond.ocpd}</td>
     <td class="num">${esc(c.cond.tierra)}</td>
-    <td class="num">${esc(c.cond.tubo.d)}</td>
+    <td class="num">${esc(c.cond.tubo.d)}</td>`}
     <td class="num" style="color:${c.cond.dv > num(E.dvRamal, 3) ? "var(--warn);font-weight:700;text-decoration:underline dotted" : "var(--dato)"}">${c.cond.dv == null ? `<span title="Sin longitud capturada: la caída no se supone">pendiente</span>` : `${M(c.cond.dv, 2)} %`}</td>
     <td>${c.auto ? `<span class="badge">auto</span>` : `<button class="icon-btn" data-act="ec-del" data-i="${(E.cargas || []).findIndex((x) => x.id === c.id)}" aria-label="Eliminar carga">×</button>`}</td>
   </tr>`;
@@ -20086,10 +20220,11 @@ function viewElec() {
           ${inp("Cantidad", `elec.cargas.${i}.cant`, "number", "1")}
           ${inp("Distancia (m)", `elec.cargas.${i}.L`, "number", "5")}
         </div>${c.tipo === "motor" ? `
-        <div class="row" style="grid-template-columns:1fr 1fr 2fr;align-items:end;margin:-8px 0 14px">
+        <div class="row" style="grid-template-columns:1fr 1fr 1fr 2fr;align-items:end;margin:-8px 0 14px">
+          ${inp("hp de placa", `elec.cargas.${i}.hp`, "number", "any")}
           ${inp("MCA de placa (A)", `elec.cargas.${i}.mca`, "number", "0.1")}
           ${inp("MOP de placa (A)", `elec.cargas.${i}.mop`, "number", "5")}
-          <div class="sub">Equipo con motocompresor: con los dos datos de placa rige el art. 440 (conductor por la MCA, protección hasta el MOP).${placaEstDe(c).mca || placaEstDe(c).mop ? ` ${placaEstDe(c).mca && placaEstDe(c).mop ? "MCA y MOP" : placaEstDe(c).mca ? "La MCA" : "El MOP"} los estimó la suite desde el catálogo: sustitúyelos por los de placa.` : ""}</div>
+          <div class="sub">Motor de uso general: el hp de placa manda; sin él, se toma el renglón de la Tabla 430-250/430-248 inmediato superior al kW. Equipo con motocompresor: con MCA y MOP de placa rige el art. 440 (conductor por la MCA, protección hasta el MOP).${placaEstDe(c).mca || placaEstDe(c).mop ? ` ${placaEstDe(c).mca && placaEstDe(c).mop ? "MCA y MOP" : placaEstDe(c).mca ? "La MCA" : "El MOP"} los estimó la suite desde el catálogo: sustitúyelos por los de placa.` : ""}</div>
         </div>` : ""}`).join("")}
       </div></div>` : ""}
     </div>
@@ -21614,6 +21749,7 @@ function sanearEstado(d) {
      + 10 a 30 m). Se conservan (no se mueve ningún número) pero se marcan «sin confirmar» con el valor que traían; la marca
      cae sola en cuanto el usuario captura otro valor. */
   const elecViejo = !!(s.elec && typeof s.elec === "object" && !("h179" in s.elec));
+  const elecSin178 = !!(s.elec && typeof s.elec === "object" && !("h178" in s.elec));
   s.elec = { ...defaultElec(), ...(s.elec && typeof s.elec === "object" ? s.elec : {}) };
   if (elecViejo) {
     const sc = {};
@@ -21626,6 +21762,15 @@ function sanearEstado(d) {
       if (c && c.origen === "cedula" && [10, 15, 20, 25, 30].includes(Math.round((num(c.L) - Lt) * 1000) / 1000)) c.Lsupuesta = num(c.L);
     });
     s.elec.h179 = true;
+  }
+  /* H-178: los FFU que la cédula aceptó antes de la rev 2.9.24 no traían la marca de aparato (430-6(a)(1) Exc. 2) y caerían
+     en la Tabla 430-248 como un motor. El hp de referencia de compresores y bombas no se reconstruye: la propuesta sale
+     «Desactualizada» (firma) y al volver a aceptarla lo trae, conservando la distancia capturada. */
+  if (elecSin178) {
+    (Array.isArray(s.elec.cargas) ? s.elec.cargas : []).forEach((c) => {
+      if (c && c.origen === "cedula" && c.tipo === "motor" && /^Módulos FFU/.test(String(c.nombre || ""))) c.aparato = true;
+    });
+    s.elec.h178 = true;
   }
      if (!Array.isArray(s.elec.cargas)) s.elec.cargas = [];
    s.elec.aislamiento = aislamientoDe(s.elec.aislamiento);

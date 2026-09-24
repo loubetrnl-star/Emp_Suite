@@ -459,7 +459,11 @@ t("S.46 (H-177) art. 440 con placa: sólo el MOP → aviso y se protege como mot
     eq(R.calc[0].cond.fusible, true, "se declara fusible:");
     R = arma([dc({ nombre: "Sólo MOP", kW: 10, mop: 60 })]);
     if (!R.avisos.some((a) => a.lvl === "err" && /falta la MCA/.test(a.msg))) throw new Error("sin aviso de MCA faltante");
-    eq(R.calc[0].cond.ocpd, 80, "con un solo dato no rige el art. 440: 250 % de 30.87 A → 80 A (motor general):");
+    eq(R.calc[0].cond.ocpd, 110, "con un solo dato no rige el art. 440: motor general, 10 kW → 15 hp → 42 A (Tabla 430-250, H-178), 250 % → 110 A:");
+    R = arma([dc({ nombre: "Sólo MCA", kW: 10, mca: 40 })]);
+    if (!R.avisos.some((a) => a.lvl === "err" && /falta el MOP/.test(a.msg))) throw new Error("sin aviso de MOP faltante");
+    eq(R.calc[0].I, 42, "sólo la MCA: tampoco rige el art. 440; motor general por la Tabla 430-250 (10 kW → 15 hp → 42 A):");
+    eq(R.calc[0].cond.ocpd, 110, "sólo la MCA: 250 % de 42 A → 110 A:");
     R = arma([dc({ nombre: "Placa MCA 40", kW: 12, mca: 40, mop: 60 })]);
     eq(R.calc[0].mcaEst, false, "capturada por el usuario, la MCA es de placa:");
     eq(R.calc[0].cond.Idis, 40, "la MCA de placa manda sola (aunque 125 % de la corriente calculada dé más):");
@@ -472,7 +476,9 @@ t("S.46 (H-177) art. 440 con placa: sólo el MOP → aviso y se protege como mot
     eq(R.principal, R.alim.ocpd, "una carga que no entra a la demanda no fija el principal:");
     if (!R.avisos.some((a) => a.lvl === "err" && /sin kW/.test(a.msg))) throw new Error("sin aviso de equipo sin kW");
     R = arma([dc({ nombre: "Borrados", kW: 10, modelo: "40VMA-096", origen: "cedula" })]);
-    if (!R.avisos.some((a) => /sin MCA ni MOP/.test(a.msg))) throw new Error("equipo de catálogo sin MCA ni MOP sin aviso");
+    if (!R.avisos.some((a) => /sin MCA ni MOP/.test(a.msg) && /ESTIMÓ/.test(a.msg))) throw new Error("equipo de catálogo sin MCA ni MOP sin aviso de corriente estimada");
+    eq(R.calc[0].motorTabla, null, "equipo con motocompresor (modelo de la cédula) sin placa: no es motor de uso general (440-6(a)), no pasa por la Tabla 430-250 (H-178):");
+    cerca(R.calc[0].I, 10000 / (Math.sqrt(3) * 220 * .85), 0.01, "sigue con kW/(1.732·V·fp) hasta capturar la placa:");
     if (R.avisos.some((a) => /antes de la rev/.test(a.msg))) throw new Error("aviso que afirma una fecha que no conoce");
   } finally { S.elec = JSON.parse(guardado); G("recompute")(); }
 });
@@ -600,7 +606,106 @@ t("S.49 (H-179) un proyecto guardado antes de la rev 2.9.24 conserva sus número
     eq(R.sinConf.trafoKVA, true, "el kVA que no se tocó sigue sin confirmar:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
-
+/* H-178 (rev 2.9.24): las cargas que entran de otros motores traen el hp de su motor como REFERENCIA (catálogo de la casa o
+   estimado por hidráulica / contra incendio: no es de placa y sólo puede subir el renglón que da el kW, decisión del dueño 2 y
+   criterio de la casa de H-177); los FFU son aparato (430-6(a)(1) Exc. 2); el equipo con motocompresor sin placa sigue en kW
+   (440-6(a)); fuera de la tabla o con la celda en blanco, corriente ESTIMADA con la fórmula de sus fases, o PENDIENTE sin kW. */
+t("S.50 (H-178) cargas de otros motores: el hp de catálogo o estimado no es de placa y sólo sube el renglón del kW; FFU como aparato; fuera de la tabla ESTIMADA (3F y 1F) o PENDIENTE; celda en blanco sin saltar; hp decimal; pantalla, PDF y libro", () => {
+  const R = G(`(() => { const sv = { AIRE, HIDRO, FUEGO, CLEAN };
+    try {
+      AIRE = { ...(AIRE || {}), principal: { ...((AIRE && AIRE.principal) || {}), tipo: "tornillo", hp: 10, kW: 8 }, nUnidades: 1 };
+      HIDRO = { ...(HIDRO || {}), kWbomba: 2.3, hpBomba: 2.5 };
+      FUEGO = { ...(FUEGO || {}), kWbomba: 3.8, hpBomba: 10 };
+      CLEAN = { ...(CLEAN || {}), sum: { ...((CLEAN && CLEAN.sum) || {}), ffu: 12 } };
+      return conPermisoTemporal(CRUCES_ELEC, () => computeElec({ ...defaultElec(), tomarHVAC: true, cargas: [] }));
+    } finally { AIRE = sv.AIRE; HIDRO = sv.HIDRO; FUEGO = sv.FUEGO; CLEAN = sv.CLEAN; } })()`);
+  const f = (id) => { const c = R.calc.find((x) => x.id === id); if (!c) throw new Error(`falta la carga ${id}`); return c; };
+  const aire = f("aire-1");
+  eq(aire.I, 42, "compresor de 10 hp de catálogo y 8 kW: el kW da 15 hp → 42 A; el hp de catálogo no es de placa y no baja el renglón (antes 28 A):");
+  eq(aire.hp, undefined, "el hp del catálogo no se guarda como hp de placa:"); eq(aire.hpRef, 10, "va como referencia:");
+  eq(f("hidro-1").I, 15.2, "bomba de agua de 2.3 kW → 5 hp → 15.2 A; los 2.5 hp estimados no la bajan a 3 hp (9.6 A):");
+  eq(f("hidro-1").hpRef, 2.5, "la bomba de agua lleva su hp estimado como referencia:"); eq(f("hidro-1").hpRefOrigen, "hidro", "con su origen:");
+  const fuego = f("fuego-1");
+  eq(fuego.I, 28, "bomba contra incendio de 3.8 kW (el kW da 7.5 hp, 22 A) con 10 hp estimados: la referencia sí sube el renglón → 28 A:");
+  eq(fuego.motorTabla.origen, "hp de referencia", "origen declarado:");
+  const ffu = f("ffu-1");
+  cerca(ffu.I, ffu.kW * 1000 / (ffu.V * ffu.fp), 1e-9, "FFU: aparato, corriente con W/(V·fp) mientras no se capture la placa (no la tabla):");
+  if (!R.avisos.some((a) => /Exc\. 2/.test(a.msg) && a.msg.startsWith(ffu.nombre))) throw new Error("sin aviso de la corriente de placa de los FFU");
+  const memo = R.memo.join(" ");
+  contiene(memo, "corriente de la tabla, no de kW/fp", "memoria:");
+  contiene(memo, "no son de placa y no bajan el renglón", "memoria, compresor de catálogo:");
+  contiene(memo, "(no es de placa) → renglón de 10 hp", "memoria, bomba contra incendio:");
+  if (/\b(10|2\.5) hp de placa/.test(memo)) throw new Error("la memoria llama «de placa» a un hp de catálogo o estimado");
+  if (!R.avisos.some((a) => a.lvl === "info" && a.msg.startsWith(aire.nombre) && /se tomó 15 hp/.test(a.msg) && /no son de placa/.test(a.msg))) throw new Error("sin aviso del hp inferido y de la referencia que no manda");
+  /* Fuera de la tabla, sin kW, equipo sin placa, celda en blanco (errata 10 hp / 575 V) y hp decimal. */
+  const dm = (nombre, x) => ({ ...G("defaultCarga")(nombre), tipo: "motor", V: 220, ph: 3, cant: 1, L: 20, fp: .85, ...x });
+  const cargas = [dm("Motor 200 kW", { kW: 200 }), dm("Motor 1F 9 kW", { kW: 9, ph: 1 }), dm("Motor 1F 15 hp sin kW", { kW: 0, hp: 15, ph: 1 }),
+    dm("Motor 10 hp sin kW", { kW: 0, hp: 10 }), dm("Equipo sin placa", { kW: 10.5, modelo: "X" }), dm("Motor 600 V 10 hp", { kW: 7.5, hp: 10, V: 600 }),
+    dm("Motor 1/6 hp", { kW: 0.12, hp: 0.17, V: 127, ph: 1 })];
+  const R2 = G("computeElec")({ ...G("defaultElec")(), trafoKVA: 300, trafoZ: 4, Ltablero: 30, cargas });
+  const [m200, m1f, p15, p10, e440, m600, m16] = R2.calc;
+  cerca(m200.I, 200000 / (Math.sqrt(3) * 220 * .85), 0.01, "200 kW → 300 hp, celda «—» a 230 V: corriente ESTIMADA con kW/(1.732·V·fp):");
+  cerca(m200.kVA, 200 / .85, 0.001, "y su kVA con kW/fp:");
+  if (!R2.avisos.some((a) => a.lvl === "err" && a.msg.startsWith("Motor 200 kW") && /la Tabla 430-250 no da corriente para 300 hp a 230 V/.test(a.msg) && /ESTIMÓ con kW\/\(1\.732·V·fp\)/.test(a.msg))) throw new Error("un motor sin corriente en la tabla debe avisar que la suya es estimada (y por qué)");
+  cerca(m1f.I, 9000 / (220 * .85), 0.01, "1F fuera de la Tabla 430-248: kW/(V·fp), sin raíz de 3:");
+  if (!R2.avisos.some((a) => a.msg.startsWith("Motor 1F 9 kW") && /ESTIMÓ con kW\/\(V·fp\)/.test(a.msg))) throw new Error("el aviso monofásico debe citar kW/(V·fp)");
+  eq(p15.sinI, true, "15 hp 1F sin kW: fuera de la tabla y sin kW con qué estimar → corriente PENDIENTE:");
+  if (!R2.avisos.some((a) => a.lvl === "err" && a.msg.startsWith("Motor 1F 15 hp sin kW") && /PENDIENTE/.test(a.msg) && !/Captura el hp/.test(a.msg))) throw new Error("sin aviso de corriente pendiente (o pide el hp que ya está capturado)");
+  eq(p10.I, 28, "10 hp de placa sin kW → 28 A:"); cerca(p10.kVA, Math.sqrt(3) * 220 * 28 / 1000, 0.001, "su kVA sale de la corriente de tabla:");
+  eq(p10.kWsin, true, "su kW se marca pendiente, no 0:");
+  eq(e440.motorTabla, null, "equipo con motocompresor sin MCA ni MOP no es motor de uso general (440-6(a)):");
+  eq(m600.motorTabla.I, null, "10 hp a 575 V: el DOF trae una errata (44 A); no se salta al renglón de 15 hp (17 A):");
+  contiene(m600.motorTabla.motivo, "errata", "motivo:");
+  eq(m16.I, 4, "0.17 hp (1/6 escrito con dos decimales) → renglón de 1/6 hp → 4 A a 127 V, no 1/4 hp (5.3 A):");
+  eq(m16.motorTabla.origen, "hp de placa", "0.17 es el renglón de 1/6, no «fuera de la tabla»:");
+  if (R2.avisos.some((a) => /√/.test(a.msg)) || /√/.test(G("MOTOR_CAMBIOS").elec.find((c) => c.ver === "8").que)) throw new Error("un texto que llega al PDF lleva «√», que el PDF imprime como «?»");
+  /* Pantalla, PDF y libro: lo pendiente sale «pendiente»; el campo de hp admite decimales. */
+  const guardado = JSON.stringify(S.elec);
+  try {
+    S.elec = { ...G("defaultElec")(), tomarHVAC: false, trafoKVA: 300, trafoZ: 4, Ltablero: 30, cargas: [cargas[2], cargas[3]] }; G("recompute")();
+    const v = G("viewElec")();
+    contiene(v, 'step="any" data-path="elec.cargas.0.hp"', "pantalla, campo hp de placa:");
+    eq((v.match(/>pendiente</g) || []).length, 3, "pantalla: kW de los dos motores sin kW y el ramal sin corriente, «pendiente»:");
+    const pdf = txtPdfE(G("buildElecPdf")());
+    eq((pdf.match(/pend\./g) || []).length, 7, "PDF: kW de los dos motores y corriente, calibre, protección, tierra y tubo del ramal sin corriente, «pend.»:");
+    const hojas = G(`(() => { const o = xlsxBuild; let h = null; xlsxBuild = (x) => { h = x; return o(x); }; try { buildPropuestaXlsx({ lang: "en", mon: "USD" }); } finally { xlsxBuild = o; } return h; })()`);
+    const me = JSON.stringify((hojas.find((h) => JSON.stringify(h.filas).includes("PANEL SCHEDULE AND FEEDERS")) || {}).filas);
+    contiene(me, "General-purpose motors (430-6(a)(1))", "libro EN, nota de motores:"); contiene(me, "PENDING", "libro EN, corriente pendiente:");
+    contiene(me, "10 hp nameplate", "libro EN, origen del hp:");
+  } finally { S.elec = JSON.parse(guardado); G("recompute")(); }
+  G("recompute")();
+  const bomba = G("propuestaElecFilas")().find((c) => /Bomba contra incendio/.test(c.nombre));
+  if (!bomba) throw new Error("la propuesta del banco no trae la bomba contra incendio");
+  eq(bomba.hpRef, G("FUEGO").hpBomba, "la propuesta entrega el hp de la bomba como referencia:"); eq(bomba.hpRefOrigen, "fuego", "con su origen:");
+  eq(bomba.hp, undefined, "y no como hp de placa:");
+});
+/* H-178: un proyecto que aceptó la cédula con elec v7 guardó las cargas sin hp de referencia ni marca de aparato. */
+t("S.51 (H-178) proyecto que aceptó la cédula antes de la rev 2.9.24: los FFU abren como aparato, la propuesta sale «Desactualizada» y al volver a aceptarla trae el hp de referencia sin perder la distancia capturada", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(JSON.parse(fs.readFileSync("parches/regresion-motores/regresion-motores.emp.json", "utf8"))); G("recompute")();
+    G("propAceptar")("cedula>elec"); G("recompute")();
+    /* Así lo guardaba elec v7: sin hpRef, hpRefOrigen ni aparato en las cargas de la cédula, sin la marca h178 y con la firma de
+       cinco campos. La distancia de 23 m la capturó el usuario. */
+    const viejo = JSON.parse(JSON.stringify(S));
+    delete viejo.elec.h178;
+    viejo.elec.cargas.forEach((c) => { if (c.origen === "cedula") { delete c.hpRef; delete c.hpRefOrigen; delete c.aparato; c.L = 23; } });
+    viejo.vinculos["cedula>elec"].firma = JSON.stringify(G("propuestaElecFilas")().map((c) => [c.nombre, +Number(c.kW).toFixed(2), c.cant, c.V, c.ph]));
+    G("reemplazarEstado")(viejo); G("recompute")();
+    eq(G("estadoPropuesta")("cedula>elec").nivel, "desactualizado", "la propuesta aceptada sin hp de referencia ni aparato sale desactualizada:");
+    const ffu = G("ELEC").calc.find((c) => /^Módulos FFU/.test(c.nombre));
+    if (!ffu) throw new Error("el proyecto de regresión no trae FFU");
+    eq(ffu.aparato, true, "el FFU abre como aparato (430-6(a)(1) Exc. 2):");
+    cerca(ffu.I, ffu.kW * 1000 / (ffu.V * ffu.fp), 1e-9, "y su corriente es W/(V·fp), no la de un motor de la Tabla 430-248:");
+    G("propAceptar")("cedula>elec"); G("recompute")();
+    eq(G("estadoPropuesta")("cedula>elec").nivel, "aceptado", "vuelta a aceptar:");
+    const ced = S.elec.cargas.filter((c) => c.origen === "cedula");
+    const comp = ced.find((c) => /^Compresor/.test(c.nombre));
+    eq(comp.hpRef, G("AIRE").principal.hp, "el compresor trae su hp de catálogo como referencia:"); eq(comp.hpRefOrigen, "catalogo", "origen:");
+    eq(ced.find((c) => /^Módulos FFU/.test(c.nombre)).aparato, true, "el FFU vuelve como aparato:");
+    eq(ced.every((c) => c.L === 23), true, "volver a aceptar conserva la distancia capturada en cada carga:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
 
 /* ====== 5. Regla 3 · si cambia el origen, el destino no se recalcula ===== */
 t("5.1 cambiar la carga térmica marca ductos como desactualizado, sin tocarlo", () => {
@@ -761,11 +866,24 @@ if (baseFile) {
     cerca(G("DUCT").boq.kg, Gb("DUCT").boq.kg, 0.01, "kilos de lámina:");
   });
   t("8.3 mismo cuadro de cargas con las mismas cargas capturadas", () => {
-    Gb("S").elec = JSON.parse(JSON.stringify(S.elec));
-    Gb("S").elec.tomarHVAC = false;
-    Gb("recompute")(); G("recompute")();
-    cerca(G("ELEC").kVAdemanda, Gb("ELEC").kVAdemanda, 0.01, "kVA de demanda:");
-    eq(G("ELEC").principal, Gb("ELEC").principal, "interruptor principal:");
+    /* rev 2.9.24 (H-178): la corriente de un motor de uso general sale de la Tabla 430-250, así que con esos motores la
+       demanda y el principal cambian contra la base. Mientras la versión difiera se exige el hallazgo en MOTOR_CAMBIOS y se
+       comparan las demás cargas (sin los motores de uso general); R.1 (esperado por versión) y R.3 vigilan los motores. */
+    const vb = String(Gb("typeof MOTOR_VER !== 'undefined' ? MOTOR_VER.elec : '1'")), va = String(G("MOTOR_VER").elec);
+    const general = (c) => c.tipo === "motor" && !(Number(c.mca) > 0 && Number(c.mop) > 0) && !c.aparato && !c.modelo;
+    const guardado = JSON.stringify(S.elec);
+    try {
+      if (vb !== va) {
+        if (!(G("MOTOR_CAMBIOS").elec || []).some((c) => +c.ver > +vb && /H-178/.test(c.que))) throw new Error(`eléctrico v${vb} → v${va}: la demanda cambió sin el hallazgo H-178 en MOTOR_CAMBIOS`);
+        S.elec.cargas = (S.elec.cargas || []).filter((c) => !general(c));
+        if (!S.elec.cargas.length) throw new Error("sin cargas que comparar fuera de los motores de uso general");
+      }
+      Gb("S").elec = JSON.parse(JSON.stringify(S.elec));
+      Gb("S").elec.tomarHVAC = false;
+      Gb("recompute")(); G("recompute")();
+      cerca(G("ELEC").kVAdemanda, Gb("ELEC").kVAdemanda, 0.01, "kVA de demanda:");
+      eq(G("ELEC").principal, Gb("ELEC").principal, "interruptor principal:");
+    } finally { S.elec = JSON.parse(guardado); G("recompute")(); }
   });
   t("8.4 mismo contra incendio con la misma área", () => {
     Gb("S").fuego = JSON.parse(JSON.stringify(S.fuego));
@@ -3210,16 +3328,21 @@ t("22.4 2.1 la corriente de diseño del alimentador no repite el 125 % (430-24 /
       ] };
     G("recompute")();
     const E = G("ELEC");
-    /* Motores 35.29 + 25 % del mayor 4.41 + alumbrado 10 × 1.25 + contactos 10 = 62.21 kVA → 163.25 A. */
-    const Iref = (15 / .85 + 2 * 7.5 / .85 + .25 * 15 / .85 + 1.25 * 9.5 / .95 + 9 / .90) * 1000 / (Math.sqrt(3) * 220);
-    cerca(E.kVAdemanda, 59.71, 0.01, "kVAdemanda (ya trae el 25 % del motor mayor):");
+    /* H-178 (rev 2.9.24): la corriente de cada motor sale de la Tabla 430-250 (NOM-001-SEDE-2012 p. 443), no de kW/fp:
+       15 kW → 25 hp → 68 A; 7.5 kW → 10 hp → 28 A (230 V). Antes: motores 35.29 + 25 % del mayor 4.41 + alumbrado 10 +
+       contactos 10 = 59.71 kVA; 2/0, 175 A, principal 175. Después: 47.25 + 6.48 + 10 + 10 = 73.73 kVA; 4/0, 225 A, principal 225. */
+    const kVAm = (I) => Math.sqrt(3) * 220 * I / 1000;
+    const dem = kVAm(68) + 2 * kVAm(28) + .25 * kVAm(68) + 9.5 / .95 + 9 / .90;
+    const Iref = (dem + .25 * 9.5 / .95) * 1000 / (Math.sqrt(3) * 220);
+    cerca(E.kVAdemanda, dem, 0.01, "kVAdemanda (ya trae el 25 % del motor mayor, con corrientes de tabla):");
+    cerca(E.kVAdemanda, 73.728, 0.01, "kVAdemanda, valor a mano:");
     cerca(E.IdisAlim, Iref, 0.01, "corriente de diseño del alimentador:");
-    cerca(E.IdisAlim / E.Itab, 62.206 / 59.706, 0.001, "factor sobre Itab (no 1.25):");
+    cerca(E.IdisAlim / E.Itab, (dem + 2.5) / dem, 0.001, "factor sobre Itab (no 1.25):");
     const o = { I: E.Itab, V: 220, ph: 3, L: 5, fp: .95, material: "cobre", tempAmb: 30, nCond: 3, dvMax: 2 };
     const c = G("selConductor")({ ...o, Idis: E.IdisAlim });
     cerca(c.Idis, E.IdisAlim, 1e-9, "selConductor respeta Idis explícita:");
-    eq(c.awg, "2/0", "calibre con la corriente de diseño corregida:");
-    eq(c.ocpd, 175, "protección del conductor con la corriente de diseño corregida:");
+    eq(c.awg, "4/0", "calibre con la corriente de diseño corregida (200.05 A > 200 del 3/0):");
+    eq(c.ocpd, 225, "protección del conductor con la corriente de diseño corregida:");
     const d = G("selConductor")({ ...o, continua: true });
     cerca(d.Idis, E.Itab * 1.25, 1e-9, "sin Idis explícita sigue el 125 % de carga continua:");
     if (!(c.I === d.I)) throw new Error("la caída de tensión debe seguir calculándose con la corriente real I");
@@ -3227,9 +3350,9 @@ t("22.4 2.1 la corriente de diseño del alimentador no repite el 125 % (430-24 /
        IdisAlim (no Itab × 1.25) y el interruptor principal es el mayor entre
        lo que exige proteger ese conductor y la protección del ramal del motor
        mayor (art. 430-63); aquí domina el alimentador, no el motor. */
-    eq(E.alim.awg, "2/0", "calibre del alimentador general con la corriente corregida:");
-    eq(E.alim.ocpd, 175, "protección del alimentador general con la corriente corregida:");
-    eq(E.principal, 175, "interruptor principal = protección del alimentador (domina sobre el ramal del motor mayor, 125 A):");
+    eq(E.alim.awg, "4/0", "calibre del alimentador general con la corriente corregida:");
+    eq(E.alim.ocpd, 225, "protección del alimentador general con la corriente corregida:");
+    eq(E.principal, 225, "interruptor principal = protección del alimentador (domina sobre el ramal del motor mayor, 250 %·68 → 175 A):");
   } finally {
     S.elec = guardado;
     G("recompute")();
@@ -5874,8 +5997,8 @@ t("S.35 (rev 2.9.19, revisión adversarial de 2.9.16–2.9.18) pendientes en Exc
 t("S.36 (rev 2.9.20, decisión del dueño) versión por motor en el sello: sólo se desactualiza la disciplina cuyo motor cambió; aviso al abrir con vX → vY y el cambio; nada se recalcula solo; la memoria muestra antes y después", () => {
   llenarTodoS();
   const MV = G("MOTOR_VER");
-  /* H-107: carga v3 = lógica de la rev 2.9.21 (declarada en la 2.9.24); H-120: carga v4 = corrección CLTD por sitio. H-183: eléctrico v5 = Tabla 250-122 de la NOM; H-177: v6 = art. 440 con MCA/MOP; H-179: v7 = nada se supone (pendientes). */
-  eq(MV.elec, "7", "eléctrico v7 (H-179):"); eq(MV.hidro, "4", "hidro v4:"); eq(MV.load, "4", "carga v4:"); eq(MV.duct, "1", "ductos sin cambio de lógica: v1:");
+  /* H-107: carga v3 = lógica de la rev 2.9.21 (declarada en la 2.9.24); H-120: carga v4 = corrección CLTD por sitio. H-183: eléctrico v5 = Tabla 250-122 de la NOM; H-177: v6 = art. 440 con MCA/MOP; H-179: v7 = nada se supone (pendientes); H-178: v8 = corriente de motor por la Tabla 430-250/248. */
+  eq(MV.elec, "8", "eléctrico v8 (H-178):"); eq(MV.hidro, "4", "hidro v4:"); eq(MV.load, "4", "carga v4:"); eq(MV.duct, "1", "ductos sin cambio de lógica: v1:");
   Object.keys(MV).forEach((id) => { const c = G("MOTOR_CAMBIOS")[id] || []; if (MV[id] !== "1" && !c.some((x) => x.ver === MV[id])) throw new Error(`${id}: la versión ${MV[id]} no tiene hallazgo registrado`); });
   const s0 = JSON.stringify(S.sellos || {});
   try {

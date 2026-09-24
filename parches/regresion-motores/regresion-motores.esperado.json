@@ -162,12 +162,12 @@
       64000
      ],
      [
-      "Alimentador general 2 cobre en 1 1/4\", 30 m con tierra y accesorios",
+      "Alimentador general 1/0 cobre en 2\", 30 m con tierra y accesorios",
       30,
       40500
      ],
      [
-      "Tablero general 125 A con interruptor principal y 2 circuito(s) derivado(s)",
+      "Tablero general 175 A con interruptor principal y 2 circuito(s) derivado(s)",
       1,
       76400
      ],
@@ -341,7 +341,7 @@
   "valor": {
    "ver": "1",
    "cifras": {
-    "total": 112967.45910011162,
+    "total": 112807.95117428822,
     "props": [
      [
       "kz-0-sobre",
@@ -404,19 +404,19 @@
    }
   },
   "elec": {
-   "ver": "7",
+   "ver": "8",
    "cifras": {
-    "kVAdemanda": 32.05882352941177,
-    "principal": 125,
+    "kVAdemanda": 42.389350101538,
+    "principal": 175,
     "alim": [
-     "2",
-     "1 1/4\"",
-     100
+     "1/0",
+     "2\"",
+     125
     ],
     "calc": [
      [
-      "4",
-      125,
+      "3",
+      175,
       "1 1/4\""
      ],
      [

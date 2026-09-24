@@ -141,7 +141,7 @@ H-165 (NFPA 96), H-168 (SMACNA), H-224 parcial (NFPA 13 CPVC), H-227 (SMACNA). P
 
 ## 4. Decisiones del dueño (22-sep-2026, 04:40 Tijuana) · rigen la Fase 2
 1. **H-141** · opción (a): la diversidad del edificio sólo al bloque de planta; zonas y terminales al pico sin diversidad. Marcar «criterio Carrier, ratificar con texto» hasta recibir la Parte 1.
-2. **H-178** · campo `hp` de placa por carga, y manda si se captura. Si sólo hay kW, se toma como potencia en el eje y se redondea al hp normalizado inmediato **superior** (nunca al más cercano); la memoria dice «hp inferido de kW». La corriente siempre sale de la Tabla 430-250.
+2. **H-178** · (ratificado 23-sep-2026: lectura literal, 15 kW → 25 hp; el kW se compara con la columna kW de la propia Tabla 430-250) campo `hp` de placa por carga, y manda si se captura (revisión adversarial, 23-sep-2026: el hp de catálogo de la casa o el que estima otro motor no es de placa; criterio de la casa, como la MCA estimada de H-177: sólo puede subir el renglón que da el kW, nunca bajarlo). Si sólo hay kW, se toma como potencia en el eje y se redondea al hp normalizado inmediato **superior** (nunca al más cercano); la memoria dice «hp inferido de kW». La corriente siempre sale de la Tabla 430-250.
 3. **H-217** · opción (a): la curva de simultaneidad queda como «criterio de la casa», declarada en pantalla y memoria, sin mover números.
 4. **H-229/H-239** · el mínimo de MSS SP-58 e IPC 308.5 por material y diámetro; se usa y declara la edición más reciente disponible en texto (MSS SP-58-2018 vía PHD, IPC 2009 vía MCP: secundarias); se ratifica con el texto.
 5. **H-244** · opción (a): lo capturado manda; sin captura, 3:2 marcado «estimado» en la partida. Los muros de carga térmica no son tabiquería.

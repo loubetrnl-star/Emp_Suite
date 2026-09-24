@@ -9,9 +9,8 @@
    Filas «fase2:H-nnn» = valor correcto por norma que hoy la suite NO da; se exigen sólo con CM_FASE2=1.
 
    PRUEBAS QUE PROTEGEN VALORES INCORRECTOS O NO PRUEBAN (se corrigen en la Fase 2 con su hallazgo, aquí sólo se marcan):
-   - pruebas.mjs:3026 22.4 · tautológica: Iref repite la fórmula del código (kW/fp y P/(√3·V·fp) sin Tabla 430-250) y fija
-     el principal en 175 A «porque domina el alimentador» → H-178 (corriente de tabla) y H-188 (430-63 pide la suma:
-     175 A del alimentador + ramal del motor mayor, no el mayor de los dos).
+   - (reescrita en H-178, rev 2.9.24) pruebas.mjs 22.4 ya usa las corrientes de la Tabla 430-250; sigue fijando el principal
+     como el mayor de dos (225 A del alimentador contra 175 A del ramal) → H-188 (430-63 pide la suma).
    - pruebas.mjs:3698 J.1 · consagra principal = max(alim.ocpd, ocpd del motor mayor) → H-188 (430-63, p. 426: suma).
    - pruebas.mjs:3712 J.2 · sin motores principal = alim.ocpd: no prueba nada que no sea la propia regla → H-188.
    - (retirada, rev 2.9.24) pruebas.mjs:5502 S.29 se había marcado como protectora de H-183/H-177: no lo es. Sus tierras
@@ -19,13 +18,38 @@
    - pruebas.mjs:777 11.6 · «las hojas se alimentan de los resultados reales»: sólo busca el número del principal como
      texto en el libro; no comprueba ningún cálculo → no prueba (H-188 pasa igual).
    Lista completa y motivo: parches/casos-a-mano/elec.pendientes.md */
-export default async function ({ t, G, S, CM }) {
+export default async function ({ t, G, S, CM, fs }) {
   const filas = CM.casos("elec");
   const ORD = ["14", "12", "10", "8", "6", "4", "3", "2", "1", "1/0", "2/0", "3/0", "4/0", "250", "300", "350", "400", "500", "600", "750"];
   const awgIdx = (a) => ORD.indexOf(String(a));
   const sel = (o) => G("selConductor")(o);
   const tierraDe = (A, mat) => G("tierraDe")(A, mat);
-  const evalua = (expr) => new Function("ELEC", "S", "awgIdx", "sel", "tierraDe", `return (${expr});`)(G("ELEC"), S, awgIdx, sel, tierraDe);
+  /* H-178: la tabla de la suite contra el texto del DOF (parches/normas-texto), renglón por renglón. Devuelve cuántas celdas
+     difieren y cuántas se compararon. La única diferencia admitida es la errata declarada (44 A en 10 hp / 575 V → null). */
+  const DOF = fs.readFileSync("parches/normas-texto/NOM-001-SEDE-2012_DOF_texto.txt", "utf8");
+  const FRAC = { "⅙": 1 / 6, "¼": 0.25, "⅓": 1 / 3, "½": 0.5, "¾": 0.75 };
+  const hpDe = (s) => { s = String(s || "").trim(); if (FRAC[s] != null) return FRAC[s]; const m = s.match(/^(\d+)\s*½$/); if (m) return +m[1] + 0.5; return /^\d+(\.\d+)?$/.test(s) ? +s : NaN; };
+  const dof = (tabla) => {
+    const T = G(tabla === "430-250" ? "T430_250" : "T430_248");
+    const ini = DOF.indexOf(`Tabla ${tabla} Corriente a plena carga`), fin = DOF.indexOf("Tabla 430-2", ini + 40);
+    if (ini < 0) throw new Error(`el texto del DOF no trae la Tabla ${tabla}`);
+    /* Una línea por celda; la celda vacía del DOF es una línea en blanco (250 hp a 200/208/230 V) y vale como «—». */
+    const tok = DOF.slice(ini, fin < 0 ? undefined : fin).split(/\r?\n/).map((s) => s.trim()).filter((s) => !/^=+PAG/.test(s));
+    let dif = 0, celdas = 0;
+    for (const f of T.filas) {
+      const i = tok.findIndex((s, j) => /^\d+(\.\d+)?$/.test(s) && +s === f[0] && Math.abs(hpDe(tok[j + 1]) - f[1]) < 1e-9);
+      if (i < 0) { dif += 2 + T.cols.length; continue; }
+      celdas += 2;
+      T.cols.forEach((col, k) => {
+        const s = tok[i + 2 + k], v = s === "—" || s === "" ? null : +s;
+        const errata = tabla === "430-250" && f[1] === 10 && col === 575 && v === 44 && f[2][k] === null;
+        if (!(v === f[2][k] || errata)) dif++;
+        celdas++;
+      });
+    }
+    return { dif, celdas };
+  };
+  const evalua = (expr) => new Function("ELEC", "S", "awgIdx", "sel", "tierraDe", "dof", `return (${expr});`)(G("ELEC"), S, awgIdx, sel, tierraDe, dof);
   const comprobar = (prefijo) => {
     const grupo = filas.filter((f) => f.id === prefijo || f.id.startsWith(prefijo + "."));
     if (!grupo.length) throw new Error(`la hoja elec.csv no trae filas ${prefijo}`);
@@ -44,11 +68,11 @@ export default async function ({ t, G, S, CM }) {
     { ...dc("Alumbrado"), tipo: "alumbrado", kW: 9.5, V: 127, ph: 1, cant: 1, L: 40, fp: .95 },
   ] };
 
-  t("CM.elec.1 (NOM-001-SEDE-2012 Tablas 310-15(b)(16)/(2)(a)/(3)(a) p. 186-190, Tabla 430-52 p. 422, Tabla 250-122 p. 151, Cap. 10 Tablas 1/4/5) motor 15 kW 220 V 3F fp 0.85 a 30 m, 40 °C: I, Idis, 4 AWG, 1.06 %, 125 A, tierra 6, EMT 1¼\"; fase2:H-178 con Tabla 430-250 p. 443",
+  t("CM.elec.1 (H-178) (NOM-001-SEDE-2012 430-6(a)(1) p. 405, Tabla 430-250 p. 443, Tablas 310-15(b)(16)/(2)(a)/(3)(a) p. 186-190, Tabla 430-52 p. 422, Tabla 250-122 p. 151, Cap. 10 Tablas 1/4/5) motor 15 kW 220 V 3F a 30 m, 40 °C: 25 hp → 68 A, Idis 85, 3 AWG, 1.28 %, 175 A, tierra 6, EMT 1¼\" (antes 46.31 A, 4 AWG, 125 A)",
     () => conEstado(FIXTURE, () => comprobar("CM.elec.1")));
   t("CM.elec.2 (NOM-001-SEDE-2012 210-19(a)(1) p. 52, Tabla 9 p. 1011, Tabla 250-122 p. 151, Cap. 10 Tablas 4/5) alumbrado 9.5 kW 127 V 1F fp 0.95 a 40 m: 78.74 A, 1 AWG por caída 2.60 %, 100 A, tierra 8, EMT 1¼\"; fase2:H-182 tierra 6 (250-122(b) p. 150), fase2:H-190 columna de acero",
     () => conEstado(FIXTURE, () => comprobar("CM.elec.2")));
-  t("CM.elec.3 (NOM-001-SEDE-2012 430-24 p. 415, 215-2(a)(1) p. 61, Tabla 310-15(b)(16) p. 190, Cap. 10 Tabla 5 p. 1006) alimentador del proyecto de regresión: 32.059 kVA, 84.13 A, 2 AWG, 100 A, principal 125, falla 19.68 kA → 22 kA; fase2:H-188 principal 175 A (430-63 p. 426)",
+  t("CM.elec.3 (H-178) (NOM-001-SEDE-2012 430-24 p. 415, 215-2(a)(1) p. 61, Tabla 310-15(b)(16) p. 190, Cap. 10 Tabla 5 p. 1006) alimentador del proyecto de regresión con el motor por la Tabla 430-250: 42.389 kVA, 111.24 A, 1/0, 125 A, principal 175, falla 19.68 kA → 22 kA; fase2:H-188 principal 225 A (430-63 p. 426)",
     () => conEstado(FIXTURE, () => comprobar("CM.elec.3")));
   t("CM.elec.4 (H-183) (NOM-001-SEDE-2012 Tabla 250-122 p. 151) tierraDe directa: 100 → 8, 200 → 6, 300 → 4, 400 → 2 AWG (antes 3, NEC), 1000 → 2/0, 2500 → 350, 5000 → 700, 6000 → 800 kcmil; aluminio 200 → 4, 400 → 1, 2000 → 400 kcmil, ≤ 100 A sólo cobre",
     () => comprobar("CM.elec.4"));
@@ -80,6 +104,27 @@ export default async function ({ t, G, S, CM }) {
       conEstado({ sistema: "1F3H-220", trafoKVA: 75, trafoZ: 2, cargas: [{ ...dc("Carga 1F"), tipo: "resistiva", kW: 10, V: 220, ph: 1, cant: 1, L: 10, fp: 1 }] }, () => comprobar("CM.elec.12.a"));
       conEstado({ trafoKVA: 2500, trafoZ: 5.75, cargas: [{ ...dc("Proceso"), tipo: "proceso", kW: 50, V: 220, ph: 3, cant: 1, L: 20, fp: .9 }] }, () => { comprobar("CM.elec.12.b"); comprobar("CM.elec.12.c"); });
     });
-  t("CM.elec.13 (NOM-001-SEDE-2012 Cap. 10 Tabla 1 nota (3) p. 1001, Tabla 5 p. 1006, Tabla 4 p. 1002) 3F3H-440 motor 22 kW: 33.96 A, 8 AWG, 90 A; fase2:H-191 sin neutro 112.76 mm² → EMT ¾\" (hoy 140.95 → 1\")",
+  t("CM.elec.13 (H-178) (NOM-001-SEDE-2012 Tabla 430-250 p. 443, Cap. 10 Tabla 1 nota (3) p. 1001, Tabla 5 p. 1006, Tabla 4 p. 1002) 3F3H-440 motor 22 kW: 30 hp → 40 A a 460 V, 6 AWG, 100 A (antes 33.96 A, 8 AWG, 90 A); fase2:H-191 sin neutro 168.71 mm² (13.e retirada: con 6 AWG el tubo es EMT 1\" con o sin neutro)",
     () => conEstado({ sistema: "3F3H-440", trafoKVA: 300, cargas: [{ ...dc("Motor 440"), tipo: "motor", kW: 22, V: 440, ph: 3, cant: 1, L: 20, fp: .85 }] }, () => comprobar("CM.elec.13")));
+  t("CM.elec.14 (H-178) (NOM-001-SEDE-2012 430-6(a)(1) p. 405, Tablas 430-250 p. 443 y 430-248 p. 441-442; decisión del dueño 2) corriente de motor de uso general por la tabla: 11 kW → 15 hp 42 A (6 AWG, 110 A); hp de placa 20 → 54 A; 7.5 kW → 10 hp; hp 2.5 → 3 hp; 1F 127 V → columna de 127 V; 1F 220 V; 440 V → columna de 460 V; 8 kW → 15 hp (inmediato superior); kVA 1F = V·I; columnas 200/208/575/2300 V y 1F 115/208 V; celda «—» a 2300 V sin saltar; hp 0.17 = 1/6",
+    () => conEstado({ trafoKVA: 300, trafoZ: 4, Ltablero: 30, cargas: [
+      { ...dc("Motor 11 kW"), tipo: "motor", kW: 11, V: 220, ph: 3, cant: 1, L: 20, fp: .85 },
+      { ...dc("Motor 15 kW placa 20 hp"), tipo: "motor", kW: 15, hp: 20, V: 220, ph: 3, cant: 1, L: 20, fp: .85 },
+      { ...dc("Motor 7.5 kW"), tipo: "motor", kW: 7.5, V: 220, ph: 3, cant: 1, L: 20, fp: .85 },
+      { ...dc("Bomba 2.5 hp"), tipo: "motor", kW: 1.87, hp: 2.5, V: 220, ph: 3, cant: 1, L: 20, fp: .85 },
+      { ...dc("Motor 1F 127 V"), tipo: "motor", kW: 0.75, V: 127, ph: 1, cant: 1, L: 20, fp: .85 },
+      { ...dc("Motor 1F 220 V"), tipo: "motor", kW: 1.5, V: 220, ph: 1, cant: 1, L: 20, fp: .85 },
+      { ...dc("Motor 440 V"), tipo: "motor", kW: 15, V: 440, ph: 3, cant: 1, L: 20, fp: .85 },
+      { ...dc("Motor 8 kW"), tipo: "motor", kW: 8, V: 220, ph: 3, cant: 1, L: 20, fp: .85 },
+      { ...dc("Motor 208 V"), tipo: "motor", kW: 11, V: 208, ph: 3, cant: 1, L: 20, fp: .85 },
+      { ...dc("Motor 575 V"), tipo: "motor", kW: 11, V: 575, ph: 3, cant: 1, L: 20, fp: .85 },
+      { ...dc("Motor 1F 115 V"), tipo: "motor", kW: 0.75, V: 115, ph: 1, cant: 1, L: 20, fp: .85 },
+      { ...dc("Motor 1F 208 V"), tipo: "motor", kW: 1.5, V: 208, ph: 1, cant: 1, L: 20, fp: .85 },
+      { ...dc("Motor 2300 V 50 kW"), tipo: "motor", kW: 50, V: 2300, ph: 3, cant: 1, L: 20, fp: .85 },
+      { ...dc("Motor 200 V"), tipo: "motor", kW: 11, V: 200, ph: 3, cant: 1, L: 20, fp: .85 },
+      { ...dc("Motor 2300 V 20 kW"), tipo: "motor", kW: 20, V: 2300, ph: 3, cant: 1, L: 20, fp: .85 },
+      { ...dc("Motor 1F 1/6 hp"), tipo: "motor", kW: 0.12, hp: 0.17, V: 127, ph: 1, cant: 1, L: 20, fp: .85 },
+    ] }, () => comprobar("CM.elec.14")));
+  t("CM.elec.15 (H-178) (NOM-001-SEDE-2012 Tabla 430-250 p. 442-443 y Tabla 430-248 p. 441-442) las dos tablas de la suite, celda por celda contra el texto del DOF: 243 y 72 celdas, ninguna difiere (salvo la errata declarada de 10 hp / 575 V)",
+    () => comprobar("CM.elec.15"));
 }

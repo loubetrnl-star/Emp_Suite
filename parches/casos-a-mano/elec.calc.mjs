@@ -57,6 +57,14 @@ const T430_250 = { /* hp: [kW de la tabla, 230 V, 460 V] */
   30: [22.4, 80, 40], 40: [29.8, 104, 52], 50: [37.3, 130, 65], 60: [44.8, 154, 77], 75: [56, 192, 96], 100: [75, 248, 124],
   125: [93, 312, 156], 150: [112, 360, 180], 200: [150, 480, 240],
 };
+/* Tabla 430-248 (p. 441-442), motores monofásicos: hp: [kW de la tabla, 115 V, 127 V, 230 V]. */
+const T430_248 = { 0.5: [0.37, 9.8, 8.9, 4.9], 0.75: [0.56, 13.8, 11.5, 6.9], 1: [0.75, 16, 14, 8], 1.5: [1.12, 20, 18, 10], 2: [1.5, 24, 22, 12],
+  3: [2.25, 34, 31, 17], 5: [3.75, 56, 51, 28], 7.5: [5.6, 80, 72, 40], 10: [7.5, 100, 91, 50] };
+const hps = (T) => Object.keys(T).map(Number).sort((a, b) => a - b);
+/* H-178, decisión del dueño 2: hp de placa manda (renglón inmediato superior si no está en la tabla); sin él, el primer renglón
+   cuyo kW alcanza el capturado. */
+const hpDeKw = (T, kW) => hps(T).find((hp) => T[hp][0] >= kW - 1e-9);
+const hpDePlaca = (T, hp) => hps(T).find((h) => h >= hp - 1e-9);
 /* ---------- Tabla 430-52 (p. 422): interruptor de tiempo inverso 250 % de la corriente a plena carga; Exc. 1: valor
    normalizado inmediato superior ---------- */
 const PCT_MOTOR = 2.5;
@@ -100,33 +108,24 @@ const out = [];
 const fila = (id, valor, nota) => { out.push([id, valor, nota]); };
 
 /* ===================== CM.elec.1 · motor 15 kW, 220 V, 3F, fp 0.85, L 30 m, 40 °C, 3 portadores, THW-LS ===================== */
+/* H-178 (decisión del dueño 2, 22-sep-2026; lectura literal confirmada 23-sep-2026): sin hp de placa, el kW se toma como
+   potencia en el eje y se usa el primer renglón de la Tabla 430-250 cuyo kW (columna kW de la propia tabla) alcanza el
+   capturado: 15 kW > 14.9 kW (20 hp) → 18.7 kW = 25 hp → 68 A a 230 V (p. 443). La corriente sale de la tabla (430-6(a)(1)). */
 {
-  const I = 15000 / (Math.sqrt(3) * 220 * 0.85);                  // criterio de la casa (H-178): I = P/(√3·V·fp), sin eficiencia
+  const hp = hpDeKw(T430_250, 15), I = T430_250[hp][1];
   const c = sel({ I, V: 220, ph: 3, L: 30, fp: 0.85, motor: true });
-  fila("CM.elec.1.a", r(I, 2), "I = 15000/(√3·220·0.85)");
-  fila("CM.elec.1.b", r(c.Idis, 2), "Idis = 1.25·I (430-22)");
-  fila("CM.elec.1.c", c.ampBase, "Tabla 310-15(b)(16) 4 AWG 75 °C");
+  fila("CM.elec.1.a", I, `15 kW → ${hp} hp (renglón de ${T430_250[hp][0]} kW) → ${I} A a 230 V (Tabla 430-250 p. 443)`);
+  fila("CM.elec.1.b", r(c.Idis, 2), "Idis = 1.25·68 (430-22)");
+  fila("CM.elec.1.c", c.ampBase, `Tabla 310-15(b)(16) ${c.awg} AWG 75 °C`);
   fila("CM.elec.1.d", c.ft, "Tabla 310-15(b)(2)(a) 36-40 °C");
   fila("CM.elec.1.e", c.fg, "Tabla 310-15(b)(3)(a) ≤ 3");
-  fila("CM.elec.1.f", r(c.ampCorr, 2), "85·0.88·1.00");
+  fila("CM.elec.1.f", r(c.ampCorr, 2), `${c.ampBase}·0.88·1.00`);
   fila("CM.elec.1.g", c.idx, `awg ${c.awg} (índice en 14…750)`);
-  fila("CM.elec.1.h", r(c.dv, 3), "caída % con R 1.02 (PVC), X 0.19, senφ 0.5268");
-  fila("CM.elec.1.i", c.ocpd, "250 %·46.31 = 115.8 → 125 (Tabla 430-52 + Exc. 1)");
+  fila("CM.elec.1.h", r(c.dv, 3), `caída % con I 68 A, R ${R_CU_PVC[c.awg]} (PVC), X 0.19, senφ 0.5268`);
+  fila("CM.elec.1.i", c.ocpd, "250 %·68 = 170 → 175 (Tabla 430-52 + Exc. 1)");
   fila("CM.elec.1.j", c.tierraIdx, `tierra ${c.tierra} (Tabla 250-122, ≤ 200 A)`);
-  fila("CM.elec.1.k", r(c.tubo.ocupado, 2), "4·62.77 + 46.84 (Tabla 5 THW)");
+  fila("CM.elec.1.k", r(c.tubo.ocupado, 2), `4·${AREA_THW[c.awg]} + ${AREA_THW[c.tierra]} (Tabla 5 THW)`);
   fila("CM.elec.1.l", c.tubo.area, `EMT ${c.tubo.mm} mm (Tabla 4; relleno 40 % Tabla 1)`);
-  /* fase2:H-178 · decisión 2: hp de placa; con sólo kW, hp normalizado inmediato superior y corriente de Tabla 430-250.
-     15 kW ↔ 20 hp según la equivalencia del prompt de Fase 1 (renglón «14.9 kW · 20 hp» de la tabla). NOTA en
-     elec.pendientes.md: la lectura estricta de la decisión 2 (15/0.746 = 20.1 hp → 25 hp → 68 A) da otro resultado. */
-  const I2 = T430_250[20][1];
-  const c2 = sel({ I: I2, V: 220, ph: 3, L: 30, fp: 0.85, motor: true });
-  fila("CM.elec.1.m", I2, "Tabla 430-250, 20 hp, 230 V (p. 443)");
-  fila("CM.elec.1.n", r(c2.Idis, 2), "1.25·54 (430-22)");
-  fila("CM.elec.1.o", c2.ocpd, "250 %·54 = 135 → 150 (Tabla 430-52 + Exc. 1)");
-  fila("CM.elec.1.p", r(c2.dv, 3), `caída % con I 54 A, ${c2.awg} AWG`);
-  /* Lectura estricta de la decisión 2 (sólo informativa, no va a la hoja): */
-  const c3 = sel({ I: T430_250[25][1], V: 220, ph: 3, L: 30, fp: 0.85, motor: true });
-  fila("(info) 15 kW → 25 hp", `${T430_250[25][1]} A, Idis ${r(c3.Idis, 1)}, ${c3.awg} AWG, ocpd ${c3.ocpd}`, "si el dueño lee «inmediato superior» al pie de la letra");
 }
 
 /* ===================== CM.elec.2 · alumbrado 9.5 kW, 127 V, 1F, fp 0.95, L 40 m ===================== */
@@ -152,32 +151,34 @@ const fila = (id, valor, nota) => { out.push([id, valor, nota]); };
 }
 
 /* ===================== CM.elec.3 · alimentador del proyecto de regresión: motor 15 kW + alumbrado 9.5 kW, 3F4H-220, trafo 300 kVA Z 4 %, Ltablero 30 m, fp objetivo 0.95 ===================== */
+/* H-178: el kVA del motor sale de su corriente de tabla (430-24 suma corrientes de 430-6(a)): √3·220·68 = 25.911 kVA. */
 {
-  const kVAm = 15 / 0.85, kVAa = 9.5 / 0.95;
+  const Im = T430_250[hpDeKw(T430_250, 15)][1];
+  const kVAm = Math.sqrt(3) * 220 * Im / 1000, kVAa = 9.5 / 0.95;
   const conectada = kVAm + kVAa, extra = 0.25 * kVAm, demanda = kVAm + kVAa + extra;   // 430-24(1)+(2); alumbrado al 100 % (art. 220)
   const Itab = demanda * 1000 / (Math.sqrt(3) * 220);
   const IdisAlim = Itab * (demanda + 0.25 * kVAa) / demanda;                             // 215-2(a)(1): 125 % de la carga continua no motor
   const a = sel({ I: Itab, V: 220, ph: 3, L: 30, fp: 0.95, Idis: IdisAlim, dvMax: 2 });
-  fila("CM.elec.3.a", r(conectada, 3), "15/0.85 + 9.5/0.95");
-  fila("CM.elec.3.b", r(demanda, 3), "17.647 + 10 + 0.25·17.647 (430-24)");
-  fila("CM.elec.3.c", r(extra, 3), "0.25·17.647");
+  fila("CM.elec.3.a", r(conectada, 3), `√3·220·${Im}/1000 + 9.5/0.95`);
+  fila("CM.elec.3.b", r(demanda, 3), `${r(kVAm, 3)} + 10 + 0.25·${r(kVAm, 3)} (430-24)`);
+  fila("CM.elec.3.c", r(extra, 3), `0.25·${r(kVAm, 3)}`);
   fila("CM.elec.3.d", r(Itab, 2), "kVA·1000/(√3·220)");
-  fila("CM.elec.3.e", r(IdisAlim, 2), "Itab·(32.059 + 2.5)/32.059");
+  fila("CM.elec.3.e", r(IdisAlim, 2), `Itab·(${r(demanda, 3)} + 2.5)/${r(demanda, 3)}`);
   fila("CM.elec.3.f", a.idx, `alimentador ${a.awg} AWG`);
-  fila("CM.elec.3.g", r(a.ampCorr, 2), "115·0.88");
-  fila("CM.elec.3.h", r(a.dv, 3), "caída % con R 0.62, X 0.19, senφ 0.3122");
-  fila("CM.elec.3.i", a.ocpd, "arriba(90.69) = 100 ≤ 101.2");
+  fila("CM.elec.3.g", r(a.ampCorr, 2), `${a.ampBase}·0.88`);
+  fila("CM.elec.3.h", r(a.dv, 3), `caída % con R ${R_CU_PVC[a.awg]}, X 0.19, senφ 0.3122`);
+  fila("CM.elec.3.i", a.ocpd, `arriba(${r(IdisAlim, 2)}) = ${a.ocpd} ≤ ${r(a.ampCorr, 1)}`);
   fila("CM.elec.3.j", a.tierraIdx, `tierra ${a.tierra}`);
-  fila("CM.elec.3.k", r(a.tubo.ocupado, 2), "4·86.00 + 28.19");
+  fila("CM.elec.3.k", r(a.tubo.ocupado, 2), `4·${AREA_THW[a.awg]} + ${AREA_THW[a.tierra]}`);
   fila("CM.elec.3.l", a.tubo.area, `EMT ${a.tubo.mm} mm`);
-  const ocpdMotor = 125;   // CM.elec.1.i
-  fila("CM.elec.3.m", Math.max(a.ocpd, ocpdMotor), "principal = mayor(alim.ocpd, ocpd del motor mayor) · criterio de la casa (H-188)");
+  const ocpdMotor = arriba(Im * PCT_MOTOR);   // CM.elec.1.i
+  fila("CM.elec.3.m", Math.max(a.ocpd, ocpdMotor), `principal = mayor(alim.ocpd ${a.ocpd}, ocpd del motor mayor ${ocpdMotor}) · criterio de la casa (H-188)`);
   const Icc = 300 * 1000 / (Math.sqrt(3) * 220) / 0.04;
   fila("CM.elec.3.n", r(Icc, 0), "Icc = S/(√3·V·Z) bus infinito (memoria)");
   fila("CM.elec.3.o", [10, 14, 18, 22, 25, 35, 42, 65, 100].find((x) => x * 1000 >= Icc), "lista de kAIC de la casa");
   /* fase2:H-188 · 430-63: principal ≥ protección del motor (430-52) + la otra carga (alumbrado 10 kVA a 220 V 3F) */
   const Iotra = kVAa * 1000 / (Math.sqrt(3) * 220);
-  fila("CM.elec.3.p", arriba(ocpdMotor + Iotra), `125 + ${r(Iotra, 2)} = ${r(ocpdMotor + Iotra, 2)} → normalizado (430-63); con el ramal de H-178 (150 A) sería ${arriba(150 + Iotra)}`);
+  fila("CM.elec.3.p", arriba(ocpdMotor + Iotra), `${ocpdMotor} + ${r(Iotra, 2)} = ${r(ocpdMotor + Iotra, 2)} → normalizado (430-63)`);
   fila("CM.elec.3.q", 0, "balanceo: motor 3F a tercios; alumbrado 1F repartido en 3 circuitos iguales → desbalance 0 %");
 }
 
@@ -303,15 +304,55 @@ fila("CM.elec.4.l", ORD.indexOf(tierraMat(100, "aluminio")), `aluminio 100 A: «
   fila("CM.elec.12.c", 1, `110-9: capacidad interruptiva ≥ corriente de falla (${r(Icc / 1000, 1)} kA); hoy la lista se tope en 100 kA → indicador`);
 }
 
-/* ===================== CM.elec.13 · 3F3H-440 sin neutro, motor 22 kW 440 V (fase2:H-191) ===================== */
+/* ===================== CM.elec.13 · 3F3H-440, motor 22 kW 440 V (H-178: 22 kW → 30 hp → 40 A a 460 V; fase2:H-191 sin neutro) ===================== */
 {
-  const I = 22000 / (Math.sqrt(3) * 440 * 0.85);
+  const hp = hpDeKw(T430_250, 22), I = T430_250[hp][2];
   const con = sel({ I, V: 440, ph: 3, L: 20, fp: 0.85, motor: true }), sin = sel({ I, V: 440, ph: 3, L: 20, fp: 0.85, motor: true, neutro: false });
-  fila("CM.elec.13.a", r(I, 2), "22000/(√3·440·0.85)");
-  fila("CM.elec.13.b", con.idx, `awg ${con.awg}`);
-  fila("CM.elec.13.c", con.ocpd, "250 %·33.96 = 84.9 → 90");
-  fila("CM.elec.13.d", r(sin.tubo.ocupado, 2), `3·28.19 + 28.19 sin neutro (hoy ${r(con.tubo.ocupado, 2)} con neutro)`);
-  fila("CM.elec.13.e", sin.tubo.area, `EMT ${sin.tubo.mm} mm sin neutro (hoy ${con.tubo.area})`);
+  fila("CM.elec.13.a", I, `22 kW → ${hp} hp (renglón de ${T430_250[hp][0]} kW) → ${I} A a 460 V (Tabla 430-250 p. 443)`);
+  fila("CM.elec.13.b", con.idx, `awg ${con.awg}: Idis ${r(con.Idis, 1)}`);
+  fila("CM.elec.13.c", con.ocpd, `250 %·${I} = ${r(I * 2.5, 1)} → ${con.ocpd}`);
+  fila("CM.elec.13.d", r(sin.tubo.ocupado, 2), `3·${AREA_THW[sin.awg]} + ${AREA_THW[sin.tierra]} sin neutro (hoy ${r(con.tubo.ocupado, 2)} con neutro)`);
+  /* 13.e (tubo) retirada en la revisión de H-178: con 6 AWG, 4 + 1 (215.55 mm²) y 3 + 1 (168.71 mm²) caben los dos en EMT 1"
+     (556·0.40 = 222.4), así que no discriminaba H-191; 13.d (área) sí. */
+}
+
+/* ===================== CM.elec.14 · H-178 · corriente de motor por la Tabla 430-250 / 430-248 (220 V 3F salvo lo indicado, L 20 m, fp 0.85, 40 °C) ===================== */
+{
+  const T3 = (hp) => T430_250[hp][1], T3_460 = (hp) => T430_250[hp][2];
+  const hp11 = hpDeKw(T430_250, 11), c11 = sel({ I: T3(hp11), V: 220, ph: 3, L: 20, fp: 0.85, motor: true });
+  fila("CM.elec.14.a", T3(hp11), `11 kW ≤ 11.2 kW → ${hp11} hp → ${T3(hp11)} A (antes 11000/(√3·220·0.85) = 33.96)`);
+  fila("CM.elec.14.b", c11.idx, `Idis ${r(c11.Idis, 1)} → ${c11.awg} AWG (antes 8 AWG: la auditoría H-178)`);
+  fila("CM.elec.14.c", c11.ocpd, `250 %·${T3(hp11)} = ${r(T3(hp11) * 2.5, 1)} → ${c11.ocpd}`);
+  fila("CM.elec.14.d", T3(hpDePlaca(T430_250, 20)), "hp de placa 20 manda sobre 15 kW → 54 A");
+  fila("CM.elec.14.e", T3(hpDeKw(T430_250, 7.5)), "7.5 kW = renglón de 7.5 kW → 10 hp → 28 A (la columna kW de la tabla, no kW/0.746 = 10.05)");
+  fila("CM.elec.14.f", T3(hpDePlaca(T430_250, 2.5)), "hp de placa 2.5 no es renglón → inmediato superior 3 hp → 9.6 A");
+  fila("CM.elec.14.g", T430_248[hpDeKw(T430_248, 0.75)][2], "1F 127 V 0.75 kW → 1 hp → 14 A (Tabla 430-248, columna 127 V, p. 442)");
+  fila("CM.elec.14.h", T430_248[hpDeKw(T430_248, 1.5)][3], "1F 220 V 1.5 kW → 2 hp → 12 A (Tabla 430-248, columna 230 V)");
+  fila("CM.elec.14.i", T3_460(hpDeKw(T430_250, 15)), "3F 440 V 15 kW → 25 hp → 34 A (columna 460 V)");
+  fila("CM.elec.14.j", T3(hpDeKw(T430_250, 8)), "8 kW: 7.5 kW no alcanza → 11.2 kW = 15 hp → 42 A (inmediato superior, nunca el más cercano)");
+  fila("CM.elec.14.k", r(Math.sqrt(3) * 220 * T3(hp11) / 1000, 3), "kVA del motor de 11 kW con su corriente de tabla: √3·220·42/1000");
+  fila("CM.elec.14.l", r(220 * T430_248[hpDeKw(T430_248, 1.5)][3] / 1000, 3), "1F: kVA = V·I = 220·12/1000 (sin √3)");
+  fila("CM.elec.14.m", r(127 * T430_248[hpDeKw(T430_248, 0.75)][2] / 1000, 3), "1F: kVA = V·I = 127·14/1000 (sin √3)");
+  /* Columnas que las filas a–k no tocan: celdas transcritas aquí del texto del DOF (p. 441-443), aparte de la tabla de la suite. */
+  const COL3 = { 15: { 200: 48.3, 208: 46.2, 575: 17 }, 30: { 2300: null }, 75: { 2300: 20 } };
+  const COL1 = { [1 / 6]: { 127: 4 }, 1: { 115: 16 }, 2: { 208: 13.2 } };
+  fila("CM.elec.14.n", COL3[hpDeKw(T430_250, 11)][208], "11 kW → 15 hp → 46.2 A (208 V)");
+  fila("CM.elec.14.o", COL3[hpDeKw(T430_250, 11)][575], "11 kW → 15 hp → 17 A (575 V)");
+  fila("CM.elec.14.p", COL1[hpDeKw(T430_248, 0.75)][115], "0.75 kW → 1 hp → 16 A (115 V)");
+  fila("CM.elec.14.q", COL1[hpDeKw(T430_248, 1.5)][208], "1.5 kW → 2 hp → 13.2 A (208 V, 1F)");
+  fila("CM.elec.14.r", COL3[hpDeKw(T430_250, 50)][2300], "50 kW > 44.8 → 56 kW = 75 hp → 20 A (2300 V)");
+  fila("CM.elec.14.s", COL3[hpDeKw(T430_250, 11)][200], "11 kW → 15 hp → 48.3 A (200 V)");
+  fila("CM.elec.14.t", COL3[hpDeKw(T430_250, 20)][2300] === null ? 1 : 0, "20 kW → 30 hp; a 2300 V la celda es «—»: sin corriente de tabla (1)");
+  fila("CM.elec.14.u", COL1[1 / 6][127], "hp de placa 0.17 ≈ 1/6 (±0.005) → 4 A a 127 V");
+}
+
+/* ===================== CM.elec.15 · H-178 · las Tablas 430-250 y 430-248 de la suite, celda por celda contra el texto del DOF ===================== */
+{
+  /* Cuántas celdas se comparan: renglones de la tabla del DOF × (kW, hp y columnas de corriente). Ninguna debe diferir. */
+  fila("CM.elec.15.a", 0, "430-250: ninguna celda difiere del DOF (la errata 44 A en 10 hp/575 V se declara null en la suite)");
+  fila("CM.elec.15.b", 27 * 9, "430-250: 27 renglones (½ a 500 hp) × (kW, hp y 7 columnas de inducción)");
+  fila("CM.elec.15.c", 0, "430-248: ninguna celda difiere del DOF");
+  fila("CM.elec.15.d", 12 * 6, "430-248: 12 renglones (⅙ a 10 hp) × (kW, hp y 4 columnas)");
 }
 
 for (const [id, v, nota] of out) console.log(`${id.padEnd(14)} ${String(v).padEnd(12)} ${nota}`);
