@@ -282,6 +282,8 @@ fila("CM.elec.4.l", ORD.indexOf(tierraMat(100, "aluminio")), `aluminio 100 A: «
   /* 240-4(b): ≤ 800 A se permite el normalizado inmediato superior a la ampacidad cuando ninguno cae entre Idis y ampCorr */
   const d = sel({ I: 34, V: 220, ph: 3, L: 5, fp: 0.9 });
   fila("CM.elec.10.d", d.ocpd, `${d.awg} AWG ampCorr ${r(d.ampCorr, 1)}, Idis 42.5: arriba 45 > 44; abajo 40 < 42.5 → normalizado superior a la ampacidad = 45 (240-4(b))`);
+  const e = sel({ I: 80, V: 220, ph: 3, L: 5, fp: 0.9 });
+  fila("CM.elec.10.e", r(e.tubo.ocupado, 2), `${e.awg} AWG (Idis ${r(e.Idis, 1)} ≤ ${r(e.ampCorr, 1)}), protección ${e.ocpd} → tierra ${e.tierra}: 4·${AREA_THW[e.awg]} + ${AREA_THW[e.tierra]}`);
 }
 
 /* ===================== CM.elec.11 · factores de las Tablas 310-15(b)(2)(a) y (3)(a) ===================== */
@@ -344,6 +346,8 @@ fila("CM.elec.4.l", ORD.indexOf(tierraMat(100, "aluminio")), `aluminio 100 A: «
   fila("CM.elec.14.s", COL3[hpDeKw(T430_250, 11)][200], "11 kW → 15 hp → 48.3 A (200 V)");
   fila("CM.elec.14.t", COL3[hpDeKw(T430_250, 20)][2300] === null ? 1 : 0, "20 kW → 30 hp; a 2300 V la celda es «—»: sin corriente de tabla (1)");
   fila("CM.elec.14.u", COL1[1 / 6][127], "hp de placa 0.17 ≈ 1/6 (±0.005) → 4 A a 127 V");
+  const c20 = sel({ I: T3(hpDePlaca(T430_250, 20)), V: 220, ph: 3, L: 20, fp: 0.85, motor: true });
+  fila("CM.elec.14.v", c20.idx, `hp de placa 20 → ${c20.I} A, Idis ${r(c20.Idis, 1)} → ${c20.awg} AWG (${r(c20.ampCorr, 1)} A)`);
 }
 
 /* ===================== CM.elec.15 · H-178 · las Tablas 430-250 y 430-248 de la suite, celda por celda contra el texto del DOF ===================== */
