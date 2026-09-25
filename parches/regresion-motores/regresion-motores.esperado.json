@@ -451,12 +451,13 @@
    }
   },
   "aire": {
-   "ver": "3",
+   "ver": "4",
    "cifras": {
     "fad": 2019.6,
     "unidades": 1,
     "hp": 20,
     "tanque": 3000,
+    "nTanques": 1,
     "secador": 2430
    }
   },

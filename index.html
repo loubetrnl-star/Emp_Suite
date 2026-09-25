@@ -6965,8 +6965,17 @@ function computeAire(A) {
   const Qls = principal.fadReal / 60;
   const vTeorico = Qls * tCiclo * (pAtm / 100) / (4 * dPt);
   const TANQUES = [200, 300, 500, 750, 1000, 1500, 2000, 3000, 4000, 5000];
-  const tanque = TANQUES.find((t) => t >= vTeorico) || 5000;
-  memo.push(`Tanque pulmón ${tanque} L. Del vaciado isotérmico V = Q·t·p_atm/(4·Δp) con ${arr} arranques/hora máximos y banda de presostato de ${dPt.toFixed(1)} bar salen ${n(vTeorico, 0)} L; se sube al comercial inmediato superior.`);
+  /* H-216 (rev 2.9.24, aire v4): la lista comercial de la casa termina en 5,000 L. Si el teórico la rebasa se instalan varios de
+     5,000 L en paralelo (o uno mayor, por cotizar): la capacidad instalada nunca es menor que la teórica y se avisa. Antes se
+     truncaba a 5,000 L en silencio y la memoria decía «se sube al comercial inmediato superior». Fórmula del receptor: guía de
+     Atlas Copco (fabricante, secundaria; URL en parches/casos-a-mano/aire.calc.mjs). */
+  const tanqueUnit = TANQUES.find((t) => t >= vTeorico) || 5000;
+  const nTanques = Math.max(1, Math.ceil(vTeorico / tanqueUnit));
+  const tanque = tanqueUnit * nTanques;
+  if (nTanques > 1) avisos.push({ lvl: "warn", msg: `Tanque pulmón: el volumen teórico (${n(vTeorico, 0)} L) rebasa el mayor de la lista comercial (5,000 L): se proponen ${nTanques} tanques de 5,000 L en paralelo (${n(tanque, 0)} L). Un solo tanque mayor se cotiza aparte.` });
+  memo.push(nTanques > 1
+    ? `Tanque pulmón: ${nTanques} × 5,000 L = ${n(tanque, 0)} L instalados. Del vaciado isotérmico V = Q·t·p_atm/(4·Δp) con ${arr} arranques/hora máximos y banda de presostato de ${dPt.toFixed(1)} bar salen ${n(vTeorico, 0)} L, más que el mayor de la lista comercial (5,000 L): varios en paralelo, nunca un tanque menor que el teórico (H-216).`
+    : `Tanque pulmón ${tanque} L. Del vaciado isotérmico V = Q·t·p_atm/(4·Δp) con ${arr} arranques/hora máximos y banda de presostato de ${dPt.toFixed(1)} bar salen ${n(vTeorico, 0)} L; se sube al comercial inmediato superior.`);
   if (redund) memo.push("Redundancia N+1: se cotiza una unidad de relevo con arranque automático y alternancia por horómetro, para que el mantenimiento no pare la producción.");
 
   /* ---- 5. Secador y filtros ----
@@ -7049,7 +7058,7 @@ function computeAire(A) {
 
   return { cls, lista, nPuntos, pico, medio, simul, simulAuto, demandaProceso, fugasLmin, conFugas,
     reservaLmin, purgaLmin, fadRequerido, pUso, dPred, dPfiltros, pDescarga, corrP, exento,
-    principal, cubre, nUnidades, totalUnidades, redund, tanque, vTeorico, arr, dPt,
+    principal, cubre, nUnidades, totalUnidades, redund, tanque, tanqueUnit, nTanques, vTeorico, arr, dPt,
     sec, capSecador, fT, fP, fadCompresor, enA1, secadorPendiente, trenFiltros, mat, rho, tramos, dPtotal, Leq,
     kWoper, kWhAno, mxnAno, mxnFugas, horas, tarifa, tAmb, avisos, memo };
 }
@@ -7100,7 +7109,7 @@ function buildAirePdf() {
   pdfTable(d, ["Equipo", "Dato", "Base de seleccion"], [
     ["Compresor", `${A.principal.tipo} ${A.principal.hp} HP · ${A.principal.kW} kW`, `FAD ${n(A.principal.fadReal, 0)} L/min corregido ${n((A.corrP - 1) * 100, 1)} % por presion`],
     ["Unidades", `${A.totalUnidades}${A.redund ? " (incluye relevo N+1)" : ""}`, A.totalUnidades === 0 ? "sin demanda capturada: no se cotiza ninguna unidad" : A.cubre ? "una unidad cubre la demanda" : "varias en paralelo con control secuencial"],
-    ["Tanque pulmon", `${A.tanque} L`, `V = Q·t·p/(4·dp) da ${n(A.vTeorico, 0)} L con ${A.arr} arranques/h y banda de ${A.dPt.toFixed(1)} bar`],
+    ["Tanque pulmon", `${n(A.tanque, 0)} L${A.nTanques > 1 ? ` (${A.nTanques} x ${n(A.tanqueUnit, 0)} L en paralelo)` : ""}`, `V = Q·t·p/(4·dp) da ${n(A.vTeorico, 0)} L con ${A.arr} arranques/h y banda de ${A.dPt.toFixed(1)} bar${A.nTanques > 1 ? "; rebasa el mayor de la lista comercial (5,000 L): varios en paralelo (H-216)" : ""}`],
     ["Secador", `${A.sec.label} · ${n(A.capSecador / 1000, 2)} m3/min`, `caudal del compresor a la capacidad nominal de ISO 7183:2007 Tabla 2 opcion A1 (35 C, 7 bar(e)), factor 1.0${A.enA1 ? "" : `; a ${A.tAmb} C y ${A.pDescarga.toFixed(1)} bar la correccion es del fabricante: pendiente`}`],
     ["Filtracion", `${A.trenFiltros.length} etapa(s)`, A.trenFiltros.map((f) => f.label).join(" · ")],
   ], [95, 165, 226]);
@@ -8529,8 +8538,8 @@ function computeQuote() {
       descEn: `${tipoEn} compressor ${AIRE.principal.hp} HP · ${n(AIRE.principal.fadReal, 0)} L/min at ${AIRE.pDescarga.toFixed(1)} bar${AIRE.principal.vsd ? " with variable speed" : ""}${AIRE.redund ? " · includes N+1 standby unit" : ""}`,
       qty: AIRE.totalUnidades, unit: puC, total: puC * AIRE.totalUnidades, sec: "E", un: "PIEZA", mot: "aire" });
     const puT = num(q.tanqueL, QUOTE_SEED.tanqueL);
-    aux.push({ desc: `Tanque pulmón de ${AIRE.tanque} L con válvula de seguridad, manómetro y purga automática`,
-      descEn: `${AIRE.tanque} L air receiver tank with safety valve, gauge and automatic drain`,
+    aux.push({ desc: AIRE.nTanques > 1 ? `${AIRE.nTanques} tanques pulmón de ${n(AIRE.tanqueUnit, 0)} L en paralelo (${n(AIRE.tanque, 0)} L) con válvula de seguridad, manómetro y purga automática` : `Tanque pulmón de ${AIRE.tanque} L con válvula de seguridad, manómetro y purga automática`,
+      descEn: AIRE.nTanques > 1 ? `${AIRE.nTanques} air receiver tanks of ${n(AIRE.tanqueUnit, 0)} L in parallel (${n(AIRE.tanque, 0)} L) with safety valve, gauge and automatic drain` : `${AIRE.tanque} L air receiver tank with safety valve, gauge and automatic drain`,
       qty: AIRE.tanque, unit: puT, total: puT * AIRE.tanque, sec: "E", un: "LITRO", mot: "aire" });
     const m3min = AIRE.capSecador / 1000;
     const puS = num(q.secadorM3min, 0) > 0 ? num(q.secadorM3min) : AIRE.sec.mxnPorM3min;
@@ -17930,7 +17939,7 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "4", clean: "2", equip: "1", duct: "1", vent: "1", quote: "10", valor: "1", kaizen: "1", elec: "8", hidro: "8", fuego: "3", aire: "3", civil: "3", soporte: "2" };
+const MOTOR_VER = { load: "4", clean: "2", equip: "1", duct: "1", vent: "1", quote: "10", valor: "1", kaizen: "1", elec: "8", hidro: "8", fuego: "3", aire: "4", civil: "3", soporte: "2" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
@@ -17951,7 +17960,8 @@ const MOTOR_CAMBIOS = {
   fuego: [{ ver: "2", rev: "2.9.16", que: "sin área no hay demanda, bomba ni reserva; área mínima de operación NFPA 13 con aviso" },
     { ver: "3", rev: "2.9.24", que: "H-205: la altura heredada de las zonas es la MÁXIMA (rociador más alto), no la media ponderada: estática y CDT al rociador más alto y aviso de rack con la altura real (proyecto fijo: 4.71 → 6 m, +1.29 m de CDT)" }],
   aire: [{ ver: "2", rev: "2.9.16", que: "sin demanda no se cuentan unidades" },
-    { ver: "3", rev: "2.9.24", que: "H-215: secador por ISO 7183:2007 Tabla 2 opción A1: capacidad = todo el caudal del compresor a las condiciones nominales (35 °C, 7 bar(e)), factor 1.0; fuera de A1 la corrección es del fabricante y queda pendiente con aviso (antes FAD requerido / (0.92 × 0.90) de memoria: proyecto fijo 2.46 → 2.43 m³/min)" }],
+    { ver: "3", rev: "2.9.24", que: "H-215: secador por ISO 7183:2007 Tabla 2 opción A1: capacidad = todo el caudal del compresor a las condiciones nominales (35 °C, 7 bar(e)), factor 1.0; fuera de A1 la corrección es del fabricante y queda pendiente con aviso (antes FAD requerido / (0.92 × 0.90) de memoria: proyecto fijo 2.46 → 2.43 m³/min)" },
+    { ver: "4", rev: "2.9.24", que: "H-216: el tanque pulmón no se trunca a 5,000 L en silencio: si el teórico rebasa el mayor de la lista comercial se instalan varios de 5,000 L en paralelo (capacidad instalada ≥ teórica), con aviso y memoria veraz (13,103 L → 3 × 5,000 = 15,000 L; antes 5,000). Proyecto fijo: sin cambio (3,000 L)" }],
   civil: [{ ver: "2", rev: "2.9.16", que: "sin área clasificada no hay partidas de área clasificada" }, { ver: "3", rev: "2.9.19", que: "un cuarto limpio vacío no cuenta como área clasificada" }],
   soporte: [{ ver: "2", rev: "2.9.16", que: "renta de elevación sólo con algo que montar" }],
 };
@@ -17991,7 +18001,7 @@ function cifrasMotor(id) {
     elec: { kVAdemanda: ELEC.kVAdemanda, principal: ELEC.principal, alim: [ELEC.alim.awg, ELEC.alim.tubo.d, ELEC.alim.ocpd], calc: ELEC.calc.map((c) => [c.cond.awg, c.cond.ocpd, c.cond.tubo.d]) },
     hidro: { Qtotal: HIDRO.Qtotal, cdt: HIDRO.cdt, hpBomba: HIDRO.hpBomba, cisterna: HIDRO.cisterna, tramos: HIDRO.tramos.map((x) => [x.nom, x.Q, x.hf]) },
     fuego: { qTotal: FUEGO.qTotal, nTotal: FUEGO.nTotal, qBomba: FUEGO.qBomba, hpBomba: FUEGO.hpBomba, reserva: FUEGO.reserva, mcaTotal: FUEGO.mcaTotal },
-    aire: { fad: AIRE.fadRequerido, unidades: AIRE.totalUnidades, hp: AIRE.principal ? AIRE.principal.hp : null, tanque: AIRE.tanque, secador: AIRE.capSecador },
+    aire: { fad: AIRE.fadRequerido, unidades: AIRE.totalUnidades, hp: AIRE.principal ? AIRE.principal.hp : null, tanque: AIRE.tanque, nTanques: AIRE.nTanques, secador: AIRE.capSecador },
     civil: { total: CIVIL.total, part: CIVIL.part.map((p) => [p.desc, p.qty, p.total]) },
     soporte: { n: SOPORTE.nSoportes, total: SOPORTE.total, part: SOPORTE.part.map((p) => [p.desc, p.qty, p.total]) },
     quote: { direct: QUOTE.direct, sub: QUOTE.sub, tot: QUOTE.tot, aux: (QUOTE.aux || []).map((a) => [a.desc, a.qty, a.total]), pendientes: (QUOTE.pendientes || []).map((p) => p.desc) },
@@ -20539,7 +20549,7 @@ function viewAire() {
         <div class="metric"><div class="k">FAD requerido</div><div class="v">${n(R.fadRequerido, 0)} <small>L/min</small></div><div class="sub">${n(R.fadRequerido / 1000, 2)} m³/min · ${n(R.fadRequerido / 28.317, 0)} SCFM</div></div>
         <div class="metric"><div class="k">Presión de descarga</div><div class="v">${R.pDescarga.toFixed(2)} <small>bar</small></div><div class="sub">${R.pUso.toFixed(1)} de uso + ${(R.pDescarga - R.pUso).toFixed(2)} de caídas</div></div>
         <div class="metric"><div class="k">Compresor</div><div class="v">${R.principal.hp} <small>HP</small></div><div class="sub">${esc(R.principal.tipo)}${R.principal.vsd ? " · VSD" : ""} × ${R.totalUnidades}</div></div>
-        <div class="metric"><div class="k">Tanque pulmón</div><div class="v">${R.tanque} <small>L</small></div><div class="sub">teórico ${n(R.vTeorico, 0)} L</div></div>
+        <div class="metric"><div class="k">Tanque pulmón</div><div class="v">${n(R.tanque, 0)} <small>L</small></div><div class="sub">${R.nTanques > 1 ? `${R.nTanques} × ${n(R.tanqueUnit, 0)} L en paralelo · ` : ""}teórico ${n(R.vTeorico, 0)} L</div></div>
         <div class="metric"><div class="k">Secador</div><div class="v">${n(R.capSecador / 1000, 2)} <small>m³/min</small></div><div class="sub">${esc(R.sec.label)} · rocío ${R.sec.pdp} °C</div></div>
         <div class="metric"><div class="k">Energía al año</div><div class="v">${n(R.kWhAno / 1000, 1)} <small>MWh</small></div><div class="sub">$ ${n(R.mxnAno, 0)} · fugas $ ${n(R.mxnFugas, 0)}</div></div>
       </div>

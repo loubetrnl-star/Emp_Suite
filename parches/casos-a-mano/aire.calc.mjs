@@ -104,7 +104,9 @@ function calcular(c) {
   const nUnidades = cubre ? 1 : Math.ceil(fad / principal.fadReal), totalUnidades = nUnidades + (c.redundancia === "n1" ? 1 : 0);
   const tCiclo = 3600 / CASA.arranquesH, qc = principal.fadReal / 60;
   const vTeorico = 0.25 * qc * (P_ATM / 100) / ((1 / tCiclo) * CASA.dPt);        // Atlas Copco: V = 0.25·qc·p1/(fmax·Δp)
-  const tanqueHoy = TANQUES.find((t) => t >= vTeorico) || 5000;                   // tope silencioso (H-216)
+  const tanqueUnit = TANQUES.find((t) => t >= vTeorico) || 5000;                  // el mayor de la lista comercial de la casa
+  const nTanques = Math.max(1, Math.ceil(vTeorico / tanqueUnit));                 // H-216 (cerrado 25-sep-2026): varios en paralelo, nunca menor que el teórico
+  const tanqueHoy = tanqueUnit * nTanques;                                        // capacidad instalada
   const capSecadorA1 = principal.fadReal * nUnidades;                             // ISO 7183 Tabla 2 A1: factor 1.0 sobre el caudal del compresor (H-215)
   const enA1 = tC === 35 && Math.abs(pDescarga - 7) < 1e-9;
   const eps = EPS[c.material], diams = c.material === "cobre" ? { hoy: DIAM_SCH40, b88: B88_L } : { hoy: DIAM_SCH40 };
@@ -118,7 +120,7 @@ function calcular(c) {
   /* H-219b: la energía y las fugas se pagan sobre lo que se consume (medio + fugas), no sobre el FAD de diseño con reserva. */
   const kWmedio = (medio * (1 + CASA.fugas)) / 1000 * kWesp * fCorr, mxnAnoMedio = kWmedio * CASA.horas * CASA.tarifa, mxnFugasMedio = (medio * CASA.fugas) / (medio * (1 + CASA.fugas)) * mxnAnoMedio;
   return { cls, sec, tC, pUso, lista, nPuntos, pico, medio, simul, demanda, fugas, conFugas, reserva, fadSinPurga, purga, fad, dPfiltros, pDescarga, corrP, exento, principal, cubre,
-    nUnidades, totalUnidades, tCiclo, qc, vTeorico, tanqueHoy, capSecadorA1, enA1, rho, troncal, ramal, troncalB88, kWesp, fCorr, kWoper, mxnAno, mxnFugas, kWmedio, mxnAnoMedio, mxnFugasMedio };
+    nUnidades, totalUnidades, tCiclo, qc, vTeorico, tanqueUnit, nTanques, tanqueHoy, capSecadorA1, enA1, rho, troncal, ramal, troncalB88, kWesp, fCorr, kWoper, mxnAno, mxnFugas, kWmedio, mxnAnoMedio, mxnFugasMedio };
 }
 
 /* ---------- casos ---------- */
@@ -166,7 +168,11 @@ function filasDe(n, c, A) {
   if (A.exento) fila("j3", "clase 1.2.1 obliga a compresor exento de aceite (1 = sí)", "aceite ≤ 1 y clase 1.2.1 → exento", CASA_SRC("6904", "criterio de la casa; ISO 8573-1:2010 sólo define la clase de aceite (H-220)"), "memoria", "AIRE.exento ? 1 : 0", 1, 0);
   fila("k", `volumen teórico del tanque pulmón (L)${poolNota ? " · hoy con el cpo-55: 8,970 L" : ""}`, `V = 0.25·qc·p1/(fmax·Δp) con qc ${r(A.qc, 4)} L/s (${r(A.principal.fadReal, 1)}/60), p1 ${r(P_ATM / 100, 5)} bar(a), fmax 15/3600 s⁻¹, Δp 1.0 bar → 0.25×${r(A.qc, 4)}×${r(P_ATM / 100, 5)}/(${r(1 / A.tCiclo, 7)}×1.0) = ${r(A.vTeorico, 2)}`, "Atlas Copco, «Appropriate compressed air distribution», https://www.atlascopco.com/en-us/compressors/wiki/compressed-air-articles/compressed-air-distribution (fórmula del receptor; 15 arranques/h y banda 1.0 bar son criterio de la casa index.html:6922-6923)", "secundaria", "AIRE.vTeorico", r(A.vTeorico, 2), 0.5, POOL);
   if (A.vTeorico <= 5000) fila("l", "tanque comercial inmediato superior (L)", `primero de [200, 300, 500, 750, 1000, 1500, 2000, 3000, 4000, 5000] ≥ ${r(A.vTeorico, 1)} → ${A.tanqueHoy}`, CASA_SRC("6928-6929", "lista comercial de la casa"), "memoria", "AIRE.tanque", A.tanqueHoy, 0);
-  else fila("l", "capacidad de tanque instalada no menor al teórico (1 = cumple) · hoy la suite trunca en silencio a 5,000 L y la memoria dice «se sube al comercial inmediato superior»", `teórico ${r(A.vTeorico, 1)} L > 5,000 L: hoy tanque = 5000 (tope, index.html:6929) → 0; correcto: varios tanques o uno mayor, con aviso → 1`, "fórmula del receptor Atlas Copco (URL en fila k); tope de 5,000 L sin fuente (H-216)", "secundaria", "AIRE.tanque >= AIRE.vTeorico ? 1 : 0", 1, 0, "fase2:H-216");
+  else {
+    fila("l", `capacidad de tanque instalada (L): el teórico rebasa el mayor de la lista comercial (5,000 L) → ${A.nTanques} tanques de 5,000 L en paralelo, nunca menor que el teórico (H-216, cerrado 25-sep-2026; antes se truncaba a 5,000 en silencio)`, `ceil(${r(A.vTeorico, 1)} / 5000) = ${A.nTanques} × 5000 = ${A.tanqueHoy}`, "fórmula del receptor Atlas Copco (URL en fila k); lista comercial de la casa (index.html:6928)", "secundaria", "AIRE.tanque", A.tanqueHoy, 0, POOL);
+    fila("l2", "número de tanques en paralelo", `ceil(${r(A.vTeorico, 1)} / 5000)`, "H-216 (varios en paralelo)", "secundaria", "AIRE.nTanques", A.nTanques, 0, POOL);
+    fila("l3", "capacidad instalada no menor al teórico (1 = cumple)", `${A.tanqueHoy} ≥ ${r(A.vTeorico, 1)} → 1`, "H-216", "secundaria", "AIRE.tanque >= AIRE.vTeorico ? 1 : 0", 1, 0, POOL);
+  }
   fila("m", `capacidad del secador (L/min): todo el caudal del compresor (${A.nUnidades} × ${r(A.principal.fadReal, 3)}) a la capacidad nominal de ISO 7183:2007 Tabla 2 opción A1 (35 °C, 7 bar(e), 100 % del caudal): factor 1.0${A.enA1 ? "" : "; fuera del punto A1 la norma no da factores: corrección del fabricante pendiente, con aviso"} (H-215; antes FAD requerido / (fT × fP) de memoria)`, `${A.nUnidades} × ${r(A.principal.fadReal, 3)} × 1.0 = ${r(A.capSecadorA1, 3)}`, "ISO 7183:2007 Tabla 2 opción A1 (parches/normas-texto/ISO-7183-2007_muestra-oficial.txt); PLAN-CRITICOS H-215 (caudal del compresor)", "primaria", "AIRE.capSecador", r(A.capSecadorA1, 3), 1, POOL);
   fila("m2", `el motor declara si el punto de operación es A1 (1) o si la corrección del fabricante queda pendiente (0)${A.enA1 ? "" : " · aquí pendiente"}`, `${A.tC} °C ${A.enA1 ? "=" : "≠"} 35 o ${r(A.pDescarga, 3)} bar ${A.enA1 ? "=" : "≠"} 7`, "ISO 7183:2007 Tabla 2 opción A1", "primaria", "AIRE.enA1 ? 1 : 0", A.enA1 ? 1 : 0, 0);
   fila("n", "densidad del aire en línea (kg/m³)", `ρ = p/(R·T) = (${r(A.pDescarga, 3)}×100 + ${r(P_ATM, 3)})×1000 / (287.05 × ${r(A.tC + 273.15, 2)}) = ${r(A.rho, 4)}`, "gas ideal, R = 287.05 J/(kg·K); pAtm por altitud ASHRAE Fundamentals 2021 cap. 1 ec. 3 (memoria)", "memoria", "AIRE.rho", r(A.rho, 4), 1e-3);

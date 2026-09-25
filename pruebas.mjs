@@ -6625,6 +6625,35 @@ t("S.60 (H-215) secador por ISO 7183:2007 Tabla 2 opción A1: capacidad = todo e
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+t("S.61 (H-216) el tanque pulmón nunca se trunca en silencio: si el teórico rebasa el mayor de la lista comercial (5,000 L) se instalan varios en paralelo, la capacidad instalada no es menor que la teórica, se avisa y la memoria, el PDF y la cotización lo dicen", () => {
+  const guardado = JSON.stringify(S);
+  const pdfTxt = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.61"; Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.61" }; });
+    /* Una línea de 9,000 L/min uso 1.0 (caso CM.aire.5): teórico 13,103 L, arriba de los 5,000 L de la lista. */
+    S.aire = { ...G("defaultAire")(), Lprincipal: 80, consumos: [{ ...G("defaultConsumo")("Línea"), cant: 1, lmin: 9000, bar: 6, uso: 1 }] }; G("recompute")();
+    let A = G("AIRE");
+    if (!(A.vTeorico > 5000)) throw new Error("el caso no rebasa la lista: " + A.vTeorico);
+    if (!(A.tanque >= A.vTeorico)) throw new Error("la capacidad instalada (" + A.tanque + " L) es menor que la teórica (" + A.vTeorico.toFixed(0) + " L): se truncó");
+    eq(A.tanqueUnit, 5000, "tanque unitario, el mayor de la lista:");
+    eq(A.nTanques, Math.ceil(A.vTeorico / 5000), "número de tanques en paralelo:");
+    eq(A.tanque, A.nTanques * 5000, "capacidad instalada = n × 5,000 L:");
+    if (!A.avisos.some((a) => /tanque/i.test(a.msg) && /5,000|5000/.test(a.msg) && /paralelo/.test(a.msg))) throw new Error("falta el aviso de varios tanques en paralelo");
+    if (A.memo.some((m) => /Tanque pulmón/.test(m) && /inmediato superior/.test(m))) throw new Error("la memoria sigue diciendo «se sube al comercial inmediato superior» con el teórico arriba de la lista");
+    if (!A.memo.some((m) => /Tanque pulmón/.test(m) && new RegExp(A.nTanques + " × 5,?000").test(m))) throw new Error("la memoria no declara n × 5,000 L");
+    const partida = (G("QUOTE").aux || []).find((x) => x.mot === "aire" && x.un === "LITRO");
+    if (!partida) throw new Error("sin partida de tanque");
+    eq(partida.qty, A.tanque, "la cotización lleva los litros instalados:"); contiene(partida.desc, A.nTanques + " tanques", "y dice cuántos son:");
+    contiene(pdfTxt(G("buildAirePdf")()), A.nTanques + " x 5,000", "el PDF declara los tanques en paralelo:");
+    /* El fixture normal no cambia: un tanque de la lista. */
+    S.aire = { ...G("defaultAire")(), Lprincipal: 60, consumos: [{ ...G("defaultConsumo")("Sopleteo"), cant: 2, lmin: 400, bar: 6, uso: .5 }, { ...G("defaultConsumo")("Actuadores"), cant: 4, lmin: 250, bar: 6, uso: .3 }] }; G("recompute")();
+    A = G("AIRE");
+    eq(A.nTanques, 1, "un tanque:"); eq(A.tanque, 3000, "de 3,000 L, como siempre:"); eq(A.tanque, A.tanqueUnit);
+    if (A.avisos.some((a) => /paralelo/.test(a.msg))) throw new Error("sin rebase no hay aviso de tanques en paralelo");
+    if (!A.memo.some((m) => /Tanque pulmón 3000 L/.test(m) && /inmediato superior/.test(m))) throw new Error("con el teórico dentro de la lista la memoria sigue diciendo que se sube al comercial inmediato superior");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 /* ===== R. Regresión por motor (rev 2.9.22, decisión del dueño): un proyecto fijo con cifras esperadas por disciplina ===== */
 const REG_DIR = "parches/regresion-motores/";
 const REG_PROY = fs.readFileSync(REG_DIR + "regresion-motores.emp.json", "utf8");

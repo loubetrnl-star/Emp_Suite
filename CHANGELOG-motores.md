@@ -99,13 +99,14 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 | 2 | 2.9.16 | sin área no hay demanda, bomba ni reserva; área mínima de operación NFPA 13 con aviso |
 | 3 | 2.9.24 | H-205: la altura que contra incendio hereda de las zonas es la MÁXIMA (rociador más alto), no la media ponderada por área (que sigue para ventilación, que trabaja por volumen): estática y presión requerida al rociador más alto, aviso de almacenamiento en rack con la altura real, campo «Altura libre al rociador más alto». Proyecto fijo: 4.71 → 6 m, presión requerida +1.29 m (37.815 → 39.105 m), 35 HP sin cambio |
 
-## Aire comprimido (`aire`) · v3
+## Aire comprimido (`aire`) · v4
 
 | Versión | Rev | Hallazgo / cambio de lógica |
 |---|---|---|
 | 1 | 2.9.15 | lógica de partida |
 | 2 | 2.9.16 | sin demanda no se cuentan unidades |
 | 3 | 2.9.24 | H-215: secador por ISO 7183:2007 Tabla 2 opción A1 (entrada 35 °C, 7 bar(e), 100 % del caudal): capacidad = todo el caudal del compresor (n × FAD real) a la capacidad nominal, factor 1.0; fuera del punto A1 la norma no da factores: la corrección es del fabricante y queda pendiente con aviso (antes FAD requerido / (0.92 × (0.9 + 0.03/bar)) de memoria, que en el propio punto de catálogo sobredimensionaba ×1.21). Proyecto fijo: secador 2.46 → 2.43 m³/min; kW de operación y energía siguen la capacidad nueva. Cifras de regresión: entra `secador` |
+| 4 | 2.9.24 | H-216: el tanque pulmón no se trunca a 5,000 L en silencio: si el teórico rebasa el mayor de la lista comercial de la casa se instalan varios de 5,000 L en paralelo (capacidad instalada ≥ teórica; `tanqueUnit`, `nTanques`), con aviso; memoria, PDF, pantalla y partida lo declaran (13,103 L → 3 × 5,000 = 15,000 L; antes 5,000 L y «se sube al comercial inmediato superior»). Proyecto fijo: sin cambio (3,000 L). Cifras de regresión: entra `nTanques` |
 
 ## Obra civil (`civil`) · v3
 
