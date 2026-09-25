@@ -89,8 +89,10 @@
     "buscar": "factor_seguridad: 1.5,", "reemplazar": "factor_seguridad: 1.0,", "estado": "vigente" },
   { "id": "soporte.m45", "que": "H-225: la altura de colgado sin captura vuelve a la altura de trabajo (antes de H-225)", "logica": true,
     "buscar": "const alturaColgado = colgadoCapturado ? num(Gc.alturaColgadoM) : 0;", "reemplazar": "const alturaColgado = colgadoCapturado ? num(Gc.alturaColgadoM) : hTrab;", "estado": "vigente" },
-  { "id": "soporte.m46", "que": "SDS supuesto por omisión 1.0 → 0.5 (valor por omisión sin captura ni fuente)", "logica": false,
-    "buscar": "sismoSDS: 1.0,", "reemplazar": "sismoSDS: 0.5,", "estado": "fase2:H-226" },
+  { "id": "soporte.m46", "que": "H-226: vuelve el SDS 1.0 supuesto por omisión (hoy null: sin captura no es dato)", "logica": false,
+    "buscar": "sismoSDS: null,", "reemplazar": "sismoSDS: 1.0,", "estado": "vigente" },
+  { "id": "soporte.m48", "que": "H-226: el anclaje se cotiza aunque falten SDS con fuente, estructura y f'c", "logica": true,
+    "buscar": "const anclajeCapturado = sdsCapturado && estructuraCapturada;", "reemplazar": "const anclajeCapturado = true;", "estado": "vigente" },
   { "id": "soporte.m47", "que": "H-231: el modo gobernado vuelve a contar las bases en vivo (pierde el compresor)", "logica": true,
     "buscar": "QUOTE = { nEquip: num(snap.nEquip), deSnap: true };", "reemplazar": "QUOTE = { nEquip: num(snap.nEquip), deSnap: false };", "estado": "vigente" }
 ]

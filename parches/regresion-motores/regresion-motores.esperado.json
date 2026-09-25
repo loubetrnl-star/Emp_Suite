@@ -110,11 +110,11 @@
    }
   },
   "quote": {
-   "ver": "13",
+   "ver": "14",
    "cifras": {
-    "direct": 10566500.847310027,
-    "sub": 15972322.680793839,
-    "tot": 18527894.30972085,
+    "direct": 10558140.847310027,
+    "sub": 15959685.704793839,
+    "tot": 18513235.417560853,
     "aux": [
      [
       "Instalación mecánica, bases, izaje y arranque (35 % del equipo)",
@@ -250,11 +250,6 @@
       "Limpieza fina de obra, retiro de escombro y entrega",
       700,
       70000
-     ],
-     [
-      "Anclaje M10 a concreto, incluye barrenado y limpieza de barreno",
-      88,
-      8360
      ],
      [
       "Abrazadera de sujeción, incluye tornillería",
@@ -531,16 +526,11 @@
    }
   },
   "soporte": {
-   "ver": "5",
+   "ver": "6",
    "cifras": {
     "n": 88,
-    "total": 344576,
+    "total": 336216,
     "part": [
-     [
-      "Anclaje M10 a concreto, incluye barrenado y limpieza de barreno",
-      88,
-      8360
-     ],
      [
       "Abrazadera de sujeción, incluye tornillería",
       88,

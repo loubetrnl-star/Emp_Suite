@@ -5543,10 +5543,12 @@ t("S.20 un proyecto guardado con la versión anterior (formato 1, rev 2.9.13) ab
      nominal de ISO 7183 A1 (897.6 / 0.8... → 1,164.4 L/min): quoteDirect → 4961974.7391384 · quoteSub → 7500521.015681606 ·
      quoteTot → 8700604.378190663.
      H-225 (soporte v5, quote v13): sin altura de colgado capturada la varilla queda pendiente (antes 7.2 m por varilla):
-     quoteDirect → 4957294.7391384 · quoteSub → 7493446.727681606 · quoteTot → 8692398.204110663. */
+     quoteDirect → 4957294.7391384 · quoteSub → 7493446.727681606 · quoteTot → 8692398.204110663.
+     H-226 (soporte v6, quote v14): sin SDS con fuente ni estructura/f'c capturados el anclaje va Por cotizar (10 × 95 MXN):
+     quoteDirect → 4956344.7391384 · quoteSub → 7492010.7076816065 · quoteTot → 8690732.420910664. */
   const MOVIDOS_2916 = { tons: [18.584787, 12.943837], cfm: [5114.572875, 5815.981512], sysTarget: [20.443265161623447, 14.238221145934492],
-    hidroQ: [3.924, 4.05985437], quoteDirect: [6704014.747352686, 4957294.7391384], partidas: [6704014.747352686, 4957294.7391384],
-    quoteSub: [10133788.69209832, 7493446.727681606], quoteTot: [11755194.88283405, 8692398.204110663] };
+    hidroQ: [3.924, 4.05985437], quoteDirect: [6704014.747352686, 4956344.7391384], partidas: [6704014.747352686, 4956344.7391384],
+    quoteSub: [10133788.69209832, 7492010.7076816065], quoteTot: [11755194.88283405, 8690732.420910664] };
   Object.entries(MOVIDOS_2916).forEach(([k, [antes]]) => eq(esperado.resumen[k], antes, `${k}: el «antes» es el de la 2.9.13:`));
   Object.entries(esperado.resumen).forEach(([k, v]) => eq(r[k], k in MOVIDOS_2916 ? MOVIDOS_2916[k][1] : v, `${k} igual al de la versión ${esperado.generadoCon}${k in MOVIDOS_2916 ? " con la decisión 2.9.16" : ""}:`));
   eq((G("QUOTE").pendientes || []).filter((p) => p.mot === "hidro").map((p) => p.motivo.split(" (")[0]).join(","), "pendiente de longitud,pendiente de volumen", "la red y la cisterna (0 unidades de dotación) quedan pendientes (H-196):"); /* rev 2.9.23: la importación siempre está pendiente aparte */
@@ -6927,6 +6929,36 @@ t("S.73 (H-225) la altura de colgado se captura en pantalla; sin captura la vari
     const ml = varilla().reduce((a, p) => a + p.qty, 0);
     cerca(ml, R.nSoportes * 1.2, 0.05, "ML = soportes × 1.2 m (una varilla por soporte):");
     if (R.avisos.some((a) => /colgado/.test(a.msg) && /pendiente/.test(a.msg))) throw new Error("con captura no debe haber aviso de colgado pendiente");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+t("S.74 (H-226) los datos del edificio no se suponen: sin SDS con fuente, tipo de estructura y f'c capturados el anclaje va «Por cotizar» (predimensionado con valores de referencia declarados) y la memoria imprime Fp, ap y Rp con su aviso; con captura, el anclaje se cotiza", () => {
+  const guardado = JSON.stringify(S);
+  const anclaje = () => (G("SOPORTE").part || []).filter((p) => /^Anclaje/.test(p.desc));
+  const pc = () => (G("QUOTE").porCotizar || []).filter((p) => p.mot === "soporte" && p.clave === "anclajeSop");
+  try {
+    const d = G("defaultSoporte")();
+    if (d.sismoSDS === 1 || d.estructuraTipo === "losa_concreto" || d.estructuraFc === 250) throw new Error("defaultSoporte sigue suponiendo SDS 1.0 / losa / f'c 250");
+    G("importarRespaldo")(fs.readFileSync("parches/regresion-motores/regresion-motores.emp.json", "utf8")); S.tab = "tablero"; G("KZ_CACHE").key = null; G("VZ_CACHE").key = null; G("recompute")();
+    /* El fixture guardó los valores por omisión viejos (SDS 1.0, losa, f'c 250) como estado: aquí se vacían para probar el caso sin captura. */
+    S.soporte.sismoSDS = null; S.soporte.sismoFuente = ""; S.soporte.estructuraTipo = null; S.soporte.estructuraFc = null; G("recompute")();
+    let R = G("SOPORTE");
+    eq(R.anclajeCapturado, false, "sin SDS con fuente ni estructura:");
+    eq(anclaje().length, 0, "sin captura no hay partida de anclaje con importe (antes 88 × 95 MXN):");
+    if (!(pc().length === 1 && pc()[0].qty > 0)) throw new Error("el anclaje debe ir «Por cotizar» con sus piezas: " + JSON.stringify(pc()));
+    contiene(pc()[0].desc, "referencia", "la partida dice que está predimensionado con valores de referencia:");
+    if (!R.avisos.some((a) => /SDS/.test(a.msg) && /fuente/.test(a.msg))) throw new Error("falta el aviso de SDS sin fuente");
+    if (!R.memo.some((m) => /DECLARADOS/.test(m) && /Fp/.test(m) && /Rp/.test(m))) throw new Error("la memoria no imprime Fp con ap y Rp declarados");
+    if (R.memo.some((m) => /Anclaje .* a losa de concreto f'c 250/.test(m) && !/referencia/i.test(m))) throw new Error("la memoria sigue afirmando losa f'c 250 como dato");
+    S.tab = "soporte"; G("render")();
+    ["soporte.sismoSDS", "soporte.sismoFuente", "soporte.estructuraTipo", "soporte.estructuraFc"].forEach((p) => { if (!w.document.querySelector('#view [data-path="' + p + '"]')) throw new Error("falta el campo " + p); });
+    /* Con captura y fuente: se cotiza. */
+    S.soporte.sismoSDS = 1.0; S.soporte.sismoFuente = "CFE MDOC-Sismo 2015, sitio Tijuana"; S.soporte.estructuraTipo = "losa_concreto"; S.soporte.estructuraFc = 250; G("recompute")(); R = G("SOPORTE");
+    eq(R.anclajeCapturado, true, "con SDS + fuente + estructura + f'c:"); if (!(anclaje().length === 1 && anclaje()[0].total > 0)) throw new Error("con captura el anclaje debe cotizarse");
+    eq(pc().length, 0, "ya no está Por cotizar:");
+    if (!R.memo.some((m) => /CFE MDOC-Sismo 2015/.test(m))) throw new Error("la memoria no cita la fuente capturada del SDS");
+    /* SDS sin fuente no cuenta como capturado. */
+    S.soporte.sismoFuente = ""; G("recompute")(); eq(G("SOPORTE").anclajeCapturado, false, "SDS sin fuente no es dato:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 

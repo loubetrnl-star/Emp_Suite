@@ -42,7 +42,7 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 | 2 | 2.9.24 | H-154 + H-156: la cobertura real manda en la selección Greenheck (cfmMin ≤ objetivo ≤ cfmMax, sin la tolerancia ×0.9); la familia propia del modo sólo ordena entre los que cubren (luego el de menor caudal nominal); si nadie cubre no hay modelo (`primary` null: nada llega a propuesta, memoria integral ni eléctrico) y `closest` sólo alimenta el aviso. Proyecto fijo: 11,643 CFM → CSW-30 (7,000–18,000) en vez de GB-360 (4,000–9,000) con «ningún modelo cubre» |
 | 3 | 2.9.24 | H-155: sin medidas no hay caudal: campana sin largo o fondo y rejilla sin ancho, alto, área libre o velocidad de cara dan demanda 0 con aviso de error en el motor y la matriz (antes pisos de 0.1 ft, 5 % y 100 fpm fabricaban 30 y 258 CFM y sus partidas). `avisos` en el resultado de computeVent. Proyecto fijo: sin cambio |
 
-## Cotización (`quote`) · v13
+## Cotización (`quote`) · v14
 
 | Versión | Rev | Hallazgo / cambio de lógica |
 |---|---|---|
@@ -51,6 +51,7 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 | 3 | 2.9.19 | tramo con longitud y sin unidades mueble queda pendiente |
 | 4 | 2.9.23 | precio de tubería por renglón con origen (referencia de mercado o proveedor local), IVA desglosado y por metro; sin precio: partida Por cotizar en el Budget, bloqueo sólo en la formal |
 | 5 | 2.9.23 | precios en USD sólo se convierten con tipo de cambio capturado con fecha; sin fecha salen Por cotizar y bloquean la formal (nada se estima) |
+| 14 | 2.9.24 | dependencia de soporte v6 (H-226): el anclaje va Por cotizar mientras no haya SDS con fuente, estructura y f'c |
 | 13 | 2.9.24 | dependencia de soporte v5 (H-225): sin altura de colgado la varilla sale pendiente, no cotizada |
 | 12 | 2.9.24 | dependencia de vent v2 (H-154): la partida de ventilación nombra el modelo que cubre de verdad, o ninguno |
 | 11 | 2.9.24 | dependencia de aire v5 (H-218): la partida de la red declara «diámetros indicativos: DI del fabricante pendiente» en aluminio e inoxidable |
@@ -124,7 +125,7 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 | 2 | 2.9.16 | sin área clasificada no hay partidas de área clasificada |
 | 3 | 2.9.19 | un cuarto limpio vacío no cuenta como área clasificada |
 
-## Soportería (`soporte`) · v5
+## Soportería (`soporte`) · v6
 
 | Versión | Rev | Hallazgo / cambio de lógica |
 |---|---|---|
@@ -133,4 +134,5 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 | 3 | 2.9.24 | H-232 (política de pisos 2.9.16): 0 meses de renta capturados se respetan (sin partida) y sin captura la renta queda pendiente (aviso en el motor y pendiente en la cotización); `defaultSoporte().mesesElevacion` pasa de 3 a null. Antes el 0 se volvía 1 mes y la omisión 3. Proyecto fijo (3 meses capturados): sin cambio |
 | 4 | 2.9.24 | H-231: en modo gobernado (instantánea motores>soporte aceptada) las bases de equipo salen de `snap.nEquip` (equipos cotizados + unidades de aire al tomar la instantánea); antes el conteo en vivo sumaba 0 unidades de aire del sustituto y perdía el compresor (3 → 2 bases, −18,500 MXN). Proyecto fijo (en vivo): sin cambio |
 | 5 | 2.9.24 | H-225 («nada se estima»): campo «Altura de colgado (m)» en pantalla; sin captura la varilla roscada queda pendiente (aviso en el motor, pendiente en la cotización; la altura de trabajo sólo se sugiere). Antes se tomaba la altura de trabajo: 7.2 m por varilla, 633.6 ML = 41,184 MXN en el proyecto fijo. Proyecto fijo: 385,760 → 344,576 MXN |
+| 6 | 2.9.24 | H-226 («nada se estima»): SDS del sitio con su fuente, tipo de estructura y f'c se capturan en pantalla; sin ellos SoporteCalc predimensiona con valores de referencia DECLARADOS (SDS 1.0, losa f'c 250; las fórmulas no cambian) y el anclaje va «Por cotizar» (sección G) con sus piezas; la memoria imprime Fp, SDS (capturado o de referencia), Ip, ap, Rp, z/h y el aviso «ap y Rp son valores DECLARADOS». Antes SDS 1.0 / losa / f'c 250 se afirmaban como datos. Proyecto fijo: 344,576 → 336,216 MXN |
 
