@@ -6654,6 +6654,31 @@ t("S.61 (H-216) el tanque pulmón nunca se trunca en silencio: si el teórico re
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+t("S.62 (H-217, decisión 3 del dueño) la curva de simultaneidad se declara como criterio de la casa sin fuente normativa en memoria, pantalla y PDF, sin mover números; capturada, se dice capturada", () => {
+  const guardado = JSON.stringify(S);
+  const pdfTxt = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.62";
+    S.aire = { ...G("defaultAire")(), Lprincipal: 60, consumos: [{ ...G("defaultConsumo")("Sopleteo"), cant: 2, lmin: 400, bar: 6, uso: .5 }, { ...G("defaultConsumo")("Actuadores"), cant: 4, lmin: 250, bar: 6, uso: .3 }] }; G("recompute")();
+    let A = G("AIRE");
+    eq(A.nPuntos, 6); eq(A.simul, 0.85, "la curva no se mueve (decisión 3: 6 puntos → 0.85):"); eq(A.simulAuto, 0.85);
+    const m = A.memo.find((x) => /[Ss]imultaneidad/.test(x));
+    if (!m) throw new Error("la memoria no habla de la simultaneidad");
+    if (!/criterio de la casa/.test(m) || !/sin fuente/.test(m)) throw new Error("la memoria no declara la curva como criterio de la casa sin fuente: " + m);
+    contiene(m, "85 %", "con el valor aplicado:"); contiene(m, "6 puntos", "y el número de puntos:");
+    S.tab = "aire"; G("render")();
+    const v = w.document.getElementById("view").textContent;
+    if (!/[Ss]imultaneidad[^.]*criterio de la casa/.test(v)) throw new Error("la pantalla no declara la curva como criterio de la casa");
+    const txt = pdfTxt(G("buildAirePdf")());
+    if (!/criterio de la casa/.test(txt) || !/sin fuente/.test(txt)) throw new Error("el PDF no declara la curva como criterio de la casa sin fuente");
+    /* Capturada: manda la captura y se dice. */
+    S.aire.simultaneidad = 0.6; G("recompute")(); A = G("AIRE");
+    eq(A.simul, 0.6, "capturada manda:");
+    const m2 = A.memo.find((x) => /[Ss]imultaneidad/.test(x));
+    contiene(m2, "capturada", "la memoria dice que es capturada:"); contiene(m2, "60 %", "con su valor:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 /* ===== R. Regresión por motor (rev 2.9.22, decisión del dueño): un proyecto fijo con cifras esperadas por disciplina ===== */
 const REG_DIR = "parches/regresion-motores/";
 const REG_PROY = fs.readFileSync(REG_DIR + "regresion-motores.emp.json", "utf8");

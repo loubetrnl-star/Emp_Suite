@@ -6910,7 +6910,9 @@ function computeAire(A) {
   const pico = lista.reduce((a, c) => a + c.picoLmin, 0);
   const medio = lista.reduce((a, c) => a + c.medioLmin, 0);
   /* Simultaneidad: con pocos puntos coinciden casi todos; con muchos, la
-     probabilidad de coincidencia cae. Curva de práctica de diseño. */
+     probabilidad de coincidencia cae. Curva de práctica de diseño SIN FUENTE NORMATIVA: H-217, decisión 3 del dueño
+     (22-sep-2026): queda como criterio de la casa, declarado en pantalla, memoria y PDF, sin mover números; el usuario
+     puede capturar la suya. */
   const simulAuto = nPuntos <= 1 ? 1 : nPuntos <= 3 ? 0.95 : nPuntos <= 6 ? 0.85
     : nPuntos <= 10 ? 0.75 : nPuntos <= 20 ? 0.65 : nPuntos <= 40 ? 0.55 : 0.50;
   const simul = num(A.simultaneidad, 0) > 0 ? Math.min(1, num(A.simultaneidad)) : simulAuto;
@@ -6918,6 +6920,9 @@ function computeAire(A) {
      y el pico afectado por simultaneidad: el factor de uso solo no basta si
      todos los puntos son de uso bajo pero simultáneo. */
   const demandaProceso = Math.max(medio, pico * simul);
+  memo.push(simul === simulAuto && !(num(A.simultaneidad, 0) > 0)
+    ? `Simultaneidad ${n(simul * 100, 0)} % por ${nPuntos} puntos: curva de la casa (≤1 punto 100 %, ≤3 95 %, ≤6 85 %, ≤10 75 %, ≤20 65 %, ≤40 55 %, más 50 %), criterio de la casa sin fuente normativa (decisión del dueño, 22-sep-2026, H-217); se puede capturar otra en pantalla.`
+    : `Simultaneidad ${n(simul * 100, 0)} % capturada por el usuario (${nPuntos} puntos; la curva de la casa daría ${n(simulAuto * 100, 0)} %, criterio de la casa sin fuente normativa).`);
   const fugasLmin = demandaProceso * Math.max(0, num(A.fugas, .10));
   const conFugas = demandaProceso + fugasLmin;
   const reservaLmin = conFugas * Math.max(0, num(A.reserva, .20));
@@ -7087,7 +7092,7 @@ function buildAirePdf() {
     [110, 105, 34, 55, 40, 60, 62]);
   pdfTable(d, ["Escalon", "L/min", "Base"], [
     ["Pico sin simultaneidad", n(A.pico, 0), "suma de consumos nominales"],
-    ["Simultaneidad aplicada", n(A.simul * 100, 0) + " %", `${A.nPuntos} puntos${A.simul === A.simulAuto ? " (curva automatica)" : " (capturada)"}`],
+    ["Simultaneidad aplicada", n(A.simul * 100, 0) + " %", `${A.nPuntos} puntos${A.simul === A.simulAuto && !(num(S.aire.simultaneidad, 0) > 0) ? " (curva de la casa: criterio de la casa sin fuente normativa, H-217)" : " (capturada)"}`],
     ["Demanda de proceso", n(A.demandaProceso, 0), "mayor entre consumo medio y pico con simultaneidad"],
     ["Fugas", n(A.fugasLmin, 0), `${n(num(S.aire.fugas, .1) * 100, 0)} % de la demanda`],
     ["Reserva de crecimiento", n(A.reservaLmin, 0), `${n(num(S.aire.reserva, .2) * 100, 0)} %`],
@@ -20524,7 +20529,7 @@ function viewAire() {
         ${inp("Fugas admitidas (0.10 = 10 %)", "aire.fugas", "number", "0.01", "aire.fugas", A)}
         ${inp("Reserva de crecimiento (0.20 = 20 %)", "aire.reserva", "number", "0.05", "aire.reserva", A)}
       </div>
-      ${inp(`Simultaneidad (0 = automática, hoy ${n(R.simulAuto * 100, 0)} % por ${R.nPuntos} puntos)`, "aire.simultaneidad", "number", "0.05", "aire.simul", A)}
+      ${inp(`Simultaneidad (0 = curva de la casa: ${n(R.simulAuto * 100, 0)} % por ${R.nPuntos} puntos, criterio de la casa sin fuente normativa)`, "aire.simultaneidad", "number", "0.05", "aire.simul", A)}
       <div class="row">
         ${sel("Redundancia", "aire.redundancia", [["ninguna", "Sin relevo"], ["n1", "N+1 con alternancia automática"]])}
         ${sel("Material de la red", "aire.material", Object.entries(TUB_AIRE).map(([k, v]) => [k, v.label]))}
