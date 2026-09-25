@@ -6827,6 +6827,23 @@ t("S.67 (H-126) el traspaso de la reposición va por vínculo cuarto ↔ zona (i
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+t("S.68 (H-128) «Crear zona de carga con este cuarto» no inventa 12 W/m² de iluminación ni 0.05 renovaciones/h: nacen en 0 (pendientes de captura), la zona queda vinculada al cuarto y el proceso capturado sí pasa", () => {
+  const guardado = JSON.stringify(S);
+  const act = (a) => { const b = w.document.createElement("button"); b.dataset.act = a; w.document.body.appendChild(b); b.dispatchEvent(new w.MouseEvent("click", { bubbles: true })); b.remove(); };
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.68";
+    S.clean = { ci: 0, rooms: [{ ...G("defaultRoom")("Sala de llenado"), iso: "iso7", area: 40, height: 3, occ: 2, procW: 25 }] };
+    G("recompute")();
+    const n0 = S.zones.length;
+    act("clean-to-zone");
+    eq(S.zones.length, n0 + 1, "zona creada:");
+    const z = S.zones[S.zones.length - 1];
+    eq(z.lights, 0, "iluminación sin inventar (antes 12 W/m²):"); eq(z.ach, 0, "infiltración sin inventar (antes 0.05 1/h):");
+    eq(z.equip, 40 * 25, "el proceso capturado sí pasa:"); eq(z.spaceType, "cleanroom"); eq(z.area, 40);
+    eq(S.clean.rooms[0].zonaId, z.id, "el cuarto queda vinculado a la zona creada (H-126):");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 /* ===== R. Regresión por motor (rev 2.9.22, decisión del dueño): un proyecto fijo con cifras esperadas por disciplina ===== */
 const REG_DIR = "parches/regresion-motores/";
 const REG_PROY = fs.readFileSync(REG_DIR + "regresion-motores.emp.json", "utf8");

@@ -21593,8 +21593,10 @@ document.addEventListener("click", (e) => {
          con la zona, y el calor de los ventiladores lo recalcula el motor térmico
          a partir del caudal que exige la clase. Aquí no se traslada como "equipo". */
       z.spaceType = "cleanroom"; z.iso = c.iso || "iso8"; z.achClean = r.ach;
-      z.occ = c.occ; z.lights = Math.round(c.area * 12); z.equip = Math.round(c.area * (c.procW || 0));
-      z.ach = 0.05;                       // cuarto presurizado: la infiltración es despreciable
+      /* H-128 (rev 2.9.24, «nada se estima»): iluminación e infiltración nacen en 0 y las pide el semáforo (antes 12 W/m² y
+         0.05 1/h inventados). El proceso capturado (W/m²) sí pasa. */
+      z.occ = c.occ; z.lights = 0; z.equip = Math.round(c.area * (c.procW || 0));
+      z.ach = 0;
       z.oaFixed = Math.round(r.makeup);   // el aire exterior es la reposición de cascada
       z.oaFraction = 0;
       z.walls = { N: 0, S: 0, E: 0, W: 0, NE: 0, SE: 0, SW: 0, NW: 0 }; z.glass = { ...z.walls }; z.roof = 0;
