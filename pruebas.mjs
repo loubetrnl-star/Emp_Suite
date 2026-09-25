@@ -6196,7 +6196,7 @@ t("S.36 (rev 2.9.20, decisión del dueño) versión por motor en el sello: sólo
   const MV = G("MOTOR_VER");
   /* H-107: carga v3 = lógica de la rev 2.9.21 (declarada en la 2.9.24); H-120: carga v4 = corrección CLTD por sitio. H-183: eléctrico v5 = Tabla 250-122 de la NOM; H-177: v6 = art. 440 con MCA/MOP; H-179: v7 = nada se supone (pendientes); H-178: v8 = corriente de motor por la Tabla 430-250/248.
      H-194: hidro v5 = presión mínima por mueble de la Tabla 604.3 del IPC 2015 y CDT con máx(residual, mínima); H-195: v6 = equipo de emergencia fuera de Hunter; H-197: v7 = sin pisos sin norma (días, ΔT, pendiente 704.1); H-198: v8 = CPVC sólo hasta 2" CTS, fuera de catálogo y PEAD sin SDR como error. */
-  eq(MV.elec, "8", "eléctrico v8 (H-178):"); eq(MV.hidro, "8", "hidro v8 (H-198):"); eq(MV.load, "5", "carga v5 (H-141):"); eq(MV.duct, "2", "ductos v2 (H-166):"); eq(MV.equip, "1", "selección sin cambio de lógica: v1:");
+  eq(MV.elec, "8", "eléctrico v8 (H-178):"); eq(MV.hidro, "8", "hidro v8 (H-198):"); eq(MV.load, "5", "carga v5 (H-141):"); eq(MV.duct, "3", "ductos v3 (H-167):"); eq(MV.equip, "1", "selección sin cambio de lógica: v1:");
   Object.keys(MV).forEach((id) => { const c = G("MOTOR_CAMBIOS")[id] || []; if (MV[id] !== "1" && !c.some((x) => x.ver === MV[id])) throw new Error(`${id}: la versión ${MV[id]} no tiene hallazgo registrado`); });
   const s0 = JSON.stringify(S.sellos || {});
   try {
@@ -7264,6 +7264,43 @@ t("S.83 (H-166) ductos: un tramo sin medida posible (ninguna de la serie cumple)
     contiene(ced, "sin medida", "la cédula PDF:"); if (/400 x 200/.test(ced)) throw new Error("la cédula no debe imprimir 400 x 200");
     const xes = Buffer.from(G("buildPropuestaXlsx")({ lang: "es", mon: "MXN" })).toString("utf8"), xen = Buffer.from(G("buildPropuestaXlsx")({ lang: "en", mon: "MXN" })).toString("utf8");
     contiene(xes, "sin medida", "el Excel ES:"); contiene(xen, "no size", "el Excel EN:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+t("S.84 (H-167) «Generar desde carga» trae sólo los caudales: sin longitudes ni accesorios que nadie capturó (antes 20/10/15 m, tee 0.65, salida 1.0, entrada 0.03); cada tramo queda «pendiente de longitud» sin kilos, juntas, soportes ni importe, y al capturar la longitud entra", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.84"; S.site = { key: "tijuana" };
+    const dz = G("defaultZone");
+    S.zones = [
+      { ...dz("Producción"), area: 400, height: 6, occ: 30, lights: 8000, equip: 12000, walls: { N: 40, S: 40, E: 30, W: 30, NE: 0, SE: 0, SW: 0, NW: 0 }, roof: 400 },
+      { ...dz("Oficinas"), area: 100, height: 3, occ: 10, lights: 1500, equip: 2000, walls: { N: 12, S: 12, E: 10, W: 10, NE: 0, SE: 0, SW: 0, NW: 0 }, roof: 100 },
+    ];
+    Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.84" }; });
+    G("recompute")();
+    G("chainToDuct")(true); G("recompute")();
+    const segs = S.duct.segments, D = G("DUCT"), tot = G("totals")();
+    eq(segs.length, 4, "principal + 2 ramales + aire exterior:");
+    eq(segs[0].flow, Math.round(tot.cfm * 1.699 / 3.6), "el caudal del principal sí sale de la carga:");
+    segs.forEach((s) => {
+      eq(s.length, 0, s.tag + ": longitud (nadie la capturó):");
+      eq((s.fittings || []).length, 0, s.tag + ": accesorios (nadie los capturó):");
+    });
+    eq(D.boq.kg, 0, "kilos de la red generada:"); eq(D.boq.joints, 0, "juntas:"); eq(D.boq.hangers, 0, "soportes:"); eq(D.boq.corners, 0, "esquineros:");
+    eq(D.path, 0, "caída del circuito sin longitudes ni accesorios:");
+    D.segs.forEach((s) => contiene(s.warn[0] || "", "Pendiente de longitud", s.tag + ": el aviso del tramo:"));
+    let Q = G("QUOTE");
+    if (Q.aux.some((a) => a.mot === "duct" && a.un === "KG")) throw new Error("sin longitudes no hay partida de lámina");
+    const pend = Q.pendientes.filter((p) => p.mot === "duct" && /longitud/.test(p.motivo) && p.descEn && /length/.test(p.motivoEn));
+    eq(pend.length, 4, "cada tramo sin longitud queda pendiente (ES/EN) en la cotización:");
+    /* Al capturar la longitud del principal, ese tramo entra con sus kilos y deja de estar pendiente. */
+    S.duct.segments[0].length = 20; G("recompute")();
+    if (!(G("DUCT").segs[0].kg > 0)) throw new Error("con longitud capturada el principal lleva kilos");
+    Q = G("QUOTE");
+    if (!Q.aux.some((a) => a.mot === "duct" && a.un === "KG")) throw new Error("con longitud capturada hay partida de lámina");
+    eq(Q.pendientes.filter((p) => p.mot === "duct" && /longitud/.test(p.motivo)).length, 3, "quedan pendientes los otros tres:");
+    /* La propuesta de cruce dice qué trae y qué no */
+    contiene(G("PROPUESTAS")["load>duct"].que, "sin longitudes ni accesorios", "texto de la propuesta load>duct:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 

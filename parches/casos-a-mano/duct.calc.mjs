@@ -183,10 +183,10 @@ const resFijo = FIJO.map((c) => {
   const FN = "política de la casa «arranque en ceros» / «nada se estima» (decisión del dueño 17-sep-2026); H-167";
   const ent = "dos zonas con carga calculada y aire exterior; «Generar desde carga»";
   fila("CM.duct.8.a", "tramos generados (principal + 1 por zona + aire exterior)", ent, "1 + 2 + 1 = 4", "criterio de la casa (chainToDuct)", "criterio de la casa", "S.duct.segments.length", 4, 0);
-  fila("CM.duct.8.b", "suma de longitudes generadas (m)", ent, "nadie las capturó → 0 m, pendiente de longitud (hoy 20 + 10 + 10 + 15 = 55 m)", FN, "criterio de la casa", "S.duct.segments.reduce((a, s) => a + s.length, 0)", 0, 0, "fase2:H-167");
-  fila("CM.duct.8.c", "accesorios generados", ent, "nadie los capturó → 0 (hoy tee 0.65 + salida 1.0 por zona y entrada 0.03)", FN, "criterio de la casa", "S.duct.segments.reduce((a, s) => a + (s.fittings || []).length, 0)", 0, 0, "fase2:H-167");
-  fila("CM.duct.8.d", "kilos de la red generada", ent, "sin longitud → 0 kg", FN, "criterio de la casa", "DUCT.boq.kg", 0, 0, "fase2:H-167");
-  fila("CM.duct.8.e", "importe de ducto en la cotización", ent, "sin kilos no hay partida de lámina → 0 MXN", FN, "criterio de la casa", "(QUOTE.aux.find((a) => a.mot === 'duct' && a.un === 'KG') || { total: 0 }).total", 0, 0, "fase2:H-167");
+  fila("CM.duct.8.b", "suma de longitudes generadas (m)", ent, "nadie las capturó → 0 m, pendiente de longitud (hoy 20 + 10 + 10 + 15 = 55 m)", FN, "criterio de la casa", "S.duct.segments.reduce((a, s) => a + s.length, 0)", 0, 0, "vigente");
+  fila("CM.duct.8.c", "accesorios generados", ent, "nadie los capturó → 0 (hoy tee 0.65 + salida 1.0 por zona y entrada 0.03)", FN, "criterio de la casa", "S.duct.segments.reduce((a, s) => a + (s.fittings || []).length, 0)", 0, 0, "vigente");
+  fila("CM.duct.8.d", "kilos de la red generada", ent, "sin longitud → 0 kg", FN, "criterio de la casa", "DUCT.boq.kg", 0, 0, "vigente");
+  fila("CM.duct.8.e", "importe de ducto en la cotización", ent, "sin kilos no hay partida de lámina → 0 MXN", FN, "criterio de la casa", "(QUOTE.aux.find((a) => a.mot === 'duct' && a.un === 'KG') || { total: 0 }).total", 0, 0, "vigente");
 }
 
 for (const f of filas) console.log(`${f.id.padEnd(12)} ${String(f.esperado).padStart(12)} ± ${String(f.tolerancia).padEnd(6)} ${f.estado.padEnd(12)} ${f.descripcion}`);
