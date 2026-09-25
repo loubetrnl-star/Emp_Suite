@@ -2865,16 +2865,18 @@ t("16.7 la misma área repartida en las ocho da una carga solar coherente con la
     const v = vistaT();
     ["En espera", "Listo", "Con error"].forEach((x) => contiene(v.querySelector(".cxz-motores").textContent, x));
   });
-  await tA("20.9 revisar y aplicar desde la tabla pasa por la ventana de hallazgos y marca la fila como aplicada", async () => {
+  await tA("20.9 (decisión del dueño, 25-sep-2026) revisar desde la tabla abre la ventana de hallazgos con lo que ya entró al cargar; «Aplicar» no lo duplica y la fila sigue diciendo cuánto entró", async () => {
     const f = filasT().find((x) => x.nombre === "cuadro de cargas.csv");
     const antes = S.elec.cargas.length;
+    if (!(f.aplicados > 0)) throw new Error("las cargas del CSV no entraron solas al cargar: " + f.detalle);
     await G("cxzRevisar")(f.id);
     const m = w.document.getElementById("modal");
     if (m.hidden || !m.querySelector('[data-act="cx-aplicar"]')) throw new Error("no abrió la ventana de hallazgos");
+    contiene(m.textContent, "aplicado al cargar");
     m.querySelector('[data-act="cx-aplicar"]').dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
     await new Promise((r) => setTimeout(r, 20));
-    if (!(S.elec.cargas.length > antes)) throw new Error("no entraron las cargas");
-    if (!(f.aplicados > 0)) throw new Error("la fila no quedó marcada como aplicada: " + f.detalle);
+    eq(S.elec.cargas.length, antes, "«Aplicar» no vuelve a meter lo que ya entró:");
+    if (!(f.aplicados > 0)) throw new Error("la fila perdió la cuenta de lo aplicado: " + f.detalle);
     contiene(f.detalle, "aplicados");
   });
   await tA("20.10 una hoja de Excel entra igual que un CSV", async () => {
@@ -2912,6 +2914,9 @@ t("16.7 la misma área repartida en las ocho da una carga solar coherente con la
     const idB = S.pid, tablaB = JSON.stringify(filasT()), cargasB = S.elec.cargas.length;
     const lista = G("projList")();
     const A = lista.find((p) => p.name === "OBRA TABLERO 20");
+    /* A tiene sus propias cargas: las que entraron solas de su «cuadro de cargas.csv» al cargarlo (S.56). */
+    const cargasA = A.data.elec.cargas.length, aplicadosA = A.data.cx.archivos.filter((f) => f.motor === "electrico").reduce((s, f) => s + (f.aplicados || 0), 0);
+    if (!(cargasA > 0 && cargasA < cargasB)) throw new Error("el caso no distingue A de B: " + cargasA + " / " + cargasB);
     G("cxzCambiarProyecto")(A.id);
     /* Hay cambios sin guardar en B (lo aplicado desde la tabla): se avisa. */
     const m = w.document.getElementById("modal");
@@ -2920,9 +2925,9 @@ t("16.7 la misma área repartida en las ocho da una carga solar coherente con la
     eq(S.pid, A.id, "proyecto abierto:");
     eq(filasT().length, 6, "la tabla de A es la de A:");
     if (filasT().some((f) => f.nombre === "cargas.xlsx")) throw new Error("un archivo de B apareció en A");
-    eq(S.elec.cargas.length, 0, "las cargas aplicadas en B no están en A:");
+    eq(S.elec.cargas.length, cargasA, "las cargas aplicadas en B no están en A (A sólo trae las suyas):");
     const M = G("cxzEstadoMotores")();
-    if (M.find((x) => x.id === "electrico").aplicados) throw new Error("el estado de motores arrastró lo de B");
+    eq(M.find((x) => x.id === "electrico").aplicados, aplicadosA, "el estado de motores es el de A, no arrastra lo de B:");
     G("cxzCambiarProyecto")(idB);
     eq(S.pid, idB); eq(JSON.stringify(filasT()), tablaB, "la tabla de B volvió intacta:"); eq(S.elec.cargas.length, cargasB, "las cargas de B siguen:");
     const sel = vistaT().querySelector("#cxz-proyecto");
@@ -2980,6 +2985,34 @@ t("16.7 la misma área repartida en las ocho da una carga solar coherente con la
     if (m.hidden || !m.querySelector('[data-act="confirmar-si"]')) throw new Error("borrar no pidió confirmación");
     eq(G("projList")().length, antes, "no se borró antes de confirmar:");
     G("closeModal")();
+  });
+  await tA("S.56 (decisión del dueño, 25-sep-2026) lo que se carga en el tablero entra solo a cada disciplina: los datos claros se aplican al terminar de leerse sin salir del tablero, quedan registrados con su archivo, lo dudoso espera la marca y «Aplicar» después no duplica", async () => {
+    const antes = S.elec.cargas.length;
+    S.tab = "tablero";
+    await G("cxzAgregarArchivos")([archivo("cuadro auto.csv", CSV)]);
+    await esperaCola();
+    const f = filasT().find((x) => x.nombre === "cuadro auto.csv");
+    eq(f.motor, "electrico", "motor por encabezados:"); eq(f.estado, "listo", f.detalle);
+    const entradas = S.elec.cargas.length - antes;
+    if (!(entradas > 0)) throw new Error("las cargas del CSV no entraron solas al eléctrico");
+    eq(f.aplicados, entradas, "la fila cuenta lo que entró:");
+    contiene(f.detalle, "aplicados al cargar");
+    eq(S.tab, "tablero", "la carga automática no saca del tablero:");
+    const lote = S.cx.lotes[S.cx.lotes.length - 1];
+    eq(lote.tab, "electrico", "registro de origen en la disciplina:");
+    if (!lote.aplicados.some((a) => a.archivo === "cuadro auto.csv")) throw new Error("el origen no registra el archivo del que salió cada dato");
+    const P = G("CXZ_LOTES")[f.id].propuestas.filter((p) => p.grupo !== "info");
+    if (P.some((p) => p.aplicado && !(p.confianza >= .8))) throw new Error("entró solo un dato de confianza baja");
+    if (P.some((p) => p.aplicado && p.marcado)) throw new Error("un dato ya aplicado sigue marcado para volver a entrar");
+    const v = vistaT();
+    contiene(v.querySelector(".cxz-motores").textContent, "aplicados", "el estado del motor dice cuánto entró:");
+    await G("cxzRevisar")(f.id);
+    const m = w.document.getElementById("modal");
+    contiene(m.textContent, "aplicado al cargar");
+    m.querySelector('[data-act="cx-aplicar"]').dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 20));
+    eq(S.elec.cargas.length - antes, entradas, "«Aplicar» no duplica lo que entró al cargar:");
+    eq(f.aplicados, entradas, "la cuenta se conserva:");
   });
   t("20.16 los proyectos recientes se ven con su fecha y su semáforo, sin referencias internas ni archivados", () => {
     const v = vistaT();

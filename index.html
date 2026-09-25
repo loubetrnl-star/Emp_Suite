@@ -14272,8 +14272,8 @@ function cxModalHtml(lote) {
       ${lote.propuestas.length ? `<div class="tw" style="margin-top:12px"><table class="cx-tabla">
         <thead><tr><th></th><th>Dato</th><th>Valor</th><th>Origen</th></tr></thead>
         <tbody>${lote.propuestas.map((p, i) => `<tr class="${p.grupo === "info" ? "cx-info" : ""}">
-          <td>${p.grupo === "info" ? "" : `<input type="checkbox" data-cx-prop="${i}" ${p.marcado ? "checked" : ""} aria-label="Aplicar ${esc(p.etiqueta)}">`}</td>
-          <td>${esc(p.etiqueta)}${p.confianza < .8 ? ' <span class="badge warn">revisar</span>' : ""}</td>
+          <td>${p.grupo === "info" ? "" : `<input type="checkbox" data-cx-prop="${i}" ${p.marcado || p.aplicado ? "checked" : ""} ${p.aplicado ? "disabled" : ""} aria-label="${p.aplicado ? "Ya aplicado" : "Aplicar"} ${esc(p.etiqueta)}">`}</td>
+          <td>${esc(p.etiqueta)}${p.aplicado ? ' <span class="badge">aplicado al cargar</span>' : p.confianza < .8 ? ' <span class="badge warn">revisar</span>' : ""}</td>
           <td class="num">${typeof p.valor === "number" ? n(p.valor, 2) : esc(p.valor)} ${esc(p.unidad)}</td>
           <td><div class="sub">${esc(origen(p))}</div>${p.texto ? `<div class="cx-renglon">${esc(p.texto)}</div>` : ""}</td></tr>`).join("")}</tbody>
       </table></div>`
@@ -14285,7 +14285,7 @@ function cxModalHtml(lote) {
         <button class="btn-primary" data-act="cx-nuevo" ${lote.propuestas.length ? "" : "disabled"}>Crear proyecto nuevo con estos datos</button>
         <button class="btn-ghost" data-act="cx-aplicar" ${lote.propuestas.length ? "" : "disabled"}>Aplicar al proyecto abierto</button>
       </div>
-      <div class="hint" style="margin-top:10px"><b>Nada entra a los motores sin tu marca.</b> El proyecto nuevo nace en blanco, independiente del que está abierto y sin nada de trabajos anteriores. Cada dato aplicado queda registrado con su archivo, su página y el renglón del que salió.</div>
+      <div class="hint" style="margin-top:10px"><b>Desde el tablero, los datos claros entran solos al cargar; lo dudoso (marcado «revisar») no entra sin tu marca.</b> El proyecto nuevo nace en blanco, independiente del que está abierto y sin nada de trabajos anteriores. Cada dato aplicado queda registrado con su archivo, su página y el renglón del que salió.</div>
     </div></div>`;
 }
 function cxOrigenHtml(tab) {
@@ -14323,9 +14323,13 @@ function pdfOrigenArchivos(d) {
 }
 
 /* ---------- Aplicar ---------- */
-function cxAplicar(lote, modo) {
+/* rev 2.9.24 (decisión del dueño, 25-sep-2026): lo que se carga en el tablero entra solo a cada disciplina. cxzProcesarFila
+   llama aquí con { quedarse: true } al terminar de leer cada archivo: aplica los datos claros (marcados: confianza ≥ 0.8 y sin
+   ambigüedad) sin salir del tablero. Cada propuesta aplicada queda con `aplicado` y sin marca, para que «Aplicar» desde la
+   ventana de hallazgos no la meta dos veces; lo dudoso sigue esperando la marca. */
+function cxAplicar(lote, modo, opts) {
   if (!lote) return 0;
-  const marcadas = lote.propuestas.filter((p) => p.marcado && p.fn && p.grupo !== "info");
+  const marcadas = lote.propuestas.filter((p) => p.marcado && !p.aplicado && p.fn && p.grupo !== "info");
   histSnap(modo === "nuevo" ? "proyecto nuevo desde archivos" : "datos cargados de archivos");
   if (modo === "nuevo") {
     /* Instancia limpia: el estado inicial, no el proyecto abierto. Se conservan
@@ -14357,6 +14361,7 @@ function cxAplicar(lote, modo) {
       else if (r && r.consumo) consumos.push(r.consumo);
       else if (r && r.equipo) equipos.push(r.equipo);
       aplicados.push({ etiqueta: p.etiqueta, destino: p.destino, valor: typeof p.valor === "number" ? +p.valor.toFixed(3) : String(p.valor).slice(0, 120), unidad: p.unidad, archivo: p.archivo, pagina: p.pagina, texto: p.texto });
+      p.aplicado = true; p.marcado = false;
     } catch { /* un dato que no se pudo escribir no tumba los demás */ }
   });
   /* Colecciones: en proyecto nuevo reemplazan al renglón de ejemplo; en el
@@ -14383,7 +14388,7 @@ function cxAplicar(lote, modo) {
     avisos: lote.fuentes.flatMap((F) => F.avisos).slice(0, 12),
   });
   if (S.cx.lotes.length > CX_MAX_LOTES) S.cx.lotes = S.cx.lotes.slice(-CX_MAX_LOTES);
-  S.tab = lote.tab;
+  if (!(opts && opts.quedarse)) S.tab = lote.tab;
   /* En proyecto nuevo el deshacer no puede volver al anterior: ese ya quedó
      guardado con su propio id y no debe reescribirse desde aquí. */
   if (modo === "nuevo") { histReiniciar(); projSave(true); } else projAutosave();
@@ -15063,7 +15068,14 @@ async function cxzProcesarFila(fila) {
     const claro = cxzMensajeClaro(F.avisos, fila);
     if (!utiles.length && claro) { fila.estado = "error"; fila.detalle = claro; }
     else if (!utiles.length) { fila.estado = "listo"; fila.detalle = `sin datos para ${CXZ_MOTOR_NOMBRE[fila.motor] || fila.motor} · prueba otro motor o revísalo a mano`; }
-    else { fila.estado = "listo"; fila.detalle = `${utiles.length} dato(s) propuestos · ${utiles.filter((p) => p.marcado).length} marcados${claro ? " · " + claro : ""}`; }
+    else {
+      /* rev 2.9.24 (decisión del dueño): los datos claros entran solos a su disciplina al terminar de leerse; los dudosos
+         esperan la marca en la ventana de hallazgos. */
+      const k = utiles.some((p) => p.marcado && p.fn) ? cxAplicar(lote, "abierto", { quedarse: true }) : 0;
+      fila.aplicados = k;
+      const dudosos = utiles.length - k;
+      fila.estado = "listo"; fila.detalle = `${utiles.length} dato(s) propuestos · ${k} aplicados al cargar${dudosos ? ` · ${dudosos} por revisar` : ""}${claro ? " · " + claro : ""}`;
+    }
   } catch (e) {
     if (!vigente()) return;
     fila.estado = "error"; fila.detalle = "El archivo no se pudo leer completo: " + String(e && e.message || e).slice(0, 100) + ". Vuelve a exportarlo o cárgalo en otro formato.";
@@ -15131,7 +15143,7 @@ document.addEventListener("click", (e) => {
        fila. Lo aplicado se guarda ahí, así que la tabla debe decir lo mismo:
        si no, el motor asignado miente sobre a dónde fueron los datos. */
     if (CXZ_MOTOR_NOMBRE[lote.tab] && lote.tab !== f.motor) f.motor = lote.tab;
-    f.aplicados = lote.propuestas.filter((p) => p.marcado && p.grupo !== "info").length;
+    f.aplicados = lote.propuestas.filter((p) => p.aplicado && p.grupo !== "info").length;
     f.estado = "listo"; f.detalle = `${f.aplicados} dato(s) aplicados de ${f.propuestas}`;
     projAutosave(); if (S.tab === "tablero") render();
   }, 0);
@@ -15375,9 +15387,9 @@ function cxzZonaCargaHtml() {
   return `<div class="cxz-drop" role="group" aria-label="Cargar archivos del proyecto ejecutivo: arrastra aquí o usa los botones">
     <div class="cxz-drop-ic">${iconoSvg("proyecto", 38)}</div>
     <div class="cxz-drop-t">Arrastra aquí el proyecto ejecutivo</div>
-    <div class="cxz-drop-s">ZIP completo, carpeta, planos DWG/DXF, memorias PDF, hojas XLSX/CSV, fotos JPG/PNG. Un ZIP se abre y se reparte solo entre los motores; lo que no se reconozca queda enlistado con su motivo.</div>
+    <div class="cxz-drop-s">ZIP completo, carpeta, planos DWG/DXF, memorias PDF, hojas XLSX/CSV, fotos JPG/PNG. Un ZIP se abre y se reparte solo entre los motores, y los datos claros de cada archivo entran solos a su disciplina; lo que no se reconozca queda enlistado con su motivo.</div>
     <div class="cxz-drop-b"><button class="btn-primary" data-act="cxz-elegir">Elegir archivos</button><button class="btn-ghost" data-act="cxz-carpeta">Elegir carpeta</button></div>
-    <div class="cxz-drop-n">Todo se procesa en este dispositivo. Nada sale a internet. Ningún dato entra a un motor sin tu marca.</div>
+    <div class="cxz-drop-n">Todo se procesa en este dispositivo. Nada sale a internet. Los datos claros entran solos; lo dudoso no entra a un motor sin tu marca.</div>
   </div>`;
 }
 function cxzTablaHtml() {
