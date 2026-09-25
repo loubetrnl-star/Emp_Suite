@@ -4797,28 +4797,17 @@ t("Q.2 H-50 la amplificación sísmica ASCE 7-16 se alimenta con la altura real 
   } finally { S.soporte = sop0; G("recompute")(); }
 });
 
-t("Q.3 H-56 la altura de colgado se propone desde la altura de trabajo, nunca queda en el respaldo fijo de 0.50 m", () => {
+t("Q.3 H-56 / H-225 la altura de colgado no vuelve al respaldo fijo de 0.50 m ni se deriva de la altura de trabajo: capturada manda (más altura, más ML); sin captura la varilla queda pendiente y la altura de trabajo sólo se sugiere", () => {
   const sop0 = JSON.parse(JSON.stringify(S.soporte)), hidro0 = JSON.parse(JSON.stringify(S.hidro));
   try {
-    /* Arranque en ceros: sin tramos capturados no hay ML de varilla que
-       mueva la altura de trabajo. */
     S.hidro = { ...G("defaultHidro")(), material: "acero",
       tramos: [{ ...G("defaultTramoAgua")("AF-GENERAL"), um: 72, L: 25, alt: 3 }, { ...G("defaultTramoAgua")("AF-RAMAL BAÑOS"), um: 20, L: 18, alt: 3 }] };
-    S.soporte = { ...G("defaultSoporte")(), alturaTrabajo: 8 };
-    G("recompute")();
-    const conOcho = G("SOPORTE").sopcalc.despiece.varilla_m;
-    const mlOcho = Object.values(conOcho).reduce((a, m) => a + m, 0);
-    S.soporte = { ...G("defaultSoporte")(), alturaTrabajo: 3 };
-    G("recompute")();
-    const conTres = G("SOPORTE").sopcalc.despiece.varilla_m;
-    const mlTres = Object.values(conTres).reduce((a, m) => a + m, 0);
-    if (!(mlOcho > mlTres)) throw new Error(`más altura de trabajo debe dar más ML de varilla: 8m=${mlOcho}, 3m=${mlTres}`);
-    /* La captura explícita de altura de colgado sustituye la derivada. */
-    S.soporte = { ...G("defaultSoporte")(), alturaTrabajo: 8, alturaColgadoM: 1 };
-    G("recompute")();
-    const conCaptura = G("SOPORTE").sopcalc.despiece.varilla_m;
-    const mlCaptura = Object.values(conCaptura).reduce((a, m) => a + m, 0);
-    if (!(mlCaptura < mlOcho)) throw new Error("alturaColgadoM capturada (1 m) debe dar menos ML que la derivada de 8 m de trabajo");
+    const ml = () => Object.values(G("SOPORTE").sopcalc.despiece.varilla_m).reduce((a, m) => a + m, 0);
+    S.soporte = { ...G("defaultSoporte")(), alturaTrabajo: 8 }; G("recompute")();
+    eq(ml(), 0, "sin captura no hay ML de varilla (ni 0.5 m ni la altura de trabajo):"); contiene(G("SOPORTE").colgadoSugerido + "", "8", "la altura de trabajo se sugiere:");
+    S.soporte = { ...G("defaultSoporte")(), alturaTrabajo: 8, alturaColgadoM: 2 }; G("recompute")(); const dos = ml();
+    S.soporte = { ...G("defaultSoporte")(), alturaTrabajo: 8, alturaColgadoM: 1 }; G("recompute")(); const uno = ml();
+    if (!(dos > uno && uno > 0)) throw new Error("con captura, más altura de colgado debe dar más ML: 2 m=" + dos + ", 1 m=" + uno);
   } finally { S.soporte = sop0; S.hidro = hidro0; G("recompute")(); }
 });
 
@@ -5552,10 +5541,12 @@ t("S.20 un proyecto guardado con la versión anterior (formato 1, rev 2.9.13) ab
      quoteDirect → 4959518.087352686 · quoteSub → 7496807.540842321 · quoteTot → 8696296.747377092.
      H-215 (aire v3, quote v10): el secador pasa de FAD requerido / (0.92 × fP) a todo el caudal del compresor a la capacidad
      nominal de ISO 7183 A1 (897.6 / 0.8... → 1,164.4 L/min): quoteDirect → 4961974.7391384 · quoteSub → 7500521.015681606 ·
-     quoteTot → 8700604.378190663. */
+     quoteTot → 8700604.378190663.
+     H-225 (soporte v5, quote v13): sin altura de colgado capturada la varilla queda pendiente (antes 7.2 m por varilla):
+     quoteDirect → 4957294.7391384 · quoteSub → 7493446.727681606 · quoteTot → 8692398.204110663. */
   const MOVIDOS_2916 = { tons: [18.584787, 12.943837], cfm: [5114.572875, 5815.981512], sysTarget: [20.443265161623447, 14.238221145934492],
-    hidroQ: [3.924, 4.05985437], quoteDirect: [6704014.747352686, 4961974.7391384], partidas: [6704014.747352686, 4961974.7391384],
-    quoteSub: [10133788.69209832, 7500521.015681606], quoteTot: [11755194.88283405, 8700604.378190663] };
+    hidroQ: [3.924, 4.05985437], quoteDirect: [6704014.747352686, 4957294.7391384], partidas: [6704014.747352686, 4957294.7391384],
+    quoteSub: [10133788.69209832, 7493446.727681606], quoteTot: [11755194.88283405, 8692398.204110663] };
   Object.entries(MOVIDOS_2916).forEach(([k, [antes]]) => eq(esperado.resumen[k], antes, `${k}: el «antes» es el de la 2.9.13:`));
   Object.entries(esperado.resumen).forEach(([k, v]) => eq(r[k], k in MOVIDOS_2916 ? MOVIDOS_2916[k][1] : v, `${k} igual al de la versión ${esperado.generadoCon}${k in MOVIDOS_2916 ? " con la decisión 2.9.16" : ""}:`));
   eq((G("QUOTE").pendientes || []).filter((p) => p.mot === "hidro").map((p) => p.motivo.split(" (")[0]).join(","), "pendiente de longitud,pendiente de volumen", "la red y la cisterna (0 unidades de dotación) quedan pendientes (H-196):"); /* rev 2.9.23: la importación siempre está pendiente aparte */
@@ -6914,6 +6905,28 @@ t("S.72 (H-231) al aceptar la instantánea motores>soporte las bases de equipo s
     eq(S.soporte.snap.nEquip, 3, "la instantánea guardó 3:");
     eq(G("SOPORTE").nEquipos, 3, "gobernado: las bases siguen siendo 3 (antes 2: se perdía el compresor):");
     eq(bases(), enVivo, "las partidas de base no cambian al aceptar la instantánea:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+t("S.73 (H-225) la altura de colgado se captura en pantalla; sin captura la varilla roscada queda pendiente (aviso, memoria y cotización) en vez de tomar la altura de trabajo (7.2 m por varilla); con captura, ML = soportes × altura", () => {
+  const guardado = JSON.stringify(S);
+  const varilla = () => (G("SOPORTE").part || []).filter((p) => /^Varilla/.test(p.desc));
+  try {
+    G("importarRespaldo")(fs.readFileSync("parches/regresion-motores/regresion-motores.emp.json", "utf8")); S.tab = "tablero"; G("KZ_CACHE").key = null; G("VZ_CACHE").key = null; G("recompute")();
+    eq(S.soporte.alturaColgadoM || 0, 0, "el proyecto fijo no captura altura de colgado:");
+    let R = G("SOPORTE");
+    eq(varilla().length, 0, "sin captura no hay partida de varilla con importe (antes 633.6 ML = 41,184 MXN):");
+    eq(R.colgadoPendiente, true, "queda pendiente:");
+    if (!R.avisos.some((a) => /colgado/.test(a.msg) && /pendiente/.test(a.msg))) throw new Error("falta el aviso de altura de colgado pendiente");
+    if (!(G("QUOTE").pendientes || []).some((p) => p.mot === "soporte" && /[Vv]arilla/.test(p.desc))) throw new Error("la cotización no declara la varilla pendiente");
+    S.tab = "soporte"; G("render")();
+    const campo = w.document.querySelector('#view input[data-path="soporte.alturaColgadoM"]');
+    if (!campo) throw new Error("no hay campo de altura de colgado en la pantalla de soportería");
+    S.soporte.alturaColgadoM = 1.2; G("recompute")(); R = G("SOPORTE");
+    eq(R.colgadoPendiente, false, "con captura no está pendiente:");
+    const ml = varilla().reduce((a, p) => a + p.qty, 0);
+    cerca(ml, R.nSoportes * 1.2, 0.05, "ML = soportes × 1.2 m (una varilla por soporte):");
+    if (R.avisos.some((a) => /colgado/.test(a.msg) && /pendiente/.test(a.msg))) throw new Error("con captura no debe haber aviso de colgado pendiente");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 

@@ -8071,7 +8071,12 @@ function computeSoporte(Gc) {
      propone la altura de trabajo ya calculada arriba como aproximación de
      nivel de proyecto, y el campo de captura la sustituye si el usuario la
      corrige. Reemplaza el respaldo fijo de 0.50 m que traía despiece(). */
-  const alturaColgado = num(Gc.alturaColgadoM, 0) > 0 ? num(Gc.alturaColgadoM) : hTrab;
+  /* H-225 (rev 2.9.24, soporte v5; «nada se estima»): la altura de colgado se captura en pantalla. Sin captura NO se toma la
+     altura de trabajo (7.2 m por varilla en el proyecto fijo: 633.6 ML inventados): la varilla queda pendiente, con aviso, memoria
+     y pendiente en la cotización; la altura de trabajo sólo se sugiere en el campo. */
+  const colgadoCapturado = num(Gc.alturaColgadoM, 0) > 0;
+  const alturaColgado = colgadoCapturado ? num(Gc.alturaColgadoM) : 0;
+  const colgadoSugerido = hTrab;
   /* H-50: sin captura de altura de montaje por tramo tampoco, se trata TODA
      la instalación como si corriera al nivel de la estructura (z = h = altura
      de zona): es el caso de instalación de azotea/cercana a cubierta, que es
@@ -8265,8 +8270,10 @@ function computeSoporte(Gc) {
   /* H-56: mismo criterio de altura de colgado que el resto del despiece —
      antes 0.5 m fijo aquí también, ahora la misma alturaColgado derivada. */
   plastResultados.forEach((p) => { if (p.varilla) varMerge[p.varilla] = redondo((varMerge[p.varilla] || 0) + p.n * alturaColgado, 2); });
-  Object.entries(varMerge).forEach(([id, m]) => P(`Varilla roscada ${id} galvanizada, incluye corte y habilitado`, "ML", m, PU_SOP_VARILLA[id] || 300, "MSS SP-58 tabla 3",
+  const colgadoPendiente = !colgadoCapturado && Object.values(R.despiece.anclajes_pza || {}).some((c) => c > 0);
+  if (!colgadoPendiente) Object.entries(varMerge).forEach(([id, m]) => P(`Varilla roscada ${id} galvanizada, incluye corte y habilitado`, "ML", m, PU_SOP_VARILLA[id] || 300, "MSS SP-58 tabla 3",
     `${id} galvanized threaded rod, includes cutting and setup`));
+  if (colgadoPendiente) avisos.push({ lvl: "warn", msg: `Varilla roscada pendiente: no hay altura de colgado capturada (sugerencia: la altura de trabajo, ${n(colgadoSugerido, 1)} m). Sin captura no se cuentan metros de varilla (H-225).` });
   Object.entries(R.despiece.perfil_m).forEach(([id, m]) => { const p = C_SOP.PERFILES.find((x) => x.id === id); P(`${p.nombre}, incluye corte y anticorrosivo`, "ML", m, PU_SOP_PERFIL[id] || 250, "Trapecio revisado a flexión y deflexión · ASD",
     `${p.nombreEn}, includes cutting and anticorrosive coating`); });
   Object.entries(R.despiece.anclajes_pza).forEach(([id, cnt]) => P(`Anclaje ${id} a concreto, incluye barrenado y limpieza de barreno`, "PIEZA", cnt, PU_SOP_ANCLAJE[id] || 150, "ACI 318-19 cap. 17 · predimensionado, ratificar contra el ESR del fabricante",
@@ -8310,7 +8317,7 @@ function computeSoporte(Gc) {
   if (part.length) memo.push(`Elevación: ${equipo.label.toLowerCase()} por altura de trabajo de ${n(hTrab, 1)} m. ${equipo.nota} NOM-009-STPS exige equipo certificado y personal capacitado para trabajos en altura.`);
 
   return { porTuberia, mDucto, mTub, nSoportes, nLong, nTrans, mArriostrable,
-    hTrab, equipo, meses, mesesPendiente, nEquipos, part, total, avisos, memo,
+    hTrab, equipo, meses, mesesPendiente, nEquipos, part, total, avisos, memo, alturaColgado, colgadoCapturado, colgadoPendiente, colgadoSugerido,
     sopcalc: R };   // corrida completa de SoporteCalc, por si se quiere el detalle fino
 }
 
@@ -8556,6 +8563,8 @@ function computeQuote() {
      solo se pasan al catálogo. La cuantificación es del motor, no de la
      cotización, para que el metraje y el importe no puedan divergir. */
   /* H-232: la renta de elevación sin meses capturados se declara pendiente en la cotización. */
+  if (typeof SOPORTE !== "undefined" && SOPORTE && SOPORTE.colgadoPendiente && linkAllowed("soporte>quote"))
+    pendientes.push({ mot: "soporte", desc: `Varilla roscada de los soportes (${SOPORTE.nSoportes} soportes)`, descEn: `Threaded rod for the supports (${SOPORTE.nSoportes} supports)`, motivo: "pendiente de altura de colgado (sin captura no se supone)", motivoEn: "hanging height pending (not assumed without capture)" });
   if (typeof SOPORTE !== "undefined" && SOPORTE && SOPORTE.mesesPendiente && (SOPORTE.part || []).length && linkAllowed("soporte>quote"))
     pendientes.push({ mot: "soporte", desc: `Renta de elevación (${SOPORTE.equipo ? SOPORTE.equipo.label.toLowerCase() : "equipo"}, altura de trabajo ${n(SOPORTE.hTrab, 1)} m)`, descEn: `Lift rental (${SOPORTE.equipo ? SOPORTE.equipo.labelEn.toLowerCase() : "equipment"}, working height ${n(SOPORTE.hTrab, 1)} m)`, motivo: "pendiente de meses de renta (sin captura no se suponen)", motivoEn: "rental months pending (not assumed without capture)" });
   if (verCiv && CIVIL && CIVIL.total > 0) {
@@ -18020,7 +18029,7 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "5", clean: "3", equip: "1", duct: "1", vent: "3", quote: "12", valor: "1", kaizen: "1", elec: "8", hidro: "8", fuego: "3", aire: "5", civil: "3", soporte: "4" };
+const MOTOR_VER = { load: "5", clean: "3", equip: "1", duct: "1", vent: "3", quote: "13", valor: "1", kaizen: "1", elec: "8", hidro: "8", fuego: "3", aire: "5", civil: "3", soporte: "5" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
@@ -18031,7 +18040,7 @@ const MOTOR_CAMBIOS = {
     { ver: "3", rev: "2.9.24", que: "H-155: sin medidas no hay caudal: campana sin largo o fondo y rejilla sin ancho, alto, área libre o velocidad dan demanda 0 con aviso (antes pisos de 0.1 ft, 5 % y 100 fpm fabricaban 30 y 258 CFM y sus partidas)" }],
   clean: [{ ver: "2", rev: "2.9.16", que: "sin pisos de 1 m² ni 2.2 m; 5 Pa de ISO 14644-4 con aviso; ceros capturados respetados" },
     { ver: "3", rev: "2.9.24", que: "H-127: se respeta el signo de la presión diferencial capturada (contención en negativa, EU GMP Anexo 1 (2022) §4.14); piso de 5 Pa y fuga por rendijas sobre |ΔP|; el signo sale en memoria, PDF y Excel; aviso con los 10 Pa guía del Anexo 1" }],
-  quote: [{ ver: "2", rev: "2.9.16", que: "red hidráulica por diámetro con precio capturado; sin 50 m supuestos; partidas pendientes" }, { ver: "3", rev: "2.9.19", que: "tramo con longitud y sin unidades mueble queda pendiente" }, { ver: "4", rev: "2.9.23", que: "precio de tubería por renglón con origen (referencia de mercado o proveedor local), IVA desglosado y por metro; sin precio: partida Por cotizar en el Budget, bloqueo sólo en la formal" }, { ver: "5", rev: "2.9.23", que: "precios en USD sólo se convierten con tipo de cambio capturado con fecha; sin fecha salen Por cotizar y bloquean la formal (nada se estima)" }, { ver: "6", rev: "2.9.23", que: "referencias sólo de California y sólo material (mano de obra por capturar; combinados → Por cotizar); referencias IUSA retiradas; flete, aduana e importación como renglón propio siempre Por cotizar hasta capturarlo" }, { ver: "7", rev: "2.9.24", que: "H-198: un tramo de agua sin diámetro verificado (fuera del catálogo del material, o PEAD sin SDR ni fuente) va Por cotizar con sus metros; ya no se cotiza con el precio del mayor diámetro ni pide precio de un diámetro que no le corresponde" }, { ver: "8", rev: "2.9.24", que: "H-196: cisterna y equipo de bombeo sin precio semilla (9,500 MXN/m³ y 14,500 MXN/HP sin fuente): van Por cotizar con su volumen y su potencia; la bomba sólo cuando la presión de la red no alcanza; cisterna en 0 queda pendiente de volumen, nunca cisterna de 0 m³" }, { ver: "9", rev: "2.9.24", que: "H-206: bomba contra incendio y reserva sin precio fijo (385,000 MXN + 9,500 MXN/m³ sin fuente): Por cotizar con capacidad (gpm y L/min), presión, potencia y volumen declarados" }, { ver: "10", rev: "2.9.24", que: "dependencia de aire v3 (H-215): la partida del secador lleva la capacidad nominal de ISO 7183 A1 y declara si la corrección del fabricante está pendiente" }, { ver: "11", rev: "2.9.24", que: "dependencia de aire v5 (H-218): la partida de la red declara «diámetros indicativos: DI del fabricante pendiente» en aluminio e inoxidable" }, { ver: "12", rev: "2.9.24", que: "dependencia de vent v2 (H-154): la partida de ventilación nombra el modelo que cubre de verdad (o ninguno)" }],
+  quote: [{ ver: "2", rev: "2.9.16", que: "red hidráulica por diámetro con precio capturado; sin 50 m supuestos; partidas pendientes" }, { ver: "3", rev: "2.9.19", que: "tramo con longitud y sin unidades mueble queda pendiente" }, { ver: "4", rev: "2.9.23", que: "precio de tubería por renglón con origen (referencia de mercado o proveedor local), IVA desglosado y por metro; sin precio: partida Por cotizar en el Budget, bloqueo sólo en la formal" }, { ver: "5", rev: "2.9.23", que: "precios en USD sólo se convierten con tipo de cambio capturado con fecha; sin fecha salen Por cotizar y bloquean la formal (nada se estima)" }, { ver: "6", rev: "2.9.23", que: "referencias sólo de California y sólo material (mano de obra por capturar; combinados → Por cotizar); referencias IUSA retiradas; flete, aduana e importación como renglón propio siempre Por cotizar hasta capturarlo" }, { ver: "7", rev: "2.9.24", que: "H-198: un tramo de agua sin diámetro verificado (fuera del catálogo del material, o PEAD sin SDR ni fuente) va Por cotizar con sus metros; ya no se cotiza con el precio del mayor diámetro ni pide precio de un diámetro que no le corresponde" }, { ver: "8", rev: "2.9.24", que: "H-196: cisterna y equipo de bombeo sin precio semilla (9,500 MXN/m³ y 14,500 MXN/HP sin fuente): van Por cotizar con su volumen y su potencia; la bomba sólo cuando la presión de la red no alcanza; cisterna en 0 queda pendiente de volumen, nunca cisterna de 0 m³" }, { ver: "9", rev: "2.9.24", que: "H-206: bomba contra incendio y reserva sin precio fijo (385,000 MXN + 9,500 MXN/m³ sin fuente): Por cotizar con capacidad (gpm y L/min), presión, potencia y volumen declarados" }, { ver: "10", rev: "2.9.24", que: "dependencia de aire v3 (H-215): la partida del secador lleva la capacidad nominal de ISO 7183 A1 y declara si la corrección del fabricante está pendiente" }, { ver: "11", rev: "2.9.24", que: "dependencia de aire v5 (H-218): la partida de la red declara «diámetros indicativos: DI del fabricante pendiente» en aluminio e inoxidable" }, { ver: "12", rev: "2.9.24", que: "dependencia de vent v2 (H-154): la partida de ventilación nombra el modelo que cubre de verdad (o ninguno)" }, { ver: "13", rev: "2.9.24", que: "dependencia de soporte v5 (H-225): sin altura de colgado la varilla sale pendiente, no cotizada" }],
   elec: [{ ver: "2", rev: "2.9.16", que: "canalización con las áreas del conductor de la memoria (THW-LS por omisión, NOM-001-SEDE Cap. 10 Tabla 5)" }, { ver: "3", rev: "2.9.18", que: "siete áreas THHN/THWN-2 corregidas a la Tabla 5" }, { ver: "4", rev: "2.9.19", que: "sin compresor de aire cuando no hay demanda" },
     { ver: "5", rev: "2.9.24", que: "H-183: conductor de puesta a tierra con la Tabla 250-122 de la NOM-001-SEDE-2012 (p. 151): 400 A → 2 AWG (antes 3 AWG, valor del NEC), renglones hasta 6000 A y columna de aluminio (hasta 100 A la tabla sólo da cobre)" },
     { ver: "6", rev: "2.9.24", que: "H-177: equipo con motocompresor hermético con MCA y MOP por el art. 440: conductor por la MCA de placa (440-4(b), 440-35; una MCA estimada por la suite no lo baja del 125 %) y protección igual al MOP o al valor inmediato inferior de 240-6(a) completo (16, 32, 63 A; abajo de 15 A sólo fusibles de 1, 3, 6, 10 A), sin el 250 % de la Tabla 430-52 (40VMA-240: 150 → 90 A; 40MBC-24: 25 → 15 A). Aceptar la cédula conserva MCA y MOP (marcados estimados); una carga sin kW no fija el principal" },
@@ -18051,7 +18060,8 @@ const MOTOR_CAMBIOS = {
   civil: [{ ver: "2", rev: "2.9.16", que: "sin área clasificada no hay partidas de área clasificada" }, { ver: "3", rev: "2.9.19", que: "un cuarto limpio vacío no cuenta como área clasificada" }],
   soporte: [{ ver: "2", rev: "2.9.16", que: "renta de elevación sólo con algo que montar" },
     { ver: "3", rev: "2.9.24", que: "H-232: 0 meses de renta capturados se respetan (sin renta) y sin captura la renta queda pendiente con aviso (antes el 0 se volvía 1 mes y la omisión 3)" },
-    { ver: "4", rev: "2.9.24", que: "H-231: con la instantánea motores>soporte aceptada las bases de equipo salen de snap.nEquip (antes el conteo en vivo perdía el compresor: 3 → 2)" }],
+    { ver: "4", rev: "2.9.24", que: "H-231: con la instantánea motores>soporte aceptada las bases de equipo salen de snap.nEquip (antes el conteo en vivo perdía el compresor: 3 → 2)" },
+    { ver: "5", rev: "2.9.24", que: "H-225: la altura de colgado se captura en pantalla; sin captura la varilla roscada queda pendiente (antes se tomaba la altura de trabajo: 633.6 ML en el proyecto fijo)" }],
 };
 const motorVer = (id) => MOTOR_VER[id] || "1";
 function cambiosMotorTexto(id, desde) { return (MOTOR_CAMBIOS[id] || []).filter((c) => +c.ver > +(desde || 1)).map((c) => `v${c.ver} (rev ${c.rev}): ${c.que}`).join("; ") || "cambio de lógica del motor"; }
@@ -20742,7 +20752,8 @@ function viewSoporte() {
       ${sel("Arriostramiento sísmico", "soporte.sismico", [[true, "Sí, se incluye"], [false, "No, se declara como exclusión"]])}
       <div class="row">
         ${inp("Altura de trabajo (m, 0 = la mayor de las zonas + 1.2 m, mínimo 3 m)", "soporte.alturaTrabajo", "number", "0.5", "sop.ht", G)}
-        ${inp("Meses de renta de elevación", "soporte.mesesElevacion", "number", "1", "sop.me", G)}
+        ${inp("Meses de renta de elevación (vacío = pendiente)", "soporte.mesesElevacion", "number", "1", "sop.me", G)}
+        ${inp(`Altura de colgado (m) · sin captura la varilla queda pendiente; sugerencia: altura de trabajo ${n(R.colgadoSugerido || 0, 1)} m`, "soporte.alturaColgadoM", "number", "0.1")}
       </div>
       <div class="row">
         ${inp("Bases de equipo (0 = contar los seleccionados)", "soporte.basesEquipo", "number", "1", "sop.be", G)}

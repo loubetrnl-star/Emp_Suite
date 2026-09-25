@@ -8,6 +8,7 @@ módulo `pruebas-motores/soporte.mjs` (12 pruebas), compuerta `parches/mutantes/
 | Hallazgo | Estado | Qué cambió |
 |---|---|---|
 | H-232 (0 meses → 1; omisión = 3 meses) | **Cerrado** (soporte v2 → v3, 25-sep-2026) | `mesesPendiente` (sin captura) y `meses = max(0, capturado)`; sin partida de renta con 0 o sin captura; aviso en el motor y pendiente en la cotización; `defaultSoporte().mesesElevacion` null. Prueba S.71; fila 11c.a de fase2 a vigente; mutante m08 reapuntado (piso de 1 mes): MUERTO. |
+| H-225 (colgado = altura de trabajo sin captura) | **Cerrado** (soporte v4 → v5, quote v12 → v13 por dependencia, 25-sep-2026) | Campo «Altura de colgado (m)» en pantalla (con la altura de trabajo como sugerencia); sin captura `colgadoPendiente`: sin partida de varilla, aviso, pendiente en la cotización. Prueba S.73; Q.3 reescrita (capturada manda; sin captura 0 ML); fila 15.g de fase2 a vigente y 11.j sin varilla (soporte.csv regenerado). Mutante m45 reapuntado (vuelve a la altura de trabajo): MUERTO. Proyecto fijo: 385,760 → 344,576 MXN. |
 | H-231 (bases 3 → 2 al aceptar la instantánea) | **Cerrado** (soporte v3 → v4, 25-sep-2026) | En modo gobernado `nEquipos = snap.nEquip` (el sustituto QUOTE lleva `deSnap`). Prueba S.72; fila 11d.a de fase2 a vigente; mutante m47 reapuntado (deSnap falso): MUERTO. |
 
 ## 0. Cambios de entrada por otros motores
@@ -22,7 +23,7 @@ módulo `pruebas-motores/soporte.mjs` (12 pruebas), compuerta `parches/mutantes/
 | Prueba | Línea | Qué consagra | Hallazgo |
 |---|---|---|---|
 | L.2 | 3793 | cobre ½"–¾" a 1.8 m y «la misma cifra que el motor» para ½"–1¼"; MSS SP-58-2018 (PHD) da 5 ft = 1.52 m; el mínimo MSS/IPC (decisión 4) es 1.52 m | H-229 |
-| Q.3 | 4326 | «más altura de trabajo → más ML de varilla»: altura de colgado = altura de trabajo sin captura (7.2 m por varilla, 633.6 ML en el proyecto de regresión) | H-225 |
+| ~~Q.3~~ | reescrita en H-225 (25-sep-2026): capturada manda; sin captura 0 ML y sugerencia | H-225 |
 | R.1 | 5898 | golden de 385,760 MXN: contiene el colgado = trabajo, el anclaje M10 con SDS 1.0 supuesto, una varilla por soporte de ducto rectangular y las 3 bases en vivo | H-225, H-226, H-227, H-231 |
 | 22.8 | 3232 | no protege un error de soportería, pero fija los diámetros de hidro (52.5/35.05 acero, 63/43.59 CPVC) que aquí son ENTRADA; si hidro los mueve en su Fase 2, truena 22.8 y CM.soporte.7/15 (precondición) | dependencia hidro |
 
@@ -38,7 +39,7 @@ módulo `pruebas-motores/soporte.mjs` (12 pruebas), compuerta `parches/mutantes/
 | CM.soporte.4.r / 4.s | H-228 | CPVC 4" y 6" 1.219 m | 1.8 | IPC 2009 T308.5 (CPVC ≥ 1¼": 4 ft) |
 | CM.soporte.5.e | H-227 | ducto rectangular 2 varillas por soporte | 1 | SMACNA DCS Tabla 5-1 «pair» · **BLOQUEADO: requiere texto** |
 | CM.soporte.7.h / 7.i | H-228 | termoplástico: 38 anclas y 304 tuercas/rondanas (una ancla y 4+4 por soporte, mismo criterio del despiece) | 0 / 0 | H-228; la cantidad exacta depende de cómo la Fase 2 sume el camino propio al despiece (ajustar la fila si se decide otro conteo) |
-| CM.soporte.15.g | H-225 | sin altura de colgado capturada: 0 partidas de varilla con importe (pendiente) | 1 | «Nada se estima» (regla 6). La expresión supone que la Fase 2 deja la partida sin importe o la retira; si opta por otra señal, ajustar la expresión |
+| ~~CM.soporte.15.g~~ | H-225 | **vigente desde el 25-sep-2026** | = esperado | «Nada se estima» (regla 6). La expresión supone que la Fase 2 deja la partida sin importe o la retira; si opta por otra señal, ajustar la expresión |
 | CM.soporte.15.h | H-226 | sin SDS/estructura/f'c con fuente: 0 partidas de anclaje con importe (Por cotizar) | 1 | ídem |
 | ~~CM.soporte.11c.a~~ | H-232 | **vigente desde el 25-sep-2026** | = esperado | política de pisos 2.9.16 |
 | ~~CM.soporte.11d.a~~ | H-231 | **vigente desde el 25-sep-2026** | = esperado | H-231 |
@@ -51,7 +52,7 @@ módulo `pruebas-motores/soporte.mjs` (12 pruebas), compuerta `parches/mutantes/
 | soporte.m06 | H-228 | termoplástico > 3" a 3.0 m; sólo se mataría afirmando el 1.8 m actual (el correcto es 1.22) |
 | soporte.m08 | H-232 | reapuntado al cierre: vuelve a poner el piso de 1 mes; MUERTO (S.71, 11c.a) |
 | soporte.m16 | H-227 | par de varillas en ducto rectangular; lo matan R.1/S.20 afirmando 1 varilla (SMACNA bloqueado) |
-| soporte.m45 | H-225 | colgado sin captura 0.5 m en vez de la altura de trabajo; sólo se mata afirmando colgado = trabajo |
+| soporte.m45 | H-225 | reapuntado al cierre: sin captura vuelve a la altura de trabajo; MUERTO (S.73, Q.3, 15.g, R.1) |
 | soporte.m46 | H-226 | SDS por omisión 0.5 en vez de 1.0 (valor por omisión, `logica: false`); sólo se mata afirmando el supuesto |
 | soporte.m47 | H-231 | reapuntado al cierre: `deSnap` falso vuelve al conteo en vivo; MUERTO (S.72, 11d.a) |
 

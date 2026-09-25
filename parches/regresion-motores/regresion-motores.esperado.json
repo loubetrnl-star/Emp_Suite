@@ -110,11 +110,11 @@
    }
   },
   "quote": {
-   "ver": "12",
+   "ver": "13",
    "cifras": {
-    "direct": 10607684.847310027,
-    "sub": 16034576.415193837,
-    "tot": 18600108.641624853,
+    "direct": 10566500.847310027,
+    "sub": 15972322.680793839,
+    "tot": 18527894.30972085,
     "aux": [
      [
       "Instalación mecánica, bases, izaje y arranque (35 % del equipo)",
@@ -252,11 +252,6 @@
       70000
      ],
      [
-      "Varilla roscada 3/8\" galvanizada, incluye corte y habilitado",
-      633.6,
-      41184
-     ],
-     [
       "Anclaje M10 a concreto, incluye barrenado y limpieza de barreno",
       88,
       8360
@@ -325,7 +320,8 @@
     "pendientes": [
      "Flete, aduana e importación a México",
      "Mano de obra de tubería hidráulica (rendimientos y costos propios; la referencia de mercado sólo cubre material)",
-     "Cisterna"
+     "Cisterna",
+     "Varilla roscada de los soportes (88 soportes)"
     ]
    }
   },
@@ -535,16 +531,11 @@
    }
   },
   "soporte": {
-   "ver": "4",
+   "ver": "5",
    "cifras": {
     "n": 88,
-    "total": 385760,
+    "total": 344576,
     "part": [
-     [
-      "Varilla roscada 3/8\" galvanizada, incluye corte y habilitado",
-      633.6,
-      41184
-     ],
      [
       "Anclaje M10 a concreto, incluye barrenado y limpieza de barreno",
       88,
