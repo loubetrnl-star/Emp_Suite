@@ -1,4 +1,4 @@
-/* pruebas-motores/hidro.mjs · Fase 1 (rev 2.9.24) · casos calculados a mano del motor hidrosanitario (`hidro`, v6).
+/* pruebas-motores/hidro.mjs · Fase 1 (rev 2.9.24) · casos calculados a mano del motor hidrosanitario (`hidro`, v7).
    Hoja: parches/casos-a-mano/hidro.csv (generada por parches/casos-a-mano/hidro.calc.mjs, cálculo independiente de la
    suite). Cada prueba arma el estado del caso, evalúa las filas de su prefijo con CM.comprobar (números con tolerancia)
    y restaura S en finally. Las filas «fase2:H-nnn» sólo se exigen con CM_FASE2=1.
@@ -49,8 +49,10 @@ export default async function ({ t, G, S, CM }) {
     () => { S.hidro = { ...fixture(), dot: "industria", habitantes: 60, diasReserva: 2 }; }, ["CM.hidro.3.b"]);
   conEstado("CM.hidro.3.c (NTC-PA Tabla 3.1, oficinas 50 L/persona/día) cisterna de oficina de 100 personas, 1 día [fase2:H-202]",
     () => { S.hidro = { ...fixture(), dot: "oficina", habitantes: 100, diasReserva: 1 }; }, ["CM.hidro.3.c"]);
-  conEstado("CM.hidro.3.d (decisión del dueño: respetar la captura) cisterna con 0 días de reserva capturados [fase2:H-197]",
+  conEstado("CM.hidro.3.d (H-197, decisión del dueño: respetar la captura) cisterna con 0 días de reserva capturados",
     () => { S.hidro = { ...fixture(), dot: "industria", habitantes: 60, diasReserva: 0 }; }, ["CM.hidro.3.d"]);
+  conEstado("CM.hidro.3.e (H-197) días de reserva negativos: cisterna 0, sin invertir el signo",
+    () => { S.hidro = { ...fixture(), dot: "industria", habitantes: 60, diasReserva: -1 }; }, ["CM.hidro.3.e"]);
 
   conEstado("CM.hidro.4 (IPC 2015 E103.3(2)/(3) tanque, 709.1, 710.1, 906.2) cuatro WC con tanque, sin otro mueble: sistema de tanque y drenaje",
     () => { S.hidro = { ...fixture(), tramos: [], muebles: [{ id: "wc_tanque", cant: 4 }] }; }, ["CM.hidro.4"]);
@@ -61,10 +63,14 @@ export default async function ({ t, G, S, CM }) {
   conEstado("CM.hidro.6 (decisión del dueño H-198; ASTM D2846 CTS hasta 2\") CPVC: los renglones «SIN VERIFICAR» de 2 1/2\" a 4\" se retiran [fase2:H-198]",
     () => { S.hidro = { ...fixture(), material: "cpvc" }; }, ["CM.hidro.6"]);
 
-  conEstado("CM.hidro.7.a (decisión del dueño H-197) ΔT 0 no se sube a 5 K [fase2:H-197]",
-    () => { S.hidro = { ...fixture(), tempEntrada: 40, tempSalida: 40 }; }, ["CM.hidro.7.a"]);
-  conEstado("CM.hidro.7.b (IPC 2015 §704.1) pendiente capturada 0.2 % con colector de 100 mm: mínima de norma 1/8 in/ft con aviso [fase2:H-197]",
+  conEstado("CM.hidro.7.a/c (H-197, decisión del dueño) ΔT 0 no se sube a 5 K: calentador pendiente",
+    () => { S.hidro = { ...fixture(), tempEntrada: 40, tempSalida: 40 }; }, ["CM.hidro.7.a", "CM.hidro.7.c"]);
+  conEstado("CM.hidro.7.b (H-197: IPC 2015 §704.1) pendiente capturada 0.2 % con colector de 100 mm: mínima de norma 1/8 in/ft con aviso",
     () => { S.hidro = { ...fixture(), pendiente: 0.2 }; }, ["CM.hidro.7.b"]);
+  conEstado("CM.hidro.7.d (H-197: IPC 2015 §704.1) pendiente capturada 3 %, mayor que la mínima: se respeta",
+    () => { S.hidro = { ...fixture(), pendiente: 3 }; }, ["CM.hidro.7.d"]);
+  conEstado("CM.hidro.7.e (H-197: IPC 2015 §704.1) pendiente 0 capturada: la mínima de norma del colector",
+    () => { S.hidro = { ...fixture(), pendiente: 0 }; }, ["CM.hidro.7.e"]);
 
   conEstado("CM.hidro.8 (decisión del dueño rev 2.9.16) tramo sin longitud: pérdida 0 y marcado sinL",
     () => { S.hidro = fixture(); S.hidro.tramos[0].L = 0; }, ["CM.hidro.8"]);

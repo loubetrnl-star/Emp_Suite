@@ -2494,7 +2494,7 @@ function buildHidroPdf() {
     ["Unidades de descarga", `${n(R.udTotal, 0)} UD con ${R.wcTotal} inodoro(s)`],
     ["Ramal horizontal", `${R.ramal.d} mm`],
     ["Bajada", `${R.bajada.d} mm`],
-    ["Colector", `${R.colector.d} mm al ${n(R.pend, 1)} % de pendiente`],
+    ["Colector", `${R.colector.d} mm al ${n(R.pend, 2)} % de pendiente (${R.pendSubida ? `capturada ${n(R.pendCap, 2)} %, subida a la minima de IPC 2015 704.1` : `capturada; minima IPC 2015 704.1: ${n(R.pendMin, 2)} %`})`],
     ["Ventilacion primaria", `${R.ventD} mm (la mitad del drenaje que ventila, minimo 32 mm)`],
   ]);
   pdfHeading(d, "6. Cisterna y equipo de bombeo");
@@ -10101,6 +10101,8 @@ const DRENAJE = [
   { d: 150, ramal: 620, bajada: 1100, wcMax: 999, col1: 700, col2: 840 },
   { d: 200, ramal: 1400, bajada: 2500, wcMax: 999, col1: 1600, col2: 1920 },
 ];
+/* IPC 2015 §704.1, Tabla 704.1 (up.codes, releída 25-sep-2026): pendiente mínima del drenaje horizontal, en %. */
+const pendMin704 = (d) => (d <= 65 ? 0.25 : d <= 150 ? 0.125 : 0.0625) / 12 * 100;
 function sizeDrenaje(ud, wc, tipo, pend) {
   const key = tipo === "bajada" ? "bajada" : tipo === "colector" ? (pend >= 2 ? "col2" : "col1") : "ramal";
   const f = DRENAJE.find((x) => (x[key] || 0) >= ud && (tipo === "colector" || wc <= x.wcMax));
@@ -10237,21 +10239,33 @@ function computeHidro(H) {
   /* 3) Drenaje */
   const ramal = sizeDrenaje(udTotal, wcTotal, "ramal", 0);
   const bajada = sizeDrenaje(udTotal, wcTotal, "bajada", 0);
-  const pend = Math.max(.5, num(H.pendiente, 2));
-  const colector = sizeDrenaje(udTotal, wcTotal, "colector", pend);
+  /* H-197 (rev 2.9.24, hidro v7): la pendiente capturada se respeta; si queda bajo la mínima de IPC 2015 §704.1 para el
+     diámetro del colector (¼ in/ft hasta 2½", ⅛ in/ft de 3" a 6", 1/16 in/ft de 8" en adelante; 1 in/ft = 8.333 %), sube a
+     esa mínima con aviso. Antes: piso de 0.5 % sin norma. */
+  const pendCap = num(H.pendiente, 2);
+  let colector = sizeDrenaje(udTotal, wcTotal, "colector", Math.max(0, pendCap));
+  const pendMin = pendMin704(colector.d);
+  const pend = Math.max(pendCap, pendMin);
+  const pendSubida = pend > pendCap + 1e-9;
+  if (pendSubida) {
+    colector = sizeDrenaje(udTotal, wcTotal, "colector", pend);
+    avisos.push({ lvl: "warn", msg: `La pendiente capturada del colector (${n(pendCap, 2)} %) queda bajo la mínima de IPC 2015 §704.1 para ${colector.d} mm (${n(pend, 2)} %): se calcula con la mínima de norma. Corrige la captura si la obra no puede darla.` });
+  }
   /* La ventilación primaria no baja de la mitad del diámetro del drenaje que
      ventila, y nunca de 32 mm (regla del IPC 916 y de las NTC). */
   const ventD = Math.max(32, Math.ceil(bajada.d / 2 / 5) * 5);
-  memo.push(`Drenaje: ${n(udTotal, 0)} unidades de descarga con ${wcTotal} inodoro(s) → ramal horizontal ${ramal.d} mm, bajada ${bajada.d} mm, colector ${colector.d} mm al ${n(pend, 1)} % de pendiente. Ventilación primaria ${ventD} mm.`);
+  memo.push(`Drenaje: ${n(udTotal, 0)} unidades de descarga con ${wcTotal} inodoro(s) → ramal horizontal ${ramal.d} mm, bajada ${bajada.d} mm, colector ${colector.d} mm al ${n(pend, 2)} % de pendiente (${pendSubida ? `capturada ${n(pendCap, 2)} %, subida a la mínima de IPC 2015 §704.1 para ${colector.d} mm` : `capturada; mínima de IPC 2015 §704.1 para ${colector.d} mm: ${n(pendMin, 2)} %`}). Ventilación primaria ${ventD} mm.`);
   if (wcTotal > 2 && ramal.d < 100) avisos.push({ lvl: "warn", msg: `Con ${wcTotal} inodoros en el mismo ramal el diámetro no puede bajar de 100 mm, aunque las unidades de descarga quepan en 75.` });
 
   /* 4) Agua caliente */
   const Qcal = hunterQ(umCal, "tanque");
-  const dT = Math.max(5, num(H.tempSalida, 45) - num(H.tempEntrada, 18));
+  /* H-197: ΔT se respeta; si la salida no supera la entrada, el calentador queda pendiente (antes piso de 5 K sin norma). */
+  const dT = Math.max(0, num(H.tempSalida, 45) - num(H.tempEntrada, 18));
   /* Potencia para calentar el gasto instantáneo: P = Q · ρ · cp · ΔT.
      Con agua, 1 L/s calentado 1 K son 4.186 kW. */
   const kWcal = Qcal * 4.186 * dT;
-  memo.push(`Agua caliente: ${n(umCal, 1)} unidades mueble con demanda de caliente → ${n(Qcal, 2)} L/s. Calentar de ${num(H.tempEntrada, 18)} a ${num(H.tempSalida, 45)} °C exige ${n(kWcal, 1)} kW térmicos instantáneos (${n(kWcal / 11.63, 1)} m³/h de gas natural aproximados a poder calorífico de 11.63 kWh/m³).`);
+  memo.push(`Agua caliente: ${n(umCal, 1)} unidades mueble con demanda de caliente → ${n(Qcal, 2)} L/s. ${dT > 0 ? `Calentar de ${num(H.tempEntrada, 18)} a ${num(H.tempSalida, 45)} °C exige ${n(kWcal, 1)} kW térmicos instantáneos (${n(kWcal / 11.63, 1)} m³/h de gas natural aproximados a poder calorífico de 11.63 kWh/m³).` : `Calentador PENDIENTE: la temperatura de salida capturada (${num(H.tempSalida, 45)} °C) no supera la de entrada (${num(H.tempEntrada, 18)} °C).`}`);
+  if (umCal > 0 && !(dT > 0)) avisos.push({ lvl: "warn", msg: `Calentador pendiente: la temperatura de salida (${num(H.tempSalida, 45)} °C) no supera la de entrada (${num(H.tempEntrada, 18)} °C). Captura las dos; no se supone un salto.` });
   if (H.calentador === "deposito") {
     /* Un depósito reparte la potencia en el tiempo: se dimensiona por consumo
        horario pico, no por gasto instantáneo. Regla práctica: 1/3 del consumo
@@ -10262,7 +10276,10 @@ function computeHidro(H) {
   /* 5) Cisterna y bombeo */
   const dot = DOTACION.find((d) => d.id === H.dot) || DOTACION[1];
   const consumoDia = dot.l * Math.max(0, num(H.habitantes, 0));
-  const cisterna = consumoDia * Math.max(.5, num(H.diasReserva, 1));
+  /* H-197: los días de reserva capturados se respetan; 0 (o negativos) = cisterna pendiente (antes piso de 0.5 día sin norma). */
+  const diasReserva = Math.max(0, num(H.diasReserva, 1));
+  const cisterna = consumoDia * diasReserva;
+  if (consumoDia > 0 && !(diasReserva > 0)) avisos.push({ lvl: "warn", msg: `Cisterna pendiente: con ${n(num(H.diasReserva, 1), 1)} días de reserva capturados no hay volumen que dimensionar. Captura los días de autonomía; no se supone un mínimo.` });
   /* La bomba se dimensiona con el gasto probable, no con el consumo diario:
      tiene que poder con el minuto de mayor demanda. La carga dinámica total es
      la altura del edificio más las pérdidas por fricción de los tramos (su
@@ -10295,8 +10312,8 @@ function computeHidro(H) {
   memo.push(`Equipo de bombeo: ${n(Qtotal, 2)} L/s a ${n(cdt, 1)} m de carga dinámica total (altura del edificio ${n(num(H.alturaEdificio, 6), 1)} m + fricción de los tramos ${n(hfTramos, 2)} m + ${n(presCdt, 1)} m en el mueble más alto: ${rigeNorma ? `rige la mínima de norma del mueble más exigente, ${masExigente ? masExigente.nombre.toLowerCase() : "mueble"}, IPC 2015 Tabla 604.3, sobre el residual de ${n(presResidual, 1)} m de la casa` : `rige el residual de ${n(presResidual, 1)} m, criterio de la casa, sobre la mínima de norma de ${n(presMinReq, 1)} m`}) → ${n(kWbomba, 2)} kW al eje, ${n(hpBomba, 1)} HP nominales con 60 % de eficiencia del conjunto. Hidroneumático o velocidad variable según el perfil de demanda.`);
 
   return { lista, umTotal, udTotal, wcTotal, tipoSistema, umCal, presMinReq, masExigente, qEmerg, volEmerg, Qtotal,
-    tramos, hfTotal, presDisp, presOk, ramal, bajada, colector, pend, ventD,
-    Qcal, dT, kWcal, dot, consumoDia, cisterna, presResidual, presCdt, rigeNorma, hfTramos, cdt, kWbomba, hpBomba, mat, memo, avisos };
+    tramos, hfTotal, presDisp, presOk, ramal, bajada, colector, pend, pendCap, pendMin, pendSubida, ventD,
+    Qcal, dT, kWcal, dot, consumoDia, diasReserva, cisterna, presResidual, presCdt, rigeNorma, hfTramos, cdt, kWbomba, hpBomba, mat, memo, avisos };
 }
 
 
@@ -17859,7 +17876,7 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "4", clean: "2", equip: "1", duct: "1", vent: "1", quote: "6", valor: "1", kaizen: "1", elec: "8", hidro: "6", fuego: "2", aire: "2", civil: "3", soporte: "2" };
+const MOTOR_VER = { load: "4", clean: "2", equip: "1", duct: "1", vent: "1", quote: "6", valor: "1", kaizen: "1", elec: "8", hidro: "7", fuego: "2", aire: "2", civil: "3", soporte: "2" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
@@ -17874,7 +17891,8 @@ const MOTOR_CAMBIOS = {
     { ver: "8", rev: "2.9.24", que: "H-178: la corriente de un motor de uso general sale de la Tabla 430-250 (trifásico) o 430-248 (monofásico, con su columna de 127 V) de la NOM-001-SEDE-2012 (430-6(a)(1)), no de kW/(1.732·V·fp): hp de placa (campo nuevo) o, sin él, el renglón inmediato superior al kW por la columna kW de la propia tabla (decisión del dueño 2; 15 kW → 25 hp → 68 A, antes 46.31 A → 4 AWG/125 A, ahora 3 AWG/175 A). Su kVA en la demanda sale de esa corriente. El hp de catálogo o estimado por otro motor (compresor, bombas) no es de placa: sólo puede subir el renglón. Los FFU entran como aparato (Exc. 2). Fuera de la tabla, corriente ESTIMADA con aviso, o PENDIENTE sin kW. Los proyectos que aceptaron la cédula antes salen con la propuesta «Desactualizada»" }],
   hidro: [{ ver: "2", rev: "2.9.16", que: "tramo sin longitud ya no supone 10 m" }, { ver: "3", rev: "2.9.18", que: "curva de Hunter de IPC apéndice E Table E103.3(3)" }, { ver: "4", rev: "2.9.19", que: "renglones de 2500 a 5000 UM de la misma tabla" },
     { ver: "5", rev: "2.9.24", que: "H-194: presión mínima en la salida de cada mueble por la Tabla 604.3 del IPC 2015 (WC con fluxómetro 35 psi = 24.6 m, antes 10.5 m sin fuente; mingitorio 25, WC de tanque 20, regadera 20 por §424.3, lavabo/fregadero/lavadero/bebedero/manguera 8 psi); la carga dinámica de la bomba lleva máx(residual capturado, mínima de norma del mueble más exigente), antes sólo el residual fijo de 15 m" },
-    { ver: "6", rev: "2.9.24", que: "H-195: regadera de emergencia (20 gpm = 75.7 L/min) y lavaojos fijo (0.4 gal/min = 1.5 L/min, mueble nuevo) fuera de Hunter con gasto fijo sumado al del sistema, antes 6 unidades mueble cada uno; volumen para 15 min; el tramo declara el gasto de emergencia que conduce (L/min) con aviso si ninguno lo lleva. Fuente secundaria: ANSI Z358.1-1990 citada por OSHA (cartas del 18-abr-2002 y 22-nov-1993); ratificar con Z358.1-2014" }],
+    { ver: "6", rev: "2.9.24", que: "H-195: regadera de emergencia (20 gpm = 75.7 L/min) y lavaojos fijo (0.4 gal/min = 1.5 L/min, mueble nuevo) fuera de Hunter con gasto fijo sumado al del sistema, antes 6 unidades mueble cada uno; volumen para 15 min; el tramo declara el gasto de emergencia que conduce (L/min) con aviso si ninguno lo lleva. Fuente secundaria: ANSI Z358.1-1990 citada por OSHA (cartas del 18-abr-2002 y 22-nov-1993); ratificar con Z358.1-2014" },
+    { ver: "7", rev: "2.9.24", que: "H-197: sin pisos sin norma. Días de reserva capturados se respetan (0 = cisterna pendiente con aviso; antes piso de 0.5 día); ΔT ≤ 0 = calentador pendiente con aviso (antes piso de 5 K); la pendiente del colector se respeta y sólo sube, con aviso, a la mínima de IPC 2015 §704.1 para su diámetro (antes piso de 0.5 % sin norma)" }],
   fuego: [{ ver: "2", rev: "2.9.16", que: "sin área no hay demanda, bomba ni reserva; área mínima de operación NFPA 13 con aviso" }],
   aire: [{ ver: "2", rev: "2.9.16", que: "sin demanda no se cuentan unidades" }],
   civil: [{ ver: "2", rev: "2.9.16", que: "sin área clasificada no hay partidas de área clasificada" }, { ver: "3", rev: "2.9.19", que: "un cuarto limpio vacío no cuenta como área clasificada" }],

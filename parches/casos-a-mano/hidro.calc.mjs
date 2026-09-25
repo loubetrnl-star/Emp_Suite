@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* parches/casos-a-mano/hidro.calc.mjs · Fase 1 (rev 2.9.24) · motor hidrosanitario (`hidro`, v4; v5 con H-194; v6 con H-195)
+/* parches/casos-a-mano/hidro.calc.mjs · Fase 1 (rev 2.9.24) · motor hidrosanitario (`hidro`, v4; v5 con H-194; v6 con H-195; v7 con H-197)
 
    Cálculo INDEPENDIENTE de la suite: no carga index.html, no usa cifrasMotor ni el esperado de regresión. Transcribe
    las tablas de norma que el motor necesita, resuelve cada caso a mano e imprime los esperados. Con `--csv` escribe la
@@ -324,9 +324,12 @@ fila("CM.hidro.3.b", "industria, 60 trabajadores, 2 días de reserva", E3 + " (i
 fila("CM.hidro.3.c", "oficinas, 100 personas, 1 día (hoy 7,000 L con 70 L «NTC / reglamentos de BC» no trazable)", E3 + " (oficina 100 hab 1 día)",
   "50 L/persona/día × 100 × 1 = 5,000 L", "NTC-PA Tabla 3.1 «Oficinas de cualquier tipo 50 L/persona/día» (parches/normas-texto, renglones 1079-1083)", "primaria",
   "HIDRO.cisterna", NTC_PA_3_1.oficina * 100 * 1, 0.5, "fase2:H-202");
-fila("CM.hidro.3.d", "0 días de reserva capturados: se respeta la captura (hoy piso 0.5 día → 3,000 L)", E3 + " (industria 60 hab 0 días)",
+fila("CM.hidro.3.d", "0 días de reserva capturados: se respeta la captura (antes piso 0.5 día → 3,000 L)", E3 + " (industria 60 hab 0 días)",
   "100 × 60 × 0 = 0 L; la partida queda pendiente, no se estima", "PLAN-CRITICOS.md §2 Fase 2 H-197 «respetar captura»; CLAUDE.md regla 6 (nada se estima)", "decisión del dueño",
-  "HIDRO.cisterna", 0, 0, "fase2:H-197");
+  "HIDRO.cisterna", 0, 0);
+fila("CM.hidro.3.e", "días de reserva negativos capturados: cisterna 0, no se invierte el signo (H-197)", E3 + " (industria 60 hab −1 día)",
+  "100 × 60 × máx(0, −1) = 0 L; la partida queda pendiente", "CLAUDE.md regla 6 (nada se estima); captura inválida no se corrige sola", "decisión del dueño",
+  "HIDRO.cisterna", 0, 0);
 
 /* =========================================================================================================== CASO 4 · sistema de tanque: 4 WC con tanque, sin otro mueble */
 const um4 = WSFU_PUB.wc_tanque.tot * 4, ud4 = DFU.wc_tanque * 4;
@@ -379,12 +382,21 @@ fila("CM.hidro.6.a", "renglones CPVC de 2 1/2\", 3\" y 4\" marcados «SIN VERIFI
   "TUB_AGUA.cpvc.d.filter((x) => x[0] > 43.59).length", 0, 0, "fase2:H-198");
 
 /* =========================================================================================================== CASO 7 · pisos sin norma (H-197): ΔT y pendiente */
-fila("CM.hidro.7.a", "tempEntrada = tempSalida = 40 °C: ΔT 0 y calentador pendiente (hoy piso ΔT 5 K)", "fixture; tempEntrada 40; tempSalida 40",
+fila("CM.hidro.7.a", "tempEntrada = tempSalida = 40 °C: ΔT 0 y calentador pendiente (antes piso ΔT 5 K)", "fixture; tempEntrada 40; tempSalida 40",
   "45 − 18 no aplica: 40 − 40 = 0 K", "PLAN-CRITICOS.md §2 Fase 2 H-197 «ΔT 0 = pendiente»", "decisión del dueño",
-  "HIDRO.dT", 0, 0, "fase2:H-197");
-fila("CM.hidro.7.b", "pendiente capturada 0.2 % con colector de 100 mm: mínima de norma 1/8 in/ft = 1.042 % con aviso (hoy piso 0.5 % sin norma)", "fixture; pendiente 0.2",
+  "HIDRO.dT", 0, 0);
+fila("CM.hidro.7.c", "con ΔT 0 la potencia del calentador es 0 (pendiente), no la de 5 K supuestos", "fixture; tempEntrada 40; tempSalida 40",
+  "Qcal × 4.186 × 0 = 0 kW", "PLAN-CRITICOS.md §2 Fase 2 H-197; calor sensible del agua", "decisión del dueño",
+  "HIDRO.kWcal", 0, 0);
+fila("CM.hidro.7.b", "pendiente capturada 0.2 % con colector de 100 mm: mínima de norma 1/8 in/ft = 1.042 % con aviso (antes piso 0.5 % sin norma)", "fixture; pendiente 0.2",
   "704.1: 3\" a 6\" → 1/8 in/ft = 0.125/12 = 1.0417 %", "IPC 2015 §704.1 (up.codes); PLAN-CRITICOS Fase 2 H-197 «pendiente mínima de norma con aviso»", PRIM,
-  "HIDRO.pend", PEND_MIN_704_1(100), 0.01, "fase2:H-197");
+  "HIDRO.pend", PEND_MIN_704_1(100), 0.001);
+fila("CM.hidro.7.d", "pendiente capturada 3 % (mayor que la mínima de 704.1): se respeta", "fixture; pendiente 3",
+  "máx(3, 1.0417) = 3 %", "IPC 2015 §704.1 (up.codes, releído 25-sep-2026)", PRIM,
+  "HIDRO.pend", 3, 0.001);
+fila("CM.hidro.7.e", "pendiente capturada 0 (vacía o cero) con colector de 100 mm: mínima de 704.1, 1/8 in/ft", "fixture; pendiente 0",
+  "máx(0, 0.125/12 × 100) = 1.0417 %", "IPC 2015 §704.1 (up.codes)", PRIM,
+  "HIDRO.pend", PEND_MIN_704_1(100), 0.001);
 
 /* =========================================================================================================== CASO 8 · tramo sin longitud (decisión del dueño rev 2.9.16) */
 fila("CM.hidro.8.a", "tramo sin longitud: pérdida 0 (no se supone longitud) y marcado sinL", "fixture; AF-GENERAL L 0",

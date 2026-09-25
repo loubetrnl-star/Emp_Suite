@@ -6140,8 +6140,8 @@ t("S.36 (rev 2.9.20, decisión del dueño) versión por motor en el sello: sólo
   llenarTodoS();
   const MV = G("MOTOR_VER");
   /* H-107: carga v3 = lógica de la rev 2.9.21 (declarada en la 2.9.24); H-120: carga v4 = corrección CLTD por sitio. H-183: eléctrico v5 = Tabla 250-122 de la NOM; H-177: v6 = art. 440 con MCA/MOP; H-179: v7 = nada se supone (pendientes); H-178: v8 = corriente de motor por la Tabla 430-250/248.
-     H-194: hidro v5 = presión mínima por mueble de la Tabla 604.3 del IPC 2015 y CDT con máx(residual, mínima); H-195: v6 = equipo de emergencia fuera de Hunter. */
-  eq(MV.elec, "8", "eléctrico v8 (H-178):"); eq(MV.hidro, "6", "hidro v6 (H-195):"); eq(MV.load, "4", "carga v4:"); eq(MV.duct, "1", "ductos sin cambio de lógica: v1:");
+     H-194: hidro v5 = presión mínima por mueble de la Tabla 604.3 del IPC 2015 y CDT con máx(residual, mínima); H-195: v6 = equipo de emergencia fuera de Hunter; H-197: v7 = sin pisos sin norma (días, ΔT, pendiente 704.1). */
+  eq(MV.elec, "8", "eléctrico v8 (H-178):"); eq(MV.hidro, "7", "hidro v7 (H-197):"); eq(MV.load, "4", "carga v4:"); eq(MV.duct, "1", "ductos sin cambio de lógica: v1:");
   Object.keys(MV).forEach((id) => { const c = G("MOTOR_CAMBIOS")[id] || []; if (MV[id] !== "1" && !c.some((x) => x.ver === MV[id])) throw new Error(`${id}: la versión ${MV[id]} no tiene hallazgo registrado`); });
   const s0 = JSON.stringify(S.sellos || {});
   try {
@@ -6149,9 +6149,9 @@ t("S.36 (rev 2.9.20, decisión del dueño) versión por motor en el sello: sólo
     S.sellos = { duct: { ts: 5, huella: G("huellaMotor")("duct") }, hidro: { ts: 5, huella: G("huellaMotor")("hidro") } }; G("recompute")();
     eq(G("selloDe")("duct").estado, "calculado", "ductos (motor v1, sin cambio):");
     const sh = G("selloDe")("hidro");
-    eq(sh.estado, "desactualizado", "hidro (motor v1 → v6):"); contiene(sh.texto, "v1 → v6", "texto:"); contiene(sh.texto, "Hunter", "nombra el hallazgo:"); contiene(sh.texto, "604.3", "nombra H-194:"); contiene(sh.texto, "Z358.1", "nombra H-195:");
+    eq(sh.estado, "desactualizado", "hidro (motor v1 → v7):"); contiene(sh.texto, "v1 → v7", "texto:"); contiene(sh.texto, "Hunter", "nombra el hallazgo:"); contiene(sh.texto, "604.3", "nombra H-194:"); contiene(sh.texto, "Z358.1", "nombra H-195:"); contiene(sh.texto, "704.1", "nombra H-197:");
     const m = G("motoresCambiados")();
-    eq(m.map((x) => x.id).join(","), "hidro", "lista para el aviso al abrir:"); eq(m[0].de + ">" + m[0].a, "1>6", "de → a:");
+    eq(m.map((x) => x.id).join(","), "hidro", "lista para el aviso al abrir:"); eq(m[0].de + ">" + m[0].a, "1>7", "de → a:");
     /* Un sello viejo abre sin error y conserva su ver; el saneado acepta ver/resumen/previo y descarta basura. */
     const viejo = JSON.parse(JSON.stringify(S)); viejo.sellos = { hidro: { ts: 5, huella: G("huellaMotor")("hidro"), ver: "3", resumen: { Gasto: "1 L/s" }, previo: { ver: "2", ts: 4, resumen: { Gasto: "0.9 L/s" } } }, duct: { ts: 5, huella: G("huellaMotor")("duct"), ver: "x9", resumen: "no" } };
     const sv = G("sanearEstado")(viejo).sellos;
@@ -6161,14 +6161,14 @@ t("S.36 (rev 2.9.20, decisión del dueño) versión por motor en el sello: sólo
     const Q0 = G("HIDRO").Qtotal;
     clicS(boton("hidro", "calc-motor"));
     const sn = S.sellos.hidro;
-    eq(sn.ver, "6", "sello nuevo con la versión del motor:"); eq(sn.previo.ver, "1", "previo:"); eq(sn.previo.resumen.Gasto, "3.924 L/s", "cifras de antes:");
+    eq(sn.ver, "7", "sello nuevo con la versión del motor:"); eq(sn.previo.ver, "1", "previo:"); eq(sn.previo.resumen.Gasto, "3.924 L/s", "cifras de antes:");
     contiene(sn.resumen.Gasto, G("n")(Q0, 3), "cifras de después:");
     eq(G("selloDe")("hidro").estado, "calculado", "vuelto a sellar:");
     conPdfCapturado((salida) => {
       clicS(boton("hidro", "pdf-memoria-motor"));
       const txt = textoPdf(salida()[salida().length - 1].b);
-      contiene(txt, "CAMBIO DE MOTOR v1 -> v6", "la memoria dice el cambio:"); /* el PDF parte los renglones en varios Tj: se buscan las piezas */
-      contiene(txt, "ANTES", "antes:"); contiene(txt, "3.924 L/s", "cifra de antes:"); contiene(txt, "DESPUES", "después:"); contiene(txt, "motor v1", "versión de antes:"); contiene(txt, "motor v6", "versión de después:");
+      contiene(txt, "CAMBIO DE MOTOR v1 -> v7", "la memoria dice el cambio:"); /* el PDF parte los renglones en varios Tj: se buscan las piezas */
+      contiene(txt, "ANTES", "antes:"); contiene(txt, "3.924 L/s", "cifra de antes:"); contiene(txt, "DESPUES", "después:"); contiene(txt, "motor v1", "versión de antes:"); contiene(txt, "motor v7", "versión de después:");
     });
     eq(w.eval("MEMO_CAMBIO"), null, "la bandera de la memoria se limpia:");
   } finally { S.sellos = JSON.parse(s0); G("recompute")(); }
@@ -6370,6 +6370,31 @@ t("S.53 (H-195) regadera de emergencia y lavaojos fuera de Hunter con gasto fijo
     contiene(v, 'data-path="hidro.tramos.0.qEmergLmin"', "pantalla: el gasto de emergencia del tramo se captura:");
     contiene(v, "20 gpm", "pantalla: la regadera de emergencia dice su gasto fijo:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); S.tab = tab0; G("recompute")(); }
+});
+
+t("S.54 (H-197) sin pisos sin norma: 0 días de reserva = cisterna pendiente, ΔT ≤ 0 = calentador pendiente, pendiente capturada bajo la mínima de IPC 2015 §704.1 sube a la mínima con aviso; memoria y PDF dicen de dónde sale la pendiente", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    const muebles = [{ id: "wc_flux", cant: 4 }, { id: "ming_flux", cant: 2 }, { id: "lavabo", cant: 4 }, { id: "fregadero", cant: 1 }];
+    const arma = (x) => { S.hidro = { ...G("defaultHidro")(), muebles, dot: "industria", habitantes: 60, ...x }; G("recompute")(); return G("HIDRO"); };
+    let H = arma({ diasReserva: 0 });
+    eq(H.cisterna, 0, "0 días de reserva capturados: cisterna 0 (antes piso de 0.5 día = 3,000 L):");
+    if (!H.avisos.some((a) => /cisterna/i.test(a.msg) && /pendiente/i.test(a.msg))) throw new Error("sin días de reserva la cisterna debe quedar pendiente con aviso");
+    H = arma({ diasReserva: 1.5 }); eq(H.cisterna, 9000, "1.5 días se respetan: 100 × 60 × 1.5:");
+    if (H.avisos.some((a) => /cisterna/i.test(a.msg) && /pendiente/i.test(a.msg))) throw new Error("con días capturados no hay aviso de cisterna pendiente");
+    H = arma({ tempEntrada: 40, tempSalida: 35 });
+    eq(H.dT, 0, "salida bajo la entrada: ΔT 0 (antes piso de 5 K):"); eq(H.kWcal, 0, "calentador sin potencia supuesta:");
+    if (!H.avisos.some((a) => /calentador/i.test(a.msg) && /pendiente/i.test(a.msg))) throw new Error("con ΔT ≤ 0 el calentador debe quedar pendiente con aviso");
+    H = arma({ tempEntrada: 18, tempSalida: 45 }); eq(H.dT, 27, "18 → 45 °C: ΔT 27 K sin cambio:");
+    H = arma({ pendiente: 0.2 });
+    cerca(H.pend, 0.125 / 12 * 100, 1e-9, "0.2 % capturado con colector de 100 mm: sube a 1/8 in/ft (IPC 2015 §704.1):");
+    eq(H.pendCap, 0.2, "la captura se conserva para decirla:");
+    const av = H.avisos.find((a) => /704\.1/.test(a.msg));
+    if (!av) throw new Error("subir la pendiente a la mínima de norma debe avisar citando 704.1");
+    contiene(H.memo.join(" "), "704.1", "la memoria dice de dónde sale la pendiente:");
+    H = arma({ pendiente: 3 }); eq(H.pend, 3, "3 % capturado se respeta:");
+    if (H.avisos.some((a) => /704\.1/.test(a.msg))) throw new Error("con pendiente mayor que la mínima no hay aviso de 704.1");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
 /* ===== R. Regresión por motor (rev 2.9.22, decisión del dueño): un proyecto fijo con cifras esperadas por disciplina ===== */

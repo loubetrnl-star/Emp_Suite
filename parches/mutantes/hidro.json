@@ -105,11 +105,11 @@
   },
   {
     "id": "hidro.m14",
-    "que": "piso de 0.5 día de reserva retirado (0 días capturados = 0 L)",
+    "que": "H-197: piso de 0.5 día de reserva reintroducido (0 días capturados darían 3,000 L)",
     "logica": true,
-    "buscar": "Math.max(.5, num(H.diasReserva, 1))",
-    "reemplazar": "num(H.diasReserva, 1)",
-    "estado": "fase2:H-197"
+    "buscar": "const diasReserva = Math.max(0, num(H.diasReserva, 1));",
+    "reemplazar": "const diasReserva = Math.max(.5, num(H.diasReserva, 1));",
+    "estado": "vigente"
   },
   {
     "id": "hidro.m15",
@@ -225,19 +225,19 @@
   },
   {
     "id": "hidro.m29",
-    "que": "piso de ΔT 5 K retirado",
+    "que": "H-197: piso de ΔT 5 K reintroducido",
     "logica": true,
-    "buscar": "Math.max(5, num(H.tempSalida, 45) - num(H.tempEntrada, 18))",
-    "reemplazar": "Math.max(0, num(H.tempSalida, 45) - num(H.tempEntrada, 18))",
-    "estado": "fase2:H-197"
+    "buscar": "const dT = Math.max(0, num(H.tempSalida, 45) - num(H.tempEntrada, 18));",
+    "reemplazar": "const dT = Math.max(5, num(H.tempSalida, 45) - num(H.tempEntrada, 18));",
+    "estado": "vigente"
   },
   {
     "id": "hidro.m30",
-    "que": "piso de pendiente 0.5 % retirado",
+    "que": "H-197: piso de pendiente 0.5 % sin norma en vez de la mínima de 704.1",
     "logica": true,
-    "buscar": "Math.max(.5, num(H.pendiente, 2))",
-    "reemplazar": "num(H.pendiente, 2)",
-    "estado": "fase2:H-197"
+    "buscar": "const pend = Math.max(pendCap, pendMin);",
+    "reemplazar": "const pend = Math.max(pendCap, 0.5);",
+    "estado": "vigente"
   },
   {
     "id": "hidro.m31",
@@ -404,6 +404,38 @@
     "que": "H-195: sin el aviso de tramo que no lleva el gasto de emergencia",
     "logica": true,
     "buscar": "if (tramos.length && qEmerg > 0 && qEmMax < qEmerg * 60 * 0.995)",
+    "reemplazar": "if (false)",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m52",
+    "que": "H-197: 704.1 de 3\" a 6\" con 1/16 in/ft en vez de 1/8",
+    "logica": true,
+    "buscar": "d <= 150 ? 0.125 : 0.0625",
+    "reemplazar": "d <= 150 ? 0.0625 : 0.0625",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m53",
+    "que": "H-197: la pendiente capturada se ignora (siempre la mínima de norma)",
+    "logica": true,
+    "buscar": "const pend = Math.max(pendCap, pendMin);",
+    "reemplazar": "const pend = pendMin;",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m54",
+    "que": "H-197: sin el aviso de cisterna pendiente con 0 días",
+    "logica": true,
+    "buscar": "if (consumoDia > 0 && !(diasReserva > 0))",
+    "reemplazar": "if (false)",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m55",
+    "que": "H-197: sin el aviso de calentador pendiente con ΔT ≤ 0",
+    "logica": true,
+    "buscar": "if (umCal > 0 && !(dT > 0))",
     "reemplazar": "if (false)",
     "estado": "vigente"
   }
