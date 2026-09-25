@@ -45,14 +45,15 @@ export default async function ({ t, G, S, REG_PROY, CM }) {
     G("recompute")();
   };
 
-  caso("CM.fuego.1 (NFPA 13-2016 Tabla 19.3.3.1.1 curva densidad-área y Tabla 10.2.4.2.1; criterio de la casa 1.15/30 %/+1 m) proyecto de regresión: ordinario 2, 700 m² y 4.71 m HEREDADOS de 4 zonas, 30+12 m, K80, cisterna", "CM.fuego.1", () => {
-    /* El mismo arranque que R.1: el fixture declara 600 m²/6 m, pero fuego.area/altura siguen heredando de las zonas (700 m², 4.71 m). */
+  caso("CM.fuego.1 (NFPA 13-2016 Tabla 19.3.3.1.1 curva densidad-área y Tabla 10.2.4.2.1; criterio de la casa 1.15/30 %/+1 m; H-205) proyecto de regresión: ordinario 2, 700 m² y 6 m (MÁXIMA) HEREDADOS de 4 zonas, 30+12 m, K80, cisterna", "CM.fuego.1", () => {
+    /* El mismo arranque que R.1: el fixture declara 600 m²/6 m, pero fuego.area/altura heredan de las zonas: 700 m² y, desde
+       H-205, la altura máxima (6 m; antes el promedio 4.71 m). */
     G("importarRespaldo")(REG_PROY); S.tab = "tablero"; G("KZ_CACHE").key = null; G("VZ_CACHE").key = null; G("recompute")();
-    if (!(S.fuego.area === 700 && Math.abs(S.fuego.altura - 4.71) < 1e-9)) throw new Error(`el fixture no heredó 700 m² / 4.71 m: ${S.fuego.area} / ${S.fuego.altura}`);
+    if (!(S.fuego.area === 700 && S.fuego.altura === 6)) throw new Error(`el fixture no heredó 700 m² / 6 m (máxima, H-205): ${S.fuego.area} / ${S.fuego.altura}`);
   });
-  caso("CM.fuego.2 (NFPA 13-2016; H-205) nave con almacén de 13 m: zonas 2000 m²/3 m + 200 m²/13 m, ordinario 2, 30+12 m; hoy la estática sale del promedio 3.91 m", "CM.fuego.2", () => {
+  caso("CM.fuego.2 (NFPA 13-2016; H-205) nave con almacén de 13 m: zonas 2000 m²/3 m + 200 m²/13 m, ordinario 2, 30+12 m: la estática sale de la altura máxima 13 m (antes del promedio 3.91)", "CM.fuego.2", () => {
     armar([zona("Oficinas", 2000, 3), zona("Almacén", 200, 13)], { riesgo: "ord2", Lramal: 30, Lmontante: 12 });
-    if (!(S.fuego.area === 2200 && Math.abs(S.fuego.altura - 3.91) < 1e-9)) throw new Error(`no heredó 2200 m² / 3.91 m: ${S.fuego.area} / ${S.fuego.altura}`);
+    if (!(S.fuego.area === 2200 && S.fuego.altura === 13)) throw new Error(`no heredó 2200 m² / 13 m (máxima, H-205): ${S.fuego.area} / ${S.fuego.altura}`);
   });
   caso("CM.fuego.3 (NFPA 13-2016 riesgo ligero; NFPA 20-2016 Tabla 4.9; H-208, H-211) 300 m², 3.5 m, 20+6 m, K80, red municipal de 35 mca que no alcanza", "CM.fuego.3", () => {
     armar([], { riesgo: "ligero", area: 300, altura: 3.5, Lramal: 20, Lmontante: 6, fuente: "municipal", presFuente: 35 });

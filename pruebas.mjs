@@ -357,7 +357,7 @@ t("3.1 la geometría del proyecto se suma de las zonas, no se recalcula", () => 
 t("3.2 ventilación y contra incendio heredan área, altura y ocupación", () => {
   G("recompute")();
   eq(S.vent.area, 500); eq(S.fuego.area, 500); eq(S.vent.occ, 40);
-  cerca(S.vent.height, 5.4, 0.01); cerca(S.fuego.altura, 5.4, 0.01);
+  cerca(S.vent.height, 5.4, 0.01); eq(S.fuego.altura, 6, "H-205: contra incendio hereda la altura máxima (rociador más alto), no la media 5.4:");
 });
 t("3.3 si cambia la geometría, el destino la sigue sin intervención", () => {
   S.zones[1].area = 300; G("recompute")();
@@ -6518,6 +6518,36 @@ t("S.57 (H-196) cisterna y equipo de bombeo sin precio semilla: van «Por cotiza
     if (pend().some((m) => /volumen/.test(m))) throw new Error("con volumen la cisterna no está pendiente");
     /* 3) Sin cambio de cifras en la red: los metros se siguen cotizando por diámetro. */
     eq((G("QUOTE").aux || []).filter((x) => x.mot === "hidro" && x.un === "ML").length > 0 || G("hidroDiametrosSinPrecio")().length > 0, true, "la red sigue por diámetro:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+t("S.58 (H-205) contra incendio hereda la altura MÁXIMA de las zonas (rociador más alto), no el promedio ponderado: la estática y la CDT van al rociador más alto, el aviso de rack sale con la altura real, ventilación sigue con la media y la captura propia se respeta", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.58";
+    S.zones = [{ ...G("defaultZone")("Nave"), area: 400, height: 6, occ: 30 }, { ...G("defaultZone")("Oficina"), area: 100, height: 3, occ: 10 }];
+    S.fuego = { ...G("defaultFuego")(), riesgo: "ord2", Lramal: 30, Lmontante: 12 };
+    G("recompute")();
+    cerca(G("geoProyecto")().altura, 5.4, 0.01, "la media ponderada sigue existiendo (volumen = área × altura):");
+    cerca(S.vent.height, 5.4, 0.01, "ventilación hereda la media (renueva volumen):");
+    eq(S.fuego.altura, 6, "contra incendio hereda la altura máxima (zona más alta):");
+    let F = G("FUEGO");
+    eq(F.estatica, 7, "estática = altura al rociador más alto + 1 m:");
+    if (!F.memo.some((m) => /rociador más alto/.test(m))) throw new Error("la memoria no dice que la estática va al rociador más alto");
+    if (F.avisos.some((a) => /rack/.test(a.msg))) throw new Error("con 6 m no debe salir el aviso de rack");
+    /* Almacén de 13 m: la altura heredada es 13 (el promedio sería 3.91 y escondía el rack). */
+    S.zones = [{ ...G("defaultZone")("Oficinas"), area: 2000, height: 3 }, { ...G("defaultZone")("Almacén"), area: 200, height: 13 }]; G("recompute")();
+    eq(S.fuego.altura, 13, "zona de 13 m: altura heredada 13:");
+    F = G("FUEGO");
+    eq(F.estatica, 14, "estática 14 m:");
+    if (!F.avisos.some((a) => /rack/.test(a.msg) && /13/.test(a.msg))) throw new Error("con 13 m debe salir el aviso de almacenamiento en rack con la altura real");
+    /* Captura propia: si el usuario escribe la altura del rociador más alto, la herencia no la pisa. */
+    S.fuego.altura = 9; G("marcarPropio")("fuego.altura"); G("recompute")();
+    eq(S.fuego.altura, 9, "la captura propia se respeta:"); eq(G("FUEGO").estatica, 10, "y manda en la estática:");
+    /* La pantalla y la guía nombran el campo por lo que es. */
+    S.tab = "fuego"; G("render")();
+    const v = w.document.getElementById("view");
+    if (!/rociador más alto/i.test(v.textContent)) throw new Error("la pantalla no nombra la altura al rociador más alto");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
