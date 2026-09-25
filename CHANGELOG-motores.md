@@ -42,7 +42,7 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 | 2 | 2.9.24 | H-154 + H-156: la cobertura real manda en la selección Greenheck (cfmMin ≤ objetivo ≤ cfmMax, sin la tolerancia ×0.9); la familia propia del modo sólo ordena entre los que cubren (luego el de menor caudal nominal); si nadie cubre no hay modelo (`primary` null: nada llega a propuesta, memoria integral ni eléctrico) y `closest` sólo alimenta el aviso. Proyecto fijo: 11,643 CFM → CSW-30 (7,000–18,000) en vez de GB-360 (4,000–9,000) con «ningún modelo cubre» |
 | 3 | 2.9.24 | H-155: sin medidas no hay caudal: campana sin largo o fondo y rejilla sin ancho, alto, área libre o velocidad de cara dan demanda 0 con aviso de error en el motor y la matriz (antes pisos de 0.1 ft, 5 % y 100 fpm fabricaban 30 y 258 CFM y sus partidas). `avisos` en el resultado de computeVent. Proyecto fijo: sin cambio |
 
-## Cotización (`quote`) · v15
+## Cotización (`quote`) · v16
 
 | Versión | Rev | Hallazgo / cambio de lógica |
 |---|---|---|
@@ -52,6 +52,7 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 | 4 | 2.9.23 | precio de tubería por renglón con origen (referencia de mercado o proveedor local), IVA desglosado y por metro; sin precio: partida Por cotizar en el Budget, bloqueo sólo en la formal |
 | 5 | 2.9.23 | precios en USD sólo se convierten con tipo de cambio capturado con fecha; sin fecha salen Por cotizar y bloquean la formal (nada se estima) |
 | 15 | 2.9.24 | dependencia de soporte v8 (H-229): más soportes de cobre con los claros MSS/IPC |
+| 16 | 2.9.24 | dependencia de civil v4 (H-243): muro clasificado y media caña por cuarto limpio. Proyecto fijo: directo 10,558,140.85 → 10,807,890.51 MXN |
 | 14 | 2.9.24 | dependencia de soporte v6 (H-226): el anclaje va Por cotizar mientras no haya SDS con fuente, estructura y f'c |
 | 13 | 2.9.24 | dependencia de soporte v5 (H-225): sin altura de colgado la varilla sale pendiente, no cotizada |
 | 12 | 2.9.24 | dependencia de vent v2 (H-154): la partida de ventilación nombra el modelo que cubre de verdad, o ninguno |
@@ -118,15 +119,16 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 | 4 | 2.9.24 | H-216: el tanque pulmón no se trunca a 5,000 L en silencio: si el teórico rebasa el mayor de la lista comercial de la casa se instalan varios de 5,000 L en paralelo (capacidad instalada ≥ teórica; `tanqueUnit`, `nTanques`), con aviso; memoria, PDF, pantalla y partida lo declaran (13,103 L → 3 × 5,000 = 15,000 L; antes 5,000 L y «se sube al comercial inmediato superior»). Proyecto fijo: sin cambio (3,000 L). Cifras de regresión: entra `nTanques` |
 | 5 | 2.9.24 | H-218: el diámetro interior es del material: cobre tipo L con los DI de ASTM B88 (los mismos de `TUB_AGUA.cobre`; 55 m de cobre: 1" → 1 1/4"), acero con cédula 40 (ASME B36.10), aluminio e inoxidable con cédula 40 sólo como indicativo y el DI real del fabricante pendiente (aviso, memoria, PDF, pantalla y partida). Proyecto fijo (aluminio): sin cambio de cifras, con la pendencia declarada |
 
-## Obra civil (`civil`) · v3
+## Obra civil (`civil`) · v4
 
 | Versión | Rev | Hallazgo / cambio de lógica |
 |---|---|---|
 | 1 | 2.9.15 | lógica de partida |
 | 2 | 2.9.16 | sin área clasificada no hay partidas de área clasificada |
 | 3 | 2.9.19 | un cuarto limpio vacío no cuenta como área clasificada |
+| 4 | 2.9.24 | H-243 (criterio de la casa, PLAN-CRITICOS §Fase 3): muro clasificado y media caña CUARTO POR CUARTO: perímetro capturado en la pestaña de obra civil o, sin captura, rectángulo 3:2 del área del cuarto declarado «estimado» en la partida (ES/EN) × la altura del cuarto; antes el desarrollo de todo el edificio × fracción de área limpia, entre la altura media de todas las zonas. El muro no clasificado sigue con la fracción de área. Proyecto fijo (cuarto de 120 m² × 3 m): muro clasificado 73.32 → 134.16 m², media caña 31.11 → 89.44 ml; total 3,348,872.39 → 3,598,622.05 MXN |
 
-## Soportería (`soporte`) · v8
+## Soportería (`soporte`) · v9
 
 | Versión | Rev | Hallazgo / cambio de lógica |
 |---|---|---|

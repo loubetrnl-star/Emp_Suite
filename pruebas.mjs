@@ -5544,10 +5544,14 @@ t("S.20 un proyecto guardado con la versión anterior (formato 1, rev 2.9.13) ab
      H-225 (soporte v5, quote v13): sin altura de colgado capturada la varilla queda pendiente (antes 7.2 m por varilla):
      quoteDirect → 4957294.7391384 · quoteSub → 7493446.727681606 · quoteTot → 8692398.204110663.
      H-226 (soporte v6, quote v14): sin SDS con fuente ni estructura/f'c capturados el anclaje va Por cotizar (10 × 95 MXN):
-     quoteDirect → 4956344.7391384 · quoteSub → 7492010.7076816065 · quoteTot → 8690732.420910664. */
+     quoteDirect → 4956344.7391384 · quoteSub → 7492010.7076816065 · quoteTot → 8690732.420910664.
+     H-243 (civil v4, quote v16): muro clasificado y media caña por cuarto limpio (rectángulo 3:2 estimado del cuarto × su altura;
+     antes fracción de área del edificio entre la altura media): quoteDirect → 5259188.600874344 · quoteSub → 7949789.489081658 ·
+     quoteTot → 9221755.807334725; civilTotal 1572299.248 → 1875143.1097359434. */
   const MOVIDOS_2916 = { tons: [18.584787, 12.943837], cfm: [5114.572875, 5815.981512], sysTarget: [20.443265161623447, 14.238221145934492],
-    hidroQ: [3.924, 4.05985437], quoteDirect: [6704014.747352686, 4956344.7391384], partidas: [6704014.747352686, 4956344.7391384],
-    quoteSub: [10133788.69209832, 7492010.7076816065], quoteTot: [11755194.88283405, 8690732.420910664] };
+    hidroQ: [3.924, 4.05985437], quoteDirect: [6704014.747352686, 5259188.600874344], partidas: [6704014.747352686, 5259188.600874344],
+    quoteSub: [10133788.69209832, 7949789.489081658], quoteTot: [11755194.88283405, 9221755.807334725],
+    civilTotal: [1572299.248, 1875143.1097359434] };
   Object.entries(MOVIDOS_2916).forEach(([k, [antes]]) => eq(esperado.resumen[k], antes, `${k}: el «antes» es el de la 2.9.13:`));
   Object.entries(esperado.resumen).forEach(([k, v]) => eq(r[k], k in MOVIDOS_2916 ? MOVIDOS_2916[k][1] : v, `${k} igual al de la versión ${esperado.generadoCon}${k in MOVIDOS_2916 ? " con la decisión 2.9.16" : ""}:`));
   eq((G("QUOTE").pendientes || []).filter((p) => p.mot === "hidro").map((p) => p.motivo.split(" (")[0]).join(","), "pendiente de longitud,pendiente de volumen", "la red y la cisterna (0 unidades de dotación) quedan pendientes (H-196):"); /* rev 2.9.23: la importación siempre está pendiente aparte */
@@ -7056,6 +7060,33 @@ t("S.77 (H-228) termoplástico por subtipo, IPC 2009 T308.5 (MCP, secundaria): C
     S.tab = "soporte"; G("render")();
     const opciones = [...w.document.querySelectorAll('#view [data-path="soporte.tubHidroMat"] option')].map((o) => o.value);
     ["cpvc", "ppr", "pead"].forEach((v) => { if (!opciones.includes(v)) throw new Error("falta la opción " + v + " en el material hidráulico a mano: " + opciones.join(",")); });
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+t("S.78 (H-243) media caña y muro clasificado por cuarto limpio con su área y su altura: perímetro capturado o rectángulo 3:2 declarado «estimado» en la partida (antes fracción de área de todo el edificio entre la altura media: 31.11 ml y 73.32 m² en el proyecto fijo)", () => {
+  const guardado = JSON.stringify(S);
+  const parte = (re) => (G("CIVIL").part || []).find((p) => re.test(p.desc));
+  try {
+    G("importarRespaldo")(fs.readFileSync("parches/regresion-motores/regresion-motores.emp.json", "utf8")); S.tab = "tablero"; G("KZ_CACHE").key = null; G("VZ_CACHE").key = null; G("recompute")();
+    let R = G("CIVIL");
+    /* Un cuarto limpio de 120 m² y 3 m: rectángulo 3:2 → lado corto √(120/1.5) = 8.944, perímetro 2·(1.5 + 1)·8.944 = 44.721 ml. */
+    const per = 2 * 2.5 * Math.sqrt(120 / 1.5);
+    cerca(R.mlCana, 2 * per, 0.01, "media caña doble = 2 × perímetro 3:2 del cuarto (antes 31.11):");
+    cerca(R.muroLimpio, per * 3, 0.01, "muro clasificado = perímetro × altura del cuarto, 3 m (antes 73.32):");
+    const mc = parte(/^Media caña/), ml = parte(/en área clasificada$|en área clasificada \(/);
+    if (!mc || !/estimado/.test(mc.desc) || !/estimated/.test(mc.descEn)) throw new Error("la media caña 3:2 debe decir «estimado» en la partida (ES/EN): " + JSON.stringify(mc));
+    if (!ml || !/estimado/.test(ml.desc)) throw new Error("el muro clasificado 3:2 debe decir «estimado» en la partida: " + JSON.stringify(ml));
+    /* No depende de la altura de las demás zonas (antes la altura media de todo el edificio). */
+    const antes = R.mlCana; S.zones[0].height = 10; G("recompute")();
+    cerca(G("CIVIL").mlCana, antes, 1e-9, "subir la nave a 10 m no mueve la media caña del cuarto limpio:");
+    /* Perímetro capturado: manda y deja de ser estimado. */
+    S.tab = "civil"; G("render")();
+    const clave = G("claveCuartoCivil")(G("CLEAN").list[0].name);
+    if (!w.document.querySelector('#view [data-path="civil.perimCuartos.' + clave + '"]')) throw new Error("falta el campo de perímetro por cuarto limpio");
+    S.civil.perimCuartos = { [clave]: 46 }; G("recompute")(); R = G("CIVIL");
+    cerca(R.mlCana, 92, 1e-9, "con perímetro capturado 46 ml: 92 ml de media caña:"); cerca(R.muroLimpio, 138, 1e-9, "46 × 3 = 138 m²:");
+    if (/estimado/.test(parte(/^Media caña/).desc)) throw new Error("con perímetro capturado la partida ya no es estimada");
+    if (!R.memo.some((m) => /capturado/.test(m) && /Cuarto limpio 1/.test(m))) throw new Error("la memoria no dice de dónde sale el perímetro del cuarto");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
