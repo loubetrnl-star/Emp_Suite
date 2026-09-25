@@ -110,11 +110,11 @@
    }
   },
   "quote": {
-   "ver": "23",
+   "ver": "24",
    "cifras": {
-    "direct": 11405959.631235775,
-    "sub": 17241248.578576,
-    "tot": 19999848.35114816,
+    "direct": 11289059.631235775,
+    "sub": 17064542.538576,
+    "tot": 19794869.344748158,
     "aux": [
      [
       "Instalación mecánica, bases, izaje y arranque (35 % del equipo)",
@@ -160,16 +160,6 @@
       "Rejillas de retorno bajo a 150 mm NPT (9,535 CFM ÷ 500 CFM por rejilla)",
       20,
       64000
-     ],
-     [
-      "Alimentador general 1/0 cobre en 2\", 30 m con tierra y accesorios",
-      30,
-      40500
-     ],
-     [
-      "Tablero general 175 A con interruptor principal y 2 circuito(s) derivado(s)",
-      1,
-      76400
      ],
      [
       "Tubería de Cobre tipo L de 2\" · material, precio de referencia de mercado (25 m de los tramos calculados); mano de obra por capturar",

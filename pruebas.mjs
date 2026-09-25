@@ -5560,8 +5560,8 @@ t("S.20 un proyecto guardado con la versión anterior (formato 1, rev 2.9.13) ab
      capturado, rectángulo 3:2 × altura por zona, «estimado»: quoteDirect → 5953691.248524068 · quoteSub → 8999599.69126898 ·
      quoteTot → 10439535.641872017; civilTotal → 2569645.757385668. */
   const MOVIDOS_2916 = { tons: [18.584787, 12.943837], cfm: [5114.572875, 5815.981512], sysTarget: [20.443265161623447, 14.238221145934492],
-    hidroQ: [3.924, 4.05985437], quoteDirect: [6704014.747352686, 5953691.248524068], partidas: [6704014.747352686, 5953691.248524068],
-    quoteSub: [10133788.69209832, 8999599.69126898], quoteTot: [11755194.88283405, 10439535.641872017],
+    hidroQ: [3.924, 4.05985437], quoteDirect: [6704014.747352686, 5840991.248524068], partidas: [6704014.747352686, 5840991.248524068],
+    quoteSub: [10133788.69209832, 8829242.37126898], quoteTot: [11755194.88283405, 10241921.150672017], /* H-181: alimentador y tablero «Por cotizar» (−112,700 directos) */
     civilTotal: [1572299.248, 2569645.757385668] };
   Object.entries(MOVIDOS_2916).forEach(([k, [antes]]) => eq(esperado.resumen[k], antes, `${k}: el «antes» es el de la 2.9.13:`));
   Object.entries(esperado.resumen).forEach(([k, v]) => eq(r[k], k in MOVIDOS_2916 ? MOVIDOS_2916[k][1] : v, `${k} igual al de la versión ${esperado.generadoCon}${k in MOVIDOS_2916 ? " con la decisión 2.9.16" : ""}:`));
@@ -7340,6 +7340,46 @@ t("S.85 (H-165) ducto de grasa según UMC 2018 §510.5.1 y §510.5.3 (up.codes, 
     eq(g.gauge, 16, "aluminio: el ducto de grasa pasa a acero al carbón 16 MSG:");
     if (!D.segs[0].warn.some((x) => /aluminio/i.test(x) && /510\.5\.1/.test(x))) throw new Error("debe avisar que la grasa no puede ser de aluminio: " + JSON.stringify(D.segs[0].warn));
     cerca(D.segs[0].kg, D.segs[0].sheet * 1.524 / 1000 * 7850, 1e-6, "aluminio: kilos de la grasa con acero:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+t("S.86 (H-181) la cotización eléctrica sigue al cálculo: el alimentador se cuantifica por calibre (juegos × hilos × metros de fase/neutro, tierra por canalización y tubo por canalización) y el tablero por su capacidad y sus circuitos dimensionados; sin precio con fuente van «Por cotizar»; sin distancia al tablero, pendiente de longitud; un ramal con corriente pendiente no se cuenta", () => {
+  const guardado = JSON.stringify(S);
+  const dc = (nombre) => G("defaultCarga")(nombre);
+  const armar = (elec) => {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.86";
+    Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.86" }; });
+    S.elec = { ...G("defaultElec")(), tomarHVAC: false, ...elec };
+    G("recompute")(); return { E: G("ELEC"), Q: G("QUOTE") };
+  };
+  const deElec = (Q) => (Q.porCotizar || []).filter((p) => p.mot === "elec");
+  try {
+    /* 1) 400 kW a 220 V, 3F4H, 40 m: el alimentador sale en paralelo (antes: 1 juego a 1,350 MXN/m, tablero a 68,000 fijo). */
+    let { E, Q } = armar({ sistema: "3F4H-220", Ltablero: 40, trafoKVA: 1500, trafoZ: 5.75, cargas: [{ ...dc("Proceso"), tipo: "proceso", kW: 400, V: 220, ph: 3, cant: 1, L: 20, fp: .9 }] });
+    const a = E.alim, P = a.paralelo;
+    if (!(P > 1)) throw new Error("el caso no aísla lo que se quiere probar: el alimentador debe ir en paralelo (salió " + P + ")");
+    if (Q.aux.some((x) => x.mot === "elec")) throw new Error("el alimentador y el tablero ya no llevan precio semilla fijo: " + JSON.stringify(Q.aux.filter((x) => x.mot === "elec").map((x) => x.desc)));
+    const pc = deElec(Q), clave = (k) => pc.find((p) => p.clave === k);
+    const fase = clave("alimConductor"), tierra = clave("alimTierra"), tubo = clave("alimTubo"), tab = clave("tableroGeneral");
+    if (!fase || !tierra || !tubo || !tab) throw new Error("faltan renglones Por cotizar del alimentador o del tablero: " + JSON.stringify(pc.map((p) => p.clave)));
+    cerca(fase.qty, 4 * P * 40, 1e-9, "conductor de fase y neutro: 4 hilos × juegos × 40 m:"); eq(fase.un, "ML");
+    contiene(fase.desc, String(a.awg), "calibre del conductor:"); contiene(fase.desc, P + " juegos", "juegos en paralelo:");
+    cerca(tierra.qty, P * 40, 1e-9, "tierra: una por canalización × 40 m:"); contiene(tierra.desc, String(a.tierra), "calibre de la tierra:");
+    cerca(tubo.qty, P * 40, 1e-9, "canalización: una por juego × 40 m:"); contiene(tubo.desc, String(a.tubo.d), "diámetro del tubo:");
+    eq(tab.qty, 1); contiene(tab.desc, G("n")(E.principal, 0) + " A", "capacidad del tablero:"); contiene(tab.desc, "1 circuito", "circuitos dimensionados:");
+    pc.forEach((p) => { if (!p.descEn || !p.motivo) throw new Error("renglón sin espejo EN o sin motivo: " + p.clave); });
+    /* 2) 3F3H: tres hilos por juego. */
+    ({ E, Q } = armar({ sistema: "3F3H-440", Ltablero: 25, trafoKVA: 300, trafoZ: 4, cargas: [{ ...dc("Motor"), tipo: "motor", kW: 22, V: 440, ph: 3, cant: 1, L: 20, fp: .85 }] }));
+    cerca(deElec(Q).find((p) => p.clave === "alimConductor").qty, 3 * E.alim.paralelo * 25, 1e-9, "3F3H: 3 hilos × juegos × 25 m:");
+    /* 3) Sin distancia al tablero: el alimentador queda pendiente de longitud (antes 30 m supuestos), el tablero sí se pide. */
+    ({ E, Q } = armar({ sistema: "3F4H-220", trafoKVA: 300, trafoZ: 4, cargas: [{ ...dc("Contactos"), tipo: "contactos", kW: 27, V: 220, ph: 3, cant: 1, L: 10, fp: .9 },
+      { ...dc("Bomba sin datos"), tipo: "motor", kW: 0, V: 220, ph: 3, cant: 1, L: 10, fp: .85 }] }));
+    if (deElec(Q).some((p) => /^alim/.test(p.clave))) throw new Error("sin distancia al tablero no hay metros de alimentador");
+    if (!Q.pendientes.some((p) => p.mot === "elec" && /longitud/.test(p.motivo) && p.motivoEn)) throw new Error("el alimentador debe quedar pendiente de longitud (ES/EN)");
+    /* 4) El ramal con corriente pendiente no se cuenta como circuito dimensionado y queda pendiente con su nombre. */
+    if (!E.calc.some((c) => c.sinI)) throw new Error("el caso no aísla lo que se quiere probar: debe haber un ramal con corriente pendiente");
+    contiene(deElec(Q).find((p) => p.clave === "tableroGeneral").desc, "1 circuito", "sólo el ramal dimensionado:");
+    if (!Q.pendientes.some((p) => p.mot === "elec" && /Bomba sin datos/.test(p.desc) && /corriente/.test(p.motivo))) throw new Error("el ramal sin corriente debe quedar pendiente con su nombre");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 

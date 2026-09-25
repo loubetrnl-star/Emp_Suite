@@ -45,7 +45,7 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 | 2 | 2.9.24 | H-154 + H-156: la cobertura real manda en la selección Greenheck (cfmMin ≤ objetivo ≤ cfmMax, sin la tolerancia ×0.9); la familia propia del modo sólo ordena entre los que cubren (luego el de menor caudal nominal); si nadie cubre no hay modelo (`primary` null: nada llega a propuesta, memoria integral ni eléctrico) y `closest` sólo alimenta el aviso. Proyecto fijo: 11,643 CFM → CSW-30 (7,000–18,000) en vez de GB-360 (4,000–9,000) con «ningún modelo cubre» |
 | 3 | 2.9.24 | H-155: sin medidas no hay caudal: campana sin largo o fondo y rejilla sin ancho, alto, área libre o velocidad de cara dan demanda 0 con aviso de error en el motor y la matriz (antes pisos de 0.1 ft, 5 % y 100 fpm fabricaban 30 y 258 CFM y sus partidas). `avisos` en el resultado de computeVent. Proyecto fijo: sin cambio |
 
-## Cotización (`quote`) · v23
+## Cotización (`quote`) · v24
 
 | Versión | Rev | Hallazgo / cambio de lógica |
 |---|---|---|
@@ -63,6 +63,7 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 | 21 | 2.9.24 | H-166 (dependencia de ductos): la lámina de un tramo de ducto sin sección no entra a los kilos de la partida y queda pendiente con su razón (ES/EN). Proyecto fijo: cifras sin cambio |
 | 22 | 2.9.24 | H-167 (dependencia de ductos): cada tramo de ducto sin longitud capturada queda pendiente de longitud (ES/EN) en la cotización; no lleva lámina. Proyecto fijo: cifras sin cambio |
 | 23 | 2.9.24 | H-165 (dependencia de ductos): los kilos del ducto de grasa ya no entran a la partida de «lámina galvanizada»; salen «Por cotizar» (sección B) como ducto soldado de acero al carbón 16 MSG o inoxidable 18 MSG con su cita UMC 2018 §510.5 (ES/EN). Proyecto fijo: cifras sin cambio |
+| 24 | 2.9.24 | H-181 (regla de precios del 22-sep-2026): la cotización eléctrica sigue al cálculo. Alimentador por calibre: fase y neutro = juegos en paralelo × hilos del sistema (3F4H 4, 3F3H 3, 1F3H 3) × metros; tierra = una por canalización (NOM-001-SEDE-2012 250-122(f), p. 150) × metros; tubo = uno por juego × metros. Tablero por capacidad (A del principal, kA si hay transformador) y circuitos dimensionados. Sin precio con fuente y fecha para calibre o capacidad: «Por cotizar» (sección C). Sin distancia al tablero: alimentador pendiente de longitud (antes 30 m supuestos); ramal con corriente pendiente: fuera del conteo y pendiente con su nombre. Antes: 1 juego a 1,350 MXN/m (400 kW = 4 × 600 kcmil cotizado como 1) y tablero 68,000 + 4,200 por circuito sin importar la capacidad; `QUOTE_SEED.tablero/circuito` retirados (`alimM` queda sólo para el estimado de Kaizen, dependencia registrada). Proyecto fijo: el importe eléctrico sale de los directos y pasa a «Por cotizar» |
 | 14 | 2.9.24 | dependencia de soporte v6 (H-226): el anclaje va Por cotizar mientras no haya SDS con fuente, estructura y f'c |
 | 13 | 2.9.24 | dependencia de soporte v5 (H-225): sin altura de colgado la varilla sale pendiente, no cotizada |
 | 12 | 2.9.24 | dependencia de vent v2 (H-154): la partida de ventilación nombra el modelo que cubre de verdad, o ninguno |
