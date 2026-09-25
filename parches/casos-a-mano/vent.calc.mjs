@@ -170,13 +170,13 @@ const CHECKS = (lvl) => lvl ? `ENGINES.vent.checks(VENT).filter((x) => x.lvl ===
   fila("CM.vent.9.a", "caudal = área libre × velocidad", ent, `cara ${r(face, 4)} ft² × 50 % = ${r(free, 4)} ft² × 500 fpm = ${r(dem)} CFM`, FCASA("8598-8601", "velocidad sobre área libre"), "criterio de la casa", "VENT.demand", r(dem), 0.5, "vigente");
   fila("CM.vent.9.b", "caudal en m³/h", ent, `${r(dem)} × 1.699011 = ${r(dem * M3H_CFM, 1)}`, "conversión exacta", "primaria", "VENT.m3h", r(dem * M3H_CFM, 1), 1, "vigente");
   fila("CM.vent.9.c", "una rejilla del catálogo cubre el objetivo", ent, `objetivo ${r(obj)}; cubren: ${c.map((m) => `${m.model} ${m.min}–${m.max}`).join(", ")} → 1`, FCAT, "criterio de la casa", "Number(VENT.eq.cubre)", 1, 0, "vigente");
-  fila("CM.vent.9.d", "H-155: rejilla sin área libre capturada → demanda 0 (hoy piso 5 % × 400 fpm = 258 CFM)", "mode louver, louverW 1.2, louverH 1.0, freeArea 0, faceVel 400", `sin dato de área libre no hay caudal: 0 (hoy ${r(face * 0.05 * 400)} CFM)`, "política 2.9.16 «nada se estima» (CLAUDE.md regla 6)", "primaria", "VENT.demand", 0, 0, "fase2:H-155");
+  fila("CM.vent.9.d", "H-155: rejilla sin área libre capturada → demanda 0 (antes de H-155: piso 5 % × 400 fpm = 258 CFM)", "mode louver, louverW 1.2, louverH 1.0, freeArea 0, faceVel 400", `sin dato de área libre no hay caudal: 0 (hoy ${r(face * 0.05 * 400)} CFM)`, "política 2.9.16 «nada se estima» (CLAUDE.md regla 6)", "primaria", "VENT.demand", 0, 0, "vigente");
 }
 /* ===== 10 · Cocina sin medidas (H-155) ===== */
 {
   const ent = "mode kitchen, hoodType wall, duty medium, hoodL 0, hoodW 0; permisos de todos los cruces concedidos";
-  fila("CM.vent.10.a", "H-155: campana sin medidas → demanda 0 (hoy piso 0.1 ft × 300 = 30 CFM)", ent, "sin largo ni fondo no hay caudal: 0 (hoy 30 CFM)", "política 2.9.16 «nada se estima» (CLAUDE.md regla 6)", "primaria", "VENT.demand", 0, 0, "fase2:H-155");
-  fila("CM.vent.10.b", "H-155: sin caudal no hay partidas de ventilación en la cotización", ent, "0 partidas con mot = vent (hoy 2: extracción 30 CFM y reposición 24 CFM)", "política 2.9.16 (CLAUDE.md regla 6)", "primaria", "QUOTE.aux.filter((a) => a.mot === 'vent').length", 0, 0, "fase2:H-155");
+  fila("CM.vent.10.a", "H-155: campana sin medidas → demanda 0 (antes de H-155: piso 0.1 ft × 300 = 30 CFM)", ent, "sin largo ni fondo no hay caudal: 0 (hoy 30 CFM)", "política 2.9.16 «nada se estima» (CLAUDE.md regla 6)", "primaria", "VENT.demand", 0, 0, "vigente");
+  fila("CM.vent.10.b", "H-155: sin caudal no hay partidas de ventilación en la cotización", ent, "0 partidas con mot = vent (antes de H-155: 2, extracción 30 CFM y reposición 24 CFM)", "política 2.9.16 (CLAUDE.md regla 6)", "primaria", "QUOTE.aux.filter((a) => a.mot === 'vent').length", 0, 0, "vigente");
 }
 /* ===== 11 · Industrial 500 m² × 8 m, 10 1/h, proceso 20,000 CFM; variante proceso 30,000 ===== */
 {

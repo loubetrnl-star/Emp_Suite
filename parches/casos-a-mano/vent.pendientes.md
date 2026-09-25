@@ -1,6 +1,6 @@
 # vent · pendientes de la Fase 1 (rev 2.9.24, 22-sep-2026)
 
-Motor de ventilación (`vent`, v2). Hoja: `vent.csv` (58 filas: 46 vigentes, 12 fase2) · cálculo independiente:
+Motor de ventilación (`vent`, v3). Hoja: `vent.csv` (58 filas: 46 vigentes, 12 fase2) · cálculo independiente:
 `vent.calc.mjs` · módulo: `pruebas-motores/vent.mjs` (16 pruebas CM.vent.0–15) · compuerta: `parches/mutantes/vent.json`
 (34 mutantes: 27 de lógica vigente, 6 de lógica fase2:H-nnn, 1 valor por omisión fase2:H-160).
 
@@ -9,12 +9,13 @@ Motor de ventilación (`vent`, v2). Hoja: `vent.csv` (58 filas: 46 vigentes, 12 
 | Hallazgo | Estado | Qué cambió |
 |---|---|---|
 | H-154 (+H-156: familia preferida sobre cobertura; tolerancia ×0.9) | **Cerrado** (vent v1 → v2, quote v11 → v12 por dependencia, 25-sep-2026) | `pickVent`: `coversReal` (cfmMin ≤ objetivo ≤ cfmMax), `cubren` ordenados por familia del modo y caudal nominal, `primary` = primero que cubre o null, `closest` sólo para el aviso; consumidores blindados (memoria integral, PDF de ventilación, matriz, pantalla sin botón de submittal, eléctrico sin carga sin modelo). Prueba S.64; filas 2.f/2.g/2.h, 5.e, 14.c/14.d de fase2 a vigentes; mutantes m06/m19/m20 reapuntados a `coversReal`/`primary`, m21 a vigente. Proyecto fijo: GB-360 → CSW-30. |
+| H-155 (pisos de 0.1 ft, 5 % y 100 fpm fabricaban caudal y partidas) | **Cerrado** (vent v2 → v3, 25-sep-2026) | Campana sin largo o fondo y rejilla sin ancho, alto, área libre o velocidad: demanda 0, aviso err en `VENT.avisos` (la matriz los reenvía), memoria y PDF dicen «pendiente», sin partidas. Con datos, la fórmula no cambia. Prueba S.65; filas 9.d, 10.a, 10.b de fase2 a vigentes; mutantes m22/m23 reapuntados a las guardas: MUERTOS. |
 
 ## Pruebas que hoy protegen valores incorrectos (se marcan, no se arreglan)
 | Prueba | Dónde | Qué consagra | Hallazgo |
 |---|---|---|---|
 | ~~R.1 golden por motor~~ | esperado regenerado en H-154 (`primary = "CSW-30"`) | — | H-154 |
-| S.23 | pruebas.mjs:5358 | «el modo cocina sin medidas … y la cotización sigue vacía»: sólo mide `capturaReal`; la demanda da 30 CFM (piso 0.1 ft) y QUOTE.aux lleva 2 partidas de ventilación | H-155 |
+| ~~S.23~~ | — | desde H-155 la demanda es 0 y no hay partidas; S.65 lo afirma | H-155 |
 | genera.mjs (fixture) | parches/regresion-motores/genera.mjs | Declara ventilación 400 m² / 6 m / 30 personas y calcula con lo heredado (700 / 4.71 / 46) | AUDITORIA.md §4 |
 
 Fuera de R.1 ninguna prueba del banco afirmaba un número del motor: por eso sobrevivían los 7 mutantes de la auditoría.
@@ -28,8 +29,8 @@ Fuera de R.1 ninguna prueba del banco afirmaba un número del motor: por eso sob
 | ~~CM.vent.14.c~~ | H-156 | **vigente desde el 25-sep-2026** | = esperado |
 | CM.vent.3.a/3.b | H-157 | almacén 200 m² / 12 pers: Rp 5 L/s·pers → 254.27 CFM | Rp 2.5 → Vbz 190.7 y rige Tab.45 211.89 |
 | CM.vent.7.b | H-159 | visera con carga pesada: no permitida → 0 CFM | 300 CFM/ft inventados → 1,968.5 CFM |
-| CM.vent.9.d | H-155 | rejilla sin área libre capturada → 0 CFM | piso 5 % × 400 fpm = 258.3 CFM |
-| CM.vent.10.a/10.b | H-155 | cocina sin medidas → 0 CFM y 0 partidas | 30 CFM y 2 partidas (extracción y reposición) |
+| ~~CM.vent.9.d~~ | H-155 | **vigente desde el 25-sep-2026** | = esperado |
+| ~~CM.vent.10.a/10.b~~ | H-155 | **vigentes desde el 25-sep-2026** | = esperado |
 
 Al cerrar cada hallazgo en la Fase 2 la fila pasa a `vigente` y el mutante correspondiente (m20, m21, m22, m23, m31, m32)
 cambia a `estado: "vigente"` (debe morir con la fila ya exigida).
@@ -62,8 +63,8 @@ cambia a `estado: "vigente"` (debe morir con la fila ya exigida).
 | m19 | cobertura tolerancia ×0.5 | vigente | MUERTO | CM.vent.12 |
 | m20 | cobertura real con tolerancia ×0.8 (reapuntado en H-154/H-156) | vigente | MUERTO | 5.e, 14.c, S.64 |
 | m21 | familia preferida no manda (tier×0) | vigente desde H-154 | MUERTO | S.64 (1,907 CFM: G-140 sobre CSW-12) |
-| m22 | piso 0.1 ft → 0.2 ft en campana | fase2:H-155 | VIVO | sólo lo mata demanda 0 sin medidas (fila 10.a con CM_FASE2=1) |
-| m23 | piso área libre 5 % → 10 % | fase2:H-155 | VIVO | sólo lo mata demanda 0 sin área libre (fila 9.d con CM_FASE2=1) |
+| m22 | guarda de campana sin medidas relajada (reapuntado en H-155) | vigente | MUERTO | 10.a, S.65 |
+| m23 | guarda de rejilla sin área libre/velocidad relajada (reapuntado en H-155) | vigente | MUERTO | 9.d, S.65 |
 | m24 | omisión 6 → 3 cambios/h | fase2:H-160 · no es lógica | VIVO | decisión del dueño (H-160); los casos capturan `ach` a mano |
 | m25 | SP + 0.35 | vigente | MUERTO | CM.vent.1, 15 (y R.1) |
 | m26 | industrial sin dilución | vigente | MUERTO | CM.vent.11 |

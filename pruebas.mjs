@@ -6747,6 +6747,35 @@ t("S.64 (H-154 + H-156) selección Greenheck: la cobertura real manda (cfmMin �
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+t("S.65 (H-155) sin medidas no hay caudal: campana sin largo o fondo y rejilla sin área libre o velocidad dan demanda 0 con aviso visible (nada de pisos de 0.1 ft, 5 % o 100 fpm), sin partidas en la cotización; con medidas, igual que siempre", () => {
+  const guardado = JSON.stringify(S);
+  const armar = (campos) => { G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.65"; Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.65" }; }); Object.assign(S.vent, campos); G("recompute")(); return G("VENT"); };
+  const partidas = () => (G("QUOTE").aux || []).filter((x) => x.mot === "vent").length;
+  const errs = () => G("validateAll")().rows.filter((r) => r.lvl === "err" && /Ventilación/.test(r.msg) && /medida|área libre|velocidad/.test(r.msg));
+  try {
+    let V = armar({ mode: "kitchen", hoodType: "wall", duty: "medium", hoodL: 0, hoodW: 0 });
+    eq(V.demand, 0, "campana sin medidas: demanda 0 (antes 30 CFM del piso de 0.1 ft):"); eq(V.mua, 0, "sin reposición:"); eq(partidas(), 0, "sin partidas:");
+    eq(errs().length, 1, "aviso visible en la matriz:"); contiene(errs()[0].msg, "pendiente", "dice que es un dato pendiente:");
+    V = armar({ mode: "kitchen", hoodType: "wall", duty: "medium", hoodL: 3.0, hoodW: 0 });
+    eq(V.demand, 0, "campana con largo pero sin fondo: 0:"); eq(errs().length, 1);
+    V = armar({ mode: "kitchen", hoodType: "wall", duty: "medium", hoodL: 3.0, hoodW: 1.2 });
+    if (!(V.demand > 2900 && V.demand < 3000)) throw new Error("con medidas la campana de 3.0 × 1.2 debía dar ~2,953 CFM: " + V.demand);
+    eq(errs().length, 0, "con medidas no hay aviso:");
+    V = armar({ mode: "louver", louverW: 1.2, louverH: 1.0, freeArea: 0, faceVel: 400 });
+    eq(V.demand, 0, "rejilla sin área libre: 0 (antes 258 CFM del piso de 5 %):"); eq(errs().length, 1); eq(partidas(), 0);
+    V = armar({ mode: "louver", louverW: 1.2, louverH: 1.0, freeArea: 50, faceVel: 0 });
+    eq(V.demand, 0, "rejilla sin velocidad: 0 (antes piso de 100 fpm):"); eq(errs().length, 1);
+    V = armar({ mode: "louver", louverW: 0, louverH: 1.0, freeArea: 50, faceVel: 500 });
+    eq(V.demand, 0, "rejilla sin ancho: 0 (antes piso de 0.1 ft²):");
+    V = armar({ mode: "louver", louverW: 1.2, louverH: 1.0, freeArea: 50, faceVel: 500 });
+    cerca(V.demand, 1.2 * 3.28084 * 1.0 * 3.28084 * 0.5 * 500, 0.5, "rejilla con datos: área libre × velocidad, como siempre:"); eq(errs().length, 0);
+    const txt = [...Buffer.from(G("buildVentPdf")()).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");
+    armar({ mode: "kitchen", hoodType: "wall", duty: "medium", hoodL: 0, hoodW: 0 });
+    contiene([...Buffer.from(G("buildVentPdf")()).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" "), "pendiente", "el PDF lo declara:");
+    if (!txt) throw new Error("PDF vacío");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 /* ===== R. Regresión por motor (rev 2.9.22, decisión del dueño): un proyecto fijo con cifras esperadas por disciplina ===== */
 const REG_DIR = "parches/regresion-motores/";
 const REG_PROY = fs.readFileSync(REG_DIR + "regresion-motores.emp.json", "utf8");

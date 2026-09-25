@@ -3879,6 +3879,7 @@ const ENGINES = {
       const w = [];
       if (!v) return w;
       const cfm = num(v.demand);
+      (v.avisos || []).forEach((a) => w.push(a)); /* H-155: los avisos del motor (medidas pendientes) llegan a la matriz */
       if (cfm > 0 && v.sp > 2.5) w.push({ lvl: "warn", msg: `Ventilación: ${n(v.sp, 2)} in.wg de presión estática es alto para extracción general. Revisar pérdidas de ducto, filtro y persiana.` });
       if (cfm > 0 && v.eq && v.eq.closest && v.eq.cubre === false)
         w.push({ lvl: "err", msg: `Ventilación: ningún modelo Greenheck del catálogo cubre ${n(cfm, 0)} CFM a ${n(v.sp, 2)} in.wg (no se propone modelo, H-154); el modelo más cercano del catálogo es ${v.eq.closest.model}, con rango ${n(v.eq.closest.cfmMin, 0)}–${n(v.eq.closest.cfmMax, 0)} CFM. Si la demanda rebasa ese rango, hay que dividir la extracción en varios equipos o cambiar de familia; si queda por debajo, revisar el caudal capturado o cambiar de familia.` });
@@ -8671,9 +8672,17 @@ function computeVent(v) {
       ["Aire exterior ASHRAE 62.1", `${oa.toFixed(0)} CFM (Vbz ${v62.toFixed(0)} · pers ${byP.toFixed(0)} · área ${byA.toFixed(0)})`]);
     if (v.mode === "mua") { mua = demand; method.push("Modo reposición: aire de reposición ≈ extracción."); }
   }
-  if (v.mode === "kitchen") {
+  const avisos = [];
+  if (v.mode === "kitchen" && !(num(v.hoodL) > 0 && num(v.hoodW) > 0)) {
+    /* H-155 (rev 2.9.24, vent v3): sin largo y fondo de campana no hay caudal (antes un piso de 0.1 ft fabricaba 30 CFM y dos
+       partidas). Política 2.9.16 «nada se estima». */
+    demand = 0; mua = 0;
+    avisos.push({ lvl: "err", msg: "Ventilación: campana sin medidas (largo y fondo en m): el caudal queda pendiente de la captura; no se supone ningún tamaño." });
+    method.push("Campana sin medidas: sin largo y fondo no hay caudal ni partidas; dato pendiente (H-155).");
+    lines.push(["Campana", "sin medidas: caudal pendiente"]);
+  } else if (v.mode === "kitchen") {
     /* H-14 · Por área y por metro lineal; rige el mayor y se dice cuál. */
-    const Lft = Math.max(.1, num(v.hoodL) * 3.28084), Wft = Math.max(.1, num(v.hoodW) * 3.28084);
+    const Lft = num(v.hoodL) * 3.28084, Wft = num(v.hoodW) * 3.28084;
     const ft2 = Lft * Wft, f = HOOD[v.hoodType][v.duty];
     const fl = (HOOD_LIN[v.hoodType] || HOOD_LIN.wall)[v.duty];
     const porArea = ft2 * f, porLineal = Lft * fl;
@@ -8692,19 +8701,26 @@ function computeVent(v) {
     method.push(achCfm > v.processCFM ? `Industrial: rige dilución por cambios/h (${achCfm.toFixed(0)} CFM).` : `Industrial: rige caudal de proceso (${v.processCFM} CFM).`);
     lines.push(["Proceso", `${v.processCFM.toFixed(0)} CFM`], ["Dilución", `${achCfm.toFixed(0)} CFM`]);
   }
-  if (v.mode === "louver") {
-    const face = Math.max(.1, v.louverW * 3.28084 * v.louverH * 3.28084);
-    const free = face * Math.max(5, v.freeArea) / 100, vel = Math.max(100, v.faceVel);
+  if (v.mode === "louver" && !(num(v.louverW) > 0 && num(v.louverH) > 0 && num(v.freeArea) > 0 && num(v.faceVel) > 0)) {
+    /* H-155: ancho, alto, área libre y velocidad de cara son obligatorios (antes pisos de 0.1 ft², 5 % y 100 fpm fabricaban 258 CFM). */
+    demand = 0;
+    const falta = [!(num(v.louverW) > 0 && num(v.louverH) > 0) ? "medidas" : "", !(num(v.freeArea) > 0) ? "área libre" : "", !(num(v.faceVel) > 0) ? "velocidad de cara" : ""].filter(Boolean).join(", ");
+    avisos.push({ lvl: "err", msg: `Ventilación: rejilla sin ${falta}: el caudal queda pendiente de la captura; no se supone ningún valor.` });
+    method.push(`Rejilla sin ${falta}: sin esos datos no hay caudal; pendiente (H-155).`);
+    lines.push(["Rejilla", `sin ${falta}: caudal pendiente`]);
+  } else if (v.mode === "louver") {
+    const face = v.louverW * 3.28084 * v.louverH * 3.28084;
+    const free = face * v.freeArea / 100, vel = v.faceVel;
     demand = free * vel;
     method.push(`Rejilla: área libre ${free.toFixed(2)} ft² × ${vel} fpm (velocidad sobre área libre, Greenheck).`);
-    lines.push(["Área de cara", `${face.toFixed(2)} ft²`], ["Área libre", `${free.toFixed(2)} ft² (${Math.max(5, v.freeArea)} %${v.freeArea < 5 ? ", mínimo del motor 5 %" : ""})`], ["Velocidad", `${vel} fpm`]);
+    lines.push(["Área de cara", `${face.toFixed(2)} ft²`], ["Área libre", `${free.toFixed(2)} ft² (${v.freeArea} %)`], ["Velocidad", `${vel} fpm`]);
   }
   const sp = Math.max(0, v.ductLoss) + Math.max(0, v.filterLoss) + .25;
   lines.push(["Presión estática estimada", `${sp.toFixed(2)} in.w.g.`]);
   method.push(`SP ≈ ductos ${v.ductLoss} + filtros ${v.filterLoss} + 0,25 entrada/salida.`);
   const eq = pickVent(demand, v.mode, sp);
   method.push(eq.sizingNote);
-  return { demand, m3h: demand * 1.699, achCfm: achCfmOut, oaCfm: oaCfmOut, vol, sp, method, lines, eq, mua };
+  return { demand, m3h: demand * 1.699, achCfm: achCfmOut, oaCfm: oaCfmOut, vol, sp, method, lines, eq, mua, avisos };
 }
 const VTECH_LABEL = { centrifugal: "CSW Utility Centrifugal", axial: "AE Axial Roof", inline: "SQ Square Inline", roof_exhauster: "G / GB Roof Exhaust", kitchen_hood: "CUBE Grease Upblast", make_up_air: "MSX Make-Up Air", louver: "ESD Louvers", erv: "MiniCore ERV" };
 function pickVent(cfm, mode, sp) {
@@ -17967,13 +17983,14 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "4", clean: "2", equip: "1", duct: "1", vent: "2", quote: "12", valor: "1", kaizen: "1", elec: "8", hidro: "8", fuego: "3", aire: "5", civil: "3", soporte: "2" };
+const MOTOR_VER = { load: "4", clean: "2", equip: "1", duct: "1", vent: "3", quote: "12", valor: "1", kaizen: "1", elec: "8", hidro: "8", fuego: "3", aire: "5", civil: "3", soporte: "2" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
     { ver: "3", rev: "2.9.21", que: "cuarto limpio con presión positiva sin infiltración; unidad de aire exterior dedicada + serpentín seco (ADP desde la latente interna); crédito sensible del aire exterior topado en deshumidificación; cambios por hora obligatorios; calor del ventilador Q·ΔP/η" },
     { ver: "4", rev: "2.9.24", que: "H-120: el DET de muros y cubierta se corrige por la condición de diseño del sitio, (25.6 − ti) + (tm − 29.4) K con tm = to − rango/2 (corrección CLTD, ASHRAE Fundamentals 1997 cap. 28; ratificar con Carrier Tabla 20A)" }],
-  vent: [{ ver: "2", rev: "2.9.24", que: "H-154 + H-156: la cobertura real manda en la selección Greenheck (cfmMin ≤ objetivo ≤ cfmMax, sin tolerancia ×0.9); la familia del modo sólo ordena entre los que cubren; si nadie cubre no hay modelo (proyecto fijo: GB-360 → CSW-30 para 11,643 CFM)" }],
+  vent: [{ ver: "2", rev: "2.9.24", que: "H-154 + H-156: la cobertura real manda en la selección Greenheck (cfmMin ≤ objetivo ≤ cfmMax, sin tolerancia ×0.9); la familia del modo sólo ordena entre los que cubren; si nadie cubre no hay modelo (proyecto fijo: GB-360 → CSW-30 para 11,643 CFM)" },
+    { ver: "3", rev: "2.9.24", que: "H-155: sin medidas no hay caudal: campana sin largo o fondo y rejilla sin ancho, alto, área libre o velocidad dan demanda 0 con aviso (antes pisos de 0.1 ft, 5 % y 100 fpm fabricaban 30 y 258 CFM y sus partidas)" }],
   clean: [{ ver: "2", rev: "2.9.16", que: "sin pisos de 1 m² ni 2.2 m; 5 Pa de ISO 14644-4 con aviso; ceros capturados respetados" }],
   quote: [{ ver: "2", rev: "2.9.16", que: "red hidráulica por diámetro con precio capturado; sin 50 m supuestos; partidas pendientes" }, { ver: "3", rev: "2.9.19", que: "tramo con longitud y sin unidades mueble queda pendiente" }, { ver: "4", rev: "2.9.23", que: "precio de tubería por renglón con origen (referencia de mercado o proveedor local), IVA desglosado y por metro; sin precio: partida Por cotizar en el Budget, bloqueo sólo en la formal" }, { ver: "5", rev: "2.9.23", que: "precios en USD sólo se convierten con tipo de cambio capturado con fecha; sin fecha salen Por cotizar y bloquean la formal (nada se estima)" }, { ver: "6", rev: "2.9.23", que: "referencias sólo de California y sólo material (mano de obra por capturar; combinados → Por cotizar); referencias IUSA retiradas; flete, aduana e importación como renglón propio siempre Por cotizar hasta capturarlo" }, { ver: "7", rev: "2.9.24", que: "H-198: un tramo de agua sin diámetro verificado (fuera del catálogo del material, o PEAD sin SDR ni fuente) va Por cotizar con sus metros; ya no se cotiza con el precio del mayor diámetro ni pide precio de un diámetro que no le corresponde" }, { ver: "8", rev: "2.9.24", que: "H-196: cisterna y equipo de bombeo sin precio semilla (9,500 MXN/m³ y 14,500 MXN/HP sin fuente): van Por cotizar con su volumen y su potencia; la bomba sólo cuando la presión de la red no alcanza; cisterna en 0 queda pendiente de volumen, nunca cisterna de 0 m³" }, { ver: "9", rev: "2.9.24", que: "H-206: bomba contra incendio y reserva sin precio fijo (385,000 MXN + 9,500 MXN/m³ sin fuente): Por cotizar con capacidad (gpm y L/min), presión, potencia y volumen declarados" }, { ver: "10", rev: "2.9.24", que: "dependencia de aire v3 (H-215): la partida del secador lleva la capacidad nominal de ISO 7183 A1 y declara si la corrección del fabricante está pendiente" }, { ver: "11", rev: "2.9.24", que: "dependencia de aire v5 (H-218): la partida de la red declara «diámetros indicativos: DI del fabricante pendiente» en aluminio e inoxidable" }, { ver: "12", rev: "2.9.24", que: "dependencia de vent v2 (H-154): la partida de ventilación nombra el modelo que cubre de verdad (o ninguno)" }],
   elec: [{ ver: "2", rev: "2.9.16", que: "canalización con las áreas del conductor de la memoria (THW-LS por omisión, NOM-001-SEDE Cap. 10 Tabla 5)" }, { ver: "3", rev: "2.9.18", que: "siete áreas THHN/THWN-2 corregidas a la Tabla 5" }, { ver: "4", rev: "2.9.19", que: "sin compresor de aire cuando no hay demanda" },
