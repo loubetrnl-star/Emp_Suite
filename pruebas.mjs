@@ -35,11 +35,12 @@ const w = await cargar(file);
 const G = (expr) => w.eval(expr);
 const S = G("S");
 /* H-253: la formal no sale con la importación «Por cotizar». Las pruebas que revisan el CONTENIDO de la licitación la emiten
-   con una importación capturada (monto, fuente y fecha) sólo durante la emisión, y dejan el estado como estaba. */
+   con una importación capturada (monto, fuente y fecha) sólo durante la emisión, y dejan el estado como estaba.
+   H-252: con precios semilla la formal tampoco sale; esas pruebas la emiten como borrador interno ({borrador: true}). */
 const licitacionFormal = () => {
   const imp0 = JSON.parse(JSON.stringify(S.quote.importacion || {}));
   S.quote.importacion = { monto: 1000, moneda: "MXN", fuente: "banco de pruebas: importación capturada para emitir la formal", fecha: "2026-09-25" };
-  try { return G("buildLicitacionPdf")(); } finally { S.quote.importacion = imp0; G("recompute")(); }
+  try { return G("buildLicitacionPdf")({ borrador: true }); } finally { S.quote.importacion = imp0; G("recompute")(); }
 };
 
 let ok = 0, fail = 0;
@@ -7182,6 +7183,35 @@ t("S.81 (H-253, regla e) la cotización formal no sale con precios que sólo val
     S.quote.currency = "USD"; S.quote.fx = 18.25; S.quote.fxFecha = ""; G("recompute")();
     if (!G("QUOTE").usdSinFecha) throw new Error("el caso no aísla lo que se quiere probar: USD sin fecha");
     if (!G("bloqueosFormal")().some((b) => /tipo de cambio/.test(b))) throw new Error("USD sin fecha debe bloquear la formal");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+t("S.82 (H-252, decisión 6 del dueño, opción a) cada precio semilla sin fuente sale en el Budget con «SEMILLA · SIN FUENTE» (EN «SEED · NO SOURCE») y bloquea la formal; los renglones con origen declarado (referencia o proveedor) y la importación capturada no llevan la marca", () => {
+  const guardado = JSON.stringify(S);
+  const txtPdf = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");
+  try {
+    G("importarRespaldo")(fs.readFileSync("parches/regresion-motores/regresion-motores.emp.json", "utf8")); S.tab = "tablero"; G("KZ_CACHE").key = null; G("VZ_CACHE").key = null;
+    S.quote.importacion = { monto: 18500, moneda: "MXN", fuente: "agente aduanal (cotización capturada)", fecha: "2026-09-20" };
+    G("recompute")();
+    const filas = G("catalogoConceptos")().secciones.flatMap((s) => s.partidas);
+    const sem = filas.filter((p) => /SEMILLA · SIN FUENTE/.test(p.desc));
+    if (!sem.length) throw new Error("ninguna partida sale marcada como semilla (antes ninguna: el 99.93 % del directo sin fuente)");
+    if (!sem.every((p) => /SEED · NO SOURCE/.test(p.descEn))) throw new Error("la marca en inglés falta en alguna partida semilla");
+    const conOrigen = G("QUOTE").aux.filter((a) => "origen" in a && a.origen);
+    if (!conOrigen.length) throw new Error("el caso no aísla lo que se quiere probar: debe haber tubería con origen declarado");
+    conOrigen.forEach((a) => { const p = filas.find((x) => x.desc.startsWith(a.desc)); if (!p || /SEMILLA/.test(p.desc)) throw new Error("un precio con origen (" + a.origen + ") no es semilla: " + (p && p.desc)); });
+    const h = filas.find((p) => p.sec === "H"); if (!h || /SEMILLA/.test(h.desc)) throw new Error("la importación capturada con fuente y fecha no es semilla");
+    eq(filas.filter((p) => !/SEMILLA/.test(p.desc)).length, conOrigen.length + 1, "sólo los renglones con origen y la importación quedan sin marca:");
+    contiene(txtPdf(G("buildPropuestaPdf")({ lang: "es", mon: "MXN" })), "SEMILLA · SIN FUENTE", "Budget PDF:");
+    contiene(Buffer.from(G("buildPropuestaXlsx")({ lang: "es", mon: "MXN" })).toString("utf8"), "SEMILLA · SIN FUENTE", "Budget Excel:");
+    S.tab = "cotizacion"; G("render")();
+    contiene(w.document.querySelector("#view").textContent, "SEMILLA · SIN FUENTE", "pantalla de cotización:");
+    const B = G("bloqueosFormal")();
+    if (!B.some((b) => /semilla/.test(b))) throw new Error("los precios semilla deben bloquear la formal: " + JSON.stringify(B));
+    let tiro = ""; try { G("buildLicitacionPdf")(); } catch (e) { tiro = String(e.message); }
+    contiene(tiro, "semilla", "la formal no sale con precios semilla:");
+    /* El borrador interno (sólo para revisar el documento) sale con la marca de que no es oferta. */
+    contiene(txtPdf(G("buildLicitacionPdf")({ borrador: true })), "BORRADOR INTERNO", "borrador marcado:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 

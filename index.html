@@ -6364,8 +6364,8 @@ function preseleccionHidroneumatico(qLps, cdtM, variable) {
 function catalogoConceptos() {
   const Q = QUOTE; if (!Q) return { secciones: [], subtotal: 0 };
   const todos = [
-    ...Q.lines.map((l) => ({ desc: l.desc, descEn: l.descEn || l.desc, un: l.un || "PIEZA", qty: l.qty, unit: l.unit, total: l.total, sec: l.sec || "B", mot: l.mot || "equip" })),
-    ...Q.aux.map((a) => ({ desc: a.desc, descEn: a.descEn || a.desc, un: a.un || "LOTE", qty: a.qty, unit: a.unit, total: a.total, sec: a.sec || "B", mot: a.mot || "equip", talCual: exentoPlaza(a) })),
+    ...Q.lines.map((l) => ({ desc: l.desc, descEn: l.descEn || l.desc, un: l.un || "PIEZA", qty: l.qty, unit: l.unit, total: l.total, sec: l.sec || "B", mot: l.mot || "equip", semilla: !!l.semilla })),
+    ...Q.aux.map((a) => ({ desc: a.desc, descEn: a.descEn || a.desc, un: a.un || "LOTE", qty: a.qty, unit: a.unit, total: a.total, sec: a.sec || "B", mot: a.mot || "equip", talCual: exentoPlaza(a), semilla: !!a.semilla })),
   ].filter((x) => x.total > 0);
   /* El factor de plaza multiplica el precio unitario aquí y no antes: una sola
      puerta de salida para que el catálogo, el resumen, el PDF y el Excel vean
@@ -6373,6 +6373,8 @@ function catalogoConceptos() {
   const PLZ = plazaDe((S.quote || {}).plaza);
   const fP = num((S.quote || {}).plazaFactor, 0) > 0 ? num((S.quote || {}).plazaFactor) : PLZ.f;
   todos.forEach((x) => { if (x.talCual) return; x.unit = x.unit * fP; x.total = x.total * fP; });   /* H-254: H y precios con origen, tal cual */
+  /* H-252: la marca viaja con la partida a todo documento que lee el catálogo (Budget PDF/Excel, cotización por disciplina). */
+  todos.forEach((x) => { if (x.semilla) { x.desc = `${x.desc} · SEMILLA · SIN FUENTE`; x.descEn = `${x.descEn} · SEED · NO SOURCE`; } });
   const secciones = SEC_ORDEN.map((k) => {
     const items = todos.filter((x) => x.sec === k);
     return {
@@ -6486,14 +6488,17 @@ function bloqueosFormal() {
   if ((Q.pendientes || []).some((p) => /mano de obra por capturar/.test(p.motivo || ""))) B.push("mano de obra por capturar (la referencia de mercado sólo cubre material)");
   if ((Q.porCotizar || []).some((p) => p.sec === "H")) B.push("flete, aduana e importación a México sin capturar (monto, fuente y fecha)");
   if (Q.usdSinFecha) B.push("moneda USD sin tipo de cambio fechado");
+  const nSem = [...(Q.lines || []), ...(Q.aux || [])].filter((x) => x.semilla && x.total > 0).length;
+  if (nSem) B.push(`${nSem} partida(s) con precio semilla sin fuente (SEMILLA · SIN FUENTE): sólo valen para el Budget (H-252)`);
   return B;
 }
-function buildLicitacionPdf() {
+function buildLicitacionPdf(opt = {}) {
   recompute();
   /* rev 2.9.23 · La cotización formal (licitación) no sale con diámetros sin precio; el Budget Proposal sí, con «Por cotizar».
      H-253: ni con referencias, mano de obra pendiente, sección H sin capturar o USD sin fecha. */
   const bloq = bloqueosFormal();
-  if (bloq.length) throw new Error(`La cotización formal no sale con ${bloq.join("; ")}`);
+  /* H-252: {borrador: true} sólo para revisar el documento por dentro (no hay botón): sale marcado «BORRADOR INTERNO». */
+  if (bloq.length && !opt.borrador) throw new Error(`La cotización formal no sale con ${bloq.join("; ")}`);
   const cat = catalogoConceptos();
   const B = BASES_PRECIO[S.quote.basePrecio] || BASES_PRECIO.casa;
   const PLZ = plazaDe(S.quote.plaza);
@@ -6501,6 +6506,7 @@ function buildLicitacionPdf() {
   const d = PdfDoc("Propuesta para licitacion publica");
   pdfTitle(d, "Propuesta economica para licitacion publica",
     `${S.meta.name || "Proyecto"} · ${S.meta.client || ""} · ${new Date().toLocaleDateString("es-MX")}`);
+  if (bloq.length) pdfParagraph(d, `BORRADOR INTERNO · NO ES OFERTA. La cotizacion formal no sale con: ${bloq.join("; ")}.`);
   pdfParagraph(d, `Art. 185 del Reglamento de la Ley de Obras Publicas y Servicios Relacionados con las Mismas: el precio unitario es el importe total que debe cubrirse al contratista por unidad de concepto TERMINADO. Cada precio de este documento esta integrado con costo directo, costo indirecto, costo por financiamiento, cargo por utilidad${pctContingencia() ? ", contingencia sobre el costo directo" : ""} y cargos adicionales, en ese orden y en cascada.`);
   pdfTable(d, ["Concepto", "Dato"], [
     ["Base de formacion del precio", B.label],
@@ -8725,6 +8731,13 @@ function computeQuote() {
   if (ELEC && ELEC.kVAdemanda > 0 && !verElec) faltan.push("la instalación eléctrica");
   if (HIDRO && HIDRO.umTotal > 0 && !verHid) faltan.push("la instalación hidrosanitaria");
   if (FUEGO && FUEGO.nTotal > 0 && !verFue) faltan.push("la red contra incendio");
+  /* H-252 (rev 2.9.24, quote v20; decisión 6 del dueño, opción a): todo precio sin origen declarado es SEMILLA · SIN FUENTE
+     (catálogo de la casa: PRICE_SEED, QUOTE_SEED, PU_CIVIL, PU_SOP_*, COMPRESORES, etc.; también un número tecleado sin fuente
+     ni fecha). Sólo quedan sin marca los renglones con origen (referencia de mercado o proveedor local, tubería hidráulica) y
+     la importación capturada con fuente y fecha (sección H). El Budget sale con la marca; la formal se bloquea. Al cargar la
+     base Craftsman pasa a la opción (b). */
+  lines.forEach((l) => { l.semilla = true; });
+  aux.forEach((a) => { a.semilla = !("origen" in a && a.origen) && a.sec !== "H"; });
   const auxTotal = aux.reduce((a, l) => a + l.total, 0);
   /* El costo directo lleva el mismo factor de plaza que el catálogo: si no,
      el catálogo y el escalón de precio dejarían de cuadrar. */
@@ -18139,7 +18152,7 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "5", clean: "3", equip: "1", duct: "1", vent: "3", quote: "19", valor: "1", kaizen: "1", elec: "8", hidro: "8", fuego: "3", aire: "5", civil: "5", soporte: "9" };
+const MOTOR_VER = { load: "5", clean: "3", equip: "1", duct: "1", vent: "3", quote: "20", valor: "1", kaizen: "1", elec: "8", hidro: "8", fuego: "3", aire: "5", civil: "5", soporte: "9" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
@@ -18150,7 +18163,7 @@ const MOTOR_CAMBIOS = {
     { ver: "3", rev: "2.9.24", que: "H-155: sin medidas no hay caudal: campana sin largo o fondo y rejilla sin ancho, alto, área libre o velocidad dan demanda 0 con aviso (antes pisos de 0.1 ft, 5 % y 100 fpm fabricaban 30 y 258 CFM y sus partidas)" }],
   clean: [{ ver: "2", rev: "2.9.16", que: "sin pisos de 1 m² ni 2.2 m; 5 Pa de ISO 14644-4 con aviso; ceros capturados respetados" },
     { ver: "3", rev: "2.9.24", que: "H-127: se respeta el signo de la presión diferencial capturada (contención en negativa, EU GMP Anexo 1 (2022) §4.14); piso de 5 Pa y fuga por rendijas sobre |ΔP|; el signo sale en memoria, PDF y Excel; aviso con los 10 Pa guía del Anexo 1" }],
-  quote: [{ ver: "2", rev: "2.9.16", que: "red hidráulica por diámetro con precio capturado; sin 50 m supuestos; partidas pendientes" }, { ver: "3", rev: "2.9.19", que: "tramo con longitud y sin unidades mueble queda pendiente" }, { ver: "4", rev: "2.9.23", que: "precio de tubería por renglón con origen (referencia de mercado o proveedor local), IVA desglosado y por metro; sin precio: partida Por cotizar en el Budget, bloqueo sólo en la formal" }, { ver: "5", rev: "2.9.23", que: "precios en USD sólo se convierten con tipo de cambio capturado con fecha; sin fecha salen Por cotizar y bloquean la formal (nada se estima)" }, { ver: "6", rev: "2.9.23", que: "referencias sólo de California y sólo material (mano de obra por capturar; combinados → Por cotizar); referencias IUSA retiradas; flete, aduana e importación como renglón propio siempre Por cotizar hasta capturarlo" }, { ver: "7", rev: "2.9.24", que: "H-198: un tramo de agua sin diámetro verificado (fuera del catálogo del material, o PEAD sin SDR ni fuente) va Por cotizar con sus metros; ya no se cotiza con el precio del mayor diámetro ni pide precio de un diámetro que no le corresponde" }, { ver: "8", rev: "2.9.24", que: "H-196: cisterna y equipo de bombeo sin precio semilla (9,500 MXN/m³ y 14,500 MXN/HP sin fuente): van Por cotizar con su volumen y su potencia; la bomba sólo cuando la presión de la red no alcanza; cisterna en 0 queda pendiente de volumen, nunca cisterna de 0 m³" }, { ver: "9", rev: "2.9.24", que: "H-206: bomba contra incendio y reserva sin precio fijo (385,000 MXN + 9,500 MXN/m³ sin fuente): Por cotizar con capacidad (gpm y L/min), presión, potencia y volumen declarados" }, { ver: "10", rev: "2.9.24", que: "dependencia de aire v3 (H-215): la partida del secador lleva la capacidad nominal de ISO 7183 A1 y declara si la corrección del fabricante está pendiente" }, { ver: "11", rev: "2.9.24", que: "dependencia de aire v5 (H-218): la partida de la red declara «diámetros indicativos: DI del fabricante pendiente» en aluminio e inoxidable" }, { ver: "12", rev: "2.9.24", que: "dependencia de vent v2 (H-154): la partida de ventilación nombra el modelo que cubre de verdad (o ninguno)" }, { ver: "13", rev: "2.9.24", que: "dependencia de soporte v5 (H-225): sin altura de colgado la varilla sale pendiente, no cotizada" }, { ver: "14", rev: "2.9.24", que: "dependencia de soporte v6 (H-226): el anclaje va Por cotizar (sección G) mientras no haya SDS con fuente, estructura y f'c" }, { ver: "15", rev: "2.9.24", que: "dependencia de soporte v8 (H-229): más soportes de cobre con los claros MSS/IPC" }, { ver: "16", rev: "2.9.24", que: "dependencia de civil v4 (H-243): muro clasificado y media caña por cuarto limpio" }, { ver: "17", rev: "2.9.24", que: "dependencia de civil v5 (H-244): tabiquería por zona, sin los muros de carga térmica" }, { ver: "18", rev: "2.9.24", que: "H-254: el factor de plaza no toca la sección H ni los precios con origen declarado (referencia o proveedor): tal cual (antes la importación de 18,500 salía 19,980 en Mexicali)" }, { ver: "19", rev: "2.9.24", que: "H-253: la formal (licitación) no sale con referencias de mercado, mano de obra por capturar, importación sin capturar o USD sin tipo de cambio fechado; cada bloqueo se nombra en pantalla y en el error" }],
+  quote: [{ ver: "2", rev: "2.9.16", que: "red hidráulica por diámetro con precio capturado; sin 50 m supuestos; partidas pendientes" }, { ver: "3", rev: "2.9.19", que: "tramo con longitud y sin unidades mueble queda pendiente" }, { ver: "4", rev: "2.9.23", que: "precio de tubería por renglón con origen (referencia de mercado o proveedor local), IVA desglosado y por metro; sin precio: partida Por cotizar en el Budget, bloqueo sólo en la formal" }, { ver: "5", rev: "2.9.23", que: "precios en USD sólo se convierten con tipo de cambio capturado con fecha; sin fecha salen Por cotizar y bloquean la formal (nada se estima)" }, { ver: "6", rev: "2.9.23", que: "referencias sólo de California y sólo material (mano de obra por capturar; combinados → Por cotizar); referencias IUSA retiradas; flete, aduana e importación como renglón propio siempre Por cotizar hasta capturarlo" }, { ver: "7", rev: "2.9.24", que: "H-198: un tramo de agua sin diámetro verificado (fuera del catálogo del material, o PEAD sin SDR ni fuente) va Por cotizar con sus metros; ya no se cotiza con el precio del mayor diámetro ni pide precio de un diámetro que no le corresponde" }, { ver: "8", rev: "2.9.24", que: "H-196: cisterna y equipo de bombeo sin precio semilla (9,500 MXN/m³ y 14,500 MXN/HP sin fuente): van Por cotizar con su volumen y su potencia; la bomba sólo cuando la presión de la red no alcanza; cisterna en 0 queda pendiente de volumen, nunca cisterna de 0 m³" }, { ver: "9", rev: "2.9.24", que: "H-206: bomba contra incendio y reserva sin precio fijo (385,000 MXN + 9,500 MXN/m³ sin fuente): Por cotizar con capacidad (gpm y L/min), presión, potencia y volumen declarados" }, { ver: "10", rev: "2.9.24", que: "dependencia de aire v3 (H-215): la partida del secador lleva la capacidad nominal de ISO 7183 A1 y declara si la corrección del fabricante está pendiente" }, { ver: "11", rev: "2.9.24", que: "dependencia de aire v5 (H-218): la partida de la red declara «diámetros indicativos: DI del fabricante pendiente» en aluminio e inoxidable" }, { ver: "12", rev: "2.9.24", que: "dependencia de vent v2 (H-154): la partida de ventilación nombra el modelo que cubre de verdad (o ninguno)" }, { ver: "13", rev: "2.9.24", que: "dependencia de soporte v5 (H-225): sin altura de colgado la varilla sale pendiente, no cotizada" }, { ver: "14", rev: "2.9.24", que: "dependencia de soporte v6 (H-226): el anclaje va Por cotizar (sección G) mientras no haya SDS con fuente, estructura y f'c" }, { ver: "15", rev: "2.9.24", que: "dependencia de soporte v8 (H-229): más soportes de cobre con los claros MSS/IPC" }, { ver: "16", rev: "2.9.24", que: "dependencia de civil v4 (H-243): muro clasificado y media caña por cuarto limpio" }, { ver: "17", rev: "2.9.24", que: "dependencia de civil v5 (H-244): tabiquería por zona, sin los muros de carga térmica" }, { ver: "18", rev: "2.9.24", que: "H-254: el factor de plaza no toca la sección H ni los precios con origen declarado (referencia o proveedor): tal cual (antes la importación de 18,500 salía 19,980 en Mexicali)" }, { ver: "19", rev: "2.9.24", que: "H-253: la formal (licitación) no sale con referencias de mercado, mano de obra por capturar, importación sin capturar o USD sin tipo de cambio fechado; cada bloqueo se nombra en pantalla y en el error" }, { ver: "20", rev: "2.9.24", que: "H-252 (decisión 6, opción a): cada precio semilla sin fuente sale en el Budget con «SEMILLA · SIN FUENTE» (EN «SEED · NO SOURCE») y bloquea la formal; sólo los renglones con origen declarado y la importación capturada quedan sin marca" }],
   elec: [{ ver: "2", rev: "2.9.16", que: "canalización con las áreas del conductor de la memoria (THW-LS por omisión, NOM-001-SEDE Cap. 10 Tabla 5)" }, { ver: "3", rev: "2.9.18", que: "siete áreas THHN/THWN-2 corregidas a la Tabla 5" }, { ver: "4", rev: "2.9.19", que: "sin compresor de aire cuando no hay demanda" },
     { ver: "5", rev: "2.9.24", que: "H-183: conductor de puesta a tierra con la Tabla 250-122 de la NOM-001-SEDE-2012 (p. 151): 400 A → 2 AWG (antes 3 AWG, valor del NEC), renglones hasta 6000 A y columna de aluminio (hasta 100 A la tabla sólo da cobre)" },
     { ver: "6", rev: "2.9.24", que: "H-177: equipo con motocompresor hermético con MCA y MOP por el art. 440: conductor por la MCA de placa (440-4(b), 440-35; una MCA estimada por la suite no lo baja del 125 %) y protección igual al MOP o al valor inmediato inferior de 240-6(a) completo (16, 32, 63 A; abajo de 15 A sólo fusibles de 1, 3, 6, 10 A), sin el 250 % de la Tabla 430-52 (40VMA-240: 150 → 90 A; 40MBC-24: 25 → 15 A). Aceptar la cédula conserva MCA y MOP (marcados estimados); una carga sin kW no fija el principal" },
@@ -19499,7 +19512,7 @@ function viewCotizacion() {
 
         ${Q.aux.length ? `<div class="card"><h3>Instalación y distribución de aire</h3><div class="body">
           ${Q.aux.map((a) => `<div class="qline">
-            <div class="nm"><div class="m" style="font-size:15.5px">${esc(a.desc)}</div>
+            <div class="nm"><div class="m" style="font-size:15.5px">${esc(a.desc)}${a.semilla ? ` <span class="tag">SEMILLA · SIN FUENTE</span>` : ""}</div>
               <div class="qshare"><i style="width:${pct(a.total, Q.auxTotal)}%"></i></div></div>
             <div class="amt">${M(a.total)}<span class="pc">${n(pct(a.total, Q.auxTotal), 0)} % de instalación</span></div>
           </div>`).join("")}
