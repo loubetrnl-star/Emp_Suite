@@ -7416,6 +7416,24 @@ t("S.87 (H-224, parte no bloqueada) la soportería de la red contra incendio usa
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+t("S.88 (H-154) la pantalla de ventilación sin modelo se dibuja y dice «Ningún modelo del catálogo cubre el caudal»; sin caudal dice «Sin caudal: sin modelo.» (antes ReferenceError: R is not defined y tarjeta de error)", () => {
+  const guardado = JSON.stringify(S);
+  const armar = (campos, propios) => { G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.88"; Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.88" }; }); Object.assign(S.vent, campos); (propios || []).forEach((k) => G("marcarPropio")(k)); G("recompute")(); S.tab = "ventilacion"; G("render")(); return w.document.getElementById("view").textContent; };
+  try {
+    /* 1) Nadie cubre (21,189 CFM > 18,000 del CSW-30, caso 4 de S.64): la pantalla se dibuja y lo dice. */
+    let txt = armar({ mode: "general", spaceType: "office", area: 1000, height: 6, occ: 0, ach: 6 }, ["vent.area", "vent.height", "vent.occ"]);
+    eq(G("VENT").eq.primary, null, "sin modelo:");
+    if (/No se pudo dibujar/.test(txt)) throw new Error("la pantalla de ventilación tronó en lugar de dibujarse: " + txt.slice(0, 300));
+    contiene(txt, "Ningún modelo del catálogo cubre el caudal", "la pantalla lo dice:");
+    if (/Submittal del ventilador/.test(txt)) throw new Error("sin modelo no hay botón de submittal");
+    /* 2) Sin caudal (campana sin medidas, caso de S.65): la pantalla se dibuja y dice que no hay caudal. */
+    txt = armar({ mode: "kitchen", hoodType: "wall", duty: "medium", hoodL: 0, hoodW: 0 });
+    eq(G("VENT").demand, 0, "sin medidas no hay caudal:");
+    if (/No se pudo dibujar/.test(txt)) throw new Error("la pantalla de ventilación tronó sin caudal: " + txt.slice(0, 300));
+    contiene(txt, "Sin caudal: sin modelo.", "la pantalla lo dice:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 /* ===== R. Regresión por motor (rev 2.9.22, decisión del dueño): un proyecto fijo con cifras esperadas por disciplina ===== */
 const REG_DIR = "parches/regresion-motores/";
 const REG_PROY = fs.readFileSync(REG_DIR + "regresion-motores.emp.json", "utf8");

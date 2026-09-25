@@ -19973,7 +19973,7 @@ function viewVent() {
       <details><summary>Avanzado: pérdidas de presión</summary>
       <div class="row">${inp("Pérdida en ductos (in.w.g.)", "vent.ductLoss", "number", "0.05", "vent.ductLoss", S.vent)}${inp("Pérdida en filtros (in.w.g.)", "vent.filterLoss", "number", "0.05", "vent.filterLoss", S.vent)}</details>
       ${propuestaHtml("load>vent")}
-      ${VENT.eq && VENT.eq.primary ? `<button class="btn-primary" data-act="pdf-sub" data-kind="green" data-id="${VENT.eq.primary.id}">Submittal del ventilador en PDF</button>` : `<div class="hint">${R.demand > 0 ? "Ningún modelo del catálogo cubre el caudal: no se propone modelo ni submittal (H-154)." : "Sin caudal: sin modelo."}</div>`}
+      ${VENT.eq && VENT.eq.primary ? `<button class="btn-primary" data-act="pdf-sub" data-kind="green" data-id="${VENT.eq.primary.id}">Submittal del ventilador en PDF</button>` : `<div class="hint">${VENT.demand > 0 ? "Ningún modelo del catálogo cubre el caudal: no se propone modelo ni submittal (H-154)." : "Sin caudal: sin modelo."}</div>`}
     </div></div>
     <div class="grid" style="gap:14px">
       <div class="card"><h3>Demanda y selección<span class="tag">Greenheck CAPS</span></h3><div class="body">
