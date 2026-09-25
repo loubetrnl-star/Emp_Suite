@@ -4,13 +4,14 @@ Cada motor lleva su propia versión (`MOTOR_VER`); sólo sube cuando cambia su l
 
 Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 
-## Carga térmica (`load`) · v4
+## Carga térmica (`load`) · v5
 
 | Versión | Rev | Hallazgo / cambio de lógica |
 |---|---|---|
 | 1 | 2.9.15 | lógica de partida |
 | 2 | 2.9.20 | zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación) |
 | 3 | 2.9.21 | cuarto limpio con presión positiva sin infiltración; unidad de aire exterior dedicada + serpentín seco (ADP desde la latente interna); crédito sensible del aire exterior topado en deshumidificación; cambios por hora obligatorios; calor del ventilador Q·ΔP/η. Declarada en la rev 2.9.24 (H-107): la 2.9.21 movió estas cifras sin subir la versión |
+| 5 | 2.9.24 | H-141 (decisión (a) del dueño, 22-sep-2026): la diversidad del edificio se aplica una sola vez, en el objetivo de planta (`userDiv`); las ganancias internas de cada zona (ocupantes, iluminación, equipo) van al pico sin el factor. Antes se multiplicaban también en la zona: con 0.8 el objetivo quedaba ×0.713. Criterio Carrier (HAP), ratificar con el texto de la Parte 1. Proyecto fijo (bldDiv 1): sin cambio de cifras |
 | 4 | 2.9.24 | H-120: el DET de muros y cubierta se corrige por la condición de diseño del sitio, (25.6 − ti) + (tm − 29.4) K con tm = to − rango/2 (corrección CLTD, ASHRAE Fundamentals 1997 cap. 28, texto secundario; ratificar con Carrier Parte 1 Tabla 20A). Tijuana +0.31 K; Mexicali +9.01 K |
 
 ## Cuartos limpios (`clean`) · v3

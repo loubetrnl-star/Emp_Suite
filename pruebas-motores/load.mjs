@@ -72,7 +72,7 @@ export default async function ({ t, G, S, CM, REG_PROY }) {
   caso(4, "(criterio de la casa SUN_H/DET_PEAK/DRANGE_H, H-122) barrido 8–18 h de una fachada oriente", [
     [null, zona("tijuana", { spaceType: "office", area: 100, height: 3, occ: 0, lights: 0, equip: 0, ach: 0, roof: 0, walls: { E: 50 }, glass: { E: 10 } }, { barrido: true })],
   ]);
-  caso(5, "(decisión del dueño §4.1, H-141) diversidad del edificio 0.8: hoy también multiplica las ganancias internas de la zona", [
+  caso(5, "(decisión del dueño §4.1, H-141, cerrado 25-sep-2026) diversidad del edificio 0.8: sólo en la planta; la zona va al pico", [
     [null, zona("tijuana", OFICINA, { bldDiv: 0.8 })],
   ]);
   caso(6, "(ASHRAE 62.1-2016 Tabla 6.2.2.1; Tab.45 de la casa; H-157) aire exterior: aula, producción, oficina vacía y almacén", [

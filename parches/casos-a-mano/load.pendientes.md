@@ -39,7 +39,7 @@ commitea): con la corrección, las filas fase2 de ese hallazgo pasan y las vigen
 | CM.load.1.z | H-121 | gran total 3,297.20 W | 3,378.18 W | ídem |
 | CM.load.2.h / .i / .j | H-120 | Tijuana (+0.311 K): muro N 688.71, muro W 1,642.31, cubierta 937.93 W | 662.22 / 1,615.82 / 920.77 | secundaria (ASHRAE 1997 vía CED), tolerancia 1 % |
 | CM.load.3.e / .g / .i | H-120 | Mexicali (+9.011 K): muro N 1,427.34, muro W 2,380.94, cubierta 1,416.43 W | 662.22 / 1,615.82 / 920.77 (idénticos a Tijuana) | ídem |
-| CM.load.5.b / .d / .f / .h | H-141 | con bldDiv 0.8, la zona al pico: ocupantes 567, luz 712.5, equipo 405, gran total 3,378.18 W | 453.6 / 570 / 324 / 2,919.58 | decisión del dueño §4.1 («criterio Carrier, ratificar con texto») |
+| ~~CM.load.5.b / .d / .f / .g / .h~~ | H-141 | **vigentes desde el 25-sep-2026** (zona al pico: 567 / 712.5 / 405 / 3,378.18 W); las filas 5.a/.c/.e que documentaban el defecto se retiraron | = esperado | decisión del dueño §4.1 («criterio Carrier, ratificar con texto») |
 | CM.load.6.e | H-157 | almacén 200 m² / 12 pers: 432 m³/h (Rp 5 L/s·pers, Warehouses) | 360 (Rp 2.5 → rige Tab.45) | primaria (62.1-2016 Tabla 6.2.2.1) |
 
 H-120 queda **BLOQUEADO parcial**: la fórmula es ASHRAE 1997 en reproducción secundaria y supone la condición base de la
@@ -143,7 +143,7 @@ contra cada copia mutada: todos los mutantes mueren por los casos a mano sin dep
 | m73 | H-123 · ΔW sin el piso de 0.5 g/kg (la corrección propuesta) | fase2:H-123 | MUERTO (404/412) | CM.load.1, 2, 4, 7, 9 |
 | m74 | H-121 · particiones adyacentes 12 % → 0 (la corrección propuesta) | fase2:H-121 | MUERTO (404/412) | CM.load.1, 2, 4, 8, 9, 11 |
 | m75 | H-121 · piso sobre no acondicionado 10 % → 0 (la corrección propuesta) | fase2:H-121 | MUERTO (406/412) | CM.load.1, 4, 8, 9, 11 |
-| m76 | H-141 · sin diversidad del edificio en la zona (la corrección propuesta) | fase2:H-141 | MUERTO (411/412) | CM.load.5 |
+| m76 | H-141 · la diversidad del edificio vuelve a la zona (reapuntado al cierre, 25-sep-2026) | vigente | MUERTO | CM.load.5, S.69 |
 | m77 | H-157 · almacén con Rp 5 L/s·pers de 62.1 (la corrección propuesta) | fase2:H-157 | MUERTO (411/412) | CM.load.6 |
 | m78 | H-120 · DET corregido por sitio con ASHRAE 1997 CLTD (la corrección propuesta) | fase2:H-120 | MUERTO (406/412) | CM.load.2, 3, 4, 9 |
 

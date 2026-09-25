@@ -93,7 +93,7 @@ const sitio = (key) => { const s = SITIOS[key], p = pAtm(s.alt), ratio = p / 101
   return { ...s, key, p, ratio, caso: "enfriamiento", Wfijo: null, wb: Math.min(s.wb, s.db - .5), QS: QS0 * ratio, QL: QL0 * ratio }; };
 const sitioDes = (s) => ({ ...s, caso: "deshumidificacion", db: s.dpDB, wb: Math.min(s.dp, s.dpDB - .5), range: 0, Wfijo: s.dpHR });
 /* H-120 cerrado en la rev 2.9.24 (MOTOR_VER.load 4): la corrección CLTD por sitio ya es la regla vigente. */
-const HOY = { pisoDW: true, particiones: true, cltd: true, bdZona: true, rp621: false };
+const HOY = { pisoDW: true, particiones: true, cltd: true, bdZona: false, rp621: false }; // bdZona false desde H-141 (25-sep-2026)
 
 /* ADP: punto donde la recta del ESHF que pasa por el cuarto (ti, Wi) toca la saturación, bajando desde el cuarto (el PRIMER
    cruce por debajo de ti). g(t) = Wrecta(t) − Wsat(máx(t, 1.7)) vale < 0 en ti − 0.5; se baja en pasos de 0.05 K hasta que
@@ -328,20 +328,17 @@ const ENV_TXT = "peakScan false (16 h), office, area 300, height 3, occ/luz/equi
   fila("CM.load.4.h", "perfil del barrido a las 16 h", ent, `${f(k(16))} W`, FUE, "criterio de la casa", "LOADS[0].profile.find((p) => p.hour === 16).kW * 1000", r(k(16)), 0.1, "vigente");
 }
 
-/* ===== 5 · Diversidad del edificio 0.8 (H-141): hoy se aplica también en cada ganancia interna de zona ===== */
+/* ===== 5 · Diversidad del edificio 0.8 (H-141, cerrado 25-sep-2026): sólo en la planta; la zona va al pico ===== */
 {
   const z = { area: 100, height: 3, occ: 10, lights: 1000, equip: 500, ach: 0, roof: 0, spaceType: "office" };
-  const a = zona(z, TJ, 16, HOY, 0.8), b = zona(z, TJ, 16, { ...HOY, bdZona: false }, 0.8);
+  const a = zona(z, TJ, 16, { ...HOY, bdZona: true }, 0.8), b = zona(z, TJ, 16, HOY, 0.8); /* a: como era antes de H-141, sólo para documentar el salto */
   const ent = "caso 1 (oficina 100 m², Tijuana, 16 h) con S.bldDiv = 0.8";
   const DEC = "decisión del dueño PLAN-CRITICOS.md §4.1 (H-141 opción a: diversidad sólo en planta; «criterio Carrier, ratificar con texto»)";
-  fila("CM.load.5.a", "ocupantes sensible con diversidad del edificio en la zona (hoy)", ent, `567 × 0.8 = ${f(a.occS)} W`, CASA("3369, 3404", "bd en la zona"), "criterio de la casa", LINEA("Ocupantes"), r(a.occS), 0.01, "vigente");
-  fila("CM.load.5.b", "H-141: ocupantes sensible al pico, sin diversidad del edificio", ent, `10 × 70 × 0.9 × 0.9 = ${f(b.occS)} W`, DEC, "criterio de la casa", LINEA("Ocupantes"), r(b.occS), 0.01, "fase2:H-141");
-  fila("CM.load.5.c", "iluminación con diversidad del edificio (hoy)", ent, `712.5 × 0.8 = ${f(a.luz)} W`, CASA("3408"), "criterio de la casa", LINEA("Iluminación"), r(a.luz), 0.01, "vigente");
-  fila("CM.load.5.d", "H-141: iluminación al pico", ent, `${f(b.luz)} W`, DEC, "criterio de la casa", LINEA("Iluminación"), r(b.luz), 0.01, "fase2:H-141");
-  fila("CM.load.5.e", "equipos con diversidad del edificio (hoy)", ent, `405 × 0.8 = ${f(a.eq)} W`, CASA("3411"), "criterio de la casa", LINEA("Equipos / fuerza"), r(a.eq), 0.01, "vigente");
-  fila("CM.load.5.f", "H-141: equipos al pico", ent, `${f(b.eq)} W`, DEC, "criterio de la casa", LINEA("Equipos / fuerza"), r(b.eq), 0.01, "fase2:H-141");
-  fila("CM.load.5.g", "ocupantes latente con diversidad del edificio (hoy)", ent, `405 × 0.8 = ${f(a.occL)} W`, CASA("3404"), "criterio de la casa", "LOADS[0].lines.find((l) => l.label === 'Ocupantes').l", r(a.occL), 0.01, "vigente");
-  fila("CM.load.5.h", "H-141: gran total de la zona al pico (con H-121/H-123 como hoy)", ent, `${f(b.grand)} W (hoy ${f(a.grand)})`, DEC, "criterio de la casa", "LOADS[0].grand", r(b.grand), 0.05, "fase2:H-141");
+  fila("CM.load.5.b", "H-141: ocupantes sensible al pico, sin diversidad del edificio", ent, `10 × 70 × 0.9 × 0.9 = ${f(b.occS)} W`, DEC, "criterio de la casa", LINEA("Ocupantes"), r(b.occS), 0.01, "vigente");
+  fila("CM.load.5.d", "H-141: iluminación al pico", ent, `${f(b.luz)} W`, DEC, "criterio de la casa", LINEA("Iluminación"), r(b.luz), 0.01, "vigente");
+  fila("CM.load.5.f", "H-141: equipos al pico", ent, `${f(b.eq)} W`, DEC, "criterio de la casa", LINEA("Equipos / fuerza"), r(b.eq), 0.01, "vigente");
+  fila("CM.load.5.g", "H-141: ocupantes latente al pico, sin diversidad del edificio (antes 405 × 0.8 = ${f(a.occL)} W)", ent, `10 × 45 × 0.9 = ${f(b.occL)} W`, DEC, "criterio de la casa", "LOADS[0].lines.find((l) => l.label === 'Ocupantes').l", r(b.occL), 0.01, "vigente");
+  fila("CM.load.5.h", "H-141: gran total de la zona al pico (con H-121/H-123 como hoy)", ent, `${f(b.grand)} W (antes de H-141: ${f(a.grand)})`, DEC, "criterio de la casa", "LOADS[0].grand", r(b.grand), 0.05, "vigente");
 }
 
 /* ===== 6 · Aire exterior: rige 62.1 (aula y producción), rige Tab.45 por área (sin ocupantes) y almacén (H-157) ===== */

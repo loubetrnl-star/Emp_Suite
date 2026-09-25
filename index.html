@@ -1867,7 +1867,7 @@ function buildCargaPdf() {
       pdfRows(d, [
         ["Masa constructiva", `${n(r.weightFloor, 0)} kg/m2 de piso · clase ${MASA[r.mass] || r.mass} · ${r.run} h/dia`],
         ["Almacenamiento", `solar ${n(r.stor.solar, 2)} · luces ${n(r.stor.lights, 2)} · personas ${n(r.stor.people, 2)} · equipo ${n(r.stor.equip, 2)}`],
-        ["Diversidad", `personas ${r.div.people} · luces ${r.div.lights} · equipo ${r.div.equip} · edificio ${n(num(S.bldDiv, 1), 2)}`],
+        ["Diversidad", `personas ${r.div.people} · luces ${r.div.lights} · equipo ${r.div.equip} · edificio ${n(num(S.bldDiv, 1), 2)} solo en la planta (criterio Carrier, ratificar con texto; H-141)`],
         ["Estratificacion de luces", n(r.strat, 2)],
         ["Hora de calculo", `${r.hour}:00 solar`],
       ]);
@@ -1970,7 +1970,7 @@ function buildSeleccionPdf() {
     ["Condicion interior", `${n(P.T_IN_DB, 1)} C · ${n(P.RH_IN * 100, 0)} % HR`],
     ["Margen de seleccion", `${n(P.MARGIN * 100, 0)} % sobre la carga, mas ${n(MARGEN_HAP * 100, 0)} % de margen de error HAP ya incluido en cada carga de zona`],
     ["Regla de eleccion de modelo", "Se prueban de 1 a N unidades iguales (hasta 3 en planta de agua helada, 6 en VRF, 3 terminales de agua helada, 6 de VRF y 2 en rooftop y split) y se elige el modelo mas chico cuya capacidad en sitio por unidad alcanza el 98 % de su parte del objetivo. Gana el arreglo de menor penalizacion: quedarse corto pesa mas que sobredimensionar y cada unidad adicional suma penalizacion. La preseleccion por zona acepta desde 95 % del objetivo."],
-    ["Diversidad", `Planta sobre la carga de bloque (suma hora por hora de las zonas, no suma de picos); terminales sobre el pico de cada zona. Factor de diversidad del edificio capturado: ${n(y.userDiv, 2)}`],
+    ["Diversidad", `Planta sobre la carga de bloque (suma hora por hora de las zonas, no suma de picos); terminales sobre el pico de cada zona. Factor de diversidad del edificio capturado: ${n(y.userDiv, 2)}, aplicado UNA sola vez, en la planta (no en las zonas): criterio Carrier, ratificar con texto (H-141)`],
   ]);
   if (vacio) {
     pdfHeading(d, "3. Resultado");
@@ -3381,7 +3381,11 @@ function computeLoad(z, bldDiv, forceTech, hour = P.HOUR) {
      antes de tocar un número, no una corrección de una sola línea — queda
      como punto propio para abrir aparte, con pruebas, si se autoriza. */
   const strat = h <= 3.2 ? 1 : (plenum && h >= 4) ? .7 : h >= 5 ? .75 : h >= 4 ? .85 : .92;
-  const bd = Math.min(1, Math.max(.5, bldDiv || 1));
+  /* H-141 (rev 2.9.24, load v5; decisión (a) del dueño, 22-sep-2026): la diversidad del edificio se aplica UNA sola vez, en el
+     objetivo de planta (computeSystem, userDiv). Las ganancias internas de la zona van al pico: antes también se multiplicaban
+     por bldDiv y con 0.8 el objetivo quedaba ×0.713. Criterio Carrier (HAP: la diversidad del edificio se aplica una vez),
+     pendiente de ratificar con el texto de la Parte 1. */
+  const bd = 1; // se conserva el nombre para que el resto de la función no cambie; el factor del edificio ya no entra aquí
 
   memo.push(`Sitio ${SITE.label}: ${SITE.db} °C BS / ${SITE.wb} °C BH ext · rango diario ${dailyRangeOf()} K · altitud ${SITE.alt} m → ${SITE.pAtm.toFixed(1)} kPa (qs ${SITE.QS.toFixed(3)} · ql ${SITE.QL.toFixed(3)}) · interior ${P.T_IN_DB} °C con ${P.RH_IN * 100} % HR · lat ${P.LAT}° · hora solar ${hour}.`);
   memo.push(`A las ${hour} h la temperatura exterior es ${dbH.toFixed(1)} °C, no la máxima: se resta ${(dailyRangeOf() * (DRANGE_H[hIx(hour)] ?? 0)).toFixed(1)} K del rango diario (ASHRAE Fundamentals cap. 14).`);
@@ -3389,7 +3393,7 @@ function computeLoad(z, bldDiv, forceTech, hour = P.HOUR) {
   memo.push(`DET de muros y cubierta corregido por sitio ${corrDETsitio() >= 0 ? "+" : ""}${corrDETsitio().toFixed(2)} K = (25.6 − ${P.T_IN_DB}) + ((${SITE.db} − ${dailyRangeOf()}/2) − 29.4), corrección CLTD de ASHRAE Fundamentals 1997 cap. 28 (ratificar con Carrier Parte 1 Tabla 20A).`);
   memo.push(`Masa constructiva ${wFloor.toFixed(0)} kg/m² piso → clase ${mass.toUpperCase()} · ${run} h/día (Tab. 7–12).`);
   memo.push(`Almacenamiento: solar ${stor.solar.toFixed(2)} · luces ${stor.lights.toFixed(2)} · personas ${stor.people.toFixed(2)} · equipo ${stor.equip.toFixed(2)}${swing > 0 ? ` · swing ${swing} °C` : ""}.`);
-  memo.push(`Diversidad ${spaceOf(sp).label}: personas ${div.people} · luces ${div.lights} · equipo ${div.equip} · edificio ${bd}.`);
+  memo.push(`Diversidad ${spaceOf(sp).label}: personas ${div.people} · luces ${div.lights} · equipo ${div.equip}. La diversidad del edificio (${n(Math.min(1, Math.max(.5, bldDiv || 1)), 2)}) NO entra en la zona: se aplica una sola vez, en el objetivo de planta (criterio Carrier, ratificar con texto; H-141).`);
 
   let wallS = 0;
   for (const o of ORI) {
@@ -3418,7 +3422,7 @@ function computeLoad(z, bldDiv, forceTech, hour = P.HOUR) {
 
   const nOcc = Math.max(0, Math.round(num(z.occ)));
   const occS = nOcc * P.OCC_S * stor.people * div.people * bd, occL = nOcc * P.OCC_L * div.people * bd;
-  lines.push({ g: "internal", label: "Ocupantes", s: occS, l: occL, d: nOcc === 0 ? "0 personas" : `${nOcc} pers · ${P.OCC_S}/${P.OCC_L} W · alm ${stor.people.toFixed(2)} · div ${div.people}×${bd}` });
+  lines.push({ g: "internal", label: "Ocupantes", s: occS, l: occL, d: nOcc === 0 ? "0 personas" : `${nOcc} pers · ${P.OCC_S}/${P.OCC_L} W · alm ${stor.people.toFixed(2)} · div ${div.people}` });
 
   const lightRaw = Math.max(0, num(z.lights)) * lightMult;
   const lightS = lightRaw * stor.lights * div.lights * bd * strat;
@@ -15790,7 +15794,7 @@ const REF = {
   "zone.oaFixed": { ref: "Caudal de aire exterior fijado por otro cálculo.", rec: "Se usa para traspasar la reposición de cascada de un cuarto limpio. 0 lo deja calcularse: el mayor entre ASHRAE 62.1 y la tabla 45 por persona y por área (y la fracción mínima, si se capturó)." },
   "zone.oaFraction": { ref: "Fracción mínima de aire exterior sobre el suministro.", rec: "0.10–0.20 típico · 1.00 en DOAS",
     warn: (v) => v > .5 && v < 1 ? "Arriba de 50 % conviene evaluar recuperación de energía (90.1 §6.5.6.1)." : "" },
-  "bldDiv":       { ref: "Diversidad de edificio: no todas las zonas pican a la misma hora.", rec: "0.85–0.95 con orientaciones y horarios distintos · 1.00 sin crédito",
+  "bldDiv":       { ref: "Diversidad de edificio: no todas las zonas pican a la misma hora. Se aplica una sola vez, en el objetivo de planta; las zonas y terminales van al pico (criterio Carrier, ratificar con texto; H-141).", rec: "0.85–0.95 con orientaciones y horarios distintos · 1.00 sin crédito",
     warn: (v) => v < .75 ? "Abajo de 0.75 hay que justificarlo con perfiles horarios reales." : "" },
   "clean.iso":    { ref: "ISO 14644-1 · equivalencia GMP anexo 1.", rec: "ISO 7 sala de ensamble · ISO 8 corredor y empaque." },
   "clean.level":  { ref: "Rango de cambios de aire por clase (práctica ISO/GMP).", rec: "Medio salvo que el proceso exija recuperación rápida." },
@@ -17997,12 +18001,13 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "4", clean: "3", equip: "1", duct: "1", vent: "3", quote: "12", valor: "1", kaizen: "1", elec: "8", hidro: "8", fuego: "3", aire: "5", civil: "3", soporte: "2" };
+const MOTOR_VER = { load: "5", clean: "3", equip: "1", duct: "1", vent: "3", quote: "12", valor: "1", kaizen: "1", elec: "8", hidro: "8", fuego: "3", aire: "5", civil: "3", soporte: "2" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
     { ver: "3", rev: "2.9.21", que: "cuarto limpio con presión positiva sin infiltración; unidad de aire exterior dedicada + serpentín seco (ADP desde la latente interna); crédito sensible del aire exterior topado en deshumidificación; cambios por hora obligatorios; calor del ventilador Q·ΔP/η" },
-    { ver: "4", rev: "2.9.24", que: "H-120: el DET de muros y cubierta se corrige por la condición de diseño del sitio, (25.6 − ti) + (tm − 29.4) K con tm = to − rango/2 (corrección CLTD, ASHRAE Fundamentals 1997 cap. 28; ratificar con Carrier Tabla 20A)" }],
+    { ver: "4", rev: "2.9.24", que: "H-120: el DET de muros y cubierta se corrige por la condición de diseño del sitio, (25.6 − ti) + (tm − 29.4) K con tm = to − rango/2 (corrección CLTD, ASHRAE Fundamentals 1997 cap. 28; ratificar con Carrier Tabla 20A)" },
+    { ver: "5", rev: "2.9.24", que: "H-141 (decisión (a) del dueño): la diversidad del edificio se aplica una sola vez, en el objetivo de planta; las ganancias internas de cada zona van al pico sin el factor (antes ×bldDiv en la zona y otra vez en la planta: con 0.8 el objetivo quedaba ×0.713). Criterio Carrier, ratificar con texto" }],
   vent: [{ ver: "2", rev: "2.9.24", que: "H-154 + H-156: la cobertura real manda en la selección Greenheck (cfmMin ≤ objetivo ≤ cfmMax, sin tolerancia ×0.9); la familia del modo sólo ordena entre los que cubren; si nadie cubre no hay modelo (proyecto fijo: GB-360 → CSW-30 para 11,643 CFM)" },
     { ver: "3", rev: "2.9.24", que: "H-155: sin medidas no hay caudal: campana sin largo o fondo y rejilla sin ancho, alto, área libre o velocidad dan demanda 0 con aviso (antes pisos de 0.1 ft, 5 % y 100 fpm fabricaban 30 y 258 CFM y sus partidas)" }],
   clean: [{ ver: "2", rev: "2.9.16", que: "sin pisos de 1 m² ni 2.2 m; 5 Pa de ISO 14644-4 con aviso; ceros capturados respetados" },

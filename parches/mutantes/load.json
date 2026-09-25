@@ -649,11 +649,11 @@
   },
   {
     "id": "load.m76",
-    "que": "H-141 · sin diversidad del edificio en la zona (la corrección propuesta)",
+    "que": "H-141 · la diversidad del edificio vuelve a entrar en la zona (antes de H-141; hoy sólo en la planta)",
     "logica": true,
-    "buscar": "const bd = Math.min(1, Math.max(.5, bldDiv || 1));",
-    "reemplazar": "const bd = 1;",
-    "estado": "fase2:H-141"
+    "buscar": "const bd = 1; // se conserva el nombre",
+    "reemplazar": "const bd = Math.min(1, Math.max(.5, bldDiv || 1)); // se conserva el nombre",
+    "estado": "vigente"
   },
   {
     "id": "load.m77",

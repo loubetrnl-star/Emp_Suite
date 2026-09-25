@@ -6189,7 +6189,7 @@ t("S.36 (rev 2.9.20, decisión del dueño) versión por motor en el sello: sólo
   const MV = G("MOTOR_VER");
   /* H-107: carga v3 = lógica de la rev 2.9.21 (declarada en la 2.9.24); H-120: carga v4 = corrección CLTD por sitio. H-183: eléctrico v5 = Tabla 250-122 de la NOM; H-177: v6 = art. 440 con MCA/MOP; H-179: v7 = nada se supone (pendientes); H-178: v8 = corriente de motor por la Tabla 430-250/248.
      H-194: hidro v5 = presión mínima por mueble de la Tabla 604.3 del IPC 2015 y CDT con máx(residual, mínima); H-195: v6 = equipo de emergencia fuera de Hunter; H-197: v7 = sin pisos sin norma (días, ΔT, pendiente 704.1); H-198: v8 = CPVC sólo hasta 2" CTS, fuera de catálogo y PEAD sin SDR como error. */
-  eq(MV.elec, "8", "eléctrico v8 (H-178):"); eq(MV.hidro, "8", "hidro v8 (H-198):"); eq(MV.load, "4", "carga v4:"); eq(MV.duct, "1", "ductos sin cambio de lógica: v1:");
+  eq(MV.elec, "8", "eléctrico v8 (H-178):"); eq(MV.hidro, "8", "hidro v8 (H-198):"); eq(MV.load, "5", "carga v5 (H-141):"); eq(MV.duct, "1", "ductos sin cambio de lógica: v1:");
   Object.keys(MV).forEach((id) => { const c = G("MOTOR_CAMBIOS")[id] || []; if (MV[id] !== "1" && !c.some((x) => x.ver === MV[id])) throw new Error(`${id}: la versión ${MV[id]} no tiene hallazgo registrado`); });
   const s0 = JSON.stringify(S.sellos || {});
   try {
@@ -6841,6 +6841,23 @@ t("S.68 (H-128) «Crear zona de carga con este cuarto» no inventa 12 W/m² de i
     eq(z.lights, 0, "iluminación sin inventar (antes 12 W/m²):"); eq(z.ach, 0, "infiltración sin inventar (antes 0.05 1/h):");
     eq(z.equip, 40 * 25, "el proceso capturado sí pasa:"); eq(z.spaceType, "cleanroom"); eq(z.area, 40);
     eq(S.clean.rooms[0].zonaId, z.id, "el cuarto queda vinculado a la zona creada (H-126):");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+t("S.69 (H-141, decisión (a) del dueño) la diversidad del edificio se aplica UNA sola vez, en la planta: las ganancias internas y el pico de cada zona no la llevan; el objetivo de planta sí (×0.8), y la memoria lo declara como criterio Carrier por ratificar", () => {
+  const guardado = JSON.stringify(S);
+  const pdfTxt = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");
+  const armar = (bldDiv) => { G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.69"; S.zones = [{ ...G("defaultZone")("Oficina"), area: 100, height: 3, occ: 10, lights: 1000, equip: 500, spaceType: "office" }]; S.bldDiv = bldDiv; S.peakScan = false; G("recompute")(); return { L: G("LOADS")[0], Y: G("SYS") }; };
+  const linea = (L, k) => L.lines.find((l) => l.label === k);
+  try {
+    const uno = armar(1), ocho = armar(0.8);
+    ["Ocupantes", "Iluminación", "Equipos / fuerza"].forEach((k) => cerca(linea(ocho.L, k).s, linea(uno.L, k).s, 1e-6, k + ": la zona va al pico, sin diversidad del edificio (antes ×0.8):"));
+    cerca(linea(ocho.L, "Ocupantes").l, linea(uno.L, "Ocupantes").l, 1e-6, "latente de ocupantes sin diversidad:");
+    cerca(ocho.L.grand, uno.L.grand, 1e-6, "gran total de la zona igual con 0.8 y con 1:");
+    cerca(ocho.Y.plantTarget, uno.Y.plantTarget * 0.8, 1e-6, "la planta sí lleva la diversidad, una sola vez:");
+    if (!ocho.L.memo.some((m) => /[Dd]iversidad/.test(m) && /planta/.test(m) && /Carrier/.test(m))) throw new Error("la memoria de la zona no dice que la diversidad del edificio va sólo en la planta (criterio Carrier, por ratificar)");
+    if (/×0\.8|x0\.8/.test(linea(ocho.L, "Ocupantes").d)) throw new Error("el detalle de ocupantes sigue mostrando el factor del edificio");
+    contiene(pdfTxt(G("buildMemoriaPdf")()), "Carrier", "el PDF de carga declara el criterio:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
