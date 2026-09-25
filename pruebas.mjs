@@ -34,6 +34,13 @@ async function cargar(f) {
 const w = await cargar(file);
 const G = (expr) => w.eval(expr);
 const S = G("S");
+/* H-253: la formal no sale con la importación «Por cotizar». Las pruebas que revisan el CONTENIDO de la licitación la emiten
+   con una importación capturada (monto, fuente y fecha) sólo durante la emisión, y dejan el estado como estaba. */
+const licitacionFormal = () => {
+  const imp0 = JSON.parse(JSON.stringify(S.quote.importacion || {}));
+  S.quote.importacion = { monto: 1000, moneda: "MXN", fuente: "banco de pruebas: importación capturada para emitir la formal", fecha: "2026-09-25" };
+  try { return G("buildLicitacionPdf")(); } finally { S.quote.importacion = imp0; G("recompute")(); }
+};
 
 let ok = 0, fail = 0;
 const fallos = [];
@@ -3343,7 +3350,7 @@ t("22.1 1.1 la licitación integra 18 % de indirectos y 12 % de utilidad editabl
     ind[0].value = "20"; ind[0].dispatchEvent(new w.Event("input", { bubbles: true }));
     eq(S.quote.indirectPct, 20, "la captura se guarda:");
     cerca(G("estructuraSobrecosto")(1000000).pu, 1000000 * 1.20 * 1.015 * 1.12 * 1.007, 0.01, "con 20 % capturado:");
-    const txt = Buffer.from(G("buildLicitacionPdf")()).toString("latin1");
+    const txt = Buffer.from(licitacionFormal()).toString("latin1");
     const celdas = [...txt.matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1"));
     const fila = (etq) => { const i = celdas.findIndex((c) => c.startsWith(etq)); if (i < 0) throw new Error(`el PDF no trae la fila «${etq}»`); return celdas.slice(i, i + 3); };
     eq(fila("Costo indirecto")[2], "20", "% de indirectos impreso:");
@@ -3365,7 +3372,7 @@ t("22.2 1.2 la licitación contrasta a costo directo y los conceptos sin tarjeta
   S.zi = 0;
   Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "prueba 22.2" }; });
   G("recompute")();
-  const txt = Buffer.from(G("buildLicitacionPdf")()).toString("latin1");
+  const txt = Buffer.from(licitacionFormal()).toString("latin1");
   /* El pie y el encabezado se repiten en cada página; si un párrafo de un
      concepto cae justo en el salto de página, ese texto se cuela en medio de
      la oración al concatenar. Se filtra antes de armar `todo`, para que la
@@ -4055,7 +4062,7 @@ t("C.3 campo borrado vuelve a la semilla; con 0 % el renglón se oculta en panta
     if (!v.querySelector('input[data-live="quote.contingencia"]')) throw new Error("la perilla debe seguir disponible para subirla");
     const dec = (b) => Array.from(b).map((c) => String.fromCharCode(c)).join("");
     [["PDF de cotización", dec(G("buildCotizacionPdf")())], ["propuesta ES", dec(G("buildPropuestaPdf")({ lang: "es", mon: "MXN" }))],
-     ["propuesta EN", dec(G("buildPropuestaPdf")({ lang: "en", mon: "USD" }))], ["licitación", Buffer.from(G("buildLicitacionPdf")()).toString("latin1")],
+     ["propuesta EN", dec(G("buildPropuestaPdf")({ lang: "en", mon: "USD" }))], ["licitación", Buffer.from(licitacionFormal()).toString("latin1")],
      ["libro ES", Buffer.from(G("buildPropuestaXlsx")({ lang: "es", mon: "MXN" })).toString("utf8")],
      ["libro EN", Buffer.from(G("buildPropuestaXlsx")({ lang: "en", mon: "USD" })).toString("utf8")]].forEach(([etq, x]) => {
       if (/Contingenc(ia|y)/i.test(x)) throw new Error(etq + ": menciona la contingencia con 0 %");
@@ -4091,7 +4098,7 @@ t("C.5 licitación: la contingencia entra en la cascada sobre el costo directo y
     S.quote.contingencia = 0;
     cerca(G("estructuraSobrecosto")(1000000).pu, 1350813.968, 0.01, "con 0 % es el importe de antes:");
     S.quote.contingencia = 0.15;
-    const txt = Buffer.from(G("buildLicitacionPdf")()).toString("latin1");
+    const txt = Buffer.from(licitacionFormal()).toString("latin1");
     const celdas = [...txt.matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1"));
     const i = celdas.findIndex((c) => c === "Contingencia");
     if (i < 0) throw new Error("el PDF de licitación no trae la fila de contingencia");
@@ -4603,14 +4610,14 @@ t("P.5 la declaración de la base de precios en la licitación cita el estado re
   const g = { plaza: S.quote.plaza };
   try {
     S.quote.plaza = "tijuana"; G("recompute")();
-    let pdf = Buffer.from(G("buildLicitacionPdf")()).toString("latin1");
+    let pdf = Buffer.from(licitacionFormal()).toString("latin1");
     contiene(pdf, "Gobierno del Estado de Baja California no publica", "Tijuana (B.C.):");
     S.quote.plaza = "hermosillo"; G("recompute")();
-    pdf = Buffer.from(G("buildLicitacionPdf")()).toString("latin1");
+    pdf = Buffer.from(licitacionFormal()).toString("latin1");
     if (/Gobierno del Estado de Baja California/.test(pdf)) throw new Error("Hermosillo (Sonora) no debe declarar un hecho sobre Baja California");
     contiene(pdf, "estado de Sonora", "Hermosillo cita su propio estado:");
     S.quote.plaza = "otra"; G("recompute")();
-    pdf = Buffer.from(G("buildLicitacionPdf")()).toString("latin1");
+    pdf = Buffer.from(licitacionFormal()).toString("latin1");
     /* Solo se revisa la frase de la declaración de tabulador estatal: el
        resto del documento (p. ej. la procedencia del catálogo de precios de
        la casa) sí puede mencionar Baja California, y no es lo que se prueba
@@ -6157,7 +6164,7 @@ t("S.35 (rev 2.9.19, revisión adversarial de 2.9.16–2.9.18) pendientes en Exc
     let tiro = ""; try { G("buildLicitacionPdf")(); } catch (e) { tiro = String(e.message); }
     contiene(tiro, "La cotización formal no sale con tubería sin precio", "licitación bloqueada sin precio:");
     G("hidroDiametrosSinPrecio")().forEach((d) => { S.quote.hidroPU[G("claveHidroPU")("cpvc", d)] = 100; }); G("recompute")();
-    const lic = Buffer.from(G("buildLicitacionPdf")()).toString("latin1");
+    const lic = Buffer.from(licitacionFormal()).toString("latin1");
     contiene(lic, "PARTIDAS PENDIENTES, NO COTIZADAS", "licitación:");
     S.quote.modo = "privada";
     /* Compresor sin demanda: no entra al cuadro eléctrico. */
@@ -7148,6 +7155,36 @@ t("S.80 (H-254, regla d «tal cual») el factor de plaza no toca la sección H n
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+t("S.81 (H-253, regla e) la cotización formal no sale con precios que sólo valen para el Budget: referencia de mercado, mano de obra por capturar, sección H (importación) sin capturar o USD sin tipo de cambio fechado; cada bloqueo se nombra en pantalla y en el error", () => {
+  const guardado = JSON.stringify(S);
+  const tiro = () => { try { G("buildLicitacionPdf")(); return ""; } catch (e) { return String(e.message); } };
+  try {
+    G("importarRespaldo")(fs.readFileSync("parches/regresion-motores/regresion-motores.emp.json", "utf8")); S.tab = "tablero"; G("KZ_CACHE").key = null; G("VZ_CACHE").key = null; G("recompute")();
+    /* Sección H sin capturar (el proyecto fijo no la trae): bloquea. */
+    let e = tiro();
+    contiene(e, "importación", "la formal se bloquea con la sección H «Por cotizar»:");
+    let B = G("bloqueosFormal")();
+    if (!B.some((b) => /importaci/.test(b))) throw new Error("bloqueosFormal no nombra la importación: " + JSON.stringify(B));
+    S.tab = "cotizacion"; G("render")();
+    if (!/importaci/.test(w.document.querySelector("#view").textContent.match(/La cotización formal no sale[^]*$/)?.[0] || "")) throw new Error("la pantalla no dice por qué la formal está bloqueada");
+    /* Referencia de mercado + mano de obra por capturar: bloquea. */
+    S.quote.importacion = { monto: 18500, moneda: "MXN", fuente: "agente aduanal (cotización capturada)", fecha: "2026-09-20" };
+    const clave = Object.keys(S.quote.hidroPU)[0];
+    S.quote.hidroPU[clave] = { precio: 250, moneda: "MXN", iva: false, porTramo: 1, origen: "referencia", alcance: "material", fuente: "Home Depot San Diego CA", ubicacion: "San Diego, California", url: "https://example.org/ref", fecha: "2026-09-20" };
+    G("recompute")();
+    if (!(G("QUOTE").referencias || []).length) throw new Error("el caso no aísla lo que se quiere probar: debe haber una referencia de mercado");
+    B = G("bloqueosFormal")();
+    if (!B.some((b) => /referencia de mercado/.test(b))) throw new Error("la referencia de mercado debe bloquear la formal: " + JSON.stringify(B));
+    if (!B.some((b) => /mano de obra/.test(b))) throw new Error("la mano de obra por capturar debe bloquear la formal: " + JSON.stringify(B));
+    contiene(tiro(), "referencia de mercado", "error de la formal con referencia:");
+    /* USD sin tipo de cambio fechado: bloquea. */
+    delete S.quote.hidroPU[clave]; G("recompute")();
+    S.quote.currency = "USD"; S.quote.fx = 18.25; S.quote.fxFecha = ""; G("recompute")();
+    if (!G("QUOTE").usdSinFecha) throw new Error("el caso no aísla lo que se quiere probar: USD sin fecha");
+    if (!G("bloqueosFormal")().some((b) => /tipo de cambio/.test(b))) throw new Error("USD sin fecha debe bloquear la formal");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 /* ===== R. Regresión por motor (rev 2.9.22, decisión del dueño): un proyecto fijo con cifras esperadas por disciplina ===== */
 const REG_DIR = "parches/regresion-motores/";
 const REG_PROY = fs.readFileSync(REG_DIR + "regresion-motores.emp.json", "utf8");
@@ -7440,12 +7477,12 @@ t("R.7 H-95 la licitación, la propuesta, la cotización y la memoria integral y
     Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "prueba R.7" }; });
     G("recompute")();
     [
-      ["buildLicitacionPdf", []],
+      ["licitacionFormal", []],
       ["buildPropuestaPdf", [{ lang: "es", mon: "MXN" }]],
       ["buildCotizacionPdf", []],
       ["buildMemoriaIntegralPdf", []],
     ].forEach(([fn, args]) => {
-      const txt = Buffer.from(G(fn)(...args)).toString("latin1");
+      const txt = Buffer.from(fn === "licitacionFormal" ? licitacionFormal() : G(fn)(...args)).toString("latin1");
       contiene(txt, "Revisado por", `${fn} trae "Revisado por":`);
       contiene(txt, "Aprobado por", `${fn} trae "Aprobado por":`);
     });

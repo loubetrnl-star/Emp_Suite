@@ -42,7 +42,7 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 | 2 | 2.9.24 | H-154 + H-156: la cobertura real manda en la selección Greenheck (cfmMin ≤ objetivo ≤ cfmMax, sin la tolerancia ×0.9); la familia propia del modo sólo ordena entre los que cubren (luego el de menor caudal nominal); si nadie cubre no hay modelo (`primary` null: nada llega a propuesta, memoria integral ni eléctrico) y `closest` sólo alimenta el aviso. Proyecto fijo: 11,643 CFM → CSW-30 (7,000–18,000) en vez de GB-360 (4,000–9,000) con «ningún modelo cubre» |
 | 3 | 2.9.24 | H-155: sin medidas no hay caudal: campana sin largo o fondo y rejilla sin ancho, alto, área libre o velocidad de cara dan demanda 0 con aviso de error en el motor y la matriz (antes pisos de 0.1 ft, 5 % y 100 fpm fabricaban 30 y 258 CFM y sus partidas). `avisos` en el resultado de computeVent. Proyecto fijo: sin cambio |
 
-## Cotización (`quote`) · v18
+## Cotización (`quote`) · v19
 
 | Versión | Rev | Hallazgo / cambio de lógica |
 |---|---|---|
@@ -55,6 +55,7 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 | 16 | 2.9.24 | dependencia de civil v4 (H-243): muro clasificado y media caña por cuarto limpio. Proyecto fijo: directo 10,558,140.85 → 10,807,890.51 MXN |
 | 17 | 2.9.24 | dependencia de civil v5 (H-244): tabiquería por zona, sin los muros de carga térmica |
 | 18 | 2.9.24 | H-254 (regla d «tal cual»): el factor de plaza deja de multiplicar la sección H (flete, aduana e importación capturados) y los renglones con origen declarado (referencia de mercado o proveedor local); el costo directo = afectos × factor + exentos, y el catálogo cuadra con él. Antes, en Mexicali, la importación de 18,500 salía 19,980 y la referencia 238.65 → 257.74 sin decirlo. Proyecto fijo (Tijuana, factor 1.00): sin cambio |
+| 19 | 2.9.24 | H-253 (regla e): la cotización formal (licitación) no sale mientras haya precio de referencia de mercado, mano de obra por capturar, flete/aduana/importación sin capturar o moneda USD sin tipo de cambio fechado (además de la tubería sin precio que ya bloqueaba); `bloqueosFormal()` nombra cada razón en el error y en pantalla junto al botón. El Budget sigue saliendo con esas partidas marcadas. Proyecto fijo: cifras sin cambio |
 | 14 | 2.9.24 | dependencia de soporte v6 (H-226): el anclaje va Por cotizar mientras no haya SDS con fuente, estructura y f'c |
 | 13 | 2.9.24 | dependencia de soporte v5 (H-225): sin altura de colgado la varilla sale pendiente, no cotizada |
 | 12 | 2.9.24 | dependencia de vent v2 (H-154): la partida de ventilación nombra el modelo que cubre de verdad, o ninguno |
