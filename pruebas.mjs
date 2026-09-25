@@ -6802,6 +6802,31 @@ t("S.66 (H-127) presión negativa de contención: −10 Pa capturados se respeta
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+t("S.67 (H-126) el traspaso de la reposición va por vínculo cuarto ↔ zona (id elegido en un selector), nunca por la primera palabra del nombre: sin vínculo no se traspasa nada y se dice; con vínculo sólo a esa zona", () => {
+  const guardado = JSON.stringify(S);
+  const act = (a) => { const b = w.document.createElement("button"); b.dataset.act = a; w.document.body.appendChild(b); b.dispatchEvent(new w.MouseEvent("click", { bubbles: true })); b.remove(); };
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.67";
+    S.zones = [{ ...G("defaultZone")("Sala de juntas"), area: 30, height: 3 }, { ...G("defaultZone")("Sala de llenado"), area: 40, height: 3 }];
+    S.clean = { ci: 0, rooms: [{ ...G("defaultRoom")("Sala de llenado"), iso: "iso5", area: 40, height: 3, occ: 2 }] };
+    G("recompute")();
+    if (!(G("CLEAN").cur.makeup > 0)) throw new Error("el cuarto no trae reposición");
+    /* Sin vínculo: nada se traspasa (antes «Sala de llenado» caía en «Sala de juntas» por la primera palabra). */
+    act("cl-handoff");
+    eq(S.zones[0].oaFixed || 0, 0, "la oficina «Sala de juntas» no recibe la reposición del ISO 5:"); eq(S.zones[1].oaFixed || 0, 0, "sin vínculo tampoco la homónima:");
+    /* La pantalla ofrece el selector de zona por id. */
+    S.tab = "limpios"; G("render")();
+    const selZona = w.document.querySelector('#view select[data-path="clean.rooms.0.zonaId"], #view select[data-k="clean.rooms.0.zonaId"], #view select[name="clean.rooms.0.zonaId"]') || [...w.document.querySelectorAll("#view select")].find((s) => /zonaId/.test(s.outerHTML));
+    if (!selZona) throw new Error("no hay selector de zona vinculada en el cuarto limpio");
+    if (![...selZona.options].some((o) => o.value === S.zones[1].id)) throw new Error("el selector no ofrece las zonas por id");
+    /* Con vínculo: sólo esa zona. */
+    S.clean.rooms[0].zonaId = S.zones[1].id; G("recompute")(); act("cl-handoff");
+    eq(S.zones[1].oaFixed, Math.round(G("CLEAN").cur.makeup), "la zona vinculada recibe la reposición:"); eq(S.zones[0].oaFixed || 0, 0, "la otra no:");
+    /* Los ids de zona son estables y no dependen del reloj. */
+    if (!/^z\d+$/.test(S.zones[0].id) || S.zones[0].id === S.zones[1].id) throw new Error("ids de zona inválidos: " + S.zones.map((z) => z.id));
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 /* ===== R. Regresión por motor (rev 2.9.22, decisión del dueño): un proyecto fijo con cifras esperadas por disciplina ===== */
 const REG_DIR = "parches/regresion-motores/";
 const REG_PROY = fs.readFileSync(REG_DIR + "regresion-motores.emp.json", "utf8");

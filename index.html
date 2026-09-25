@@ -8814,6 +8814,14 @@ function levelFromAch(isoKey, ach) {
   cls.ach.forEach((v, i) => { const d = Math.abs(v - num(ach, v)); if (d < bd) { bd = d; bi = i; } });
   return names[bi];
 }
+/* H-126 (rev 2.9.24): ids estables de zona ("z1", "z2", …) con un contador guardado en el estado: deterministas (sin reloj ni azar),
+   sobreviven a borrar o reordenar zonas y son el único vínculo que usa el traspaso de la reposición de cascada. */
+function asegurarIdsZona(s = S) {
+  if (!Array.isArray(s.zones)) return;
+  if (!Number.isFinite(s.zoneSeq)) s.zoneSeq = 0;
+  const usados = new Set(s.zones.map((z) => z && z.id).filter(Boolean));
+  s.zones.forEach((z) => { if (!z || typeof z !== "object") return; if (!z.id || typeof z.id !== "string") { do { z.id = "z" + (++s.zoneSeq); } while (usados.has(z.id)); usados.add(z.id); } });
+}
 function defaultRoom(name = "Cuarto limpio 1") {
   /* Arranque en ceros (decisión del dueño, 17-sep-2026): area/height/occ/procW
      eran un cuarto de ejemplo (60 m², 4 personas, 25 W de proceso) que nadie
@@ -8822,7 +8830,7 @@ function defaultRoom(name = "Cuarto limpio 1") {
      rompe nada, solo dice honestamente "sin capturar". dp/crackLen/oaFrac
      son criterio de diseño de presurización, no medición del cuarto: se
      quedan. */
-  return { name, iso: "iso7", level: "med", achSet: 0, area: 0, height: 0, dp: 12.5, crackLen: 6, oaFrac: .1, occ: 0, procW: 0 };
+  return { name, iso: "iso7", level: "med", achSet: 0, area: 0, height: 0, dp: 12.5, crackLen: 6, oaFrac: .1, occ: 0, procW: 0, zonaId: null };
 }
 /* Normaliza el estado: acepta el formato viejo de un solo cuarto */
 function cleanRooms() {
@@ -19597,6 +19605,7 @@ function viewLimpio() {
       <div class="row">${inp("Presión diferencial (Pa)", `clean.rooms.${i}.dp`, "number", "2.5", `clean.rooms.${i}.dp`, c, "clean_dp")}${inp("Rendijas de puertas (m)", `clean.rooms.${i}.crackLen`, "number", "0.5", "clean.crackLen", c)}</div>
       ${inp("Fracción mínima de aire exterior", `clean.rooms.${i}.oaFrac`, "number", "0.05", `clean.rooms.${i}.oaFrac`, c, "clean_oa")}
       </details>
+      ${(asegurarIdsZona(), sel("Zona de carga térmica vinculada (recibe la reposición al traspasar; H-126)", `clean.rooms.${i}.zonaId`, [["", "— sin vínculo —"]].concat(S.zones.map((z) => [z.id, z.name || z.id]))))}
       <div style="height:12px"></div>
       <button class="btn-primary" data-act="clean-pdf">Memoria del cuarto limpio en PDF</button>
       <div style="height:8px"></div>
@@ -21559,14 +21568,18 @@ document.addEventListener("click", (e) => {
     }
     case "clean-pdf": deliverPdf(buildLimpioPdf(CLEAN.cur), `Cuarto-limpio-${pdfName(CLEAN.cur.name)}.pdf`); break;
     case "cl-handoff": {
-      let hit = 0;
-      CLEAN.list.forEach((r) => {
-        const key = (r.name || "").trim().toLowerCase().split(" ")[0];
-        const z = S.zones.find((x) => (x.name || "").trim().toLowerCase().startsWith(key));
-        if (z) { z.oaFixed = Math.round(r.makeup); hit++; }
+      /* H-126 (rev 2.9.24): el traspaso va por el vínculo cuarto ↔ zona (id elegido en el selector), nunca por la primera palabra
+         del nombre (la reposición de «Sala de llenado» caía en «Sala de juntas»). Sin vínculo no se traspasa y se dice. */
+      asegurarIdsZona();
+      let hit = 0, sinVinculo = 0;
+      const rooms = cleanRooms();
+      CLEAN.list.forEach((r, k) => {
+        const zid = rooms[k] && rooms[k].zonaId;
+        const z = zid ? S.zones.find((x) => x.id === zid) : null;
+        if (z) { z.oaFixed = Math.round(r.makeup); hit++; } else sinVinculo++;
       });
       projAutosave(); render();
-      toast(hit ? `Reposición traspasada a ${hit} zona(s) de carga térmica` : "No encontré zonas con nombre que empate; renómbralas igual que los cuartos");
+      toast(hit ? `Reposición traspasada a ${hit} zona(s) de carga térmica vinculada(s)${sinVinculo ? `; ${sinVinculo} cuarto(s) sin zona vinculada` : ""}` : "Ningún cuarto tiene zona de carga térmica vinculada: elige la zona en cada cuarto (no se empata por nombre)");
       break;
     }
     case "cl-sel": S.clean.ci = +b.dataset.i; render(); break;
@@ -21585,8 +21598,9 @@ document.addEventListener("click", (e) => {
       z.oaFixed = Math.round(r.makeup);   // el aire exterior es la reposición de cascada
       z.oaFraction = 0;
       z.walls = { N: 0, S: 0, E: 0, W: 0, NE: 0, SE: 0, SW: 0, NW: 0 }; z.glass = { ...z.walls }; z.roof = 0;
-      S.zones.push(z); S.zi = S.zones.length - 1; S.tab = "carga";
-      render(); toast(`Zona creada como cuarto limpio ${r.cls.label.split(" · ")[0]} a ${r.ach} cambios/h`); break;
+      S.zones.push(z); asegurarIdsZona(); c.zonaId = z.id; /* H-126: queda vinculada al cuarto */
+      S.zi = S.zones.length - 1; S.tab = "carga";
+      render(); toast(`Zona creada como cuarto limpio ${r.cls.label.split(" · ")[0]} a ${r.ach} cambios/h, vinculada al cuarto; iluminación e infiltración pendientes de captura`); break;
     }
     case "proj-save": projSave(); if (!$("#modal").hidden) openModal(projectsModal()); break;
     case "proj-modal": openModal(projectsModal()); break;
@@ -21960,6 +21974,7 @@ function sanearEstado(d) {
   const s = { ...base, ...(d && typeof d === "object" ? d : {}) };
   if (!Array.isArray(s.zones) || !s.zones.length) s.zones = [defaultZone()];
   s.zones = s.zones.map((z) => (z && typeof z === "object" ? { ...defaultZone(z.name || "Zona"), ...z } : defaultZone("Zona")));
+  asegurarIdsZona(s); /* H-126: cada zona lleva un id estable (contador, no reloj) para vincularla con los cuartos limpios */
   /* rev 2.9.2 · Un proyecto guardado por una revisión anterior trae muros y
      vidrio con las cuatro cardinales nada más. Se reconstruyen las OCHO en el
      orden de la rosa, copiando tal cual lo que venga capturado y poniendo en
