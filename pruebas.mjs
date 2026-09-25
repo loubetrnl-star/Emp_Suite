@@ -5547,11 +5547,14 @@ t("S.20 un proyecto guardado con la versión anterior (formato 1, rev 2.9.13) ab
      quoteDirect → 4956344.7391384 · quoteSub → 7492010.7076816065 · quoteTot → 8690732.420910664.
      H-243 (civil v4, quote v16): muro clasificado y media caña por cuarto limpio (rectángulo 3:2 estimado del cuarto × su altura;
      antes fracción de área del edificio entre la altura media): quoteDirect → 5259188.600874344 · quoteSub → 7949789.489081658 ·
-     quoteTot → 9221755.807334725; civilTotal 1572299.248 → 1875143.1097359434. */
+     quoteTot → 9221755.807334725; civilTotal 1572299.248 → 1875143.1097359434.
+     H-244 (civil v5, quote v17; decisión 5 del dueño): la tabiquería deja de tomar los muros de carga térmica; sin perímetro
+     capturado, rectángulo 3:2 × altura por zona, «estimado»: quoteDirect → 5953691.248524068 · quoteSub → 8999599.69126898 ·
+     quoteTot → 10439535.641872017; civilTotal → 2569645.757385668. */
   const MOVIDOS_2916 = { tons: [18.584787, 12.943837], cfm: [5114.572875, 5815.981512], sysTarget: [20.443265161623447, 14.238221145934492],
-    hidroQ: [3.924, 4.05985437], quoteDirect: [6704014.747352686, 5259188.600874344], partidas: [6704014.747352686, 5259188.600874344],
-    quoteSub: [10133788.69209832, 7949789.489081658], quoteTot: [11755194.88283405, 9221755.807334725],
-    civilTotal: [1572299.248, 1875143.1097359434] };
+    hidroQ: [3.924, 4.05985437], quoteDirect: [6704014.747352686, 5953691.248524068], partidas: [6704014.747352686, 5953691.248524068],
+    quoteSub: [10133788.69209832, 8999599.69126898], quoteTot: [11755194.88283405, 10439535.641872017],
+    civilTotal: [1572299.248, 2569645.757385668] };
   Object.entries(MOVIDOS_2916).forEach(([k, [antes]]) => eq(esperado.resumen[k], antes, `${k}: el «antes» es el de la 2.9.13:`));
   Object.entries(esperado.resumen).forEach(([k, v]) => eq(r[k], k in MOVIDOS_2916 ? MOVIDOS_2916[k][1] : v, `${k} igual al de la versión ${esperado.generadoCon}${k in MOVIDOS_2916 ? " con la decisión 2.9.16" : ""}:`));
   eq((G("QUOTE").pendientes || []).filter((p) => p.mot === "hidro").map((p) => p.motivo.split(" (")[0]).join(","), "pendiente de longitud,pendiente de volumen", "la red y la cisterna (0 unidades de dotación) quedan pendientes (H-196):"); /* rev 2.9.23: la importación siempre está pendiente aparte */
@@ -7090,6 +7093,35 @@ t("S.78 (H-243) media caña y muro clasificado por cuarto limpio con su área y 
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+t("S.79 (H-244, decisión 5 del dueño) la tabiquería no son los muros de carga térmica: perímetro de tabiquería capturable por zona y, sin captura, rectángulo 3:2 marcado «estimado» en la partida; capturar un muro exterior ya no mueve el muro civil (antes −400,446 MXN)", () => {
+  const guardado = JSON.stringify(S);
+  const noLimpio = () => (G("CIVIL").part || []).find((p) => /en área no clasificada/.test(p.desc) && p.clave === "A300");
+  try {
+    G("importarRespaldo")(fs.readFileSync("parches/regresion-motores/regresion-motores.emp.json", "utf8")); S.tab = "tablero"; G("KZ_CACHE").key = null; G("VZ_CACHE").key = null; G("recompute")();
+    let R = G("CIVIL");
+    /* Cuatro zonas sin perímetro de tabiquería: cada una con su rectángulo 3:2 × su altura. */
+    const est = (a, h) => 2 * 2.5 * Math.sqrt(a / 1.5) * h;
+    const esperado = est(400, 6) + est(100, 3) + est(120, 3) + est(80, 3);
+    cerca(R.muroM2, esperado, 0.01, "desarrollo = Σ rectángulo 3:2 × altura, sin los muros de carga térmica (antes 140 + 44 capturados para carga):");
+    const p = noLimpio();
+    if (!p || !/estimado/.test(p.desc) || !/estimated/.test(p.descEn)) throw new Error("el muro no clasificado estimado debe decirlo en la partida (ES/EN): " + JSON.stringify(p));
+    /* Monotonía: capturar un muro exterior de carga térmica no toca el muro civil. */
+    const antes = G("CIVIL").total; S.zones[3].walls.N = 30; G("recompute")();
+    cerca(G("CIVIL").total, antes, 1e-6, "un muro exterior capturado para carga térmica no mueve la obra civil:");
+    /* Perímetro de tabiquería capturado por zona: manda. */
+    S.tab = "civil"; G("render")();
+    const id = S.zones[0].id;
+    if (!w.document.querySelector('#view [data-path="civil.perimZonas.' + id + '"]')) throw new Error("falta el campo de perímetro de tabiquería por zona");
+    S.civil.perimZonas = { [S.zones[0].id]: 100, [S.zones[1].id]: 50, [S.zones[2].id]: 44, [S.zones[3].id]: 36 }; G("recompute")(); R = G("CIVIL");
+    cerca(R.muroM2, 100 * 6 + 50 * 3 + 44 * 3 + 36 * 3, 1e-9, "con perímetros capturados: Σ perímetro × altura:");
+    eq(R.estimado, false, "todo capturado, nada estimado:");
+    if (/estimado/.test(noLimpio().desc)) throw new Error("con perímetros capturados la partida ya no dice estimado");
+    /* Más perímetro capturado nunca baja el muro. */
+    const m1 = R.muroM2; S.civil.perimZonas[S.zones[1].id] = 60; G("recompute")();
+    if (!(G("CIVIL").muroM2 > m1)) throw new Error("más perímetro capturado debe dar más muro");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 /* ===== R. Regresión por motor (rev 2.9.22, decisión del dueño): un proyecto fijo con cifras esperadas por disciplina ===== */
 const REG_DIR = "parches/regresion-motores/";
 const REG_PROY = fs.readFileSync(REG_DIR + "regresion-motores.emp.json", "utf8");
@@ -7648,7 +7680,8 @@ t("GA.6 ventilación no tenía texto de guía repetido y sigue sin él: la vista
       ["Se copian zona por zona, no se recalculan", "ojo", "se copian zona por zona, y si cambias un área allá esta sección se mueve sola"], /* rev 2.9.17 · texto corregido (G4-08) */
       ["la geometría del proyecto no las toca", "ojo", "la geometría del proyecto no las toca"],
       ["Cantidades capturadas a mano en esta pestaña", "ojo", "capturarlas a mano en esta pestaña"],
-      ["Área, altura y desarrollo de muro heredados de la geometría del proyecto", "ojo", "área, altura y desarrollo de muro se copian"],
+      /* H-244: la tabiquería ya no se hereda de la geometría (los muros de carga térmica no son tabiquería): se captura por zona. */
+      ["Área, altura y desarrollo de muro heredados de la geometría del proyecto", "ojo", "área y altura se copian zona por zona"],
     ],
     soporte: [
       ["Baja California es zona sísmica", "ojo", "Baja California, zona sísmica"],

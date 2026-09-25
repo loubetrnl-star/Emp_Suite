@@ -7258,6 +7258,7 @@ function defaultCivil() {
     puertasLimpias: 0, puertasSimples: 0, visores: 0, passbox: 0,
     mediaCanaDoble: true,     // piso y plafón
     perimCuartos: {},         // H-243: perímetro capturado por cuarto limpio (ml), clave claveCuartoCivil(nombre)
+    perimZonas: {},           // H-244: perímetro de tabiquería capturado por zona (ml), clave el id estable de la zona
   };
 }
 /* H-243: clave estable del cuarto limpio para su perímetro capturado (el nombre sin signos: sirve de ruta data-path). */
@@ -7272,18 +7273,22 @@ function computeCivil(C) {
   const areaLimpia = limpios.reduce((a, c) => a + (c.vacio ? 0 : Math.max(0, num(c.area))), 0);
 
   let area = 0, muroM2 = 0, alturaProm = 0, estimado = false;
+  /* H-244 (rev 2.9.24, civil v5; decisión 5 del dueño): la tabiquería NO son los muros de carga térmica (z.walls, envolvente
+     por orientación). Cada zona lleva su perímetro de tabiquería capturado en esta pestaña; sin captura, el rectángulo 3:2 del
+     área de la zona × su altura, marcado «estimado» en la partida. Antes se tomaban los muros de carga térmica cuando los había
+     y el 3:2 cuando no: capturar un muro exterior de 30 m² BAJABA el muro civil (−400,446 MXN). */
+  const perimZ = (C.perimZonas && typeof C.perimZonas === "object") ? C.perimZonas : {};
+  const zonasCivil = [];
   if (C.usarZonas && zonas.length) {
-    zonas.forEach((z) => {
+    zonas.forEach((z, i) => {
       const a = Math.max(0, num(z.area)), h = Math.max(0, num(z.height, 2.8));
       area += a; alturaProm += h * a;
-      const cap = ORI.reduce((s, o) => s + Math.max(0, num(z.walls && z.walls[o])), 0);
-      if (cap > 0) muroM2 += cap;
-      else {
-        /* Sin muros capturados se estima el desarrollo con un rectángulo de
-           proporción 3:2, que se parece más a una nave que un cuadrado. */
-        const lado = Math.sqrt(a / 1.5);
-        muroM2 += 2 * (lado * 1.5 + lado) * h; estimado = true;
-      }
+      const clave = z.id || `z${i + 1}`;
+      const cap = Math.max(0, num(perimZ[clave], 0));
+      const per = cap > 0 ? cap : 2 * (1.5 + 1) * Math.sqrt(a / 1.5);
+      if (!(cap > 0) && a > 0) estimado = true;
+      muroM2 += per * h;
+      zonasCivil.push({ name: z.name || clave, clave, area: a, h, per, capturado: cap > 0, muro: per * h });
     });
     alturaProm = area > 0 ? alturaProm / area : 0;
   } else {
@@ -7291,7 +7296,8 @@ function computeCivil(C) {
     alturaProm = Math.max(0, num(C.alturaManual, 3));
     muroM2 = Math.max(0, num(C.murosManual));
   }
-  if (estimado) memo.push("Alguna zona no tiene muros capturados por orientación: su desarrollo se estimó con un rectángulo de proporción 3:2 a la altura de la zona. Captura los muros para que la partida deje de ser estimada.");
+  if (estimado) memo.push(`Tabiquería ESTIMADA con un rectángulo 3:2 × altura en ${zonasCivil.filter((z) => !z.capturado && z.area > 0).map((z) => z.name).join(", ")}: captura el perímetro de tabiquería de cada zona para que la partida deje de ser estimada. Los muros de carga térmica (envolvente) no son tabiquería (H-244).`);
+  zonasCivil.filter((z) => z.capturado).forEach((z) => memo.push(`${z.name}: tabiquería ${n(z.per, 2)} ml capturados × altura ${n(z.h, 2)} m = ${n(z.muro, 1)} m² (H-244).`));
   /* H-67 (decisión del dueño, 15-sep-2026): load>civil y clean>civil entran al
      sistema de cruces. Igual que en soportería, negar el permiso NO baja la
      cantidad a cero —la geometría se sigue cuantificando— solo se marca
@@ -7349,7 +7355,7 @@ function computeCivil(C) {
   /* ---- A300 muros ---- */
   const mL = SIS_MURO[C.muro] || SIS_MURO.panel_mgo, mN = SIS_MURO[C.muroNoLimpio] || SIS_MURO.tablaroca;
   P("A300", `${mL.label} en área clasificada${estTxt}`, "M2", muroLimpio, mL.mxnM2, null, `${mL.labelEn} in classified area${estTxtEn}`);
-  P("A300", `${mN.label} en área no clasificada`, "M2", muroNoLimpio, mN.mxnM2, null, `${mN.labelEn} in unclassified area`);
+  P("A300", `${mN.label} en área no clasificada${estimado ? " (estimado: rectángulo 3:2 sin perímetro de tabiquería capturado)" : ""}`, "M2", muroNoLimpio, mN.mxnM2, null, `${mN.labelEn} in unclassified area${estimado ? " (estimated: 3:2 rectangle, partition perimeter not captured)" : ""}`);
   /* ---- A400 plafones ---- */
   const pf = SIS_PLAFON[C.plafon] || SIS_PLAFON.panel_mgo;
   /* rev 2.9.16 · Sin el cuarto limpio fantasma de 1 m² (piso interno retirado por decisión del dueño) se abría una rama que
@@ -7403,7 +7409,7 @@ function computeCivil(C) {
   memo.push("Las cantidades salen de la geometría de las zonas (o de la captura a mano de esta pestaña, si se eligió así) y el área clasificada de los cuartos limpios. Con geometría de zonas, si cambia un área esta sección se recalcula sola.");
 
   return { area, areaLimpia, areaNoLimpia, fracLimpia, muroM2, muroLimpio, muroNoLimpio,
-    alturaProm, mlMuroLimpio, mlCana, estimado, cuartosCivil, cuartoEstimado, part, total, sisMuro: mL, sisPlafon: pf, sisPiso: ps, avisos, memo };
+    alturaProm, mlMuroLimpio, mlCana, estimado, zonasCivil, cuartosCivil, cuartoEstimado, part, total, sisMuro: mL, sisPlafon: pf, sisPiso: ps, avisos, memo };
 }
 
 /* =========================================================================
@@ -18114,7 +18120,7 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "5", clean: "3", equip: "1", duct: "1", vent: "3", quote: "16", valor: "1", kaizen: "1", elec: "8", hidro: "8", fuego: "3", aire: "5", civil: "4", soporte: "9" };
+const MOTOR_VER = { load: "5", clean: "3", equip: "1", duct: "1", vent: "3", quote: "17", valor: "1", kaizen: "1", elec: "8", hidro: "8", fuego: "3", aire: "5", civil: "5", soporte: "9" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
@@ -18125,7 +18131,7 @@ const MOTOR_CAMBIOS = {
     { ver: "3", rev: "2.9.24", que: "H-155: sin medidas no hay caudal: campana sin largo o fondo y rejilla sin ancho, alto, área libre o velocidad dan demanda 0 con aviso (antes pisos de 0.1 ft, 5 % y 100 fpm fabricaban 30 y 258 CFM y sus partidas)" }],
   clean: [{ ver: "2", rev: "2.9.16", que: "sin pisos de 1 m² ni 2.2 m; 5 Pa de ISO 14644-4 con aviso; ceros capturados respetados" },
     { ver: "3", rev: "2.9.24", que: "H-127: se respeta el signo de la presión diferencial capturada (contención en negativa, EU GMP Anexo 1 (2022) §4.14); piso de 5 Pa y fuga por rendijas sobre |ΔP|; el signo sale en memoria, PDF y Excel; aviso con los 10 Pa guía del Anexo 1" }],
-  quote: [{ ver: "2", rev: "2.9.16", que: "red hidráulica por diámetro con precio capturado; sin 50 m supuestos; partidas pendientes" }, { ver: "3", rev: "2.9.19", que: "tramo con longitud y sin unidades mueble queda pendiente" }, { ver: "4", rev: "2.9.23", que: "precio de tubería por renglón con origen (referencia de mercado o proveedor local), IVA desglosado y por metro; sin precio: partida Por cotizar en el Budget, bloqueo sólo en la formal" }, { ver: "5", rev: "2.9.23", que: "precios en USD sólo se convierten con tipo de cambio capturado con fecha; sin fecha salen Por cotizar y bloquean la formal (nada se estima)" }, { ver: "6", rev: "2.9.23", que: "referencias sólo de California y sólo material (mano de obra por capturar; combinados → Por cotizar); referencias IUSA retiradas; flete, aduana e importación como renglón propio siempre Por cotizar hasta capturarlo" }, { ver: "7", rev: "2.9.24", que: "H-198: un tramo de agua sin diámetro verificado (fuera del catálogo del material, o PEAD sin SDR ni fuente) va Por cotizar con sus metros; ya no se cotiza con el precio del mayor diámetro ni pide precio de un diámetro que no le corresponde" }, { ver: "8", rev: "2.9.24", que: "H-196: cisterna y equipo de bombeo sin precio semilla (9,500 MXN/m³ y 14,500 MXN/HP sin fuente): van Por cotizar con su volumen y su potencia; la bomba sólo cuando la presión de la red no alcanza; cisterna en 0 queda pendiente de volumen, nunca cisterna de 0 m³" }, { ver: "9", rev: "2.9.24", que: "H-206: bomba contra incendio y reserva sin precio fijo (385,000 MXN + 9,500 MXN/m³ sin fuente): Por cotizar con capacidad (gpm y L/min), presión, potencia y volumen declarados" }, { ver: "10", rev: "2.9.24", que: "dependencia de aire v3 (H-215): la partida del secador lleva la capacidad nominal de ISO 7183 A1 y declara si la corrección del fabricante está pendiente" }, { ver: "11", rev: "2.9.24", que: "dependencia de aire v5 (H-218): la partida de la red declara «diámetros indicativos: DI del fabricante pendiente» en aluminio e inoxidable" }, { ver: "12", rev: "2.9.24", que: "dependencia de vent v2 (H-154): la partida de ventilación nombra el modelo que cubre de verdad (o ninguno)" }, { ver: "13", rev: "2.9.24", que: "dependencia de soporte v5 (H-225): sin altura de colgado la varilla sale pendiente, no cotizada" }, { ver: "14", rev: "2.9.24", que: "dependencia de soporte v6 (H-226): el anclaje va Por cotizar (sección G) mientras no haya SDS con fuente, estructura y f'c" }, { ver: "15", rev: "2.9.24", que: "dependencia de soporte v8 (H-229): más soportes de cobre con los claros MSS/IPC" }, { ver: "16", rev: "2.9.24", que: "dependencia de civil v4 (H-243): muro clasificado y media caña por cuarto limpio" }],
+  quote: [{ ver: "2", rev: "2.9.16", que: "red hidráulica por diámetro con precio capturado; sin 50 m supuestos; partidas pendientes" }, { ver: "3", rev: "2.9.19", que: "tramo con longitud y sin unidades mueble queda pendiente" }, { ver: "4", rev: "2.9.23", que: "precio de tubería por renglón con origen (referencia de mercado o proveedor local), IVA desglosado y por metro; sin precio: partida Por cotizar en el Budget, bloqueo sólo en la formal" }, { ver: "5", rev: "2.9.23", que: "precios en USD sólo se convierten con tipo de cambio capturado con fecha; sin fecha salen Por cotizar y bloquean la formal (nada se estima)" }, { ver: "6", rev: "2.9.23", que: "referencias sólo de California y sólo material (mano de obra por capturar; combinados → Por cotizar); referencias IUSA retiradas; flete, aduana e importación como renglón propio siempre Por cotizar hasta capturarlo" }, { ver: "7", rev: "2.9.24", que: "H-198: un tramo de agua sin diámetro verificado (fuera del catálogo del material, o PEAD sin SDR ni fuente) va Por cotizar con sus metros; ya no se cotiza con el precio del mayor diámetro ni pide precio de un diámetro que no le corresponde" }, { ver: "8", rev: "2.9.24", que: "H-196: cisterna y equipo de bombeo sin precio semilla (9,500 MXN/m³ y 14,500 MXN/HP sin fuente): van Por cotizar con su volumen y su potencia; la bomba sólo cuando la presión de la red no alcanza; cisterna en 0 queda pendiente de volumen, nunca cisterna de 0 m³" }, { ver: "9", rev: "2.9.24", que: "H-206: bomba contra incendio y reserva sin precio fijo (385,000 MXN + 9,500 MXN/m³ sin fuente): Por cotizar con capacidad (gpm y L/min), presión, potencia y volumen declarados" }, { ver: "10", rev: "2.9.24", que: "dependencia de aire v3 (H-215): la partida del secador lleva la capacidad nominal de ISO 7183 A1 y declara si la corrección del fabricante está pendiente" }, { ver: "11", rev: "2.9.24", que: "dependencia de aire v5 (H-218): la partida de la red declara «diámetros indicativos: DI del fabricante pendiente» en aluminio e inoxidable" }, { ver: "12", rev: "2.9.24", que: "dependencia de vent v2 (H-154): la partida de ventilación nombra el modelo que cubre de verdad (o ninguno)" }, { ver: "13", rev: "2.9.24", que: "dependencia de soporte v5 (H-225): sin altura de colgado la varilla sale pendiente, no cotizada" }, { ver: "14", rev: "2.9.24", que: "dependencia de soporte v6 (H-226): el anclaje va Por cotizar (sección G) mientras no haya SDS con fuente, estructura y f'c" }, { ver: "15", rev: "2.9.24", que: "dependencia de soporte v8 (H-229): más soportes de cobre con los claros MSS/IPC" }, { ver: "16", rev: "2.9.24", que: "dependencia de civil v4 (H-243): muro clasificado y media caña por cuarto limpio" }, { ver: "17", rev: "2.9.24", que: "dependencia de civil v5 (H-244): tabiquería por zona, sin los muros de carga térmica" }],
   elec: [{ ver: "2", rev: "2.9.16", que: "canalización con las áreas del conductor de la memoria (THW-LS por omisión, NOM-001-SEDE Cap. 10 Tabla 5)" }, { ver: "3", rev: "2.9.18", que: "siete áreas THHN/THWN-2 corregidas a la Tabla 5" }, { ver: "4", rev: "2.9.19", que: "sin compresor de aire cuando no hay demanda" },
     { ver: "5", rev: "2.9.24", que: "H-183: conductor de puesta a tierra con la Tabla 250-122 de la NOM-001-SEDE-2012 (p. 151): 400 A → 2 AWG (antes 3 AWG, valor del NEC), renglones hasta 6000 A y columna de aluminio (hasta 100 A la tabla sólo da cobre)" },
     { ver: "6", rev: "2.9.24", que: "H-177: equipo con motocompresor hermético con MCA y MOP por el art. 440: conductor por la MCA de placa (440-4(b), 440-35; una MCA estimada por la suite no lo baja del 125 %) y protección igual al MOP o al valor inmediato inferior de 240-6(a) completo (16, 32, 63 A; abajo de 15 A sólo fusibles de 1, 3, 6, 10 A), sin el 250 % de la Tabla 430-52 (40VMA-240: 150 → 90 A; 40MBC-24: 25 → 15 A). Aceptar la cédula conserva MCA y MOP (marcados estimados); una carga sin kW no fija el principal" },
@@ -18142,7 +18148,7 @@ const MOTOR_CAMBIOS = {
     { ver: "3", rev: "2.9.24", que: "H-215: secador por ISO 7183:2007 Tabla 2 opción A1: capacidad = todo el caudal del compresor a las condiciones nominales (35 °C, 7 bar(e)), factor 1.0; fuera de A1 la corrección es del fabricante y queda pendiente con aviso (antes FAD requerido / (0.92 × 0.90) de memoria: proyecto fijo 2.46 → 2.43 m³/min)" },
     { ver: "4", rev: "2.9.24", que: "H-216: el tanque pulmón no se trunca a 5,000 L en silencio: si el teórico rebasa el mayor de la lista comercial se instalan varios de 5,000 L en paralelo (capacidad instalada ≥ teórica), con aviso y memoria veraz (13,103 L → 3 × 5,000 = 15,000 L; antes 5,000). Proyecto fijo: sin cambio (3,000 L)" },
     { ver: "5", rev: "2.9.24", que: "H-218: diámetro interior por material: cobre tipo L con los DI de ASTM B88 (TUB_AGUA.cobre: 55 m de cobre 1\" → 1 1/4\"), acero con cédula 40, aluminio e inoxidable con cédula 40 sólo como indicativo y el DI del fabricante pendiente (aviso, memoria, PDF y partida). Proyecto fijo (aluminio): sin cambio de cifras, con la pendencia declarada" }],
-  civil: [{ ver: "2", rev: "2.9.16", que: "sin área clasificada no hay partidas de área clasificada" }, { ver: "3", rev: "2.9.19", que: "un cuarto limpio vacío no cuenta como área clasificada" }, { ver: "4", rev: "2.9.24", que: "H-243: muro clasificado y media caña cuarto por cuarto (perímetro capturado o rectángulo 3:2 declarado «estimado» en la partida) × su altura; antes la fracción de área del edificio entre la altura media (proyecto fijo 31.11 ml / 73.32 m² → 89.44 ml / 134.16 m²)" }],
+  civil: [{ ver: "2", rev: "2.9.16", que: "sin área clasificada no hay partidas de área clasificada" }, { ver: "3", rev: "2.9.19", que: "un cuarto limpio vacío no cuenta como área clasificada" }, { ver: "4", rev: "2.9.24", que: "H-243: muro clasificado y media caña cuarto por cuarto (perímetro capturado o rectángulo 3:2 declarado «estimado» en la partida) × su altura; antes la fracción de área del edificio entre la altura media (proyecto fijo 31.11 ml / 73.32 m² → 89.44 ml / 134.16 m²)" }, { ver: "5", rev: "2.9.24", que: "H-244 (decisión 5): la tabiquería es un perímetro capturable por zona; sin captura, rectángulo 3:2 × altura marcado «estimado» en la partida; los muros de carga térmica ya no entran (capturar un muro exterior bajaba el muro civil)" }],
   soporte: [{ ver: "2", rev: "2.9.16", que: "renta de elevación sólo con algo que montar" },
     { ver: "3", rev: "2.9.24", que: "H-232: 0 meses de renta capturados se respetan (sin renta) y sin captura la renta queda pendiente con aviso (antes el 0 se volvía 1 mes y la omisión 3)" },
     { ver: "4", rev: "2.9.24", que: "H-231: con la instantánea motores>soporte aceptada las bases de equipo salen de snap.nEquip (antes el conteo en vivo perdía el compresor: 3 → 2)" },
@@ -20772,6 +20778,7 @@ function viewCivil() {
     <div class="card"><h3>Sistemas constructivos<span class="tag">sección A</span></h3><div class="body">
       ${sel("¿De dónde salen las cantidades?", "civil.usarZonas", [[true, "De las zonas y cuartos limpios capturados"], [false, "Capturadas a mano aquí"]])}
       ${C.usarZonas !== false ? `<div class="her"><span class="hdot"></span><b>Heredado</b> de la geometría del proyecto: ${S.zones.length} zona(s), ${n(geoProyecto().area, 0)} m²</div>` : ""}
+      ${C.usarZonas !== false ? (R.zonasCivil || []).map((z) => inp(`Tabiquería de ${esc(z.name)} (ml de perímetro) · ${n(z.area, 0)} m² × ${n(z.h, 1)} m${z.capturado ? "" : ` · sin captura: rectángulo 3:2 estimado, ${n(z.per, 1)} ml`}`, `civil.perimZonas.${z.clave}`, "number", "0.1")).join("") : ""}
       ${!C.usarZonas ? `<div class="row">
         ${inp("Área total (m²)", "civil.areaManual", "number", "10", "civil.area", C)}
         ${inp("Altura libre (m)", "civil.alturaManual", "number", "0.1", "civil.alt", C)}
@@ -21150,7 +21157,7 @@ const GUIA = {
     metodo: "En el levantamiento de consumos, el pico es la suma de nominales; la demanda de diseño es la mayor entre el consumo medio y el pico con simultaneidad." },
   civil: { que: "La obra civil cuantificada de la geometría que ya capturaste: muros, plafones, pisos, media caña, cancelería y limpieza.",
     cuando: "Cuando el alcance incluye construcción y no solo instalaciones. Es la sección A del catálogo de la casa.",
-    ojo: "Las cantidades salen de las zonas y de los cuartos limpios: área, altura y desarrollo de muro se copian zona por zona, y si cambias un área allá esta sección se mueve sola; si una zona no tiene muros capturados por orientación, su desarrollo se estima con un rectángulo de proporción 3:2 a la altura de la zona y queda marcado como estimado. Si eliges capturarlas a mano en esta pestaña, la geometría del proyecto no las toca." },
+    ojo: "Las cantidades salen de las zonas y de los cuartos limpios: área y altura se copian zona por zona, y si cambias un área allá esta sección se mueve sola; la tabiquería se captura aquí como perímetro por zona (los muros de carga térmica son envolvente, no tabiquería) y, sin captura, se estima con un rectángulo de proporción 3:2 a la altura de la zona y queda marcada como estimada. Si eliges capturarlas a mano en esta pestaña, la geometría del proyecto no las toca." },
   soporte: { que: "Los soportes contados uno por uno de los metros de ducto y tubería que calcularon los otros motores, más el arriostramiento sísmico y el equipo de elevación.",
     cuando: "Al cerrar el alcance. Es la sección G y es la que siempre se cotiza por lote y se paga por pieza.",
     ojo: "El arriostramiento sísmico no es opcional en Baja California, zona sísmica: NFPA 13 cap. 18 lo exige para tubería de rociadores." },

@@ -110,11 +110,11 @@
    }
   },
   "quote": {
-   "ver": "16",
+   "ver": "17",
    "cifras": {
-    "direct": 10807890.514942205,
-    "sub": 16337207.302386638,
-    "tot": 18951160.4707685,
+    "direct": 11405959.631235775,
+    "sub": 17241248.578576,
+    "tot": 19999848.35114816,
     "aux": [
      [
       "Instalación mecánica, bases, izaje y arranque (35 % del equipo)",
@@ -207,9 +207,9 @@
       436033.25561245903
      ],
      [
-      "Muro de metal stud con tablaroca ambas caras en área no clasificada",
-      354.39,
-      597142.2930779892
+      "Muro de metal stud con tablaroca ambas caras en área no clasificada (estimado: rectángulo 3:2 sin perímetro de tabiquería capturado)",
+      709.32,
+      1195211.4093715607
      ],
      [
       "Plafón de panel sandwich MgO transitable",
@@ -453,9 +453,9 @@
    }
   },
   "civil": {
-   "ver": "4",
+   "ver": "5",
    "cifras": {
-    "total": 3598622.0537584275,
+    "total": 4196691.170051999,
     "part": [
      [
       "Limpieza general, trazo y nivelación del área de trabajo",
@@ -478,9 +478,9 @@
       436033.25561245903
      ],
      [
-      "Muro de metal stud con tablaroca ambas caras en área no clasificada",
-      354.39,
-      597142.2930779892
+      "Muro de metal stud con tablaroca ambas caras en área no clasificada (estimado: rectángulo 3:2 sin perímetro de tabiquería capturado)",
+      709.32,
+      1195211.4093715607
      ],
      [
       "Plafón de panel sandwich MgO transitable",
