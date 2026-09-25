@@ -6881,6 +6881,27 @@ t("S.70 (H-142) el submittal no inventa datos del equipo: peso, dimensiones, car
   if (/R[123]$/.test(gh.rev)) throw new Error("el submittal Greenheck sigue con revisión inventada: " + gh.rev);
 });
 
+t("S.71 (H-232) renta de elevación: 0 meses capturados se respeta (sin renta), sin captura queda pendiente con aviso (no se suponen 3 meses ni el piso de 1), y con meses capturados la partida los lleva tal cual", () => {
+  const guardado = JSON.stringify(S);
+  const renta = () => (G("SOPORTE").part || []).find((p) => /renta/.test(p.desc));
+  try {
+    G("importarRespaldo")(fs.readFileSync("parches/regresion-motores/regresion-motores.emp.json", "utf8")); S.tab = "tablero"; G("KZ_CACHE").key = null; G("VZ_CACHE").key = null; G("recompute")();
+    if (!(renta() && renta().qty === 3)) throw new Error("el proyecto fijo debía traer 3 meses de renta capturados: " + JSON.stringify(renta()));
+    S.soporte.mesesElevacion = 0; G("recompute")();
+    eq(G("SOPORTE").meses, 0, "0 capturado se respeta (antes piso de 1):"); if (renta()) throw new Error("con 0 meses no hay partida de renta");
+    eq(G("SOPORTE").mesesPendiente, false, "0 no es pendiente:");
+    S.soporte.mesesElevacion = null; G("recompute")();
+    eq(G("SOPORTE").meses, 0, "sin captura no se suponen 3 meses:"); eq(G("SOPORTE").mesesPendiente, true, "queda pendiente:");
+    if (renta()) throw new Error("sin captura no hay partida de renta con importe");
+    if (!G("SOPORTE").avisos.some((a) => /renta/i.test(a.msg) && /pendiente/.test(a.msg))) throw new Error("falta el aviso de renta pendiente");
+    if (!(G("QUOTE").pendientes || []).some((p) => p.mot === "soporte" && /renta/i.test(p.desc))) throw new Error("la cotización no declara la renta pendiente");
+    S.soporte.mesesElevacion = 2; G("recompute")();
+    eq(renta().qty, 2, "2 meses capturados = 2:");
+    /* Un proyecto nuevo no trae 3 meses supuestos. */
+    if (G("defaultSoporte")().mesesElevacion === 3) throw new Error("defaultSoporte sigue suponiendo 3 meses");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 /* ===== R. Regresión por motor (rev 2.9.22, decisión del dueño): un proyecto fijo con cifras esperadas por disciplina ===== */
 const REG_DIR = "parches/regresion-motores/";
 const REG_PROY = fs.readFileSync(REG_DIR + "regresion-motores.emp.json", "utf8");

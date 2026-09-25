@@ -1,7 +1,14 @@
 # soporte · pendientes de la Fase 1 (rev 2.9.24)
 
-Motor de soportería (`soporte`, v2). Hoja: `soporte.csv` (93 filas, 17 `fase2`), cálculo independiente `soporte.calc.mjs`,
+Motor de soportería (`soporte`, v4). Hoja: `soporte.csv` (93 filas, 17 `fase2`), cálculo independiente `soporte.calc.mjs`,
 módulo `pruebas-motores/soporte.mjs` (12 pruebas), compuerta `parches/mutantes/soporte.json` (47 mutantes, 7 `fase2`).
+
+## 00. Cierres de la Fase 2
+
+| Hallazgo | Estado | Qué cambió |
+|---|---|---|
+| H-232 (0 meses → 1; omisión = 3 meses) | **Cerrado** (soporte v2 → v3, 25-sep-2026) | `mesesPendiente` (sin captura) y `meses = max(0, capturado)`; sin partida de renta con 0 o sin captura; aviso en el motor y pendiente en la cotización; `defaultSoporte().mesesElevacion` null. Prueba S.71; fila 11c.a de fase2 a vigente; mutante m08 reapuntado (piso de 1 mes): MUERTO. |
+| H-231 (bases 3 → 2 al aceptar la instantánea) | **Cerrado** (soporte v3 → v4, 25-sep-2026) | En modo gobernado `nEquipos = snap.nEquip` (el sustituto QUOTE lleva `deSnap`). Prueba S.72; fila 11d.a de fase2 a vigente; mutante m47 reapuntado (deSnap falso): MUERTO. |
 
 ## 0. Cambios de entrada por otros motores
 
@@ -33,8 +40,8 @@ módulo `pruebas-motores/soporte.mjs` (12 pruebas), compuerta `parches/mutantes/
 | CM.soporte.7.h / 7.i | H-228 | termoplástico: 38 anclas y 304 tuercas/rondanas (una ancla y 4+4 por soporte, mismo criterio del despiece) | 0 / 0 | H-228; la cantidad exacta depende de cómo la Fase 2 sume el camino propio al despiece (ajustar la fila si se decide otro conteo) |
 | CM.soporte.15.g | H-225 | sin altura de colgado capturada: 0 partidas de varilla con importe (pendiente) | 1 | «Nada se estima» (regla 6). La expresión supone que la Fase 2 deja la partida sin importe o la retira; si opta por otra señal, ajustar la expresión |
 | CM.soporte.15.h | H-226 | sin SDS/estructura/f'c con fuente: 0 partidas de anclaje con importe (Por cotizar) | 1 | ídem |
-| CM.soporte.11c.a | H-232 | 0 meses capturados → 0 meses de renta | 1 | política de pisos 2.9.16 |
-| CM.soporte.11d.a | H-231 | modo gobernado: 3 bases (snap.nEquip) | 2 | H-231 |
+| ~~CM.soporte.11c.a~~ | H-232 | **vigente desde el 25-sep-2026** | = esperado | política de pisos 2.9.16 |
+| ~~CM.soporte.11d.a~~ | H-231 | **vigente desde el 25-sep-2026** | = esperado | H-231 |
 
 ## 3. Mutantes con estado `fase2` (sólo se matan afirmando un valor incorrecto)
 
@@ -42,11 +49,11 @@ módulo `pruebas-motores/soporte.mjs` (12 pruebas), compuerta `parches/mutantes/
 |---|---|---|
 | soporte.m05 | H-229 | pone los claros MSS reales en cobre ½"–1¼"; sólo L.2 lo mata, afirmando 1.8 m |
 | soporte.m06 | H-228 | termoplástico > 3" a 3.0 m; sólo se mataría afirmando el 1.8 m actual (el correcto es 1.22) |
-| soporte.m08 | H-232 | quita el piso de 1 mes; sólo se mata afirmando que 0 capturado da 1 |
+| soporte.m08 | H-232 | reapuntado al cierre: vuelve a poner el piso de 1 mes; MUERTO (S.71, 11c.a) |
 | soporte.m16 | H-227 | par de varillas en ducto rectangular; lo matan R.1/S.20 afirmando 1 varilla (SMACNA bloqueado) |
 | soporte.m45 | H-225 | colgado sin captura 0.5 m en vez de la altura de trabajo; sólo se mata afirmando colgado = trabajo |
 | soporte.m46 | H-226 | SDS por omisión 0.5 en vez de 1.0 (valor por omisión, `logica: false`); sólo se mata afirmando el supuesto |
-| soporte.m47 | H-231 | unidades de aire de la instantánea; sólo se mata afirmando 2 bases (o 3 con la fila fase2) |
+| soporte.m47 | H-231 | reapuntado al cierre: `deSnap` falso vuelve al conteo en vivo; MUERTO (S.72, 11d.a) |
 
 ## 4. Lo que NO quedó cubierto y por qué
 

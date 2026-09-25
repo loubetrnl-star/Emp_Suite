@@ -14,7 +14,7 @@
   { "id": "soporte.m07", "que": "tope NFPA 13 4.6 → 46 m (nunca gobierna)", "logica": true,
     "buscar": "const ESPAC_NFPA13_MAX = 4.6;", "reemplazar": "const ESPAC_NFPA13_MAX = 46;", "estado": "vigente" },
   { "id": "soporte.m08", "que": "renta de elevación sin el mes mínimo (0 capturado se respeta); sólo se mata afirmando el piso de 1 mes", "logica": true,
-    "buscar": "const meses = Math.max(1, num(Gc.mesesElevacion, 3));", "reemplazar": "const meses = Math.max(0, num(Gc.mesesElevacion, 3));", "estado": "fase2:H-232" },
+    "buscar": "const meses = mesesPendiente ? 0 : Math.max(0, num(Gc.mesesElevacion, 0));", "reemplazar": "const meses = mesesPendiente ? 0 : Math.max(1, num(Gc.mesesElevacion, 0));", "estado": "vigente" },
   { "id": "soporte.m09", "que": "carga por soporte del termoplástico ×10", "logica": true,
     "buscar": "const carga = wl * e;", "reemplazar": "const carga = wl * e * 10;", "estado": "vigente" },
   { "id": "soporte.m10", "que": "momento del trapecio con carga puntual PL/4 → PL/40", "logica": true,
