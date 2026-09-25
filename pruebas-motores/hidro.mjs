@@ -7,8 +7,8 @@
    - 22.5 `cerca(H.kWbomba, 2.1511)` y `eq(H.hpBomba, 3)`: η 0.6 y redondeo a 0.5 HP sin fuente (H-203; 3 HP sí es comercial,
      pero el redondeo a medio HP no lo garantiza). Los valores de CDT y presión mínima de 22.5 y L.1 ya son los de la Tabla
      604.3 del IPC 2015 (H-194, cerrado en la rev 2.9.24).
-   - 22.11 `cerca(Σqty, 43)`: da por buena la cotización de la red con precios semilla de cisterna/bomba (H-196); los metros
-     (25 + 18) sí son los capturados.
+   - 22.11 `cerca(Σqty, 43)`: los metros (25 + 18) sí son los capturados; los precios semilla de cisterna/bomba que arrastraba
+     salieron en H-196 (cerrado en la rev 2.9.24).
    - N.2: arma la cisterna con la dotación por omisión «industria 100 L» y el día de reserva por omisión y sólo exige
      `cisterna > 0`; no detecta la dotación de oficina de 70 L (H-202: NTC-PA da 50) ni el piso de 0.5 día (H-197).
    - S.34: comprueba la curva de Hunter sólo en renglones que la suite sí trae; la tabla sigue incompleta (51 renglones de

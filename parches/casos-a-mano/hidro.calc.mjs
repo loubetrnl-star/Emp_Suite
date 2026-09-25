@@ -283,10 +283,16 @@ fila("CM.hidro.1.ab", "potencia al eje con la CDT de 604.3 (antes 1.207 kW)", E1
 fila("CM.hidro.1.ac", "HP nominales con la CDT de 604.3 (antes 2 HP)", E1,
   `ceil(${kWipc.toFixed(5)} / 0.746 × 2) / 2 = 2.5 HP (2.5 HP no es comercial: H-203)`, "IPC 2015 Table 604.3; redondeo " + CASA(9969), PRIM,
   "HIDRO.hpBomba", hpBomba(kWipc), 0);
-/* fase 2 · H-196 cisterna y bomba con precio semilla */
-fila("CM.hidro.1.ad", "importe de «Cisterna de 0 m³ y equipo de bombeo de 2 HP» en la cotización (hoy 29,000 MXN = 9,500×0 + 14,500×2 sin fuente)", E1 + "; hidro>quote autorizado",
-  "regla de precios 22-sep: sin fuente y fecha → «Por cotizar» (importe 0 en aux); bomba sólo con presOk falso", "PLAN-CRITICOS.md §2 Fase 2 H-196 (decisión del dueño)", "decisión del dueño",
-  "QUOTE.aux.filter((a) => a.mot === \"hidro\" && /^Cisterna/.test(a.desc)).reduce((s, a) => s + a.total, 0)", 0, 0, "fase2:H-196");
+/* H-196 (cerrado 25-sep-2026, quote v8): cisterna y bomba sin precio semilla; «Por cotizar»; bomba sólo si la presión no alcanza */
+fila("CM.hidro.1.ad", "ninguna partida de cisterna/bomba con importe en la cotización (antes 36,250 MXN = 9,500×0 + 14,500×2.5 sin fuente)", E1 + "; hidro>quote autorizado",
+  "regla de precios 22-sep: sin fuente y fecha → «Por cotizar»; 0 partidas LOTE de hidro con importe", "PLAN-CRITICOS.md §2 Fase 2 H-196 (decisión del dueño)", "decisión del dueño",
+  "QUOTE.aux.filter((a) => a.mot === \"hidro\" && a.un === \"LOTE\").length", 0, 0);
+fila("CM.hidro.1.ae", "bomba «Por cotizar» porque presRed 0 no alcanza (presOk falso): 1 partida LOTE con clave bombaAgua", E1 + "; hidro>quote autorizado",
+  "presDisp = 0 − hf − 0 < presMinReq → presOk falso → porCotizar bombaAgua × 1", "PLAN-CRITICOS.md §2 Fase 2 H-196 (decisión del dueño)", "decisión del dueño",
+  "QUOTE.porCotizar.filter((p) => p.mot === \"hidro\" && p.clave === \"bombaAgua\").reduce((s, p) => s + p.qty, 0)", 1, 0);
+fila("CM.hidro.1.af", "cisterna con 0 unidades de dotación: pendiente de volumen, ni «0 m³» ni partida Por cotizar", E1 + "; hidro>quote autorizado",
+  "cisterna = 0 L → pendientes «pendiente de volumen»; porCotizar cisterna = 0", "PLAN-CRITICOS.md §2 Fase 2 H-196 (decisión del dueño)", "decisión del dueño",
+  "QUOTE.porCotizar.filter((p) => p.clave === \"cisterna\").length + (QUOTE.pendientes.some((p) => p.mot === \"hidro\" && /volumen/.test(p.motivo)) ? 10 : 0)", 10, 0);
 
 /* =========================================================================================================== CASO 2 · agua caliente por tramo
    Fixture + AC-1 caliente 20 UM 10 m tipoUM «tanque» (explícito) + AC-2 caliente 20 UM 10 m tipoUM «auto». */

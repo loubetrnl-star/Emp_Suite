@@ -2,7 +2,7 @@
 
 Motor hidrosanitario (`hidro`, v8). Entregas: `hidro.calc.mjs` (cálculo independiente, imprime y escribe la hoja),
 `hidro.csv` (105 filas: 88 vigentes, 17 `fase2:H-nnn`), `pruebas-motores/hidro.mjs` (25 pruebas `CM.hidro.*`),
-`parches/mutantes/hidro.json` (61 mutantes; ver §3). Banco al cierre de H-198: 460/460 sin base, 466/466 con base. Con
+`parches/mutantes/hidro.json` (62 mutantes; ver §3). Banco al cierre de H-196: 462/462 sin base, 468/468 con base. Con
 `CM_FASE2=1` las filas fase2 fallan hoy, ninguna pasa por casualidad (arnés `tmp-fase1/fase2-filas.mjs`, no commiteado).
 
 ## 0. Hallazgos cerrados en la Fase 2
@@ -16,6 +16,10 @@ Motor hidrosanitario (`hidro`, v8). Entregas: `hidro.calc.mjs` (cálculo indepen
 | H-197 (pisos sin norma: 0.5 día, ΔT 5 K, pendiente 0.5 %) | **Cerrado** (hidro v6 → v7, 25-sep-2026) | Días capturados se respetan (0 o negativos = cisterna 0, pendiente con aviso); ΔT ≤ 0 = calentador pendiente con aviso (kW 0); pendiente capturada se respeta y sólo sube a la mínima de IPC 2015 §704.1 para el diámetro del colector (releído en up.codes el 25-sep-2026), con aviso, y la memoria y el PDF dicen cuál rige. Filas 3.d, 7.a, 7.b de fase2 a vigente; nuevas 3.e, 7.c, 7.d, 7.e; prueba S.54. Proyecto fijo sin cambio de cifras. |
 
 | H-198 (CPVC 2½–4" «SIN VERIFICAR» elegidos y cotizados; PEAD sin SDR) | **Cerrado** (hidro v7 → v8, quote v6 → v7, 25-sep-2026) | Se retiran los tres renglones de CPVC arriba de 2" CTS (Spears/Lubrizol: CTS SDR-11 no se fabrica arriba de 2"; la familia IPS queda pendiente de fuente). `sizeAgua` marca `fueraCatalogo` cuando ningún diámetro lleva el gasto a la velocidad máxima: error visible en hidro y la cotización lo manda «Por cotizar» con sus metros, sin pedir precio del tope. PEAD (`sinFuente`: diámetros genéricos sin SDR ni fuente) da error visible y toda su tubería va «Por cotizar». Fila 6.a de fase2 a vigente; nuevas 6.b–c; prueba S.55; 22.8 y CM.soporte.7 recalculadas (la general en CPVC llega a soportería con 43.59 mm en vez de 63). |
+
+| H-196 (cisterna y bomba con precio semilla sin fuente, cotizadas siempre y aun con «Cisterna de 0 m³») | **Cerrado** (quote v7 → v8, 25-sep-2026; hidro sin cambio de cifras) | `QUOTE_SEED.bombaHP` retirado; `cisternaM3` queda sólo para la reserva contra incendio. La cisterna con volumen va «Por cotizar» (M3, con consumo diario × días); en 0 queda «pendiente de volumen». La bomba va «Por cotizar» (LOTE, con HP, gasto y CDT) sólo si `presOk` es falso; si la red alcanza, la memoria y el PDF dicen que se dimensiona como referencia y no se cotiza. Matriz de alcance del Excel: pendientes y Por cotizar también en secciones sin importe. Prueba S.57; filas 1.ad (vigente), 1.ae, 1.af; S.18/S.20/S.35/S.39/S.41/S.55/22.11 ajustadas. |
+
+**Dependencia para elec (H-196):** la lista de cargas eléctricas sigue trayendo «Bomba de agua · X HP» (fila auto `hidro-1`, index.html ≈ 9729) aunque `presOk` sea verdadero y la bomba no haga falta. Debería omitirse o marcarse «no requerida». No se tocó (motor ajeno).
 
 **Dependencia para soporte (H-198):** la soportería sigue contando un tramo fuera de catálogo con el diámetro tope (43.59 mm en CPVC) y un tramo de PEAD con su DI genérico. Debería dejarlos «pendiente de diámetro verificado». No se tocó la lógica de soportería (regla del motor ajeno); sólo se recalculó su caso 7 con la nueva entrada.
 
@@ -42,7 +46,7 @@ presMinReq 5.6246 (sin muebles rige el residual de la casa). El módulo `pruebas
 |---|---|---|---|
 | ~~CM.hidro.1.z–1.ac~~ | H-194 | **vigentes desde el 24-sep-2026** (presMinReq 24.607 m, CDT 29.563 m, 1.7883 kW, 2.5 HP) | = esperado |
 | ~~CM.hidro.5.a~~ | H-195 | **vigente desde el 25-sep-2026** (Qtotal 1.2618 L/s = 20 gpm fuera de Hunter; Z358.1-1990 vía OSHA, secundaria) | = esperado |
-| CM.hidro.1.ad | H-196 | importe «Cisterna … y equipo de bombeo» 0 (Por cotizar) | 29,000 MXN (9,500 × 0 m³ + 14,500 × 2 HP) |
+| ~~CM.hidro.1.ad~~ | H-196 | **vigente desde el 25-sep-2026** (0 partidas LOTE de hidro con importe; nuevas 1.ae bomba Por cotizar, 1.af cisterna pendiente) | = esperado |
 | ~~CM.hidro.3.d, 7.a, 7.b~~ | H-197 | **vigentes desde el 25-sep-2026** (0 L con 0 días; ΔT 0; pendiente 1.0417 % de 704.1) | = esperado |
 | ~~CM.hidro.6.a~~ | H-198 | **vigente desde el 25-sep-2026** (0 renglones CPVC arriba de 2" CTS) | = esperado |
 | CM.hidro.1.u | H-199 | umCal 9 WSFU (E103.3(2) columna hot: lavabo público 1.5 × 4 + fregadero 3) | 7.2 (fracciones 0.6 sin fuente) |
@@ -98,6 +102,11 @@ S.55), m60 y m61 (sin el error visible de fuera de catálogo / PEAD sin SDR: S.5
 en todos sus diámetros; sólo la general sin precios) y los dos murieron. Total 61; fase2 vivos previstos: m12 (H-202), m24 y m37
 (H-199), m28 (H-203).
 
+**Al cierre de H-196 (25-sep-2026), corrida de los 2 mutantes tocados (`--solo`): ambos MUERTOS.** m34 pasa de fase2 (precio semilla,
+`logica: false`) a lógica vigente: la bomba se cotiza aunque la presión alcance (S.57). Nuevo m62: cisterna en 0 mandada «Por cotizar»
+como «0 m³» en vez de pendiente (S.57; el primer `buscar` de dos líneas no casaba con el CRLF de index.html y salió VIVO por no
+aplicarse: se reapuntó a una línea). Total 62; fase2 vivos previstos: m12 (H-202), m24 y m37 (H-199), m28 (H-203).
+
 Resultado de la Fase 1: **37 mutantes · 0 vivos en lógica vigente · código de salida 0** (compuerta cerrada). 26 muertos (25 de
 lógica vigente + m34, que no es lógica); 11 en estado fase2, de los que 9 siguen vivos (previsto) y 2 mueren igual.
 
@@ -136,7 +145,7 @@ lógica vigente + m34, que no es lógica); 11 en estado fase2, de los que 9 sigu
 | hidro.m31 | DI de CPVC 2" CTS 43.59 → 50 mm (reapuntado en H-198; antes 2 1/2" 63 → 55) | vigente | MUERTO | 22.8 (soportería lee el DI) · fila CM.hidro.6.a |
 | hidro.m32 | lavaojos 6 → 60 UM | fase2:H-195 | VIVO | fila CM.hidro.5.a (BLOQUEADO, secundaria) |
 | hidro.m33 | presión disponible con la mitad de la pérdida | vigente | MUERTO | 22.5, CM.hidro.1 |
-| hidro.m34 | precio semilla bomba 14,500 → 0 (`logica: false`) | fase2:H-196 | MUERTO | S.18, S.35 · fila CM.hidro.1.ad |
+| hidro.m34 | la bomba se cotiza aunque la presión alcance (reapuntado en H-196; antes precio semilla 14,500 → 0, `logica: false`) | vigente | MUERTO | S.57 |
 | hidro.m35 | CDT sin la altura del edificio | vigente | MUERTO | 22.5, L.1, CM.hidro.10 |
 | hidro.m36 | presión requerida = mínimo de los muebles | vigente | MUERTO | **sólo CM.hidro.11** |
 | hidro.m37 | calTot sin la cantidad | fase2:H-199 | VIVO | fila CM.hidro.1.u |
@@ -147,8 +156,6 @@ bloquean: se matan al cerrar su hallazgo, cuando la fila fase2 pase a «vigente�
 
 ## 4. No cubierto (con motivo)
 
-- **Precios semilla de cisterna/bomba (H-196)**: sólo la fila fase2 1.ad; no hay prueba vigente porque afirmar 29,000 MXN
-  sería consagrar un precio sin fuente.
 - **Bomba con CDT incompleto / formal sin longitudes (H-200)**: la hoja fija hf = 0 y sinL con L = 0 (8.a, 8.b), pero no
   exige «bomba pendiente» ni el bloqueo de la formal: es decisión del dueño pendiente en PLAN-CRITICOS (no hay valor
   numérico que exigir).

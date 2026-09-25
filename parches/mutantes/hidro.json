@@ -265,11 +265,11 @@
   },
   {
     "id": "hidro.m34",
-    "que": "precio semilla de la bomba 14,500 → 0 MXN/HP (no es lógica: H-196 lo cambia a «Por cotizar»)",
-    "logica": false,
-    "buscar": "bombaHP: 14500,",
-    "reemplazar": "bombaHP: 0,",
-    "estado": "fase2:H-196"
+    "que": "H-196: la bomba se cotiza aunque la presión de la red alcance (antes: precio semilla 14,500 → 0, ya retirado)",
+    "logica": true,
+    "buscar": "if (!HIDRO.presOk) porCotizar.push({ sec: \"F\", mot: \"hidro\", clave: \"bombaAgua\",",
+    "reemplazar": "if (true) porCotizar.push({ sec: \"F\", mot: \"hidro\", clave: \"bombaAgua\",",
+    "estado": "vigente"
   },
   {
     "id": "hidro.m35",
@@ -485,6 +485,14 @@
     "logica": true,
     "buscar": "if (TUB_AGUA[mat].sinFuente && tramos.length)",
     "reemplazar": "if (false)",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m62",
+    "que": "H-196: una cisterna en 0 se manda «Por cotizar» como «Cisterna de 0 m³» en vez de quedar pendiente de volumen",
+    "logica": true,
+    "buscar": "if (HIDRO.cisterna > 0) {",
+    "reemplazar": "if (true) {",
     "estado": "vigente"
   }
 ]

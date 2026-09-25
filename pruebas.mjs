@@ -3836,7 +3836,8 @@ t("22.11 3.3 (rev 2.9.16, decisión del dueño) la red hidráulica se cotiza por
   const hidro0 = JSON.parse(JSON.stringify(S.hidro)), perms0 = JSON.parse(JSON.stringify(S.perms ?? null)), pu0 = JSON.parse(JSON.stringify(S.quote.hidroPU || {}));
   const pdfTxt = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");
   const renglones = () => (G("QUOTE").aux || []).filter((a) => a.mot === "hidro" && a.un === "ML");
-  const pend = () => (G("QUOTE").pendientes || []).filter((p) => p.mot === "hidro");
+  /* H-196: la cisterna sin dotación queda «pendiente de volumen» aparte; aquí sólo se mira la red. */
+  const pend = () => (G("QUOTE").pendientes || []).filter((p) => p.mot === "hidro" && !/volumen/.test(p.motivo));
   const tramo = (tag, um, L) => ({ ...G("defaultTramoAgua")(tag), um, L, alt: 3 });
   const muebles = [{ id: "wc_flux", cant: 4 }, { id: "ming_flux", cant: 2 }, { id: "lavabo", cant: 4 }, { id: "fregadero", cant: 1 }, { id: "manguera", cant: 2 }];
   try {
@@ -5477,7 +5478,10 @@ t("S.18 semáforo: un proyecto vacío muestra «Sin datos» en TODAS las discipl
     S.hidro.muebles = [{ id: G("MUEBLES")[0].id, cant: 4 }, { id: G("MUEBLES")[1].id, cant: 4 }]; G("recompute")();
     n = niveles();
     if (n.hidro === "vacia") throw new Error("hidro con muebles capturados sigue vacío");
-    if (n.quote === "vacia") throw new Error("la cotización ya tiene con qué");
+    /* H-196: cisterna y bomba ya no traen precio semilla; con sólo muebles (sin tramos ni precios) la cotización no tiene
+       importe: sigue «Sin datos», con sus partidas Por cotizar y pendientes declaradas. */
+    eq(n.quote, "vacia", "sin precio capturado la cotización no tiene importe (H-196):");
+    if (!(G("QUOTE").porCotizar || []).some((p) => p.mot === "hidro")) throw new Error("con muebles capturados debe haber partidas hidro Por cotizar");
     eq(n.load, "vacia");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
@@ -5539,13 +5543,16 @@ t("S.20 un proyecto guardado con la versión anterior (formato 1, rev 2.9.13) ab
      → 0.996 kW → 1.5 HP; ahora CDT = 24.607 m (35 psi) → 1.633 kW → 2.5 HP, y la partida «Cisterna de 0 m³ y equipo de bombeo»
      sube 14,500 MXN (precio semilla por HP, H-196 pendiente). Antes (H-120) → después (H-194): quoteDirect y partidas
      6678714.747352686 → 6693214.747352686 · quoteSub 10095545.21209832 → 10117463.412098318 · quoteTot 11710832.44603405 →
-     11736257.55803405. Lo verifican a mano CM.hidro.1.z–1.ac y CM.hidro.12 (parches/casos-a-mano/hidro.calc.mjs). */
+     11736257.55803405. Lo verifican a mano CM.hidro.1.z–1.ac y CM.hidro.12 (parches/casos-a-mano/hidro.calc.mjs).
+     H-196 (quote v8): la partida «Cisterna de 0 m³ y equipo de bombeo de 2.5 HP» (36,250 MXN = 14,500 × 2.5, precio semilla sin
+     fuente) desaparece: la bomba va «Por cotizar» (presRed 0: la presión no alcanza) y la cisterna en 0 queda pendiente de volumen.
+     quoteDirect 6693214.747352686 → 6656964.747352686 · quoteSub → 10062667.912098318 · quoteTot → 11672694.77803405. */
   const MOVIDOS_2916 = { tons: [18.584787, 12.943837], cfm: [5114.572875, 5815.981512], sysTarget: [20.443265161623447, 14.238221145934492],
-    hidroQ: [3.924, 4.05985437], quoteDirect: [6704014.747352686, 6693214.747352686], partidas: [6704014.747352686, 6693214.747352686],
-    quoteSub: [10133788.69209832, 10117463.412098318], quoteTot: [11755194.88283405, 11736257.55803405] };
+    hidroQ: [3.924, 4.05985437], quoteDirect: [6704014.747352686, 6656964.747352686], partidas: [6704014.747352686, 6656964.747352686],
+    quoteSub: [10133788.69209832, 10062667.912098318], quoteTot: [11755194.88283405, 11672694.77803405] };
   Object.entries(MOVIDOS_2916).forEach(([k, [antes]]) => eq(esperado.resumen[k], antes, `${k}: el «antes» es el de la 2.9.13:`));
   Object.entries(esperado.resumen).forEach(([k, v]) => eq(r[k], k in MOVIDOS_2916 ? MOVIDOS_2916[k][1] : v, `${k} igual al de la versión ${esperado.generadoCon}${k in MOVIDOS_2916 ? " con la decisión 2.9.16" : ""}:`));
-  eq((G("QUOTE").pendientes || []).filter((p) => p.mot === "hidro").map((p) => p.motivo).join(","), "pendiente de longitud", "la red queda pendiente de longitud:"); /* rev 2.9.23: la importación siempre está pendiente aparte */
+  eq((G("QUOTE").pendientes || []).filter((p) => p.mot === "hidro").map((p) => p.motivo.split(" (")[0]).join(","), "pendiente de longitud,pendiente de volumen", "la red y la cisterna (0 unidades de dotación) quedan pendientes (H-196):"); /* rev 2.9.23: la importación siempre está pendiente aparte */
   ["carga", "limpios", "seleccion", "ductos", "ventilacion", "cotizacion", "valor", "kaizen", "electrico", "hidro", "fuego", "aire", "civil", "soporte"].forEach((tab) => {
     barra(tab); eq(w.document.querySelector("#view .accsello").dataset.sello, "sin", `${tab}: «Sin sello»:`);
   });
@@ -6356,7 +6363,7 @@ t("S.39 (rev 2.9.22, decisión del dueño) precios de tubería hidráulica: PP-R
     const sin = G("hidroDiametrosSinPrecio")();
     if (sin.length < 1) throw new Error("debía haber diámetros sin precio");
     eq(G("accEstado")("hidro").cot.ok, false, "cotización de hidro bloqueada sin precios:"); contiene(G("accEstado")("hidro").cot.razon, "Falta el precio", "razón:");
-    eq(G("cotUnificadaEstado")().ok, true, "rev 2.9.23: el Budget Proposal sale aunque falten precios:"); eq((G("QUOTE").porCotizar || []).filter((p) => p.mot === "hidro").length, sin.length, "y lleva una partida Por cotizar por diámetro:");
+    eq(G("cotUnificadaEstado")().ok, true, "rev 2.9.23: el Budget Proposal sale aunque falten precios:"); eq((G("QUOTE").porCotizar || []).filter((p) => p.mot === "hidro" && p.un === "ML").length, sin.length, "y lleva una partida Por cotizar por diámetro:");
     /* Importación: USD se convierte con el tipo de cambio; fila con material o diámetro inválido se rechaza; sin precio se ignora. */
     const filas = ["material,clave,diametro,precio_por_metro,moneda,fuente"].concat(sin.map((d) => `cpvc,,${d},10,USD,"cotización de prueba, 2026"`)).concat(["cobre,,1/2\",,MXN,", "madera,,1/2\",5,MXN,", "cpvc,,9\",5,MXN,"]);
     const r = G("hidroPUImportarCsv")(filas.join("\r\n"));
@@ -6442,7 +6449,7 @@ t("S.55 (H-198) CPVC sin renglones «SIN VERIFICAR» arriba de 2\" CTS y PEAD si
     const muebles = [{ id: "wc_flux", cant: 4 }, { id: "ming_flux", cant: 2 }, { id: "lavabo", cant: 4 }, { id: "fregadero", cant: 1 }, { id: "manguera", cant: 2 }];
     const tramos = () => [{ ...G("defaultTramoAgua")("AF-GENERAL"), um: 72, L: 25, alt: 0 }, { ...G("defaultTramoAgua")("AF-RAMAL"), um: 20, L: 18, alt: 0 }];
     const ml = () => (G("QUOTE").aux || []).filter((x) => x.mot === "hidro" && x.un === "ML");
-    const pc = () => (G("QUOTE").porCotizar || []).filter((x) => x.mot === "hidro");
+    const pc = () => (G("QUOTE").porCotizar || []).filter((x) => x.mot === "hidro" && x.un === "ML"); /* H-196: cisterna y bomba aparte */
     /* CPVC: la general no cabe en 2" CTS. */
     S.hidro = { ...G("defaultHidro")(), material: "cpvc", muebles, tramos: tramos() };
     S.quote.hidroPU = { [G("claveHidroPU")("cpvc", '2"')]: 300 };
@@ -6470,6 +6477,47 @@ t("S.55 (H-198) CPVC sin renglones «SIN VERIFICAR» arriba de 2\" CTS y PEAD si
     /* Cobre: sin cambio. */
     S.hidro = { ...G("defaultHidro")(), material: "cobre", muebles, tramos: tramos() }; G("recompute")(); H = G("HIDRO");
     eq(H.tramos.map((x) => !!x.fueraCatalogo).join(","), "false,false", "cobre dentro del catálogo:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+t("S.57 (H-196) cisterna y equipo de bombeo sin precio semilla: van «Por cotizar» con su volumen y su potencia; la bomba sólo cuando la presión de la red no alcanza; cisterna en 0 = pendiente de volumen, nunca «cisterna de 0 m³»", () => {
+  const guardado = JSON.stringify(S);
+  const pdfTxt = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");
+  try {
+    if ("bombaHP" in G("QUOTE_SEED")) throw new Error("sigue el precio semilla de la bomba (14,500 MXN/HP sin fuente)");
+    S.perms = { ...(S.perms || {}), "hidro>quote": { ts: 1, via: "S.57" } };
+    const muebles = [{ id: "wc_flux", cant: 4 }, { id: "ming_flux", cant: 2 }, { id: "lavabo", cant: 4 }, { id: "fregadero", cant: 1 }, { id: "manguera", cant: 2 }];
+    const tramos = () => [{ ...G("defaultTramoAgua")("AF-GENERAL"), um: 72, L: 25, alt: 3 }, { ...G("defaultTramoAgua")("AF-RAMAL BAÑOS"), um: 20, L: 18, alt: 0 }];
+    const lote = () => (G("QUOTE").aux || []).filter((x) => x.mot === "hidro" && x.un === "LOTE");
+    const pc = (clave) => (G("QUOTE").porCotizar || []).filter((x) => x.mot === "hidro" && x.clave === clave);
+    const pend = () => (G("QUOTE").pendientes || []).filter((p) => p.mot === "hidro").map((p) => p.motivo);
+    /* 1) Sin dotación (0 unidades) y sin red (presRed 0): cisterna pendiente, bomba «Por cotizar». */
+    S.hidro = { ...G("defaultHidro")(), material: "cobre", muebles, tramos: tramos(), habitantes: 0, presRed: 0, alturaEdificio: 6 };
+    G("recompute")();
+    let H = G("HIDRO");
+    eq(H.presOk, false, "sin red la presión no alcanza:"); eq(H.cisterna, 0, "sin dotación no hay cisterna:");
+    eq(lote().length, 0, "ya no hay partida con precio semilla de cisterna/bomba:");
+    eq(pc("cisterna").length, 0, "cisterna en 0 no se cotiza como «0 m³»:");
+    if (!pend().some((m) => /volumen/.test(m))) throw new Error("la cisterna en 0 debe quedar pendiente de volumen: " + pend().join(","));
+    const b = pc("bombaAgua");
+    eq(b.length, 1, "bomba «Por cotizar» cuando la presión no alcanza:"); eq(b[0].qty, 1); eq(b[0].un, "LOTE");
+    contiene(b[0].desc, " HP", "la partida dice la potencia:"); contiene(b[0].desc, "no alcanza", "y por qué hace falta:");
+    if (!b[0].descEn) throw new Error("sin espejo EN");
+    const txt = pdfTxt(G("buildPropuestaPdf")({ lang: "es", mon: "MXN" })) + " " + pdfTxt(G("buildCotizacionPdf")());
+    if (/Cisterna de 0/.test(txt)) throw new Error("el PDF sigue diciendo «Cisterna de 0 m³»");
+    contiene(txt, "POR COTIZAR", "PDF de propuesta:"); contiene(txt, "bombeo", "la bomba sale en el PDF:");
+    /* 2) Con dotación (60 trabajadores, industria 100 L, 1 día) y red que alcanza: cisterna «Por cotizar» con sus m³, sin bomba. */
+    S.hidro = { ...G("defaultHidro")(), material: "cobre", muebles, tramos: tramos(), habitantes: 60, presRed: 60, alturaEdificio: 3 };
+    G("recompute")(); H = G("HIDRO");
+    eq(H.presOk, true, "con 60 m en la toma la presión alcanza:");
+    const c = pc("cisterna");
+    eq(c.length, 1, "cisterna «Por cotizar»:"); cerca(c[0].qty, H.cisterna / 1000, 1e-9, "con su volumen en m³:"); eq(c[0].un, "M3");
+    contiene(c[0].desc, "consumo diario", "la partida dice de dónde sale el volumen:");
+    eq(pc("bombaAgua").length, 0, "con presión suficiente no se cotiza bomba:");
+    if (!H.memo.some((m) => /bombeo/.test(m) && /alcanza/.test(m) && /no se cotiza/.test(m))) throw new Error("la memoria no dice que la bomba es referencia y no se cotiza");
+    if (pend().some((m) => /volumen/.test(m))) throw new Error("con volumen la cisterna no está pendiente");
+    /* 3) Sin cambio de cifras en la red: los metros se siguen cotizando por diámetro. */
+    eq((G("QUOTE").aux || []).filter((x) => x.mot === "hidro" && x.un === "ML").length > 0 || G("hidroDiametrosSinPrecio")().length > 0, true, "la red sigue por diámetro:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
@@ -6582,7 +6630,7 @@ t("S.41 (rev 2.9.23) referencias de mercado: únicamente California y sólo mate
     S.quote.fx = 18.25; S.quote.fxFecha = "2026-09-22"; S.quote.fxFuente = "Banxico FIX"; G("recompute")();
     const noms = [...new Set(G("HIDRO").tramos.filter((x) => x.Lcap > 0 && x.um > 0).map((x) => String(x.nom).split(" ·")[0]))];
     eq(G("hidroDiametrosSinPrecio")().length, noms.length, "cobre sin precio: todos los diámetros Por cotizar:");
-    eq((G("QUOTE").porCotizar || []).filter((p) => p.mot === "hidro").length, noms.length, "una partida Por cotizar por diámetro:");
+    eq((G("QUOTE").porCotizar || []).filter((p) => p.mot === "hidro" && p.un === "ML").length, noms.length, "una partida Por cotizar por diámetro:");
     eq(G("cotUnificadaEstado")().ok, true, "el Budget sale:"); eq(G("accEstado")("hidro").cot.ok, false, "la formal no:");
     /* 2. Un proyecto guardado con las referencias IUSA las pierde al abrir, con antes/después en la bitácora (archivo, no borrado). */
     const viejo = JSON.parse(JSON.stringify(S));

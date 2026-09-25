@@ -110,11 +110,11 @@
    }
   },
   "quote": {
-   "ver": "7",
+   "ver": "8",
    "cifras": {
-    "direct": 12342403.650167169,
-    "sub": 18656777.35759269,
-    "tot": 21641861.73480752,
+    "direct": 12306153.650167169,
+    "sub": 18601981.85759269,
+    "tot": 21578298.95480752,
     "aux": [
      [
       "Instalación mecánica, bases, izaje y arranque (35 % del equipo)",
@@ -180,11 +180,6 @@
       "Tubería de Cobre tipo L de 1 1/2\" · material, precio de referencia de mercado (18 m de los tramos calculados); mano de obra por capturar",
       18,
       2664
-     ],
-     [
-      "Cisterna de 0 m³ y equipo de bombeo de 2.5 HP",
-      1,
-      36250
      ],
      [
       "Rociadores automáticos K80 · 1/2\" estándar (K5.6) con red de Acero negro cédula 40 (sistema húmedo) (58 rociadores)",
@@ -334,7 +329,8 @@
     ],
     "pendientes": [
      "Flete, aduana e importación a México",
-     "Mano de obra de tubería hidráulica (rendimientos y costos propios; la referencia de mercado sólo cubre material)"
+     "Mano de obra de tubería hidráulica (rendimientos y costos propios; la referencia de mercado sólo cubre material)",
+     "Cisterna"
     ]
    }
   },
