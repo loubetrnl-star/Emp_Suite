@@ -5549,10 +5549,13 @@ t("S.20 un proyecto guardado con la versión anterior (formato 1, rev 2.9.13) ab
      quoteDirect 6693214.747352686 → 6656964.747352686 · quoteSub → 10062667.912098318 · quoteTot → 11672694.77803405.
      H-206 (quote v9): la partida «Bomba contra incendio 661 gpm y reserva de 138.2 m³» (1,697,446.66 MXN = 385,000 fijos +
      9,500 × 138.152 m³, sin fuente) desaparece: bomba y reserva van «Por cotizar» con capacidad, presión, potencia y volumen.
-     quoteDirect → 4959518.087352686 · quoteSub → 7496807.540842321 · quoteTot → 8696296.747377092. */
+     quoteDirect → 4959518.087352686 · quoteSub → 7496807.540842321 · quoteTot → 8696296.747377092.
+     H-215 (aire v3, quote v10): el secador pasa de FAD requerido / (0.92 × fP) a todo el caudal del compresor a la capacidad
+     nominal de ISO 7183 A1 (897.6 / 0.8... → 1,164.4 L/min): quoteDirect → 4961974.7391384 · quoteSub → 7500521.015681606 ·
+     quoteTot → 8700604.378190663. */
   const MOVIDOS_2916 = { tons: [18.584787, 12.943837], cfm: [5114.572875, 5815.981512], sysTarget: [20.443265161623447, 14.238221145934492],
-    hidroQ: [3.924, 4.05985437], quoteDirect: [6704014.747352686, 4959518.087352686], partidas: [6704014.747352686, 4959518.087352686],
-    quoteSub: [10133788.69209832, 7496807.540842321], quoteTot: [11755194.88283405, 8696296.747377092] };
+    hidroQ: [3.924, 4.05985437], quoteDirect: [6704014.747352686, 4961974.7391384], partidas: [6704014.747352686, 4961974.7391384],
+    quoteSub: [10133788.69209832, 7500521.015681606], quoteTot: [11755194.88283405, 8700604.378190663] };
   Object.entries(MOVIDOS_2916).forEach(([k, [antes]]) => eq(esperado.resumen[k], antes, `${k}: el «antes» es el de la 2.9.13:`));
   Object.entries(esperado.resumen).forEach(([k, v]) => eq(r[k], k in MOVIDOS_2916 ? MOVIDOS_2916[k][1] : v, `${k} igual al de la versión ${esperado.generadoCon}${k in MOVIDOS_2916 ? " con la decisión 2.9.16" : ""}:`));
   eq((G("QUOTE").pendientes || []).filter((p) => p.mot === "hidro").map((p) => p.motivo.split(" (")[0]).join(","), "pendiente de longitud,pendiente de volumen", "la red y la cisterna (0 unidades de dotación) quedan pendientes (H-196):"); /* rev 2.9.23: la importación siempre está pendiente aparte */
@@ -6585,6 +6588,40 @@ t("S.59 (H-206) la bomba contra incendio y su reserva no llevan precio fijo (385
     eq(lote().length, 0, "ni partida LOTE:");
     /* Los rociadores siguen cotizándose por pieza (fuera del alcance de H-206). */
     if (!(G("QUOTE").aux || []).some((x) => x.mot === "fuego" && x.un === "PIEZA")) throw new Error("los rociadores dejaron de cotizarse");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+t("S.60 (H-215) secador por ISO 7183:2007 Tabla 2 opción A1: capacidad = todo el caudal del compresor a las condiciones nominales (35 °C, 7 bar(e)), factor 1.0; fuera del punto A1 la corrección es del fabricante y queda pendiente con aviso (nunca 0.92/0.90 de memoria)", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.60"; Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.60" }; });
+    const consumos = [{ ...G("defaultConsumo")("Sopleteo"), cant: 2, lmin: 400, bar: 6, uso: .5 }, { ...G("defaultConsumo")("Actuadores"), cant: 4, lmin: 250, bar: 6, uso: .3 }];
+    /* En el punto A1 exacto (35 °C; presión de descarga 7 bar: se captura la presión de uso que la da). */
+    S.aire = { ...G("defaultAire")(), Lprincipal: 60, consumos, tempEntrada: 35 }; G("recompute")();
+    let A = G("AIRE");
+    S.aire.presionUso = +(G("num")(S.aire.presionUso, 6) + (7 - A.pDescarga)).toFixed(6); G("recompute")(); A = G("AIRE");
+    cerca(A.pDescarga, 7, 1e-6, "el caso queda en 7 bar(e) de descarga:");
+    const fadCompresor = A.principal.fadReal * A.nUnidades;
+    if (!(A.fadRequerido > 0 && fadCompresor > A.fadRequerido)) throw new Error("el caso no distingue FAD requerido de caudal del compresor");
+    cerca(A.capSecador, fadCompresor, 1e-6, "capacidad del secador = caudal del compresor × 1.0 (antes FAD requerido / (0.92 × 0.90)):");
+    eq(A.fT, 1, "sin factor de temperatura de memoria:"); eq(A.fP, 1, "sin factor de presión de memoria:");
+    eq(A.enA1, true, "en el punto A1:"); eq(A.secadorPendiente, false, "sin corrección pendiente:");
+    if (!A.memo.some((m) => /ISO 7183/.test(m) && /A1/.test(m))) throw new Error("la memoria no cita ISO 7183:2007 Tabla 2 opción A1");
+    if (A.avisos.some((a) => /[Ss]ecador/.test(a.msg))) throw new Error("en A1 no debe haber aviso de secador");
+    if (!(G("QUOTE").aux || []).some((x) => x.mot === "aire" && x.un === "M3/MIN" && Math.abs(x.qty - +(fadCompresor / 1000).toFixed(2)) < 1e-9)) throw new Error("la cotización no lleva el secador con la capacidad de A1");
+    /* Fuera de A1 (30 °C, 6 bar de uso): la capacidad nominal se declara y la corrección queda pendiente del fabricante. */
+    S.aire = { ...G("defaultAire")(), Lprincipal: 60, consumos, tempEntrada: 30 }; G("recompute")(); A = G("AIRE");
+    if (Math.abs(A.pDescarga - 7) < 1e-6) throw new Error("el segundo caso debía quedar fuera de 7 bar");
+    eq(A.enA1, false, "fuera de A1:"); eq(A.secadorPendiente, true, "corrección pendiente:");
+    cerca(A.capSecador, A.principal.fadReal * A.nUnidades, 1e-6, "la capacidad sigue siendo la nominal de A1 (sin factor de memoria):");
+    const av = A.avisos.find((a) => /[Ss]ecador/.test(a.msg));
+    if (!av || !/fabricante/.test(av.msg) || !/pendiente/.test(av.msg)) throw new Error("falta el aviso de corrección pendiente del fabricante");
+    if (A.memo.some((m) => /0\.92|0\.90/.test(m))) throw new Error("la memoria sigue con factores de memoria");
+    const txt = [...Buffer.from(G("buildAirePdf")()).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");
+    contiene(txt, "ISO 7183", "el PDF cita la norma:"); contiene(txt, "fabricante", "y dice que la corrección es del fabricante:");
+    /* Sin demanda no hay secador. */
+    S.aire = { ...G("defaultAire")(), Lprincipal: 60, consumos: [] }; G("recompute")(); A = G("AIRE");
+    eq(A.capSecador, 0, "sin demanda, secador 0:"); eq(A.secadorPendiente, false, "y sin aviso:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 

@@ -12,7 +12,8 @@
    - pruebas.mjs:6242 R.11 y 6281 R.12 arman un consumo a 7.7 bar con presionUso 6.0; el `bar` de cada consumo se lee y no
      se usa (H-219), así que el caso no ejerce la presión; prueban traducciones de partidas, no números.
    MUTANTES QUE SÓLO SE MATAN AFIRMANDO UN VALOR INCORRECTO (estado fase2 en parches/mutantes/aire.json): factor del
-   secador fT/fP (H-215), tope de 5,000 L del tanque (H-216), curva de simultaneidad (H-217). */
+   tope de 5,000 L del tanque (H-216), curva de simultaneidad (H-217). Los del secador (m16/m31) pasaron a lógica vigente al
+   cerrar H-215 (25-sep-2026). */
 export default async function ({ t, G, S, CM }) {
   const filas = CM.casos("aire");
   const filasDe = (prefijo) => filas.filter((f) => f.id === prefijo || f.id.startsWith(prefijo + "."));

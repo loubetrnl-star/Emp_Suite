@@ -1,8 +1,14 @@
 # aire · pendientes de la Fase 1 (rev 2.9.24)
 
-Motor AIRE COMPRIMIDO (`aire`, v2). Hoja: `parches/casos-a-mano/aire.csv` (148 filas: 129 vigentes, 19 fase2) generada por
+Motor AIRE COMPRIMIDO (`aire`, v3). Hoja: `parches/casos-a-mano/aire.csv` (156 filas: 156 vigentes, 0 fase2) generada por
 `parches/casos-a-mano/aire.calc.mjs` (cálculo independiente, no carga index.html). Módulo: `pruebas-motores/aire.mjs`
 (8 casos). Compuerta: `parches/mutantes/aire.json` (36 mutantes; 4 en estado fase2).
+
+## 0. Cierres de la Fase 2
+
+| Hallazgo | Estado | Qué cambió |
+|---|---|---|
+| H-215 (factores del secador 0.92/0.9 de memoria; dimensionado con el FAD requerido) | **Cerrado** (aire v2 → v3, quote v9 → v10 por dependencia, 25-sep-2026) | `capSecador = n × FAD real del compresor` a la capacidad nominal de ISO 7183:2007 Tabla 2 opción A1 (35 °C, 7 bar(e)); `enA1` y `secadorPendiente` en el resultado; fuera de A1 aviso «corrección del fabricante pendiente», sin factor de memoria; memoria, PDF y partida de cotización lo declaran. Prueba S.60; filas `.m` de fase2 a vigentes (8.m sigue fase2:H-nuevo porque depende del compresor elegido), nueva `.m2` (punto A1 sí/no); `.v/.w/.x` recalculadas con la capacidad nueva. Mutantes m16 y m31 reapuntados (FAD requerido en vez del compresor; sin aviso fuera de A1): MUERTOS. |
 
 ## 1. Pruebas que protegen valores incorrectos (se marcan; se corrigen en la Fase 2 con su hallazgo)
 | Prueba | pruebas.mjs | Qué protege | Hallazgo |
@@ -19,10 +25,7 @@ Motor AIRE COMPRIMIDO (`aire`, v2). Hoja: `parches/casos-a-mano/aire.csv` (148 f
 ## 3. Filas fase2 (valor correcto por norma que hoy la suite NO da; se exigen sólo con `CM_FASE2=1`)
 | Fila | Hallazgo | Esperado | Suite hoy | Fuente |
 |---|---|---|---|---|
-| CM.aire.1.m, 4.m | H-215 | secador 2,019.6 L/min (factor 1.0) | 2,459.6 (fT 0.92 × fP 0.8925) | ISO 7183:2007 Tabla 2 opción A1 (texto en normas-texto) |
-| CM.aire.2.m | H-215 | 669.24 | 731.4 (fP 0.915) | ídem; a 30 °C / 7.5 bar la norma no da factor (fabricante: pendiente) |
-| CM.aire.3.m | H-215 | 3,494.1 | 4,199.0 | ídem |
-| CM.aire.5.m / 6.m / 7.m / 8.m | H-215 | 11,880 / 3,300 / 9,317.6 / 26,400 | 14,468 / 4,019 / 11,197 / 32,152 | ídem |
+| ~~CM.aire.*.m~~ | H-215 | **vigentes desde el 25-sep-2026** con todo el caudal del compresor × 1.0 (fixture 2,430 L/min); 8.m queda fase2:H-nuevo (depende del compresor elegido) | = esperado | ISO 7183:2007 Tabla 2 opción A1 |
 | CM.aire.3.l, 5.l, 7.l, 8.l | H-216 | tanque instalado ≥ teórico (indicador 1) con teóricos 5,829 / 13,103 / 8,793 / 13,103 L | 0 (se trunca a 5,000 L sin aviso y la memoria dice «se sube al comercial inmediato superior») | Fórmula del receptor, Atlas Copco (URL en la hoja; secundaria) |
 | CM.aire.1.s | H-217 | simultaneidad 0.85 con 6 puntos (fila informativa) | 0.85 (ya pasa) | Decisión 3 del dueño: criterio de la casa declarado en pantalla y memoria, sin mover números; pasa a vigente al declararse |
 | CM.aire.4.o | H-218 | troncal cobre 55 m → 1¼" con DI 32.13 mm | 1" con DI 26.6 (cédula 40) | ASTM B88 tipo L (DI = DE − 2·pared); mismos DI en `TUB_AGUA.cobre` |
@@ -46,8 +49,8 @@ Notas para la Fase 2:
 | id | Qué | Estado | Por qué |
 |---|---|---|---|
 | aire.m12 | tope del tanque 5,000 → 200 L | fase2:H-216 | sólo se mata aseverando el tope de 5,000 L (el error) |
-| aire.m16 | fT a 35 °C 0.92 → 1.0 | fase2:H-215 | el mutante ES la corrección de H-215; hoy sólo lo mata la energía (1.v), que arrastra la capacidad de hoy |
-| aire.m31 | fP → 1 | fase2:H-215 | ídem (la norma no da factor de presión) |
+| aire.m16 | reapuntado en H-215: secador con el FAD requerido en vez del caudal del compresor | vigente (MUERTO) | el mutante ES la corrección de H-215; hoy sólo lo mata la energía (1.v), que arrastra la capacidad de hoy |
+| aire.m31 | reapuntado en H-215: sin el aviso de corrección pendiente fuera de A1 | vigente (MUERTO) | ídem (la norma no da factor de presión) |
 | aire.m17 | curva 0.85 → 0.5 | fase2:H-217 | sólo se mata por números que salen de la curva sin fuente |
 
 ## 5. No cubierto en la Fase 1 (y por qué)

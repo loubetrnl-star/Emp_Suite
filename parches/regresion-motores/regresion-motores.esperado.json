@@ -110,11 +110,11 @@
    }
   },
   "quote": {
-   "ver": "9",
+   "ver": "10",
    "cifras": {
-    "direct": 10608706.99016717,
-    "sub": 16036121.486336695,
-    "tot": 18601900.924150568,
+    "direct": 10607684.847310027,
+    "sub": 16034576.415193837,
+    "tot": 18600108.641624853,
     "aux": [
      [
       "Instalación mecánica, bases, izaje y arranque (35 % del equipo)",
@@ -302,9 +302,9 @@
       585000
      ],
      [
-      "Secador refrigerativo de 2.46 m³/min · punto de rocío 3 °C (capacidad corregida a 35 °C y 6.8 bar)",
-      2.46,
-      84857.14285714286
+      "Secador refrigerativo de 2.43 m³/min · punto de rocío 3 °C (capacidad nominal ISO 7183 A1: 35 °C, 7 bar(e); corrección a 35 °C y 6.8 bar pendiente del fabricante)",
+      2.43,
+      83835
      ],
      [
       "Tren de filtración clase ISO 2.4.2: Prefiltro coalescente 1 µm + Filtro coalescente fino 0.01 µm · 0.1 mg/m³",
@@ -451,12 +451,13 @@
    }
   },
   "aire": {
-   "ver": "2",
+   "ver": "3",
    "cifras": {
     "fad": 2019.6,
     "unidades": 1,
     "hp": 20,
-    "tanque": 3000
+    "tanque": 3000,
+    "secador": 2430
    }
   },
   "civil": {

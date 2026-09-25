@@ -82,8 +82,9 @@ const B88_L = [["1/2", 0.040], ["3/4", 0.045], ["1", 0.050], ["1 1/4", 0.055], [
 const EPS = { aluminio: 0.0015, inox_304: 0.0015, cobre: 0.0015, acero_gal: 0.15, acero_neg: 0.045 }; // mm, index.html:6779-6788
 const simulCasa = (n) => n <= 1 ? 1 : n <= 3 ? 0.95 : n <= 6 ? 0.85 : n <= 10 ? 0.75 : n <= 20 ? 0.65 : n <= 40 ? 0.55 : 0.50; // index.html:6875-6876 (H-217)
 const CASA = { fugas: 0.10, reserva: 0.20, dPred: 0.30, corrPorBar: 0.05, arranquesH: 15, dPt: 1.0, Leq: 1.4, vMaxTroncal: 8, vMaxRamal: 15, ramalFrac: 0.4, kWesp: 7.0, kWespVsd: 6.2, kWporBar: 0.07, horas: 3500, tarifa: 2.85 };
-const fTcasa = (t) => t <= 30 ? 1.0 : t <= 35 ? 0.92 : t <= 40 ? 0.83 : 0.72;   // index.html:6936 (H-215)
-const fPcasa = (p) => 0.9 + (p - 7) * 0.03;                                     // index.html:6937 (H-215)
+/* H-215 (cerrado 25-sep-2026, aire v3): los factores de memoria fT (0.92/0.83/0.72) y fP (0.9 + 0.03/bar) salieron de la suite.
+   El secador va a la capacidad nominal de ISO 7183:2007 Tabla 2 opción A1 (35 °C, 7 bar(e)), factor 1.0, sobre TODO el caudal del
+   compresor; fuera de A1 la corrección es del fabricante (pendiente, con aviso). */
 
 /* ---------- cadena de cálculo ---------- */
 function calcular(c) {
@@ -104,20 +105,20 @@ function calcular(c) {
   const tCiclo = 3600 / CASA.arranquesH, qc = principal.fadReal / 60;
   const vTeorico = 0.25 * qc * (P_ATM / 100) / ((1 / tCiclo) * CASA.dPt);        // Atlas Copco: V = 0.25·qc·p1/(fmax·Δp)
   const tanqueHoy = TANQUES.find((t) => t >= vTeorico) || 5000;                   // tope silencioso (H-216)
-  const capSecadorHoy = fad / Math.max(0.4, fTcasa(tC) * fPcasa(pDescarga));      // H-215 (no se asevera como vigente)
-  const capSecadorA1 = fad;                                                       // ISO 7183 Tabla 2 A1: factor 1.0
+  const capSecadorA1 = principal.fadReal * nUnidades;                             // ISO 7183 Tabla 2 A1: factor 1.0 sobre el caudal del compresor (H-215)
+  const enA1 = tC === 35 && Math.abs(pDescarga - 7) < 1e-9;
   const eps = EPS[c.material], diams = c.material === "cobre" ? { hoy: DIAM_SCH40, b88: B88_L } : { hoy: DIAM_SCH40 };
   const troncal = dimensionar(fad, c.Lp, pDescarga, tC, eps, diams.hoy, CASA.vMaxTroncal, CASA.dPred / 2, CASA.Leq);
   const ramal = dimensionar(fad * CASA.ramalFrac, c.Lr, pDescarga, tC, eps, diams.hoy, CASA.vMaxRamal, CASA.dPred / 2, CASA.Leq);
   const troncalB88 = diams.b88 ? dimensionar(fad, c.Lp, pDescarga, tC, eps, diams.b88, CASA.vMaxTroncal, CASA.dPred / 2, CASA.Leq) : null;
   const rho = rhoDe(pDescarga, tC, P_ATM);
   const kWesp = principal.vsd ? CASA.kWespVsd : CASA.kWesp, fCorr = 1 + (pDescarga - 7) * CASA.kWporBar;
-  const kWoper = fad / 1000 * kWesp * fCorr + capSecadorHoy / 1000 * sec.kWm3;
+  const kWoper = fad / 1000 * kWesp * fCorr + capSecadorA1 / 1000 * sec.kWm3;
   const mxnAno = kWoper * CASA.horas * CASA.tarifa, mxnFugas = fugas / fad * mxnAno;
   /* H-219b: la energía y las fugas se pagan sobre lo que se consume (medio + fugas), no sobre el FAD de diseño con reserva. */
   const kWmedio = (medio * (1 + CASA.fugas)) / 1000 * kWesp * fCorr, mxnAnoMedio = kWmedio * CASA.horas * CASA.tarifa, mxnFugasMedio = (medio * CASA.fugas) / (medio * (1 + CASA.fugas)) * mxnAnoMedio;
   return { cls, sec, tC, pUso, lista, nPuntos, pico, medio, simul, demanda, fugas, conFugas, reserva, fadSinPurga, purga, fad, dPfiltros, pDescarga, corrP, exento, principal, cubre,
-    nUnidades, totalUnidades, tCiclo, qc, vTeorico, tanqueHoy, capSecadorHoy, capSecadorA1, fT: fTcasa(tC), fP: fPcasa(pDescarga), rho, troncal, ramal, troncalB88, kWesp, fCorr, kWoper, mxnAno, mxnFugas, kWmedio, mxnAnoMedio, mxnFugasMedio };
+    nUnidades, totalUnidades, tCiclo, qc, vTeorico, tanqueHoy, capSecadorA1, enA1, rho, troncal, ramal, troncalB88, kWesp, fCorr, kWoper, mxnAno, mxnFugas, kWmedio, mxnAnoMedio, mxnFugasMedio };
 }
 
 /* ---------- casos ---------- */
@@ -166,7 +167,8 @@ function filasDe(n, c, A) {
   fila("k", `volumen teórico del tanque pulmón (L)${poolNota ? " · hoy con el cpo-55: 8,970 L" : ""}`, `V = 0.25·qc·p1/(fmax·Δp) con qc ${r(A.qc, 4)} L/s (${r(A.principal.fadReal, 1)}/60), p1 ${r(P_ATM / 100, 5)} bar(a), fmax 15/3600 s⁻¹, Δp 1.0 bar → 0.25×${r(A.qc, 4)}×${r(P_ATM / 100, 5)}/(${r(1 / A.tCiclo, 7)}×1.0) = ${r(A.vTeorico, 2)}`, "Atlas Copco, «Appropriate compressed air distribution», https://www.atlascopco.com/en-us/compressors/wiki/compressed-air-articles/compressed-air-distribution (fórmula del receptor; 15 arranques/h y banda 1.0 bar son criterio de la casa index.html:6922-6923)", "secundaria", "AIRE.vTeorico", r(A.vTeorico, 2), 0.5, POOL);
   if (A.vTeorico <= 5000) fila("l", "tanque comercial inmediato superior (L)", `primero de [200, 300, 500, 750, 1000, 1500, 2000, 3000, 4000, 5000] ≥ ${r(A.vTeorico, 1)} → ${A.tanqueHoy}`, CASA_SRC("6928-6929", "lista comercial de la casa"), "memoria", "AIRE.tanque", A.tanqueHoy, 0);
   else fila("l", "capacidad de tanque instalada no menor al teórico (1 = cumple) · hoy la suite trunca en silencio a 5,000 L y la memoria dice «se sube al comercial inmediato superior»", `teórico ${r(A.vTeorico, 1)} L > 5,000 L: hoy tanque = 5000 (tope, index.html:6929) → 0; correcto: varios tanques o uno mayor, con aviso → 1`, "fórmula del receptor Atlas Copco (URL en fila k); tope de 5,000 L sin fuente (H-216)", "secundaria", "AIRE.tanque >= AIRE.vTeorico ? 1 : 0", 1, 0, "fase2:H-216");
-  fila("m", `capacidad del secador (L/min) según ISO 7183:2007 Tabla 2 opción A1 (35 °C, 7 bar(e), 100 % del caudal): factor 1.0${A.tC !== 35 || Math.abs(A.pDescarga - 7) > 1e-9 ? "; fuera del punto A1 la norma no da factores (tabla del fabricante: pendiente)" : ""} · hoy la suite aplica fT ${A.fT} × fP ${r(A.fP, 4)} → ${r(A.capSecadorHoy, 1)}`, `FAD requerido ${r(A.fad, 3)} × 1.0 = ${r(A.capSecadorA1, 3)}`, "ISO 7183:2007 Tabla 2 opción A1 (parches/normas-texto/ISO-7183-2007_muestra-oficial.txt); factores 0.92/0.9 de la casa sin fuente (H-215)", "primaria", "AIRE.capSecador", r(A.capSecadorA1, 3), 1, "fase2:H-215");
+  fila("m", `capacidad del secador (L/min): todo el caudal del compresor (${A.nUnidades} × ${r(A.principal.fadReal, 3)}) a la capacidad nominal de ISO 7183:2007 Tabla 2 opción A1 (35 °C, 7 bar(e), 100 % del caudal): factor 1.0${A.enA1 ? "" : "; fuera del punto A1 la norma no da factores: corrección del fabricante pendiente, con aviso"} (H-215; antes FAD requerido / (fT × fP) de memoria)`, `${A.nUnidades} × ${r(A.principal.fadReal, 3)} × 1.0 = ${r(A.capSecadorA1, 3)}`, "ISO 7183:2007 Tabla 2 opción A1 (parches/normas-texto/ISO-7183-2007_muestra-oficial.txt); PLAN-CRITICOS H-215 (caudal del compresor)", "primaria", "AIRE.capSecador", r(A.capSecadorA1, 3), 1, POOL);
+  fila("m2", `el motor declara si el punto de operación es A1 (1) o si la corrección del fabricante queda pendiente (0)${A.enA1 ? "" : " · aquí pendiente"}`, `${A.tC} °C ${A.enA1 ? "=" : "≠"} 35 o ${r(A.pDescarga, 3)} bar ${A.enA1 ? "=" : "≠"} 7`, "ISO 7183:2007 Tabla 2 opción A1", "primaria", "AIRE.enA1 ? 1 : 0", A.enA1 ? 1 : 0, 0);
   fila("n", "densidad del aire en línea (kg/m³)", `ρ = p/(R·T) = (${r(A.pDescarga, 3)}×100 + ${r(P_ATM, 3)})×1000 / (287.05 × ${r(A.tC + 273.15, 2)}) = ${r(A.rho, 4)}`, "gas ideal, R = 287.05 J/(kg·K); pAtm por altitud ASHRAE Fundamentals 2021 cap. 1 ec. 3 (memoria)", "memoria", "AIRE.rho", r(A.rho, 4), 1e-3);
   if (c.material !== "cobre") {
     fila("o", `troncal: diámetro interior elegido (mm) = ${T.nom} de cédula 40 (${c.material}: H-218 pide DI del fabricante; se vigila el valor de hoy)`, `primer DI de DIAM_AIRE con V ≤ 8 m/s y Δp ≤ 0.15 bar en ${c.Lp} m → ${T.nom} (${T.d} mm)`, CASA_SRC("6792-6793 y 6969-6981", "DI de cédula 40 para todo material; V ≤ 8 m/s; mitad de la caída objetivo"), "memoria", "AIRE.tramos[0].d", T.d, 0.01);
@@ -179,7 +181,7 @@ function filasDe(n, c, A) {
     fila("o", `troncal en cobre tipo L ${c.Lp} m: DI real de ASTM B88 (mm) · hoy la suite usa cédula 40 (${T.nom} = ${T.d} mm, V ${r(T.V, 3)} m/s) y con el DI real de B88 el 1" da V ${r(tramo(A.fad, B88_L[2][0], c.Lp, A.pDescarga, A.tC, EPS.cobre, CASA.Leq).V, 3)} m/s > 8 → ${A.troncalB88.nom}`, `B88 tipo L 1¼": DE 1.375" − 2×0.055" = 1.265" = ${A.troncalB88.d} mm; V = ${r(A.troncalB88.V, 4)} m/s ≤ 8; Δp = ${r(A.troncalB88.dPbar, 5)} bar ≤ 0.15`, "ASTM B88 tubo de cobre tipo L (DE nominal + 1/8\", pared 0.055\" en 1¼\"); mismos DI en index.html:9765 TUB_AGUA.cobre", "primaria", "AIRE.tramos[0].d", A.troncalB88.d, 0.01, "fase2:H-218");
   }
   if (n === 1 || n === 2 || n === 6) {
-    fila("v", `potencia de operación (kW) con potencia específica ${A.kWesp} kW/(m³/min)${A.principal.vsd ? " (VSD)" : ""} corregida ${r((A.pDescarga - 7) * 7, 2)} % por presión, más secador ${A.sec.kWm3} kW/(m³/min) sobre la capacidad de hoy`, `${r(A.fad / 1000, 5)} × ${A.kWesp} × ${r(A.fCorr, 5)} + ${r(A.capSecadorHoy / 1000, 5)} × ${A.sec.kWm3} = ${r(A.kWoper, 4)}`, CASA_SRC("6992-6993", "potencia específica y +7 %/bar sin fuente; se calcula sobre el FAD de diseño (H-219b)"), "memoria", "AIRE.kWoper", r(A.kWoper, 4), 0.01);
+    fila("v", `potencia de operación (kW) con potencia específica ${A.kWesp} kW/(m³/min)${A.principal.vsd ? " (VSD)" : ""} corregida ${r((A.pDescarga - 7) * 7, 2)} % por presión, más secador ${A.sec.kWm3} kW/(m³/min) sobre la capacidad del secador (ISO 7183 A1, H-215)`, `${r(A.fad / 1000, 5)} × ${A.kWesp} × ${r(A.fCorr, 5)} + ${r(A.capSecadorA1 / 1000, 5)} × ${A.sec.kWm3} = ${r(A.kWoper, 4)}`, CASA_SRC("6992-6993", "potencia específica y +7 %/bar sin fuente; se calcula sobre el FAD de diseño (H-219b)"), "memoria", "AIRE.kWoper", r(A.kWoper, 4), 0.01);
   }
   if (n === 1) {
     fila("w", "costo anual de energía (MXN) = kW × 3500 h × 2.85 MXN/kWh", `${r(A.kWoper, 4)} × 3500 × 2.85 = ${r(A.mxnAno, 1)}`, CASA_SRC("6994", "horas y tarifa capturadas (defaultAire)"), "memoria", "AIRE.mxnAno", r(A.mxnAno, 1), 5);
@@ -200,7 +202,7 @@ for (const [n, c] of Object.entries(CASOS)) {
   console.log(`\n=== CM.aire.${n} · ${c.titulo}`);
   console.log(`  n ${A.nPuntos} · pico ${A.pico} · medio ${A.medio} · simul ${A.simul} · demanda ${r(A.demanda, 2)} · FAD ${r(A.fad, 2)} L/min${A.purga ? ` (purga ${r(A.purga, 2)})` : ""}`);
   console.log(`  pDescarga ${r(A.pDescarga, 3)} bar · corrP ${r(A.corrP, 5)} · ${A.principal.id} ${A.principal.hp} HP fadReal ${r(A.principal.fadReal, 2)} · unidades ${A.nUnidades}/${A.totalUnidades}`);
-  console.log(`  tanque teórico ${r(A.vTeorico, 1)} L → hoy ${A.tanqueHoy} · secador A1 ${r(A.capSecadorA1 / 1000, 3)} m³/min (hoy ${r(A.capSecadorHoy / 1000, 3)} con fT ${A.fT} fP ${r(A.fP, 4)})`);
+  console.log(`  tanque teórico ${r(A.vTeorico, 1)} L → hoy ${A.tanqueHoy} · secador A1 ${r(A.capSecadorA1 / 1000, 3)} m³/min${A.enA1 ? "" : " (corrección del fabricante pendiente)"}`);
   console.log(`  ρ ${r(A.rho, 4)} kg/m³ · troncal ${A.troncal.nom} ${A.troncal.d} mm V ${r(A.troncal.V, 4)} m/s ${r(A.troncal.Pam, 3)} Pa/m (Colebrook ${r(A.troncal.PamC, 3)}) Δp ${r(A.troncal.dPbar, 5)} bar · ramal ${A.ramal.nom} V ${r(A.ramal.V, 4)} m/s Δp ${r(A.ramal.dPbar, 5)}${A.troncalB88 ? ` · B88: ${A.troncalB88.nom} ${A.troncalB88.d} mm V ${r(A.troncalB88.V, 4)}` : ""}`);
   console.log(`  kWoper ${r(A.kWoper, 3)} · MXN/año ${r(A.mxnAno, 0)} · fugas ${r(A.mxnFugas, 0)} · sobre consumo: ${r(A.kWmedio, 3)} kW, ${r(A.mxnAnoMedio, 0)} MXN, fugas ${r(A.mxnFugasMedio, 0)}`);
   F.forEach((f) => console.log(`    ${f.estado === "vigente" ? " " : "²"} ${f.id.padEnd(14)} ${String(f.esperado).padStart(12)} ± ${String(f.tolerancia).padEnd(6)} ${f.expresion}`));

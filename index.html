@@ -6970,18 +6970,24 @@ function computeAire(A) {
   if (redund) memo.push("Redundancia N+1: se cotiza una unidad de relevo con arranque automático y alternancia por horómetro, para que el mantenimiento no pare la producción.");
 
   /* ---- 5. Secador y filtros ----
-     La capacidad de catálogo del secador es a 35 °C de entrada y 7 bar. Fuera
-     de ahí se corrige, y el error de no corregir es siempre del lado inseguro. */
-  const fT = tAmb <= 30 ? 1.0 : tAmb <= 35 ? 0.92 : tAmb <= 40 ? 0.83 : 0.72;
-  const fP = 0.9 + (pDescarga - 7) * 0.03;
-  const capSecador = fadRequerido / Math.max(.4, fT * fP);
+     H-215 (rev 2.9.24, aire v3): ISO 7183:2007 Tabla 2, opción A1 (entrada 35 °C, 7 bar(e), 100 % del caudal nominal): la
+     capacidad nominal del secador ES la del punto A1, factor 1.0. Fuera de A1 la norma no da factores de corrección: son del
+     fabricante y quedan pendientes de su tabla, con aviso (antes 0.92/0.83/0.72 y 0.9 + 0.03/bar de memoria, que en el propio
+     punto de catálogo sobredimensionaban ×1.21). El secador trata todo el aire que entrega el compresor, no sólo el FAD
+     requerido (PLAN-CRITICOS H-215). */
+  const fadCompresor = nUnidades > 0 ? principal.fadReal * nUnidades : 0;
+  const enA1 = tAmb === 35 && Math.abs(pDescarga - 7) < 1e-9;
+  const fT = 1, fP = 1;
+  const capSecador = fadCompresor;
+  const secadorPendiente = !enA1 && fadCompresor > 0;
+  if (secadorPendiente) avisos.push({ lvl: "warn", msg: `Secador: la capacidad (${n(capSecador / 1000, 2)} m³/min) se declara a las condiciones nominales de ISO 7183:2007 Tabla 2 opción A1 (35 °C de entrada, 7 bar(e)); a ${tAmb} °C y ${pDescarga.toFixed(1)} bar la corrección es del fabricante y queda pendiente de su tabla. No se aplica ningún factor de memoria.` });
   const trenFiltros = [
     { id: "f-prefiltro", label: "Prefiltro coalescente 1 µm", labelEn: "1 µm coalescing prefilter", req: true },
     { id: "f-fino", label: `Filtro coalescente fino 0.01 µm · ${cls.aceiteMg} mg/m³`, labelEn: `0.01 µm fine coalescing filter · ${cls.aceiteMg} mg/m³`, req: cls.aceite <= 2 },
     { id: "f-carbon", label: "Filtro de carbón activado (vapor de aceite y olor)", labelEn: "Activated carbon filter (oil vapor and odor)", req: cls.carbon },
     { id: "f-esteril", label: "Filtro estéril 0.01 µm en punto de uso", labelEn: "0.01 µm sterile point-of-use filter", req: cls.id === "1.2.1" },
   ].filter((f) => f.req);
-  memo.push(`Secador ${sec.label.toLowerCase()} de ${n(capSecador / 1000, 2)} m³/min: la capacidad de catálogo es a 35 °C y 7 bar, y a ${tAmb} °C con ${pDescarga.toFixed(1)} bar los factores de corrección son ${fT.toFixed(2)} de temperatura y ${fP.toFixed(2)} de presión. Sin corregir, el secador sale chico y el punto de rocío no se cumple en verano.`);
+  memo.push(`Secador ${sec.label.toLowerCase()} de ${n(capSecador / 1000, 2)} m³/min: todo el caudal del compresor (${nUnidades} × ${n(principal.fadReal, 0)} L/min) a la capacidad nominal de ISO 7183:2007 Tabla 2 opción A1 (35 °C de entrada, 7 bar(e), 100 % del caudal), factor 1.0${enA1 ? "" : `; a ${tAmb} °C y ${pDescarga.toFixed(1)} bar el punto no es A1 y la corrección queda pendiente de la tabla del fabricante (H-215)`}. Sin corregir, el secador sale chico y el punto de rocío no se cumple en verano.`);
   if (sec.perdida > 0) memo.push(`El desecante consume ${n(purgaLmin, 0)} L/min en la purga de regeneración (${n(sec.perdida * 100, 0)} % del caudal tratado). Ese aire se compra: ya está sumado al FAD requerido.`);
 
   /* ---- 6. Red de distribución ---- */
@@ -7044,7 +7050,7 @@ function computeAire(A) {
   return { cls, lista, nPuntos, pico, medio, simul, simulAuto, demandaProceso, fugasLmin, conFugas,
     reservaLmin, purgaLmin, fadRequerido, pUso, dPred, dPfiltros, pDescarga, corrP, exento,
     principal, cubre, nUnidades, totalUnidades, redund, tanque, vTeorico, arr, dPt,
-    sec, capSecador, fT, fP, trenFiltros, mat, rho, tramos, dPtotal, Leq,
+    sec, capSecador, fT, fP, fadCompresor, enA1, secadorPendiente, trenFiltros, mat, rho, tramos, dPtotal, Leq,
     kWoper, kWhAno, mxnAno, mxnFugas, horas, tarifa, tAmb, avisos, memo };
 }
 
@@ -7095,7 +7101,7 @@ function buildAirePdf() {
     ["Compresor", `${A.principal.tipo} ${A.principal.hp} HP · ${A.principal.kW} kW`, `FAD ${n(A.principal.fadReal, 0)} L/min corregido ${n((A.corrP - 1) * 100, 1)} % por presion`],
     ["Unidades", `${A.totalUnidades}${A.redund ? " (incluye relevo N+1)" : ""}`, A.totalUnidades === 0 ? "sin demanda capturada: no se cotiza ninguna unidad" : A.cubre ? "una unidad cubre la demanda" : "varias en paralelo con control secuencial"],
     ["Tanque pulmon", `${A.tanque} L`, `V = Q·t·p/(4·dp) da ${n(A.vTeorico, 0)} L con ${A.arr} arranques/h y banda de ${A.dPt.toFixed(1)} bar`],
-    ["Secador", `${A.sec.label} · ${n(A.capSecador / 1000, 2)} m3/min`, `corregido por ${A.tAmb} C (f ${A.fT.toFixed(2)}) y ${A.pDescarga.toFixed(1)} bar (f ${A.fP.toFixed(2)})`],
+    ["Secador", `${A.sec.label} · ${n(A.capSecador / 1000, 2)} m3/min`, `caudal del compresor a la capacidad nominal de ISO 7183:2007 Tabla 2 opcion A1 (35 C, 7 bar(e)), factor 1.0${A.enA1 ? "" : `; a ${A.tAmb} C y ${A.pDescarga.toFixed(1)} bar la correccion es del fabricante: pendiente`}`],
     ["Filtracion", `${A.trenFiltros.length} etapa(s)`, A.trenFiltros.map((f) => f.label).join(" · ")],
   ], [95, 165, 226]);
 
@@ -8528,8 +8534,8 @@ function computeQuote() {
       qty: AIRE.tanque, unit: puT, total: puT * AIRE.tanque, sec: "E", un: "LITRO", mot: "aire" });
     const m3min = AIRE.capSecador / 1000;
     const puS = num(q.secadorM3min, 0) > 0 ? num(q.secadorM3min) : AIRE.sec.mxnPorM3min;
-    aux.push({ desc: `${AIRE.sec.label} de ${n(m3min, 2)} m³/min · punto de rocío ${AIRE.sec.pdp} °C (capacidad corregida a ${AIRE.tAmb} °C y ${AIRE.pDescarga.toFixed(1)} bar)`,
-      descEn: `${AIRE.sec.labelEn} of ${n(m3min, 2)} m³/min · dew point ${AIRE.sec.pdp} °C (capacity corrected to ${AIRE.tAmb} °C and ${AIRE.pDescarga.toFixed(1)} bar)`,
+    aux.push({ desc: `${AIRE.sec.label} de ${n(m3min, 2)} m³/min · punto de rocío ${AIRE.sec.pdp} °C (capacidad nominal ISO 7183 A1: 35 °C, 7 bar(e)${AIRE.secadorPendiente ? `; corrección a ${AIRE.tAmb} °C y ${AIRE.pDescarga.toFixed(1)} bar pendiente del fabricante` : ""})`,
+      descEn: `${AIRE.sec.labelEn} of ${n(m3min, 2)} m³/min · dew point ${AIRE.sec.pdp} °C (ISO 7183 A1 rated capacity: 35 °C, 7 bar(g)${AIRE.secadorPendiente ? `; correction to ${AIRE.tAmb} °C and ${AIRE.pDescarga.toFixed(1)} bar pending from the manufacturer` : ""})`,
       qty: +m3min.toFixed(2), unit: puS, total: puS * m3min, sec: "E", un: "M3/MIN", mot: "aire" });
     const nF = AIRE.trenFiltros.length, puF = num(q.filtroAire, QUOTE_SEED.filtroAire);
     if (nF > 0) aux.push({ desc: `Tren de filtración clase ISO ${AIRE.cls.id}: ${AIRE.trenFiltros.map((f) => f.label).join(" + ")}`,
@@ -17924,14 +17930,14 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "4", clean: "2", equip: "1", duct: "1", vent: "1", quote: "9", valor: "1", kaizen: "1", elec: "8", hidro: "8", fuego: "3", aire: "2", civil: "3", soporte: "2" };
+const MOTOR_VER = { load: "4", clean: "2", equip: "1", duct: "1", vent: "1", quote: "10", valor: "1", kaizen: "1", elec: "8", hidro: "8", fuego: "3", aire: "3", civil: "3", soporte: "2" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
     { ver: "3", rev: "2.9.21", que: "cuarto limpio con presión positiva sin infiltración; unidad de aire exterior dedicada + serpentín seco (ADP desde la latente interna); crédito sensible del aire exterior topado en deshumidificación; cambios por hora obligatorios; calor del ventilador Q·ΔP/η" },
     { ver: "4", rev: "2.9.24", que: "H-120: el DET de muros y cubierta se corrige por la condición de diseño del sitio, (25.6 − ti) + (tm − 29.4) K con tm = to − rango/2 (corrección CLTD, ASHRAE Fundamentals 1997 cap. 28; ratificar con Carrier Tabla 20A)" }],
   clean: [{ ver: "2", rev: "2.9.16", que: "sin pisos de 1 m² ni 2.2 m; 5 Pa de ISO 14644-4 con aviso; ceros capturados respetados" }],
-  quote: [{ ver: "2", rev: "2.9.16", que: "red hidráulica por diámetro con precio capturado; sin 50 m supuestos; partidas pendientes" }, { ver: "3", rev: "2.9.19", que: "tramo con longitud y sin unidades mueble queda pendiente" }, { ver: "4", rev: "2.9.23", que: "precio de tubería por renglón con origen (referencia de mercado o proveedor local), IVA desglosado y por metro; sin precio: partida Por cotizar en el Budget, bloqueo sólo en la formal" }, { ver: "5", rev: "2.9.23", que: "precios en USD sólo se convierten con tipo de cambio capturado con fecha; sin fecha salen Por cotizar y bloquean la formal (nada se estima)" }, { ver: "6", rev: "2.9.23", que: "referencias sólo de California y sólo material (mano de obra por capturar; combinados → Por cotizar); referencias IUSA retiradas; flete, aduana e importación como renglón propio siempre Por cotizar hasta capturarlo" }, { ver: "7", rev: "2.9.24", que: "H-198: un tramo de agua sin diámetro verificado (fuera del catálogo del material, o PEAD sin SDR ni fuente) va Por cotizar con sus metros; ya no se cotiza con el precio del mayor diámetro ni pide precio de un diámetro que no le corresponde" }, { ver: "8", rev: "2.9.24", que: "H-196: cisterna y equipo de bombeo sin precio semilla (9,500 MXN/m³ y 14,500 MXN/HP sin fuente): van Por cotizar con su volumen y su potencia; la bomba sólo cuando la presión de la red no alcanza; cisterna en 0 queda pendiente de volumen, nunca cisterna de 0 m³" }, { ver: "9", rev: "2.9.24", que: "H-206: bomba contra incendio y reserva sin precio fijo (385,000 MXN + 9,500 MXN/m³ sin fuente): Por cotizar con capacidad (gpm y L/min), presión, potencia y volumen declarados" }],
+  quote: [{ ver: "2", rev: "2.9.16", que: "red hidráulica por diámetro con precio capturado; sin 50 m supuestos; partidas pendientes" }, { ver: "3", rev: "2.9.19", que: "tramo con longitud y sin unidades mueble queda pendiente" }, { ver: "4", rev: "2.9.23", que: "precio de tubería por renglón con origen (referencia de mercado o proveedor local), IVA desglosado y por metro; sin precio: partida Por cotizar en el Budget, bloqueo sólo en la formal" }, { ver: "5", rev: "2.9.23", que: "precios en USD sólo se convierten con tipo de cambio capturado con fecha; sin fecha salen Por cotizar y bloquean la formal (nada se estima)" }, { ver: "6", rev: "2.9.23", que: "referencias sólo de California y sólo material (mano de obra por capturar; combinados → Por cotizar); referencias IUSA retiradas; flete, aduana e importación como renglón propio siempre Por cotizar hasta capturarlo" }, { ver: "7", rev: "2.9.24", que: "H-198: un tramo de agua sin diámetro verificado (fuera del catálogo del material, o PEAD sin SDR ni fuente) va Por cotizar con sus metros; ya no se cotiza con el precio del mayor diámetro ni pide precio de un diámetro que no le corresponde" }, { ver: "8", rev: "2.9.24", que: "H-196: cisterna y equipo de bombeo sin precio semilla (9,500 MXN/m³ y 14,500 MXN/HP sin fuente): van Por cotizar con su volumen y su potencia; la bomba sólo cuando la presión de la red no alcanza; cisterna en 0 queda pendiente de volumen, nunca cisterna de 0 m³" }, { ver: "9", rev: "2.9.24", que: "H-206: bomba contra incendio y reserva sin precio fijo (385,000 MXN + 9,500 MXN/m³ sin fuente): Por cotizar con capacidad (gpm y L/min), presión, potencia y volumen declarados" }, { ver: "10", rev: "2.9.24", que: "dependencia de aire v3 (H-215): la partida del secador lleva la capacidad nominal de ISO 7183 A1 y declara si la corrección del fabricante está pendiente" }],
   elec: [{ ver: "2", rev: "2.9.16", que: "canalización con las áreas del conductor de la memoria (THW-LS por omisión, NOM-001-SEDE Cap. 10 Tabla 5)" }, { ver: "3", rev: "2.9.18", que: "siete áreas THHN/THWN-2 corregidas a la Tabla 5" }, { ver: "4", rev: "2.9.19", que: "sin compresor de aire cuando no hay demanda" },
     { ver: "5", rev: "2.9.24", que: "H-183: conductor de puesta a tierra con la Tabla 250-122 de la NOM-001-SEDE-2012 (p. 151): 400 A → 2 AWG (antes 3 AWG, valor del NEC), renglones hasta 6000 A y columna de aluminio (hasta 100 A la tabla sólo da cobre)" },
     { ver: "6", rev: "2.9.24", que: "H-177: equipo con motocompresor hermético con MCA y MOP por el art. 440: conductor por la MCA de placa (440-4(b), 440-35; una MCA estimada por la suite no lo baja del 125 %) y protección igual al MOP o al valor inmediato inferior de 240-6(a) completo (16, 32, 63 A; abajo de 15 A sólo fusibles de 1, 3, 6, 10 A), sin el 250 % de la Tabla 430-52 (40VMA-240: 150 → 90 A; 40MBC-24: 25 → 15 A). Aceptar la cédula conserva MCA y MOP (marcados estimados); una carga sin kW no fija el principal" },
@@ -17944,7 +17950,8 @@ const MOTOR_CAMBIOS = {
     { ver: "8", rev: "2.9.24", que: "H-198: CPVC sin los renglones de 2 1/2\", 3\" y 4\" «SIN VERIFICAR» (CTS SDR-11 llega a 2\"); un tramo que no cabe en el mayor diámetro verificado queda fuera de catálogo con error visible, y PEAD (diámetros genéricos sin SDR ni fuente) da error visible" }],
   fuego: [{ ver: "2", rev: "2.9.16", que: "sin área no hay demanda, bomba ni reserva; área mínima de operación NFPA 13 con aviso" },
     { ver: "3", rev: "2.9.24", que: "H-205: la altura heredada de las zonas es la MÁXIMA (rociador más alto), no la media ponderada: estática y CDT al rociador más alto y aviso de rack con la altura real (proyecto fijo: 4.71 → 6 m, +1.29 m de CDT)" }],
-  aire: [{ ver: "2", rev: "2.9.16", que: "sin demanda no se cuentan unidades" }],
+  aire: [{ ver: "2", rev: "2.9.16", que: "sin demanda no se cuentan unidades" },
+    { ver: "3", rev: "2.9.24", que: "H-215: secador por ISO 7183:2007 Tabla 2 opción A1: capacidad = todo el caudal del compresor a las condiciones nominales (35 °C, 7 bar(e)), factor 1.0; fuera de A1 la corrección es del fabricante y queda pendiente con aviso (antes FAD requerido / (0.92 × 0.90) de memoria: proyecto fijo 2.46 → 2.43 m³/min)" }],
   civil: [{ ver: "2", rev: "2.9.16", que: "sin área clasificada no hay partidas de área clasificada" }, { ver: "3", rev: "2.9.19", que: "un cuarto limpio vacío no cuenta como área clasificada" }],
   soporte: [{ ver: "2", rev: "2.9.16", que: "renta de elevación sólo con algo que montar" }],
 };
@@ -17984,7 +17991,7 @@ function cifrasMotor(id) {
     elec: { kVAdemanda: ELEC.kVAdemanda, principal: ELEC.principal, alim: [ELEC.alim.awg, ELEC.alim.tubo.d, ELEC.alim.ocpd], calc: ELEC.calc.map((c) => [c.cond.awg, c.cond.ocpd, c.cond.tubo.d]) },
     hidro: { Qtotal: HIDRO.Qtotal, cdt: HIDRO.cdt, hpBomba: HIDRO.hpBomba, cisterna: HIDRO.cisterna, tramos: HIDRO.tramos.map((x) => [x.nom, x.Q, x.hf]) },
     fuego: { qTotal: FUEGO.qTotal, nTotal: FUEGO.nTotal, qBomba: FUEGO.qBomba, hpBomba: FUEGO.hpBomba, reserva: FUEGO.reserva, mcaTotal: FUEGO.mcaTotal },
-    aire: { fad: AIRE.fadRequerido, unidades: AIRE.totalUnidades, hp: AIRE.principal ? AIRE.principal.hp : null, tanque: AIRE.tanque },
+    aire: { fad: AIRE.fadRequerido, unidades: AIRE.totalUnidades, hp: AIRE.principal ? AIRE.principal.hp : null, tanque: AIRE.tanque, secador: AIRE.capSecador },
     civil: { total: CIVIL.total, part: CIVIL.part.map((p) => [p.desc, p.qty, p.total]) },
     soporte: { n: SOPORTE.nSoportes, total: SOPORTE.total, part: SOPORTE.part.map((p) => [p.desc, p.qty, p.total]) },
     quote: { direct: QUOTE.direct, sub: QUOTE.sub, tot: QUOTE.tot, aux: (QUOTE.aux || []).map((a) => [a.desc, a.qty, a.total]), pendientes: (QUOTE.pendientes || []).map((p) => p.desc) },
