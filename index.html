@@ -4778,10 +4778,9 @@ const QUOTE_SEED = {
      El precio único por metro (hidroM 780) salió de la lista activa y quedó archivado en la bitácora 2.9.16. */
   hidroPU: JSON.parse(JSON.stringify(HIDRO_PU_REFERENCIA)),
   hidroPUlog: [],
-  /* H-196 (rev 2.9.24, quote v8): la cisterna y la bomba del hidrosanitario ya no llevan precio semilla (9,500 MXN/m³ y
-     14,500 MXN/HP no tenían fuente ni fecha): van «Por cotizar». cisternaM3 queda sólo porque la reserva contra incendio
-     todavía lo usa (pendiente de su propio hallazgo). */
-  cisternaM3: 9500,       // MXN por m³ de cisterna de concreto (sólo contra incendio; hidro ya no lo usa)
+  /* H-196 (quote v8) y H-206 (quote v9), rev 2.9.24: cisterna (9,500 MXN/m³), bomba de agua (14,500 MXN/HP) y bomba contra
+     incendio (385,000 MXN fijos) no tenían fuente ni fecha: se retiraron; esas partidas van «Por cotizar» con su volumen,
+     capacidad y potencia declarados. */
   /* Sección E · aire comprimido. Lista de referencia de la casa. */
   compresorMXN: 0,        // 0 = usar el precio de lista del modelo seleccionado
   tanqueL: 195,           // MXN por litro de tanque pulmón instalado
@@ -4790,7 +4789,6 @@ const QUOTE_SEED = {
   aireM: 0,               // 0 = usar el precio por metro del material elegido
   puntoUso: 4850,         // bajada con filtro-regulador, válvula y acople rápido
   rociador: 2850,         // rociador instalado con su ramal proporcional
-  bombaFuego: 385000,     // bomba contra incendio listada UL/FM con controlador
   ffu: 42000,             // módulo FFU 1.17×0.57 con filtro HEPA H14, instalado y probado
   hepaSpare: 9800,        // juego de filtro HEPA de repuesto por módulo
   grille: 3200,           // rejilla de retorno bajo / extracción con marco
@@ -8487,10 +8485,15 @@ function computeQuote() {
     aux.push({ desc: `Rociadores automáticos ${FUEGO.roc.label} con red de ${TUB_FUEGO[FUEGO.tub].label} (${FUEGO.nTotal} rociadores)`,
       descEn: `${FUEGO.roc.labelEn} automatic sprinklers with ${TUB_FUEGO[FUEGO.tub].labelEn} piping (${FUEGO.nTotal} sprinklers)`,
       qty: FUEGO.nTotal, unit: num(q.rociador, QUOTE_SEED.rociador), total: num(q.rociador, QUOTE_SEED.rociador) * FUEGO.nTotal , sec: "D", un: "PIEZA", mot: "fuego"});
-    if (S.fuego.fuente !== "municipal")
-      aux.push({ desc: `Bomba contra incendio ${n(FUEGO.qBomba / 3.785, 0)} gpm y reserva de ${n(FUEGO.reserva / 1000, 1)} m³`,
-        descEn: `Fire pump ${n(FUEGO.qBomba / 3.785, 0)} gpm and ${n(FUEGO.reserva / 1000, 1)} m³ reserve`,
-        qty: 1, unit: num(q.bombaFuego, QUOTE_SEED.bombaFuego) + num(q.cisternaM3, QUOTE_SEED.cisternaM3) * (FUEGO.reserva / 1000), total: num(q.bombaFuego, QUOTE_SEED.bombaFuego) + num(q.cisternaM3, QUOTE_SEED.cisternaM3) * (FUEGO.reserva / 1000) , sec: "D", un: "LOTE", mot: "fuego"});
+    /* H-206 (quote v9, regla de precios del 22-sep): la bomba contra incendio y su reserva no llevan precio fijo (antes 385,000 MXN
+       + 9,500 MXN/m³ sin fuente): van «Por cotizar» con capacidad, presión, potencia y volumen declarados, para que el proveedor
+       cotice lo que el motor dimensionó. Con red municipal que alcanza no hay bomba ni reserva. */
+    if (S.fuego.fuente !== "municipal") {
+      porCotizar.push({ sec: "D", mot: "fuego", clave: "bombaFuego", desc: `Bomba contra incendio listada con controlador: ${n(FUEGO.qBomba / 3.785, 0)} gpm (${n(FUEGO.qBomba, 0)} L/min) a ${n(FUEGO.presBomba, 1)} m, ${n(FUEGO.hpBomba, 0)} HP (NFPA 20; dimensionada por el motor)`,
+        descEn: `Listed fire pump with controller: ${n(FUEGO.qBomba / 3.785, 0)} gpm (${n(FUEGO.qBomba, 0)} L/min) at ${n(FUEGO.presBomba, 1)} m, ${n(FUEGO.hpBomba, 0)} HP (NFPA 20; sized by the engine)`, un: "LOTE", qty: 1, motivo: "sin precio con fuente y fecha" });
+      porCotizar.push({ sec: "D", mot: "fuego", clave: "cisternaFuego", desc: `Reserva de agua contra incendio de ${n(FUEGO.reserva / 1000, 1)} m³ (${n(FUEGO.qTotal, 0)} L/min × ${n(FUEGO.r.dur, 0)} min)`,
+        descEn: `${n(FUEGO.reserva / 1000, 1)} m³ fire-protection water reserve (${n(FUEGO.qTotal, 0)} L/min × ${n(FUEGO.r.dur, 0)} min)`, un: "M3", qty: FUEGO.reserva / 1000, motivo: "sin precio con fuente y fecha" });
+    }
   }
   /* ---- Sección A · obra civil ----
      Las partidas ya vienen armadas del motor con su unidad y su precio: aquí
@@ -17921,14 +17924,14 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "4", clean: "2", equip: "1", duct: "1", vent: "1", quote: "8", valor: "1", kaizen: "1", elec: "8", hidro: "8", fuego: "3", aire: "2", civil: "3", soporte: "2" };
+const MOTOR_VER = { load: "4", clean: "2", equip: "1", duct: "1", vent: "1", quote: "9", valor: "1", kaizen: "1", elec: "8", hidro: "8", fuego: "3", aire: "2", civil: "3", soporte: "2" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
     { ver: "3", rev: "2.9.21", que: "cuarto limpio con presión positiva sin infiltración; unidad de aire exterior dedicada + serpentín seco (ADP desde la latente interna); crédito sensible del aire exterior topado en deshumidificación; cambios por hora obligatorios; calor del ventilador Q·ΔP/η" },
     { ver: "4", rev: "2.9.24", que: "H-120: el DET de muros y cubierta se corrige por la condición de diseño del sitio, (25.6 − ti) + (tm − 29.4) K con tm = to − rango/2 (corrección CLTD, ASHRAE Fundamentals 1997 cap. 28; ratificar con Carrier Tabla 20A)" }],
   clean: [{ ver: "2", rev: "2.9.16", que: "sin pisos de 1 m² ni 2.2 m; 5 Pa de ISO 14644-4 con aviso; ceros capturados respetados" }],
-  quote: [{ ver: "2", rev: "2.9.16", que: "red hidráulica por diámetro con precio capturado; sin 50 m supuestos; partidas pendientes" }, { ver: "3", rev: "2.9.19", que: "tramo con longitud y sin unidades mueble queda pendiente" }, { ver: "4", rev: "2.9.23", que: "precio de tubería por renglón con origen (referencia de mercado o proveedor local), IVA desglosado y por metro; sin precio: partida Por cotizar en el Budget, bloqueo sólo en la formal" }, { ver: "5", rev: "2.9.23", que: "precios en USD sólo se convierten con tipo de cambio capturado con fecha; sin fecha salen Por cotizar y bloquean la formal (nada se estima)" }, { ver: "6", rev: "2.9.23", que: "referencias sólo de California y sólo material (mano de obra por capturar; combinados → Por cotizar); referencias IUSA retiradas; flete, aduana e importación como renglón propio siempre Por cotizar hasta capturarlo" }, { ver: "7", rev: "2.9.24", que: "H-198: un tramo de agua sin diámetro verificado (fuera del catálogo del material, o PEAD sin SDR ni fuente) va Por cotizar con sus metros; ya no se cotiza con el precio del mayor diámetro ni pide precio de un diámetro que no le corresponde" }, { ver: "8", rev: "2.9.24", que: "H-196: cisterna y equipo de bombeo sin precio semilla (9,500 MXN/m³ y 14,500 MXN/HP sin fuente): van Por cotizar con su volumen y su potencia; la bomba sólo cuando la presión de la red no alcanza; cisterna en 0 queda pendiente de volumen, nunca cisterna de 0 m³" }],
+  quote: [{ ver: "2", rev: "2.9.16", que: "red hidráulica por diámetro con precio capturado; sin 50 m supuestos; partidas pendientes" }, { ver: "3", rev: "2.9.19", que: "tramo con longitud y sin unidades mueble queda pendiente" }, { ver: "4", rev: "2.9.23", que: "precio de tubería por renglón con origen (referencia de mercado o proveedor local), IVA desglosado y por metro; sin precio: partida Por cotizar en el Budget, bloqueo sólo en la formal" }, { ver: "5", rev: "2.9.23", que: "precios en USD sólo se convierten con tipo de cambio capturado con fecha; sin fecha salen Por cotizar y bloquean la formal (nada se estima)" }, { ver: "6", rev: "2.9.23", que: "referencias sólo de California y sólo material (mano de obra por capturar; combinados → Por cotizar); referencias IUSA retiradas; flete, aduana e importación como renglón propio siempre Por cotizar hasta capturarlo" }, { ver: "7", rev: "2.9.24", que: "H-198: un tramo de agua sin diámetro verificado (fuera del catálogo del material, o PEAD sin SDR ni fuente) va Por cotizar con sus metros; ya no se cotiza con el precio del mayor diámetro ni pide precio de un diámetro que no le corresponde" }, { ver: "8", rev: "2.9.24", que: "H-196: cisterna y equipo de bombeo sin precio semilla (9,500 MXN/m³ y 14,500 MXN/HP sin fuente): van Por cotizar con su volumen y su potencia; la bomba sólo cuando la presión de la red no alcanza; cisterna en 0 queda pendiente de volumen, nunca cisterna de 0 m³" }, { ver: "9", rev: "2.9.24", que: "H-206: bomba contra incendio y reserva sin precio fijo (385,000 MXN + 9,500 MXN/m³ sin fuente): Por cotizar con capacidad (gpm y L/min), presión, potencia y volumen declarados" }],
   elec: [{ ver: "2", rev: "2.9.16", que: "canalización con las áreas del conductor de la memoria (THW-LS por omisión, NOM-001-SEDE Cap. 10 Tabla 5)" }, { ver: "3", rev: "2.9.18", que: "siete áreas THHN/THWN-2 corregidas a la Tabla 5" }, { ver: "4", rev: "2.9.19", que: "sin compresor de aire cuando no hay demanda" },
     { ver: "5", rev: "2.9.24", que: "H-183: conductor de puesta a tierra con la Tabla 250-122 de la NOM-001-SEDE-2012 (p. 151): 400 A → 2 AWG (antes 3 AWG, valor del NEC), renglones hasta 6000 A y columna de aluminio (hasta 100 A la tabla sólo da cobre)" },
     { ver: "6", rev: "2.9.24", que: "H-177: equipo con motocompresor hermético con MCA y MOP por el art. 440: conductor por la MCA de placa (440-4(b), 440-35; una MCA estimada por la suite no lo baja del 125 %) y protección igual al MOP o al valor inmediato inferior de 240-6(a) completo (16, 32, 63 A; abajo de 15 A sólo fusibles de 1, 3, 6, 10 A), sin el 250 % de la Tabla 430-52 (40VMA-240: 150 → 90 A; 40MBC-24: 25 → 15 A). Aceptar la cédula conserva MCA y MOP (marcados estimados); una carga sin kW no fija el principal" },

@@ -110,11 +110,11 @@
    }
   },
   "quote": {
-   "ver": "8",
+   "ver": "9",
    "cifras": {
-    "direct": 12306153.650167169,
-    "sub": 18601981.85759269,
-    "tot": 21578298.95480752,
+    "direct": 10608706.99016717,
+    "sub": 16036121.486336695,
+    "tot": 18601900.924150568,
     "aux": [
      [
       "Instalación mecánica, bases, izaje y arranque (35 % del equipo)",
@@ -185,11 +185,6 @@
       "Rociadores automáticos K80 · 1/2\" estándar (K5.6) con red de Acero negro cédula 40 (sistema húmedo) (58 rociadores)",
       58,
       165300
-     ],
-     [
-      "Bomba contra incendio 661 gpm y reserva de 138.2 m³",
-      1,
-      1697446.6599999997
      ],
      [
       "Limpieza general, trazo y nivelación del área de trabajo",

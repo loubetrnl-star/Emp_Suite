@@ -38,7 +38,7 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 |---|---|---|
 | 1 | 2.9.15 | lógica de partida |
 
-## Cotización (`quote`) · v8
+## Cotización (`quote`) · v9
 
 | Versión | Rev | Hallazgo / cambio de lógica |
 |---|---|---|
@@ -47,6 +47,7 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 | 3 | 2.9.19 | tramo con longitud y sin unidades mueble queda pendiente |
 | 4 | 2.9.23 | precio de tubería por renglón con origen (referencia de mercado o proveedor local), IVA desglosado y por metro; sin precio: partida Por cotizar en el Budget, bloqueo sólo en la formal |
 | 5 | 2.9.23 | precios en USD sólo se convierten con tipo de cambio capturado con fecha; sin fecha salen Por cotizar y bloquean la formal (nada se estima) |
+| 9 | 2.9.24 | H-206: la bomba contra incendio y su reserva no llevan precio fijo (385,000 MXN + 9,500 MXN/m³ sin fuente ni fecha): van «Por cotizar» (sección D) con capacidad (gpm y L/min), presión, potencia y volumen (m³ = L/min × min) declarados; con red municipal que alcanza no hay bomba ni reserva. `QUOTE_SEED.bombaFuego` y `cisternaM3` retirados. Proyecto fijo: −1,697,446.66 MXN directos |
 | 8 | 2.9.24 | H-196: cisterna y equipo de bombeo del hidrosanitario sin precio semilla (9,500 MXN/m³ y 14,500 MXN/HP no tenían fuente ni fecha): van «Por cotizar» con su volumen (m³) y su potencia (HP); la bomba sólo cuando la presión de la red no alcanza al mueble más exigente (`presOk` falso); cisterna en 0 queda «pendiente de volumen», nunca «cisterna de 0 m³». La matriz de alcance del Excel declara pendientes y partidas Por cotizar también en una sección sin partida con importe. Proyecto fijo: −36,250 MXN directos (bomba 2.5 HP a Por cotizar) |
 | 7 | 2.9.24 | H-198: un tramo de agua sin diámetro verificado (fuera del catálogo del material, o PEAD sin SDR ni fuente) va «Por cotizar» con sus metros; ya no se cotiza con el precio del mayor diámetro ni se pide precio de un diámetro que no le corresponde. Proyecto fijo: sin cambio de cifras (cobre) |
 | 6 | 2.9.23 | referencias sólo de California y sólo material (mano de obra por capturar; combinados → Por cotizar); referencias IUSA retiradas; flete, aduana e importación como renglón propio siempre Por cotizar hasta capturarlo |

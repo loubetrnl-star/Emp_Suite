@@ -5546,10 +5546,13 @@ t("S.20 un proyecto guardado con la versión anterior (formato 1, rev 2.9.13) ab
      11736257.55803405. Lo verifican a mano CM.hidro.1.z–1.ac y CM.hidro.12 (parches/casos-a-mano/hidro.calc.mjs).
      H-196 (quote v8): la partida «Cisterna de 0 m³ y equipo de bombeo de 2.5 HP» (36,250 MXN = 14,500 × 2.5, precio semilla sin
      fuente) desaparece: la bomba va «Por cotizar» (presRed 0: la presión no alcanza) y la cisterna en 0 queda pendiente de volumen.
-     quoteDirect 6693214.747352686 → 6656964.747352686 · quoteSub → 10062667.912098318 · quoteTot → 11672694.77803405. */
+     quoteDirect 6693214.747352686 → 6656964.747352686 · quoteSub → 10062667.912098318 · quoteTot → 11672694.77803405.
+     H-206 (quote v9): la partida «Bomba contra incendio 661 gpm y reserva de 138.2 m³» (1,697,446.66 MXN = 385,000 fijos +
+     9,500 × 138.152 m³, sin fuente) desaparece: bomba y reserva van «Por cotizar» con capacidad, presión, potencia y volumen.
+     quoteDirect → 4959518.087352686 · quoteSub → 7496807.540842321 · quoteTot → 8696296.747377092. */
   const MOVIDOS_2916 = { tons: [18.584787, 12.943837], cfm: [5114.572875, 5815.981512], sysTarget: [20.443265161623447, 14.238221145934492],
-    hidroQ: [3.924, 4.05985437], quoteDirect: [6704014.747352686, 6656964.747352686], partidas: [6704014.747352686, 6656964.747352686],
-    quoteSub: [10133788.69209832, 10062667.912098318], quoteTot: [11755194.88283405, 11672694.77803405] };
+    hidroQ: [3.924, 4.05985437], quoteDirect: [6704014.747352686, 4959518.087352686], partidas: [6704014.747352686, 4959518.087352686],
+    quoteSub: [10133788.69209832, 7496807.540842321], quoteTot: [11755194.88283405, 8696296.747377092] };
   Object.entries(MOVIDOS_2916).forEach(([k, [antes]]) => eq(esperado.resumen[k], antes, `${k}: el «antes» es el de la 2.9.13:`));
   Object.entries(esperado.resumen).forEach(([k, v]) => eq(r[k], k in MOVIDOS_2916 ? MOVIDOS_2916[k][1] : v, `${k} igual al de la versión ${esperado.generadoCon}${k in MOVIDOS_2916 ? " con la decisión 2.9.16" : ""}:`));
   eq((G("QUOTE").pendientes || []).filter((p) => p.mot === "hidro").map((p) => p.motivo.split(" (")[0]).join(","), "pendiente de longitud,pendiente de volumen", "la red y la cisterna (0 unidades de dotación) quedan pendientes (H-196):"); /* rev 2.9.23: la importación siempre está pendiente aparte */
@@ -6548,6 +6551,40 @@ t("S.58 (H-205) contra incendio hereda la altura MÁXIMA de las zonas (rociador 
     S.tab = "fuego"; G("render")();
     const v = w.document.getElementById("view");
     if (!/rociador más alto/i.test(v.textContent)) throw new Error("la pantalla no nombra la altura al rociador más alto");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+t("S.59 (H-206) la bomba contra incendio y su reserva no llevan precio fijo (385,000 MXN + 9,500 MXN/m³ sin fuente): van «Por cotizar» con capacidad, presión, potencia y volumen declarados; con red municipal que alcanza no hay bomba ni reserva", () => {
+  const guardado = JSON.stringify(S);
+  const pdfTxt = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");
+  try {
+    const seed = G("QUOTE_SEED");
+    if ("bombaFuego" in seed || "cisternaM3" in seed) throw new Error("siguen los precios semilla de bomba contra incendio o cisterna");
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.59";
+    S.perms = { ...(S.perms || {}), "fuego>quote": { ts: 1, via: "S.59" } };
+    S.fuego = { ...G("defaultFuego")(), area: 600, altura: 6, Lramal: 30, Lmontante: 12, fuente: "cisterna" };
+    G("recompute")();
+    const F = G("FUEGO");
+    const lote = () => (G("QUOTE").aux || []).filter((x) => x.mot === "fuego" && x.un === "LOTE");
+    const pc = (clave) => (G("QUOTE").porCotizar || []).filter((x) => x.mot === "fuego" && x.clave === clave);
+    eq(lote().length, 0, "ya no hay partida de bomba y reserva con importe fijo:");
+    const b = pc("bombaFuego");
+    eq(b.length, 1, "bomba «Por cotizar»:"); eq(b[0].un, "LOTE"); eq(b[0].qty, 1); eq(b[0].sec, "D");
+    contiene(b[0].desc, G("n")(F.qBomba / 3.785, 0) + " gpm", "capacidad declarada:"); contiene(b[0].desc, G("n")(F.hpBomba, 0) + " HP", "potencia declarada:"); contiene(b[0].desc, " m", "presión declarada:");
+    if (!b[0].descEn || !/gpm/.test(b[0].descEn)) throw new Error("sin espejo EN de la bomba");
+    const c = pc("cisternaFuego");
+    eq(c.length, 1, "reserva «Por cotizar»:"); eq(c[0].un, "M3"); cerca(c[0].qty, F.reserva / 1000, 1e-9, "con su volumen:");
+    contiene(c[0].desc, "min", "el volumen dice de qué duración sale:");
+    const txt = pdfTxt(G("buildPropuestaPdf")({ lang: "es", mon: "MXN" }));
+    contiene(txt, "POR COTIZAR", "PDF de propuesta:"); contiene(txt, "Bomba contra incendio", "la bomba sale en el PDF:");
+    /* Red municipal que alcanza: ni bomba ni reserva. */
+    S.fuego = { ...G("defaultFuego")(), area: 600, altura: 6, Lramal: 30, Lmontante: 12, fuente: "municipal", presFuente: 80 };
+    G("recompute")();
+    eq(G("FUEGO").alcanza, true, "80 m de red alcanzan:");
+    eq(pc("bombaFuego").length + pc("cisternaFuego").length, 0, "con red que alcanza no se cotiza bomba ni reserva:");
+    eq(lote().length, 0, "ni partida LOTE:");
+    /* Los rociadores siguen cotizándose por pieza (fuera del alcance de H-206). */
+    if (!(G("QUOTE").aux || []).some((x) => x.mot === "fuego" && x.un === "PIEZA")) throw new Error("los rociadores dejaron de cotizarse");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 

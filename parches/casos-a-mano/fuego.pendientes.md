@@ -5,8 +5,9 @@
 | Hallazgo | Estado | Qué cambió |
 |---|---|---|
 | H-205 (altura heredada = promedio ponderado; escondía el rack) | **Cerrado** (fuego v2 → v3, 25-sep-2026) | `geoProyectoDe` entrega también `alturaMax`; `HEREDA["fuego.altura"]` toma la máxima (ventilación sigue con la media, que es la que renueva volumen). Estática y presión requerida al rociador más alto; aviso de rack con la altura real; campo, guía, PDF y memoria dicen «al rociador más alto». La captura propia se respeta. Prueba S.58; 3.2 corregida (6 m); CM.fuego.1 y 2 con la máxima (6 y 13 m), filas .F1–.F4 de fase2 a vigentes; mutante m14 reapuntado (máxima → promedio) y MUERTO. Proyecto fijo: 37.815 → 39.105 m, 35 HP sin cambio. |
+| H-206 (bomba a 385,000 fijos + 9,500/m³ sin fuente) | **Cerrado** (quote v8 → v9, 25-sep-2026; fuego sin cambio de cifras) | `QUOTE_SEED.bombaFuego` y `cisternaM3` retirados. Bomba «Por cotizar» (LOTE, sección D) con gpm, L/min, presión, HP; reserva «Por cotizar» (M3) con L/min × min. Con red municipal que alcanza no hay ninguna de las dos (la red que NO alcanza sigue sin partida: H-211, pendiente). Prueba S.59; CM.fuego.1.v redefinida (0 partidas LOTE con importe), F5 vigente y F5b nueva; S.20 con las cifras nuevas (−1,697,446.66 directos). Sin mutante propio: la lógica es de quote (S.59 y R.1 la vigilan). |
 
-Hoja: `fuego.csv` (190 filas: 179 vigentes, 11 fase2) · cálculo: `fuego.calc.mjs` · módulo: `pruebas-motores/fuego.mjs` ·
+Hoja: `fuego.csv` (191 filas: 181 vigentes, 10 fase2) · cálculo: `fuego.calc.mjs` · módulo: `pruebas-motores/fuego.mjs` ·
 mutantes: `parches/mutantes/fuego.json`. Numeración de líneas: `master` en `2185dcd`.
 
 ## Pruebas que hoy protegen valores incorrectos (se marcan; se corrigen en la Fase 2 con su hallazgo)
@@ -30,7 +31,7 @@ visible; su `descripcion` dice «hoy; cambia con H-nnn»): `CM.fuego.*.m/.n` (es
 |---|---|---|---|---|---|
 | ~~CM.fuego.1.F1 / .F2~~ | H-205 | **vigentes desde el 25-sep-2026** (estática 7 m; H 39.105 m) | = esperado | PLAN-CRITICOS.md §4 (regla del dueño) | memoria |
 | ~~CM.fuego.2.F1–.F4~~ | H-205 | **vigentes desde el 25-sep-2026** (estática 14 m; H 46.0 m; 40 HP; aviso de rack) | = esperado | ídem | memoria |
-| CM.fuego.1.F5 | H-206 | bomba «Por cotizar» (pendiente en la cotización) | partida fija 385,000 + 9,500/m³ | PLAN-CRITICOS.md §4 H-206 y decisión 6 | — |
+| ~~CM.fuego.1.F5~~ / .F5b | H-206 | **vigentes desde el 25-sep-2026** (bomba y reserva Por cotizar) | = esperado | PLAN-CRITICOS.md §4 H-206 y decisión 6 | — |
 | CM.fuego.1.F6 | H-207 | reserva 207.4 m³ (90 min) | 138.2 m³ (60 min) | NFPA 13-2016 §11.2.3.1.3 / Tabla 11.2.3.1.2 | memoria |
 | CM.fuego.5.F6 | H-207 | 618.9 m³ (120 min) | 464.6 m³ (90 min) | ídem | memoria |
 | CM.fuego.1.F7 | H-208 | 750 gpm = 2,839 L/min | 2,500 L/min | NFPA 20-2016 Tabla 4.9 (up.codes) | primaria |

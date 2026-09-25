@@ -233,7 +233,7 @@ for (const c of CASOS) {
   /* --- cotización (hoy) --- */
   if (c.quote) {
     V("u", "partida de rociadores en la cotización: nTotal × 2,850 MXN (precio sin fuente, H-212; hoy)", `${si.nTotal} × 2,850`, "precio de referencia interno sin fuente (index.html:4774; H-212)", "memoria", 'QUOTE.aux.filter((a) => a.mot === "fuego" && a.un === "PIEZA").reduce((s, a) => s + a.total, 0)', si.partidaRoc, si.partidaRoc, false);
-    if (c.in.fuente !== "municipal") V("v", "partida de bomba y cisterna: 385,000 fijos + 9,500 MXN/m³ × reserva (hoy; cambia con H-206)", `385,000 + 9,500 × ${(si.reserva / 1000).toFixed(3)} m³`, "precios fijos sin fuente (index.html:4775, 4765; H-206, H-212)", "memoria", 'QUOTE.aux.filter((a) => a.mot === "fuego" && a.un === "LOTE").reduce((s, a) => s + a.total, 0)', si.partidaBomba, si.partidaBomba, false);
+    if (c.in.fuente !== "municipal") V("v", "H-206 (cerrado 25-sep-2026, quote v9): ninguna partida LOTE de contra incendio con importe (antes 385,000 fijos + 9,500 MXN/m³ × reserva sin fuente); bomba y reserva van «Por cotizar»", "0 partidas LOTE de fuego en aux", "regla de precios 22-sep (H-206; antes index.html:4775, 4765; H-206, H-212)", "memoria", 'QUOTE.aux.filter((a) => a.mot === "fuego" && a.un === "LOTE").length', 0, 0, true);
     else V("v", "con red municipal la cotización no lleva partida de bomba ni cisterna con importe (0 partidas LOTE; hoy y tras H-211, cuando la bomba y la cisterna pasen a pendientes «Por cotizar»)", "sin partida", "index.html:8431 (sólo con fuente ≠ municipal)", "memoria", 'QUOTE.aux.filter((a) => a.mot === "fuego" && a.un === "LOTE").length', 0, 0, true);
   }
   /* --- H-205 (vigente desde el 25-sep-2026): la estática al rociador más alto; el promedio de antes queda como referencia --- */
@@ -246,7 +246,8 @@ for (const c of CASOS) {
     if (c.in.altura > 12) fila(`${P}.F4`, "H-205 · con 13 m de altura real el aviso de almacenamiento en rack (> 12 m) sale (1 = sale); antes no salía porque el promedio era 3.91 m", E, "altura máxima 13 > 12 → aviso", "NFPA 13 cap. 12/20 almacenamiento (memoria); index.html:10186", "memoria", 'Number(FUEGO.avisos.some((a) => /rack/.test(a.msg)))', 1, "0");
   }
   if (c.n === 1) {
-    fila(`${P}.F5`, "H-206 · el importe de la bomba no es fijo: queda «Por cotizar» con capacidad y potencia declaradas (1 = hay pendiente de bomba en la cotización)", E, "pendiente en QUOTE.pendientes con mot fuego y «bomba»", "PLAN-CRITICOS.md §4 H-206 y decisión 6 (H-252)", "memoria", 'Math.min(1, (QUOTE.pendientes || []).filter((p) => p.mot === "fuego" && /[Bb]omba/.test(p.desc)).length)', 1, "0", "fase2:H-206");
+    fila(`${P}.F5`, "H-206 (vigente desde el 25-sep-2026) · el importe de la bomba no es fijo: partida «Por cotizar» con capacidad y potencia declaradas (1 = hay partida Por cotizar de bomba, clave bombaFuego)", E, "partida en QUOTE.porCotizar con mot fuego y clave bombaFuego", "PLAN-CRITICOS.md §4 H-206 y decisión 6 (H-252)", "memoria", 'QUOTE.porCotizar.filter((p) => p.mot === "fuego" && p.clave === "bombaFuego").length', 1, "0");
+    fila(`${P}.F5b`, `H-206 · la reserva va «Por cotizar» con su volumen: ${(si.reserva / 1000).toFixed(3)} m³ (clave cisternaFuego, unidad M3)`, E, `${si.qTotal.toFixed(2)} L/min × ${rSI.dur} min / 1000`, "PLAN-CRITICOS.md §4 H-206", "memoria", 'QUOTE.porCotizar.filter((p) => p.mot === "fuego" && p.clave === "cisternaFuego").reduce((s, p) => s + p.qty, 0)', si.reserva / 1000, "0.5%");
   }
   if (rUS.dur[1] !== rUS.dur[0] && c.in.area > 0 && (c.n === 1 || c.n === 5)) {
     const usA = calcUS({ ...c.in, durAlta: true }), siA = calcSI({ ...c.in, durAlta: true });
