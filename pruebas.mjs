@@ -6196,13 +6196,13 @@ t("S.36 (rev 2.9.20, decisión del dueño) versión por motor en el sello: sólo
   const MV = G("MOTOR_VER");
   /* H-107: carga v3 = lógica de la rev 2.9.21 (declarada en la 2.9.24); H-120: carga v4 = corrección CLTD por sitio. H-183: eléctrico v5 = Tabla 250-122 de la NOM; H-177: v6 = art. 440 con MCA/MOP; H-179: v7 = nada se supone (pendientes); H-178: v8 = corriente de motor por la Tabla 430-250/248.
      H-194: hidro v5 = presión mínima por mueble de la Tabla 604.3 del IPC 2015 y CDT con máx(residual, mínima); H-195: v6 = equipo de emergencia fuera de Hunter; H-197: v7 = sin pisos sin norma (días, ΔT, pendiente 704.1); H-198: v8 = CPVC sólo hasta 2" CTS, fuera de catálogo y PEAD sin SDR como error. */
-  eq(MV.elec, "8", "eléctrico v8 (H-178):"); eq(MV.hidro, "8", "hidro v8 (H-198):"); eq(MV.load, "5", "carga v5 (H-141):"); eq(MV.duct, "1", "ductos sin cambio de lógica: v1:");
+  eq(MV.elec, "8", "eléctrico v8 (H-178):"); eq(MV.hidro, "8", "hidro v8 (H-198):"); eq(MV.load, "5", "carga v5 (H-141):"); eq(MV.duct, "2", "ductos v2 (H-166):"); eq(MV.equip, "1", "selección sin cambio de lógica: v1:");
   Object.keys(MV).forEach((id) => { const c = G("MOTOR_CAMBIOS")[id] || []; if (MV[id] !== "1" && !c.some((x) => x.ver === MV[id])) throw new Error(`${id}: la versión ${MV[id]} no tiene hallazgo registrado`); });
   const s0 = JSON.stringify(S.sellos || {});
   try {
-    /* Sello de la 2.9.15 (sin versión = v1) en ductos y en hidro: sólo hidro se desactualiza. */
-    S.sellos = { duct: { ts: 5, huella: G("huellaMotor")("duct") }, hidro: { ts: 5, huella: G("huellaMotor")("hidro") } }; G("recompute")();
-    eq(G("selloDe")("duct").estado, "calculado", "ductos (motor v1, sin cambio):");
+    /* Sello de la 2.9.15 (sin versión = v1) en selección y en hidro: sólo hidro se desactualiza (H-166 subió ductos a v2: el ejemplo sin cambio pasa a selección, que sigue en v1). */
+    S.sellos = { equip: { ts: 5, huella: G("huellaMotor")("equip") }, hidro: { ts: 5, huella: G("huellaMotor")("hidro") } }; G("recompute")();
+    eq(G("selloDe")("equip").estado, "calculado", "selección (motor v1, sin cambio):");
     const sh = G("selloDe")("hidro");
     eq(sh.estado, "desactualizado", "hidro (motor v1 → v8):"); contiene(sh.texto, "v1 → v8", "texto:"); contiene(sh.texto, "Hunter", "nombra el hallazgo:"); contiene(sh.texto, "604.3", "nombra H-194:"); contiene(sh.texto, "Z358.1", "nombra H-195:"); contiene(sh.texto, "704.1", "nombra H-197:"); contiene(sh.texto, "catálogo", "nombra H-198:");
     const m = G("motoresCambiados")();
@@ -7215,6 +7215,58 @@ t("S.82 (H-252, decisión 6 del dueño, opción a) cada precio semilla sin fuent
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+t("S.83 (H-166) ductos: un tramo sin medida posible (ninguna de la serie cumple), con medida bloqueada sin capturar o sin caudal no lleva sección, kilos ni importe; el error se ve en la tabla, la cédula y el Excel; la lámina queda pendiente en la cotización y la soportería no lo soporta con una medida supuesta", () => {
+  const guardado = JSON.stringify(S);
+  const pdfTxt = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");
+  const armar = (segs) => {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.83";
+    Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.83" }; });
+    S.soporte = { ...(S.soporte || {}), usarMotores: true };
+    S.duct.segments = segs.map(([tag, flow, extra]) => ({ ...G("defaultSegment")(tag, flow), ...extra }));
+    G("recompute")(); return G("DUCT");
+  };
+  const sinSeccion = (s, que) => {
+    if (!s.error) throw new Error(que + ": el tramo debe traer error visible");
+    if (s.w != null || s.h != null || s.d != null) throw new Error(que + ": sin medida no hay sección (salió " + JSON.stringify([s.w, s.h, s.d]) + ")");
+    eq(s.kg, 0, que + ": kilos:"); eq(s.sheet, 0, que + ": lámina:"); eq(s.total, 0, que + ": caída:"); eq(s.hangers, 0, que + ": soportes del ducto:");
+    if (s.warn[0] !== s.error) throw new Error(que + ": el error debe ser el primer aviso del tramo (es el que pinta la tabla)");
+  };
+  try {
+    /* 1) Ninguna medida de la serie cumple (6,000 L/s con alto máximo 200 mm): antes 400×200 a 75 m/s y 162 kg. */
+    let D = armar([["SC-1", 6000, { length: 18, hmax: 200 }]]);
+    sinSeccion(D.segs[0], "sin candidato"); eq(D.boq.kg, 0, "kilos del proyecto sin candidato:");
+    contiene(D.segs[0].error, "Ninguna medida", "razón del error:");
+    /* 2) Medida bloqueada sin capturar (rectangular y redondo): antes 400×200 y Ø250 */
+    D = armar([["BL-1", 2000, { length: 10, lock: true }], ["BL-2", 2000, { shape: "round", length: 10, lock: true }]]);
+    sinSeccion(D.segs[0], "rectangular bloqueado sin medida"); sinSeccion(D.segs[1], "redondo bloqueado sin diámetro");
+    eq(D.boq.kg, 0, "kilos del proyecto bloqueado sin medida:");
+    /* 2b) Bloqueada con medida capturada: se respeta (no cambia). */
+    D = armar([["BL-3", 2000, { length: 10, lock: true, w: 800, h: 400 }]]);
+    if (D.segs[0].error) throw new Error("con medida bloqueada capturada no hay error");
+    eq([D.segs[0].w, D.segs[0].h].join("x"), "800x400", "medida bloqueada capturada:");
+    /* 3) Sin caudal, 25 m: antes 400×200, 225 kg y la partida de lámina en la cotización. */
+    D = armar([["TR-1", 6000, { length: 18 }], ["SQ-1", 0, { length: 25 }]]);
+    sinSeccion(D.segs[1], "sin caudal"); contiene(D.segs[1].error, "Sin caudal", "razón del error:");
+    cerca(D.boq.kg, 604.88, 0.05, "el tramo sano conserva sus kilos (CM.duct.1.j):");
+    const Q = G("QUOTE"), lam = Q.aux.find((a) => a.mot === "duct" && a.un === "KG");
+    cerca(lam.qty, 604.88, 0.05, "la partida de lámina sólo lleva el tramo con medida:");
+    if (!Q.pendientes.some((p) => p.mot === "duct" && /SQ-1/.test(p.desc) && /medida/.test(p.motivo) && p.descEn && p.motivoEn)) throw new Error("la lámina del tramo sin medida debe quedar pendiente (ES/EN) en la cotización: " + JSON.stringify(Q.pendientes.filter((p) => p.mot === "duct")));
+    /* Soportería con motores: el tramo sin medida no se soporta con 400×200; queda pendiente. */
+    const SP = G("SOPORTE");
+    if (!SP.manualPendientes.some((p) => /SQ-1/.test(p.que) && p.queEn && p.faltaEn)) throw new Error("la soportería debe dejar pendiente el ducto sin medida: " + JSON.stringify(SP.manualPendientes));
+    eq(SP.mDucto, 18, "metros de ducto soportados (sólo TR-1; antes 43 con el tramo sin caudal a 400×200):");
+    /* Pantalla, cédula y Excel dicen «sin medida»; el aviso del tramo es el error. */
+    S.tab = "ductos"; G("render")();
+    const v = w.document.getElementById("view").textContent;
+    contiene(v, "Sin caudal", "la tabla de tramos muestra el error:");
+    if (/400\s*×\s*200/.test(v)) throw new Error("la pantalla no debe mostrar 400 × 200");
+    const ced = pdfTxt(G("buildCedulaPdf")());
+    contiene(ced, "sin medida", "la cédula PDF:"); if (/400 x 200/.test(ced)) throw new Error("la cédula no debe imprimir 400 x 200");
+    const xes = Buffer.from(G("buildPropuestaXlsx")({ lang: "es", mon: "MXN" })).toString("utf8"), xen = Buffer.from(G("buildPropuestaXlsx")({ lang: "en", mon: "MXN" })).toString("utf8");
+    contiene(xes, "sin medida", "el Excel ES:"); contiene(xen, "no size", "el Excel EN:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 /* ===== R. Regresión por motor (rev 2.9.22, decisión del dueño): un proyecto fijo con cifras esperadas por disciplina ===== */
 const REG_DIR = "parches/regresion-motores/";
 const REG_PROY = fs.readFileSync(REG_DIR + "regresion-motores.emp.json", "utf8");
@@ -7239,7 +7291,7 @@ t("R.2 abrir un proyecto viejo nunca recalcula solo: los sellos quedan como ven�
   const guardado = JSON.stringify(S), lista0 = JSON.stringify(G("projList")());
   try {
     const p = JSON.parse(REG_PROY);
-    p.sellos = { hidro: { ts: 1700000000000, huella: "0123456789abcd", ver: "1", resumen: { Gasto: "3.924 L/s" } }, duct: { ts: 1700000000000, huella: "0123456789abcd", ver: "1" } };
+    p.sellos = { hidro: { ts: 1700000000000, huella: "0123456789abcd", ver: "1", resumen: { Gasto: "3.924 L/s" } }, duct: { ts: 1700000000000, huella: "0123456789abcd", ver: G("MOTOR_VER").duct } }; /* ductos con su versión vigente: sólo la huella difiere */
     const sellosArchivo = JSON.stringify(p.sellos);
     G("importarRespaldo")(JSON.stringify(p)); G("recompute")();
     eq(JSON.stringify(S.sellos), sellosArchivo, "los sellos son exactamente los del archivo (nadie recalculó ni volvió a sellar):");

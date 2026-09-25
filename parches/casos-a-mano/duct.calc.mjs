@@ -170,13 +170,13 @@ const resFijo = FIJO.map((c) => {
   const sinCand = sizeRect(6, .8, 3, 200);
   if (sinCand) throw new Error("el caso 7.a debía quedarse sin candidato");
   const FN = "política de la casa «nada se estima» (decisión del dueño 17-sep-2026); H-166";
-  fila("CM.duct.7.a", "sin medida posible: kilos del tramo", "rectangular 6,000 L/s, 18 m, alto máximo 200 mm (ninguna medida de la serie queda entre 1.5 y 20 m/s)", "ninguna medida cumple → sin sección, 0 kg (hoy 400×200 a 75 m/s)", FN, "criterio de la casa", "DUCT.segs[0].kg", 0, 0, "fase2:H-166");
-  fila("CM.duct.7.b", "sin medida posible: el tramo queda con error visible", "ídem", "1 error en el tramo", FN, "criterio de la casa", "DUCT.segs[0].error ? 1 : 0", 1, 0, "fase2:H-166");
-  fila("CM.duct.7.c", "medida bloqueada sin capturar (rectangular y redondo): kilos", "dos tramos bloqueados, 2,000 L/s, 10 m cada uno, sin ancho/alto ni diámetro capturados", "sin respaldo 400×200 ni Ø250 → 0 kg", FN, "criterio de la casa", "DUCT.boq.kg", 0, 0, "fase2:H-166");
-  fila("CM.duct.7.d", "tramo sin caudal: kilos", "rectangular 0 L/s, 25 m", "sin caudal no hay sección → 0 kg (hoy 400×200, 225 kg)", FN, "criterio de la casa", "DUCT.boq.kg", 0, 0, "fase2:H-166");
-  fila("CM.duct.7.e", "tramo sin caudal: importe de ducto en la cotización", "rectangular 0 L/s, 25 m, cruces autorizados", "sin kilos no hay partida de lámina → 0 MXN", FN, "criterio de la casa", "(QUOTE.aux.find((a) => a.mot === 'duct' && a.un === 'KG') || { total: 0 }).total", 0, 0, "fase2:H-166");
-  fila("CM.duct.7.f", "tramo sin caudal: el tramo queda con error visible", "rectangular 0 L/s, 25 m", "1 error en el tramo", FN, "criterio de la casa", "DUCT.segs[0].error ? 1 : 0", 1, 0, "fase2:H-166");
-  fila("CM.duct.7.g", "junto a un tramo sin caudal, el tramo sano conserva sus kilos", "TR-1 del proyecto fijo + tramo sin caudal de 25 m", `sólo TR-1: ${r(resFijo[0].kg, 2)} kg`, FK, "criterio de la casa", "DUCT.boq.kg", r(resFijo[0].kg, 2), 0.05, "fase2:H-166");
+  fila("CM.duct.7.a", "sin medida posible: kilos del tramo", "rectangular 6,000 L/s, 18 m, alto máximo 200 mm (ninguna medida de la serie queda entre 1.5 y 20 m/s)", "ninguna medida cumple → sin sección, 0 kg (hoy 400×200 a 75 m/s)", FN, "criterio de la casa", "DUCT.segs[0].kg", 0, 0, "vigente");
+  fila("CM.duct.7.b", "sin medida posible: el tramo queda con error visible", "ídem", "1 error en el tramo", FN, "criterio de la casa", "DUCT.segs[0].error ? 1 : 0", 1, 0, "vigente");
+  fila("CM.duct.7.c", "medida bloqueada sin capturar (rectangular y redondo): kilos", "dos tramos bloqueados, 2,000 L/s, 10 m cada uno, sin ancho/alto ni diámetro capturados", "sin respaldo 400×200 ni Ø250 → 0 kg", FN, "criterio de la casa", "DUCT.boq.kg", 0, 0, "vigente");
+  fila("CM.duct.7.d", "tramo sin caudal: kilos", "rectangular 0 L/s, 25 m", "sin caudal no hay sección → 0 kg (hoy 400×200, 225 kg)", FN, "criterio de la casa", "DUCT.boq.kg", 0, 0, "vigente");
+  fila("CM.duct.7.e", "tramo sin caudal: importe de ducto en la cotización", "rectangular 0 L/s, 25 m, cruces autorizados", "sin kilos no hay partida de lámina → 0 MXN", FN, "criterio de la casa", "(QUOTE.aux.find((a) => a.mot === 'duct' && a.un === 'KG') || { total: 0 }).total", 0, 0, "vigente");
+  fila("CM.duct.7.f", "tramo sin caudal: el tramo queda con error visible", "rectangular 0 L/s, 25 m", "1 error en el tramo", FN, "criterio de la casa", "DUCT.segs[0].error ? 1 : 0", 1, 0, "vigente");
+  fila("CM.duct.7.g", "junto a un tramo sin caudal, el tramo sano conserva sus kilos", "TR-1 del proyecto fijo + tramo sin caudal de 25 m", `sólo TR-1: ${r(resFijo[0].kg, 2)} kg`, FK, "criterio de la casa", "DUCT.boq.kg", r(resFijo[0].kg, 2), 0.05, "vigente");
 }
 /* ---- CM.duct.8: H-167 generar desde la carga (fase2) ---- */
 {

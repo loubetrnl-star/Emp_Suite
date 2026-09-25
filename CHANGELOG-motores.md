@@ -28,11 +28,12 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 |---|---|---|
 | 1 | 2.9.15 | lógica de partida |
 
-## Ductos y calibres (`duct`) · v1
+## Ductos y calibres (`duct`) · v2
 
 | Versión | Rev | Hallazgo / cambio de lógica |
 |---|---|---|
 | 1 | 2.9.15 | lógica de partida |
+| 2 | 2.9.24 | H-166 (política «nada se estima»): un tramo sin caudal, con medida bloqueada sin capturar (o fuera de la serie estándar) o sin ninguna medida de la serie que cumpla (1.5–20 m/s, aspecto, alto máximo, fricción) no lleva sección, kilos, soportes ni importe: `error` (ES) / `errorEn` como primer aviso del tramo, «sin medida» en la tabla, la hoja del tramo, el panel de cadena, la cédula PDF, la memoria y el Excel (EN «no size»); `sizeRect` devuelve null sin candidato. Antes 400×200 (sin candidato, rectangular bloqueado, tramo sin caudal) o Ø250 (redondo bloqueado): 6,000 L/s con alto máximo 200 mm salía a 75 m/s; 25 m sin caudal = 225 kg en la cotización. Proyecto fijo: cifras sin cambio |
 
 ## Ventilación (`vent`) · v3
 
@@ -42,7 +43,7 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 | 2 | 2.9.24 | H-154 + H-156: la cobertura real manda en la selección Greenheck (cfmMin ≤ objetivo ≤ cfmMax, sin la tolerancia ×0.9); la familia propia del modo sólo ordena entre los que cubren (luego el de menor caudal nominal); si nadie cubre no hay modelo (`primary` null: nada llega a propuesta, memoria integral ni eléctrico) y `closest` sólo alimenta el aviso. Proyecto fijo: 11,643 CFM → CSW-30 (7,000–18,000) en vez de GB-360 (4,000–9,000) con «ningún modelo cubre» |
 | 3 | 2.9.24 | H-155: sin medidas no hay caudal: campana sin largo o fondo y rejilla sin ancho, alto, área libre o velocidad de cara dan demanda 0 con aviso de error en el motor y la matriz (antes pisos de 0.1 ft, 5 % y 100 fpm fabricaban 30 y 258 CFM y sus partidas). `avisos` en el resultado de computeVent. Proyecto fijo: sin cambio |
 
-## Cotización (`quote`) · v20
+## Cotización (`quote`) · v21
 
 | Versión | Rev | Hallazgo / cambio de lógica |
 |---|---|---|
@@ -57,6 +58,7 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 | 18 | 2.9.24 | H-254 (regla d «tal cual»): el factor de plaza deja de multiplicar la sección H (flete, aduana e importación capturados) y los renglones con origen declarado (referencia de mercado o proveedor local); el costo directo = afectos × factor + exentos, y el catálogo cuadra con él. Antes, en Mexicali, la importación de 18,500 salía 19,980 y la referencia 238.65 → 257.74 sin decirlo. Proyecto fijo (Tijuana, factor 1.00): sin cambio |
 | 19 | 2.9.24 | H-253 (regla e): la cotización formal (licitación) no sale mientras haya precio de referencia de mercado, mano de obra por capturar, flete/aduana/importación sin capturar o moneda USD sin tipo de cambio fechado (además de la tubería sin precio que ya bloqueaba); `bloqueosFormal()` nombra cada razón en el error y en pantalla junto al botón. El Budget sigue saliendo con esas partidas marcadas. Proyecto fijo: cifras sin cambio |
 | 20 | 2.9.24 | H-252 (decisión 6 del dueño, opción a; PLAN.md §1 «nunca estimar»): todo precio sin origen declarado (catálogo semilla de la casa: PRICE_SEED/ley de potencia, QUOTE_SEED, PU_CIVIL, SIS_*, PU_SOP_*, ELEVACION, COMPRESORES/SECADORES/TUB_AIRE; también un número tecleado sin fuente ni fecha) se marca «SEMILLA · SIN FUENTE» (EN «SEED · NO SOURCE») en cada partida del Budget (pantalla, PDF y Excel) y bloquea la formal con su conteo. Sin marca: tubería hidráulica con origen (referencia o proveedor) e importación capturada con fuente y fecha. `buildLicitacionPdf({borrador: true})` (sin botón) sirve para revisar el documento y sale «BORRADOR INTERNO · NO ES OFERTA». Proyecto fijo: cifras sin cambio |
+| 21 | 2.9.24 | H-166 (dependencia de ductos): la lámina de un tramo de ducto sin sección no entra a los kilos de la partida y queda pendiente con su razón (ES/EN). Proyecto fijo: cifras sin cambio |
 | 14 | 2.9.24 | dependencia de soporte v6 (H-226): el anclaje va Por cotizar mientras no haya SDS con fuente, estructura y f'c |
 | 13 | 2.9.24 | dependencia de soporte v5 (H-225): sin altura de colgado la varilla sale pendiente, no cotizada |
 | 12 | 2.9.24 | dependencia de vent v2 (H-154): la partida de ventilación nombra el modelo que cubre de verdad, o ninguno |
@@ -133,7 +135,7 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 | 4 | 2.9.24 | H-243 (criterio de la casa, PLAN-CRITICOS §Fase 3): muro clasificado y media caña CUARTO POR CUARTO: perímetro capturado en la pestaña de obra civil o, sin captura, rectángulo 3:2 del área del cuarto declarado «estimado» en la partida (ES/EN) × la altura del cuarto; antes el desarrollo de todo el edificio × fracción de área limpia, entre la altura media de todas las zonas. El muro no clasificado sigue con la fracción de área. Proyecto fijo (cuarto de 120 m² × 3 m): muro clasificado 73.32 → 134.16 m², media caña 31.11 → 89.44 ml; total 3,348,872.39 → 3,598,622.05 MXN |
 | 5 | 2.9.24 | H-244 (decisión 5 del dueño, opción a): la tabiquería es un perímetro capturable por zona en la pestaña de obra civil (`civil.perimZonas.<id de zona>`); sin captura, rectángulo 3:2 del área × altura de la zona, marcado «estimado» en la partida (ES/EN). Los muros de carga térmica (envolvente por orientación) ya no entran: antes se tomaban cuando existían y capturar un muro exterior de 30 m² bajaba el muro civil (−400,446 MXN). Proyecto fijo: desarrollo 427.71 → 856.08 m² (todo estimado), muro no clasificado 354.39 → 709.32 m² |
 
-## Soportería (`soporte`) · v9
+## Soportería (`soporte`) · v10
 
 | Versión | Rev | Hallazgo / cambio de lógica |
 |---|---|---|
@@ -146,4 +148,5 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 | 7 | 2.9.24 | H-230 («nada se estima»): el modo «valores propios» pide ancho y alto del ducto, y diámetro y material (acero / cobre / termoplástico) de cada tubería capturada a mano; sin ellos la línea no se cuenta ni se cotiza y queda pendiente (aviso en el motor, pendiente en la cotización); la memoria dice que las medidas son capturadas a mano. Antes se inventaban 400×300 mm y 50 / 100 / 32 mm de acero y la memoria los imprimía como calculados. Proyecto fijo (modo motores): sin cambio |
 | 8 | 2.9.24 | H-229 (decisión 4 del dueño): claros de cobre = mínimo de ANSI/MSS SP-58-2018 (reproducción PHD, URL en el código) e IPC 2009 Tabla 308.5 (folleto MCP, URL): ½"–¾" 1.524 m, 1"–1¼" 1.829, 1½"–2" 2.438, 2½" 2.743, 3"–4" 3.048 (antes 1.8 / 2.4 / 3.0 / 3.7 m sin fuente). Secundarias declaradas en la memoria; ratificar con el texto. Proyecto fijo (cobre): más soportes |
 | 9 | 2.9.24 | H-228: claros del termoplástico por subtipo, IPC 2009 Tabla 308.5 (folleto MCP, secundaria; URL en el código): CPVC ≤ 1" 0.9 m (decisión del dueño, más cerrado que 3 ft) y ≥ 1¼" 1.219 m (antes 1.2 hasta 3" y 1.8 arriba); PP-R ≤ 1" 0.813 m y ≥ 1¼" 1.219 m (antes la tabla de CPVC); PEAD no tiene renglón (la tabla sólo lista PE-AL-PE y PEX): queda pendiente de claro, no se cuenta ni se cotiza. El subtipo viaja en la instantánea motores>soporte (`hidroSub`) y el modo a mano pide CPVC / PP-R / PEAD. Cada soporte de termoplástico lleva ancla (misma selección ACI 318-19 y la compuerta H-226) y 4 tuercas + 4 rondanas, el criterio del despiece (antes 0 / 0). Proyecto fijo (cobre): sin cambio |
+| 10 | 2.9.24 | H-166 (dependencia de ductos): un tramo de ducto sin sección no se soporta con 400×200 ni Ø250 supuestos (antes `num(null, 400)`): queda en `manualPendientes` con su razón (y de ahí pendiente en la cotización), fuera de `mDucto`; la instantánea lo guarda marcado (`error`, `tag`) sólo cuando lo es, así la firma de las instantáneas existentes no cambia. Proyecto fijo: cifras sin cambio |
 

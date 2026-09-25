@@ -1495,7 +1495,7 @@ function buildMemoriaPdf() {
   VENT.method.forEach((m) => pdfParagraph(d, "· " + m));
   pdfHeading(d, "6. Cédula de ductos");
   pdfTable(d, ["Tramo", "Servicio", "m3/h", "Seccion mm", "m/s", "Pa/m", "dP Pa", "Cal."],
-    DUCT.segs.map((s) => [s.tag, s.service, n(s.flow * 3.6, 0), s.shape === "round" ? "D " + n(s.d, 0) : `${s.w} x ${s.h}`, n(s.V, 1), n(s.Pam, 2), n(s.total, 1), String(s.gauge.gauge)]),
+    DUCT.segs.map((s) => [s.tag, s.service, n(s.flow * 3.6, 0), s.error ? "sin medida" : s.shape === "round" ? "D " + n(s.d, 0) : `${s.w} x ${s.h}`, n(s.V, 1), n(s.Pam, 2), n(s.total, 1), String(s.gauge.gauge)]),
     [80, 70, 60, 85, 45, 45, 50, 35]);
   pdfParagraph(d, `Caída de presión acumulada ${n(DUCT.path, 1)} Pa · presión de ventilador sugerida ${n(DUCT.path * 1.15, 1)} Pa con 15 % de margen (suma de todos los tramos de suministro y retorno, sin recorrido crítico; ${cotaDuctTexto(DUCT)}) · lámina ${n(DUCT.boq.sheet, 1)} m² · ${n(DUCT.boq.kg, 0)} kg · ${n(DUCT.boq.joints, 0)} juntas transversales · ${n(DUCT.boq.hangers, 0)} soportes.`);
   pdfHeading(d, "7. Equipos seleccionados");
@@ -1513,7 +1513,7 @@ function buildCedulaPdf() {
   pdfTitle(d, "Cédula de ductos y calibres", `${S.meta.name} · clase SMACNA ${S.duct.meta.pc}" w.g.`);
   pdfHeading(d, "Cédula de tramos");
   pdfTable(d, ["Tramo", "Servicio", "m3/h", "Seccion mm", "De mm", "m/s", "dP Pa", "Calibre", "Junta"],
-    DUCT.segs.map((s) => [s.tag, s.service, n(s.flow * 3.6, 0), s.shape === "round" ? "D " + n(s.d, 0) : `${s.w} x ${s.h}`, n(s.De, 0), n(s.V, 1), n(s.total, 1), String(s.gauge.gauge), s.gauge.joint]),
+    DUCT.segs.map((s) => [s.tag, s.service, n(s.flow * 3.6, 0), s.error ? "sin medida" : s.shape === "round" ? "D " + n(s.d, 0) : `${s.w} x ${s.h}`, n(s.De, 0), n(s.V, 1), n(s.total, 1), String(s.gauge.gauge), s.gauge.joint]),
     [70, 65, 55, 75, 45, 40, 45, 45, 90]);
   /* Despiece: lo que se pide al proveedor, separado de lo que se instala. */
   const D = DUCT.boq.despiece;
@@ -5548,7 +5548,7 @@ function buildPropuestaXlsx(opt) {
       DUCT.segs.forEach((s) => hf.push([
         xT(s.tag, XS.TD), xT(SERV[s.service] || s.service, XS.TD),
         xN(Math.round(s.flow * 3.6), XS.NUM), xN(Math.round(s.flow * 3.6 / 1.699), XS.NUM),
-        xT(s.shape === "round" ? `D ${n(s.d, 0)}` : `${s.w} x ${s.h}`, XS.TD),
+        xT(s.error ? L("sin medida", "no size") : s.shape === "round" ? `D ${n(s.d, 0)}` : `${s.w} x ${s.h}`, XS.TD),
         xN(+s.V.toFixed(2), XS.NUM), xN(+s.Pam.toFixed(2), XS.NUM), xN(+s.total.toFixed(1), XS.NUM),
         xT(String(s.gauge.gauge), XS.TD)]));
       const fin = hf.length;
@@ -8166,6 +8166,9 @@ function computeSoporte(Gc) {
     DUCT.segs.forEach((s) => {
       const L = Math.max(0, num(s.L));
       if (L <= 0) return;
+      /* H-166 (dependencia de ductos, soporte v10): el motor de ductos no le dio sección; antes num(null, 400) lo soportaba
+         como 400×200 (o Ø250). Queda pendiente con su razón y no entra a los metros ni a la cotización de soportes. */
+      if (s.error) { manualPendientes.push({ que: `Ducto ${s.tag || ""} (${n(L, 0)} m) sin sección del motor de ductos`, queEn: `Duct ${s.tag || ""} (${n(L, 0)} m) without a size from the duct engine`, falta: "medida del ducto (captura el caudal o la medida en Ductos)", faltaEn: "duct size (enter the airflow or the size in Ductwork)" }); return; }
       mDucto += L;
       if (s.shape === "round") tramosSC.push({ id: nuevoId("duc"), disciplina: "hvac", tipo: "ducto_redondo",
         descripcion: s.tag, longitud_m: L, diam_mm: Math.max(50, num(s.d, 250)), calibre: s.gauge ? s.gauge.gauge : undefined,
@@ -8537,6 +8540,10 @@ function computeQuote() {
   const faltan = [];
   /* rev 2.9.16 · Partidas que se conocen pero no se cotizan porque falta un dato del usuario: se declaran, no se inventan. */
   const pendientes = [];
+  /* H-166 (dependencia de ductos, quote v21): el tramo sin sección no entra a los kilos de lámina; queda pendiente con su razón. */
+  ((typeof DUCT !== "undefined" && DUCT && DUCT.segs) || []).filter((s) => s.error && num(s.L) > 0).forEach((s) => pendientes.push({ mot: "duct",
+    desc: `Ducto de lámina, tramo ${s.tag} (${n(s.L, 1)} m)`, descEn: `Sheet metal duct, run ${s.tag} (${n(s.L, 1)} m)`,
+    motivo: `pendiente de medida: ${s.error}`, motivoEn: `size pending: ${s.errorEn || s.error}` }));
   /* rev 2.9.23 · Partidas sin precio que el Budget Proposal imprime «Por cotizar», y renglones con precio de referencia. */
   const porCotizar = [], referencias = [];
   /* rev 2.9.23 · DECISIÓN DEL DUEÑO: flete, aduana e importación a México es un renglón propio, siempre «Por cotizar» hasta
@@ -9189,7 +9196,7 @@ function sizeRect(De, maxAspect, Q, targetPam, targetV, rho, mu, eps, hmax = 0) 
     sc += (w / h - 1) * 2;
     if (!best || sc < best.sc) best = { w, h, sc };
   }
-  return best || { w: 400, h: 200 };
+  return best;   // H-166: sin candidato no hay medida (antes 400×200 aunque diera 75 m/s); calcSegment deja el tramo con error
 }
 /* =========================================================================
    DESPIECE DE FABRICACIÓN Y COMPRA
@@ -9319,17 +9326,44 @@ function despieceProyecto(segs, meta) {
     largoEspiro: (LARGOS_ESPIRO.find((x) => Math.abs(x[0] - num(meta && meta.largoEspiro, 3.048)) < .01) || LARGOS_ESPIRO[0])[1] };
 }
 
+/* H-166 (rev 2.9.24, duct v2; «nada se estima»): un tramo sin caudal, con medida bloqueada sin capturar (o fuera de la serie)
+   o sin ninguna medida de la serie que cumpla NO lleva sección, kilos ni importe: queda con su error como primer aviso (la
+   tabla de tramos lo pinta), «sin medida» en la cédula y el Excel, y pendiente en la cotización y en la soportería. Antes
+   caía a 400×200 (sin candidato o rectangular bloqueado) o a Ø250 (redondo bloqueado) y esa medida inventada llegaba a los
+   kilos, a la cotización y a los soportes: 6,000 L/s a 75 m/s; 25 m sin caudal = 225 kg. */
+const ERR_TRAMO = {
+  sinCaudal: ["Sin caudal: el tramo no lleva sección, kilos ni importe hasta capturar el caudal (H-166)",
+    "No airflow: the run carries no size, weight or cost until the airflow is entered (H-166)"],
+  bloqueoSinMedida: ["Medida bloqueada sin capturar: captura el ancho y el alto (o el diámetro); no se supone 400×200 ni Ø250 (H-166)",
+    "Locked size not entered: enter the width and height (or the diameter); 400×200 or Ø250 is not assumed (H-166)"],
+  bloqueoFueraSerie: ["Medida bloqueada fuera de la serie estándar (hasta 3000 mm o Ø2000): sin sección (H-166)",
+    "Locked size beyond the standard series (up to 3000 mm or Ø2000): no size (H-166)"],
+  sinCandidato: ["Ninguna medida de la serie cumple (1.5–20 m/s, aspecto, alto máximo y fricción objetivo): sin sección, kilos ni importe; revisa el alto máximo o el aspecto, o divide el caudal (H-166)",
+    "No size in the series qualifies (1.5–20 m/s, aspect ratio, maximum height and target friction): no size, weight or cost; check the maximum height or the aspect ratio, or split the airflow (H-166)"],
+};
+function tramoSinMedida(s, meta, [error, errorEn]) {
+  const esRedondo = s.shape === "round";
+  const largoCom = esRedondo ? Math.max(.5, num(meta.largoEspiro, 3.048)) : 1.219;
+  const r = { ...s, d: null, w: null, h: null, De: 0, A: 0, V: 0, Re: 0, f: 0, Pam: 0, L: Math.max(0, num(s.length)), straight: 0, fitLoss: 0, total: 0,
+    gauge: { gauge: "—", th_in: 0, th_mm: 0, joint: "—", ref: "sin medida (H-166)", material: "" }, acc: [], warn: [error], longSide: 0,
+    sheet: 0, kg: 0, joints: 0, hangers: 0, largoCom, corners: 0, sealant: 0, error, errorEn };
+  r.despiece = { tipo: esRedondo ? "espiroducto" : "rectangular", largoCom, piezas: [], enteras: 0, recorte: 0, uniones: 0, desperdicio: 0, kgPieza: 0, total: 0 };
+  return r;
+}
 function calcSegment(s, meta) {
   const Q = s.flow / 1000, rho = meta.rho, mu = meta.mu, eps = meta.eps;
   const warn = [];
   let d = null, w = null, hgt = null, De = 0, A = 0;
+  if (!(num(s.flow) > 0)) return tramoSinMedida(s, meta, ERR_TRAMO.sinCaudal);
   if (s.lock) {
-    if (s.shape === "round") { d = STD_ROUND.find((x) => x >= (s.d || 250) * .98) ?? 250; De = d; A = areaRound(d); }
+    const falta = s.shape === "round" ? !(num(s.d) > 0) : !(num(s.w) > 0 && num(s.h) > 0);
+    if (falta) return tramoSinMedida(s, meta, ERR_TRAMO.bloqueoSinMedida);
+    if (s.shape === "round") { d = STD_ROUND.find((x) => x >= num(s.d) * .98) ?? null; if (d) { De = d; A = areaRound(d); } }
     else {
-      w = STD_RECT.find((x) => x >= (s.w || 400) * .98) ?? 400; hgt = STD_RECT.find((x) => x >= (s.h || 200) * .98) ?? 200;
-      if (w < hgt) [w, hgt] = [hgt, w];
-      De = equivD(w, hgt); A = areaRect(w, hgt);
+      w = STD_RECT.find((x) => x >= num(s.w) * .98) ?? null; hgt = STD_RECT.find((x) => x >= num(s.h) * .98) ?? null;
+      if (w && hgt) { if (w < hgt) [w, hgt] = [hgt, w]; De = equivD(w, hgt); A = areaRect(w, hgt); }
     }
+    if (!(A > 0)) return tramoSinMedida(s, meta, ERR_TRAMO.bloqueoFueraSerie);
   } else if (s.shape === "round") {
     d = s.method === "velocity" ? sizeRoundV(Q, s.targetV) : sizeRoundEF(Q, s.targetF, rho, mu, eps);
     De = d; A = areaRound(d);
@@ -9337,6 +9371,7 @@ function calcSegment(s, meta) {
     const r = s.method === "velocity"
       ? sizeRect(Math.sqrt(4 * (Q / Math.max(.5, s.targetV)) / Math.PI) * 1000, s.aspect, Q, null, s.targetV, rho, mu, eps, s.hmax)
       : sizeRect(sizeRoundEF(Q, s.targetF, rho, mu, eps), s.aspect, Q, s.targetF, null, rho, mu, eps, s.hmax);
+    if (!r) return tramoSinMedida(s, meta, ERR_TRAMO.sinCandidato);
     w = r.w; hgt = r.h; De = equivD(w, hgt); A = areaRect(w, hgt);
   }
   const V = A > 0 ? Q / A : 0;                       // velocidad real: accesorios y avisos
@@ -9372,7 +9407,7 @@ function calcSegment(s, meta) {
   const hangers = Math.max(1, Math.ceil(L / (longSide > 900 ? 1.8 : 2.4)));
   const r = {
     ...s, d, w, h: hgt, De, A, V, Re, f, Pam, L, straight: Pam * L, fitLoss, total,
-    gauge, acc, warn, longSide, sheet, kg, joints, hangers, largoCom,
+    gauge, acc, warn, longSide, sheet, kg, joints, hangers, largoCom, error: null, errorEn: null, /* H-166: el campo existe en todo tramo */
     corners: s.shape === "round" ? 0 : joints * 4, sealant: joints * perim,
   };
   r.despiece = despieceSeg(r, meta);
@@ -15822,7 +15857,7 @@ const view = $("#view");
 /* ---------- Panel de cadena (elemento distintivo) ---------- */
 function chainHtml() {
   const t = totals(), main = DUCT.segs[0];
-  const size = !main ? "—" : main.shape === "round" ? `Ø${n(U.dim(main.d)[0], 0)}` : `${n(U.dim(main.w)[0], 0)}×${n(U.dim(main.h)[0], 0)}`;
+  const size = !main ? "—" : main.error ? "sin medida" : main.shape === "round" ? `Ø${n(U.dim(main.d)[0], 0)}` : `${n(U.dim(main.w)[0], 0)}×${n(U.dim(main.h)[0], 0)}`;
   const eq = LOADS[0]?.eq;
   return `<div class="chain">
     <div class="link"><div class="k">Zonas</div><div class="v">${S.zones.length}</div><div class="n">${n(U.area(t.area)[0], 0)} ${U.area(0)[1]} acondicionados</div></div>
@@ -17413,7 +17448,7 @@ function snapshotSoporte() {
        instantánea marca la soportería "desactualizada" solo (regla 3) — no
        hizo falta código nuevo de comparación, ya existía para todo lo demás. */
     duct: segs.map((s) => ({ L: num(s.L), shape: s.shape, d: num(s.d, 250), w: num(s.w, 400), h: num(s.h, 200),
-      gauge: s.gauge ? num(s.gauge.gauge) : null })),
+      gauge: s.gauge ? num(s.gauge.gauge) : null, ...(s.error ? { error: 1, tag: s.tag } : {}) })), /* H-166: el tramo sin sección viaja marcado */
     hidro: ht.map((t) => ({ tag: t.tag || t.etiqueta || "", L: num(t.L), d: num(t.d) })),
     hidroMat: famSoporteAgua(S.hidro && S.hidro.material),
     /* H-228: el claro del termoplástico depende del subtipo (CPVC / PP-R / PEAD); la familia sola no alcanza. */
@@ -17454,7 +17489,8 @@ function computeSoporteGobernado(G) {
      cae al mismo respaldo que había, así que un proyecto viejo no truena, solo
      sigue viéndose como antes hasta que se vuelva a aceptar la instantánea. */
   DUCT = { segs: (snap.duct || []).map((s) => ({ L: num(s.L), shape: s.shape,
-    d: num(s.d, 250), w: num(s.w, 400), h: num(s.h, 200), gauge: s.gauge ? { gauge: s.gauge } : undefined })) };
+    d: num(s.d, 250), w: num(s.w, 400), h: num(s.h, 200), gauge: s.gauge ? { gauge: s.gauge } : undefined,
+    ...(s.error ? { error: "sin sección en la instantánea (H-166)", tag: s.tag } : {}) })) };
   HIDRO = { tramos: (snap.hidro || []).map((t) => ({ tag: t.tag, L: num(t.L), d: num(t.d) })) };
   FUEGO = {
     nTotal: num(snap.fuego && snap.fuego.nTotal),
@@ -18152,7 +18188,7 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "5", clean: "3", equip: "1", duct: "1", vent: "3", quote: "20", valor: "1", kaizen: "1", elec: "8", hidro: "8", fuego: "3", aire: "5", civil: "5", soporte: "9" };
+const MOTOR_VER = { load: "5", clean: "3", equip: "1", duct: "2", vent: "3", quote: "21", valor: "1", kaizen: "1", elec: "8", hidro: "8", fuego: "3", aire: "5", civil: "5", soporte: "10" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
@@ -18161,9 +18197,10 @@ const MOTOR_CAMBIOS = {
     { ver: "5", rev: "2.9.24", que: "H-141 (decisión (a) del dueño): la diversidad del edificio se aplica una sola vez, en el objetivo de planta; las ganancias internas de cada zona van al pico sin el factor (antes ×bldDiv en la zona y otra vez en la planta: con 0.8 el objetivo quedaba ×0.713). Criterio Carrier, ratificar con texto" }],
   vent: [{ ver: "2", rev: "2.9.24", que: "H-154 + H-156: la cobertura real manda en la selección Greenheck (cfmMin ≤ objetivo ≤ cfmMax, sin tolerancia ×0.9); la familia del modo sólo ordena entre los que cubren; si nadie cubre no hay modelo (proyecto fijo: GB-360 → CSW-30 para 11,643 CFM)" },
     { ver: "3", rev: "2.9.24", que: "H-155: sin medidas no hay caudal: campana sin largo o fondo y rejilla sin ancho, alto, área libre o velocidad dan demanda 0 con aviso (antes pisos de 0.1 ft, 5 % y 100 fpm fabricaban 30 y 258 CFM y sus partidas)" }],
+  duct: [{ ver: "2", rev: "2.9.24", que: "H-166: un tramo sin caudal, con medida bloqueada sin capturar o fuera de la serie, o sin ninguna medida de la serie que cumpla no lleva sección, kilos ni importe: error visible, «sin medida» en cédula y Excel, pendiente en cotización y soportería (antes 400×200 / Ø250 inventados)" }],
   clean: [{ ver: "2", rev: "2.9.16", que: "sin pisos de 1 m² ni 2.2 m; 5 Pa de ISO 14644-4 con aviso; ceros capturados respetados" },
     { ver: "3", rev: "2.9.24", que: "H-127: se respeta el signo de la presión diferencial capturada (contención en negativa, EU GMP Anexo 1 (2022) §4.14); piso de 5 Pa y fuga por rendijas sobre |ΔP|; el signo sale en memoria, PDF y Excel; aviso con los 10 Pa guía del Anexo 1" }],
-  quote: [{ ver: "2", rev: "2.9.16", que: "red hidráulica por diámetro con precio capturado; sin 50 m supuestos; partidas pendientes" }, { ver: "3", rev: "2.9.19", que: "tramo con longitud y sin unidades mueble queda pendiente" }, { ver: "4", rev: "2.9.23", que: "precio de tubería por renglón con origen (referencia de mercado o proveedor local), IVA desglosado y por metro; sin precio: partida Por cotizar en el Budget, bloqueo sólo en la formal" }, { ver: "5", rev: "2.9.23", que: "precios en USD sólo se convierten con tipo de cambio capturado con fecha; sin fecha salen Por cotizar y bloquean la formal (nada se estima)" }, { ver: "6", rev: "2.9.23", que: "referencias sólo de California y sólo material (mano de obra por capturar; combinados → Por cotizar); referencias IUSA retiradas; flete, aduana e importación como renglón propio siempre Por cotizar hasta capturarlo" }, { ver: "7", rev: "2.9.24", que: "H-198: un tramo de agua sin diámetro verificado (fuera del catálogo del material, o PEAD sin SDR ni fuente) va Por cotizar con sus metros; ya no se cotiza con el precio del mayor diámetro ni pide precio de un diámetro que no le corresponde" }, { ver: "8", rev: "2.9.24", que: "H-196: cisterna y equipo de bombeo sin precio semilla (9,500 MXN/m³ y 14,500 MXN/HP sin fuente): van Por cotizar con su volumen y su potencia; la bomba sólo cuando la presión de la red no alcanza; cisterna en 0 queda pendiente de volumen, nunca cisterna de 0 m³" }, { ver: "9", rev: "2.9.24", que: "H-206: bomba contra incendio y reserva sin precio fijo (385,000 MXN + 9,500 MXN/m³ sin fuente): Por cotizar con capacidad (gpm y L/min), presión, potencia y volumen declarados" }, { ver: "10", rev: "2.9.24", que: "dependencia de aire v3 (H-215): la partida del secador lleva la capacidad nominal de ISO 7183 A1 y declara si la corrección del fabricante está pendiente" }, { ver: "11", rev: "2.9.24", que: "dependencia de aire v5 (H-218): la partida de la red declara «diámetros indicativos: DI del fabricante pendiente» en aluminio e inoxidable" }, { ver: "12", rev: "2.9.24", que: "dependencia de vent v2 (H-154): la partida de ventilación nombra el modelo que cubre de verdad (o ninguno)" }, { ver: "13", rev: "2.9.24", que: "dependencia de soporte v5 (H-225): sin altura de colgado la varilla sale pendiente, no cotizada" }, { ver: "14", rev: "2.9.24", que: "dependencia de soporte v6 (H-226): el anclaje va Por cotizar (sección G) mientras no haya SDS con fuente, estructura y f'c" }, { ver: "15", rev: "2.9.24", que: "dependencia de soporte v8 (H-229): más soportes de cobre con los claros MSS/IPC" }, { ver: "16", rev: "2.9.24", que: "dependencia de civil v4 (H-243): muro clasificado y media caña por cuarto limpio" }, { ver: "17", rev: "2.9.24", que: "dependencia de civil v5 (H-244): tabiquería por zona, sin los muros de carga térmica" }, { ver: "18", rev: "2.9.24", que: "H-254: el factor de plaza no toca la sección H ni los precios con origen declarado (referencia o proveedor): tal cual (antes la importación de 18,500 salía 19,980 en Mexicali)" }, { ver: "19", rev: "2.9.24", que: "H-253: la formal (licitación) no sale con referencias de mercado, mano de obra por capturar, importación sin capturar o USD sin tipo de cambio fechado; cada bloqueo se nombra en pantalla y en el error" }, { ver: "20", rev: "2.9.24", que: "H-252 (decisión 6, opción a): cada precio semilla sin fuente sale en el Budget con «SEMILLA · SIN FUENTE» (EN «SEED · NO SOURCE») y bloquea la formal; sólo los renglones con origen declarado y la importación capturada quedan sin marca" }],
+  quote: [{ ver: "2", rev: "2.9.16", que: "red hidráulica por diámetro con precio capturado; sin 50 m supuestos; partidas pendientes" }, { ver: "3", rev: "2.9.19", que: "tramo con longitud y sin unidades mueble queda pendiente" }, { ver: "4", rev: "2.9.23", que: "precio de tubería por renglón con origen (referencia de mercado o proveedor local), IVA desglosado y por metro; sin precio: partida Por cotizar en el Budget, bloqueo sólo en la formal" }, { ver: "5", rev: "2.9.23", que: "precios en USD sólo se convierten con tipo de cambio capturado con fecha; sin fecha salen Por cotizar y bloquean la formal (nada se estima)" }, { ver: "6", rev: "2.9.23", que: "referencias sólo de California y sólo material (mano de obra por capturar; combinados → Por cotizar); referencias IUSA retiradas; flete, aduana e importación como renglón propio siempre Por cotizar hasta capturarlo" }, { ver: "7", rev: "2.9.24", que: "H-198: un tramo de agua sin diámetro verificado (fuera del catálogo del material, o PEAD sin SDR ni fuente) va Por cotizar con sus metros; ya no se cotiza con el precio del mayor diámetro ni pide precio de un diámetro que no le corresponde" }, { ver: "8", rev: "2.9.24", que: "H-196: cisterna y equipo de bombeo sin precio semilla (9,500 MXN/m³ y 14,500 MXN/HP sin fuente): van Por cotizar con su volumen y su potencia; la bomba sólo cuando la presión de la red no alcanza; cisterna en 0 queda pendiente de volumen, nunca cisterna de 0 m³" }, { ver: "9", rev: "2.9.24", que: "H-206: bomba contra incendio y reserva sin precio fijo (385,000 MXN + 9,500 MXN/m³ sin fuente): Por cotizar con capacidad (gpm y L/min), presión, potencia y volumen declarados" }, { ver: "10", rev: "2.9.24", que: "dependencia de aire v3 (H-215): la partida del secador lleva la capacidad nominal de ISO 7183 A1 y declara si la corrección del fabricante está pendiente" }, { ver: "11", rev: "2.9.24", que: "dependencia de aire v5 (H-218): la partida de la red declara «diámetros indicativos: DI del fabricante pendiente» en aluminio e inoxidable" }, { ver: "12", rev: "2.9.24", que: "dependencia de vent v2 (H-154): la partida de ventilación nombra el modelo que cubre de verdad (o ninguno)" }, { ver: "13", rev: "2.9.24", que: "dependencia de soporte v5 (H-225): sin altura de colgado la varilla sale pendiente, no cotizada" }, { ver: "14", rev: "2.9.24", que: "dependencia de soporte v6 (H-226): el anclaje va Por cotizar (sección G) mientras no haya SDS con fuente, estructura y f'c" }, { ver: "15", rev: "2.9.24", que: "dependencia de soporte v8 (H-229): más soportes de cobre con los claros MSS/IPC" }, { ver: "16", rev: "2.9.24", que: "dependencia de civil v4 (H-243): muro clasificado y media caña por cuarto limpio" }, { ver: "17", rev: "2.9.24", que: "dependencia de civil v5 (H-244): tabiquería por zona, sin los muros de carga térmica" }, { ver: "18", rev: "2.9.24", que: "H-254: el factor de plaza no toca la sección H ni los precios con origen declarado (referencia o proveedor): tal cual (antes la importación de 18,500 salía 19,980 en Mexicali)" }, { ver: "19", rev: "2.9.24", que: "H-253: la formal (licitación) no sale con referencias de mercado, mano de obra por capturar, importación sin capturar o USD sin tipo de cambio fechado; cada bloqueo se nombra en pantalla y en el error" }, { ver: "20", rev: "2.9.24", que: "H-252 (decisión 6, opción a): cada precio semilla sin fuente sale en el Budget con «SEMILLA · SIN FUENTE» (EN «SEED · NO SOURCE») y bloquea la formal; sólo los renglones con origen declarado y la importación capturada quedan sin marca" }, { ver: "21", rev: "2.9.24", que: "H-166 (dependencia de ductos): la lámina de un tramo sin sección queda pendiente con su razón (ES/EN) y fuera de los kilos de la partida" }],
   elec: [{ ver: "2", rev: "2.9.16", que: "canalización con las áreas del conductor de la memoria (THW-LS por omisión, NOM-001-SEDE Cap. 10 Tabla 5)" }, { ver: "3", rev: "2.9.18", que: "siete áreas THHN/THWN-2 corregidas a la Tabla 5" }, { ver: "4", rev: "2.9.19", que: "sin compresor de aire cuando no hay demanda" },
     { ver: "5", rev: "2.9.24", que: "H-183: conductor de puesta a tierra con la Tabla 250-122 de la NOM-001-SEDE-2012 (p. 151): 400 A → 2 AWG (antes 3 AWG, valor del NEC), renglones hasta 6000 A y columna de aluminio (hasta 100 A la tabla sólo da cobre)" },
     { ver: "6", rev: "2.9.24", que: "H-177: equipo con motocompresor hermético con MCA y MOP por el art. 440: conductor por la MCA de placa (440-4(b), 440-35; una MCA estimada por la suite no lo baja del 125 %) y protección igual al MOP o al valor inmediato inferior de 240-6(a) completo (16, 32, 63 A; abajo de 15 A sólo fusibles de 1, 3, 6, 10 A), sin el 250 % de la Tabla 430-52 (40VMA-240: 150 → 90 A; 40MBC-24: 25 → 15 A). Aceptar la cédula conserva MCA y MOP (marcados estimados); una carga sin kW no fija el principal" },
@@ -18188,7 +18225,7 @@ const MOTOR_CAMBIOS = {
     { ver: "6", rev: "2.9.24", que: "H-226: SDS (con fuente), tipo de estructura y f'c se capturan; sin ellos el anclaje se predimensiona con valores de referencia declarados y va Por cotizar; la memoria imprime Fp, ap y Rp con su aviso (antes SDS 1.0 / losa f'c 250 supuestos como datos)" },
     { ver: "7", rev: "2.9.24", que: "H-230: el modo «valores propios» pide medidas del ducto, diámetro y material de cada tubería; sin ellos la línea queda pendiente (antes 400×300, 50/100/32 mm de acero inventados)" },
     { ver: "8", rev: "2.9.24", que: "H-229 (decisión 4): claros de cobre al mínimo de MSS SP-58-2018 (PHD) e IPC 2009 T308.5 (MCP), secundarias declaradas: ½\"–¾\" 1.524 m, 1\"–1¼\" 1.829, 1½\"–2\" 2.438, 2½\" 2.743, 3\"–4\" 3.048 (antes 1.8 / 2.4 / 3.0 / 3.7)" },
-    { ver: "9", rev: "2.9.24", que: "H-228: claros del termoplástico por subtipo, IPC 2009 T308.5 (MCP, secundaria): CPVC ≤1\" 0.9 m (dueño) y ≥1¼\" 1.219 (antes 1.2 / 1.8), PP-R ≤1\" 0.813 y ≥1¼\" 1.219; PEAD sin renglón queda pendiente de claro; cada soporte de termoplástico lleva ancla (sujeta a H-226) y 4+4 tuercas/rondanas como el despiece (antes 0)" }],
+    { ver: "9", rev: "2.9.24", que: "H-228: claros del termoplástico por subtipo, IPC 2009 T308.5 (MCP, secundaria): CPVC ≤1\" 0.9 m (dueño) y ≥1¼\" 1.219 (antes 1.2 / 1.8), PP-R ≤1\" 0.813 y ≥1¼\" 1.219; PEAD sin renglón queda pendiente de claro; cada soporte de termoplástico lleva ancla (sujeta a H-226) y 4+4 tuercas/rondanas como el despiece (antes 0)" }, { ver: "10", rev: "2.9.24", que: "H-166 (dependencia de ductos): el tramo de ducto sin sección no se soporta con 400×200 ni Ø250 supuestos: queda pendiente con su razón y fuera de los metros y la cotización de soportes" }],
 };
 const motorVer = (id) => MOTOR_VER[id] || "1";
 function cambiosMotorTexto(id, desde) { return (MOTOR_CAMBIOS[id] || []).filter((c) => +c.ver > +(desde || 1)).map((c) => `v${c.ver} (rev ${c.rev}): ${c.que}`).join("; ") || "cambio de lógica del motor"; }
@@ -19904,7 +19941,7 @@ const specLabel = (k) => SPEC_LABELS[k] || k;
 function viewDuct() {
   const d = DUCT, m = S.duct.meta;
   const rows = d.segs.map((s, i) => {
-    const size = s.shape === "round" ? `Ø ${n(U.dim(s.d)[0], 0)}` : `${n(U.dim(s.w)[0], 0)} × ${n(U.dim(s.h)[0], 0)}`;
+    const size = s.error ? "sin medida" : s.shape === "round" ? `Ø ${n(U.dim(s.d)[0], 0)}` : `${n(U.dim(s.w)[0], 0)} × ${n(U.dim(s.h)[0], 0)}`;
     return `<tr>
       <td><button class="pick" style="padding:0;background:none;border:0;margin:0" data-act="seg" data-i="${i}"><div>
         <div style="font-family:var(--mono);font-weight:600">${esc(s.tag)}</div>
@@ -20128,7 +20165,7 @@ function viewComparativo() {
 function segmentSheet(i) {
   const s = S.duct.segments[i], r = DUCT.segs[i];
   return `<div class="sheet">
-    <div class="sheet-head"><div><h3>${esc(s.tag)}</h3><div class="sub">${n(U.flow(s.flow * 3.6)[0], 0)} ${U.flow(0)[1]} · ${r.shape === "round" ? `Ø ${n(r.d, 0)} mm` : `${r.w} × ${r.h} mm`} · calibre ${r.gauge.gauge}</div></div>
+    <div class="sheet-head"><div><h3>${esc(s.tag)}</h3><div class="sub">${n(U.flow(s.flow * 3.6)[0], 0)} ${U.flow(0)[1]} · ${r.error ? `sin medida · ${esc(r.error)}` : `${r.shape === "round" ? `Ø ${n(r.d, 0)} mm` : `${r.w} × ${r.h} mm`} · calibre ${r.gauge.gauge}`}</div></div>
     <button class="toolbtn" style="margin-left:auto" data-act="close">Cerrar</button></div>
     <div class="body" style="padding:14px">
       <div class="row">${inp("Etiqueta", `duct.segments.${i}.tag`, "text")}${inp("Caudal (L/s)", `duct.segments.${i}.flow`, "number", "10", "duct.flow", s)}</div>
