@@ -38,7 +38,7 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 |---|---|---|
 | 1 | 2.9.15 | lógica de partida |
 
-## Cotización (`quote`) · v10
+## Cotización (`quote`) · v11
 
 | Versión | Rev | Hallazgo / cambio de lógica |
 |---|---|---|
@@ -47,6 +47,7 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 | 3 | 2.9.19 | tramo con longitud y sin unidades mueble queda pendiente |
 | 4 | 2.9.23 | precio de tubería por renglón con origen (referencia de mercado o proveedor local), IVA desglosado y por metro; sin precio: partida Por cotizar en el Budget, bloqueo sólo en la formal |
 | 5 | 2.9.23 | precios en USD sólo se convierten con tipo de cambio capturado con fecha; sin fecha salen Por cotizar y bloquean la formal (nada se estima) |
+| 11 | 2.9.24 | dependencia de aire v5 (H-218): la partida de la red declara «diámetros indicativos: DI del fabricante pendiente» en aluminio e inoxidable |
 | 10 | 2.9.24 | dependencia de aire v3 (H-215): la partida del secador lleva la capacidad nominal de ISO 7183 A1 y declara si la corrección del fabricante queda pendiente |
 | 9 | 2.9.24 | H-206: la bomba contra incendio y su reserva no llevan precio fijo (385,000 MXN + 9,500 MXN/m³ sin fuente ni fecha): van «Por cotizar» (sección D) con capacidad (gpm y L/min), presión, potencia y volumen (m³ = L/min × min) declarados; con red municipal que alcanza no hay bomba ni reserva. `QUOTE_SEED.bombaFuego` y `cisternaM3` retirados. Proyecto fijo: −1,697,446.66 MXN directos |
 | 8 | 2.9.24 | H-196: cisterna y equipo de bombeo del hidrosanitario sin precio semilla (9,500 MXN/m³ y 14,500 MXN/HP no tenían fuente ni fecha): van «Por cotizar» con su volumen (m³) y su potencia (HP); la bomba sólo cuando la presión de la red no alcanza al mueble más exigente (`presOk` falso); cisterna en 0 queda «pendiente de volumen», nunca «cisterna de 0 m³». La matriz de alcance del Excel declara pendientes y partidas Por cotizar también en una sección sin partida con importe. Proyecto fijo: −36,250 MXN directos (bomba 2.5 HP a Por cotizar) |
@@ -99,7 +100,7 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 | 2 | 2.9.16 | sin área no hay demanda, bomba ni reserva; área mínima de operación NFPA 13 con aviso |
 | 3 | 2.9.24 | H-205: la altura que contra incendio hereda de las zonas es la MÁXIMA (rociador más alto), no la media ponderada por área (que sigue para ventilación, que trabaja por volumen): estática y presión requerida al rociador más alto, aviso de almacenamiento en rack con la altura real, campo «Altura libre al rociador más alto». Proyecto fijo: 4.71 → 6 m, presión requerida +1.29 m (37.815 → 39.105 m), 35 HP sin cambio |
 
-## Aire comprimido (`aire`) · v4
+## Aire comprimido (`aire`) · v5
 
 | Versión | Rev | Hallazgo / cambio de lógica |
 |---|---|---|
@@ -107,6 +108,7 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 | 2 | 2.9.16 | sin demanda no se cuentan unidades |
 | 3 | 2.9.24 | H-215: secador por ISO 7183:2007 Tabla 2 opción A1 (entrada 35 °C, 7 bar(e), 100 % del caudal): capacidad = todo el caudal del compresor (n × FAD real) a la capacidad nominal, factor 1.0; fuera del punto A1 la norma no da factores: la corrección es del fabricante y queda pendiente con aviso (antes FAD requerido / (0.92 × (0.9 + 0.03/bar)) de memoria, que en el propio punto de catálogo sobredimensionaba ×1.21). Proyecto fijo: secador 2.46 → 2.43 m³/min; kW de operación y energía siguen la capacidad nueva. Cifras de regresión: entra `secador` |
 | 4 | 2.9.24 | H-216: el tanque pulmón no se trunca a 5,000 L en silencio: si el teórico rebasa el mayor de la lista comercial de la casa se instalan varios de 5,000 L en paralelo (capacidad instalada ≥ teórica; `tanqueUnit`, `nTanques`), con aviso; memoria, PDF, pantalla y partida lo declaran (13,103 L → 3 × 5,000 = 15,000 L; antes 5,000 L y «se sube al comercial inmediato superior»). Proyecto fijo: sin cambio (3,000 L). Cifras de regresión: entra `nTanques` |
+| 5 | 2.9.24 | H-218: el diámetro interior es del material: cobre tipo L con los DI de ASTM B88 (los mismos de `TUB_AGUA.cobre`; 55 m de cobre: 1" → 1 1/4"), acero con cédula 40 (ASME B36.10), aluminio e inoxidable con cédula 40 sólo como indicativo y el DI real del fabricante pendiente (aviso, memoria, PDF, pantalla y partida). Proyecto fijo (aluminio): sin cambio de cifras, con la pendencia declarada |
 
 ## Obra civil (`civil`) · v3
 

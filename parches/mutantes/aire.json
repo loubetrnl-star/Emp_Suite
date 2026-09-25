@@ -70,5 +70,9 @@
   { "id": "aire.m35", "que": "ciclo del tanque a la mitad (3600→1800 s/h)", "logica": true,
     "buscar": "const tCiclo = 3600 / arr;", "reemplazar": "const tCiclo = 1800 / arr;", "estado": "vigente" },
   { "id": "aire.m36", "que": "ramal sin límite de velocidad (15→30 m/s)", "logica": true,
-    "buscar": "\"Ramales y bajadas a punto de uso\", 15, dPred * 0.5)", "reemplazar": "\"Ramales y bajadas a punto de uso\", 30, dPred * 0.5)", "estado": "vigente" }
+    "buscar": "\"Ramales y bajadas a punto de uso\", 15, dPred * 0.5)", "reemplazar": "\"Ramales y bajadas a punto de uso\", 30, dPred * 0.5)", "estado": "vigente" },
+  { "id": "aire.m37", "que": "H-218: el cobre vuelve a dimensionarse con DI de cédula 40 en vez de los de ASTM B88", "logica": true,
+    "buscar": "const DI = matId === \"cobre\" ? { d: TUB_AGUA.cobre.d,", "reemplazar": "const DI = matId === \"cobre\" ? { d: DIAM_AIRE,", "estado": "vigente" },
+  { "id": "aire.m38", "que": "H-218: aluminio e inoxidable sin declarar el DI del fabricante pendiente", "logica": true,
+    "buscar": "const diPendiente = DI.pendiente && tramos.some((t) => t.L > 0);", "reemplazar": "const diPendiente = false;", "estado": "vigente" }
 ]

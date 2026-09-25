@@ -6679,6 +6679,35 @@ t("S.62 (H-217, decisión 3 del dueño) la curva de simultaneidad se declara com
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+t("S.63 (H-218) el diámetro interior de la red de aire es del material: cobre tipo L con los DI de ASTM B88 (los de TUB_AGUA.cobre), acero con cédula 40, y aluminio/inoxidable con cédula 40 sólo como indicativo y el DI del fabricante pendiente, declarado con aviso, memoria, PDF y partida", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.63"; Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.63" }; });
+    const consumos = () => [{ ...G("defaultConsumo")("Sopleteo"), cant: 2, lmin: 400, bar: 6, uso: .5 }, { ...G("defaultConsumo")("Actuadores"), cant: 4, lmin: 250, bar: 6, uso: .3 }];
+    const red = () => (G("QUOTE").aux || []).find((x) => x.mot === "aire" && x.un === "ML");
+    /* Cobre tipo L, 55 m (caso CM.aire.4): con el DI real de B88 el 1" (26.04 mm) pasa de 8 m/s y sube a 1 1/4" (32.13 mm). */
+    S.aire = { ...G("defaultAire")(), material: "cobre", Lprincipal: 55, Lramales: 0, consumos: consumos() }; G("recompute")();
+    let A = G("AIRE");
+    eq(A.tramos[0].nom, '1 1/4"', "troncal de cobre con DI de B88 (antes 1\" con 26.6 mm de cédula 40):"); cerca(A.tramos[0].d, 32.13, 0.01, "DI de B88 tipo L:");
+    eq(A.diPendiente, false, "cobre: DI con fuente:"); contiene(A.diFuente, "B88", "fuente declarada:");
+    if (A.avisos.some((a) => /DI del fabricante/.test(a.msg))) throw new Error("cobre no debe tener aviso de DI pendiente");
+    if (!A.memo.some((m) => /B88/.test(m))) throw new Error("la memoria no dice de dónde salen los DI del cobre");
+    /* Aluminio calibrado: el DI es del fabricante; cédula 40 sólo como indicativo, con aviso. */
+    S.aire = { ...G("defaultAire")(), material: "aluminio", Lprincipal: 55, Lramales: 0, consumos: consumos() }; G("recompute")(); A = G("AIRE");
+    eq(A.diPendiente, true, "aluminio: DI del fabricante pendiente:");
+    const av = A.avisos.find((a) => /DI del fabricante/.test(a.msg));
+    if (!av || !/indicativ/.test(av.msg)) throw new Error("falta el aviso de DI del fabricante pendiente con diámetros indicativos");
+    contiene(red().desc, "pendiente", "la partida de la red lo declara:"); contiene(red().descEn, "pending", "y en inglés:");
+    const txt = [...Buffer.from(G("buildAirePdf")()).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");
+    contiene(txt, "fabricante", "el PDF lo declara:");
+    /* Acero galvanizado: cédula 40 es su DI (ASME B36.10). */
+    S.aire = { ...G("defaultAire")(), material: "acero_gal", Lprincipal: 55, Lramales: 0, consumos: consumos() }; G("recompute")(); A = G("AIRE");
+    eq(A.diPendiente, false, "acero: cédula 40 es su DI:"); contiene(A.diFuente, "40", "fuente:");
+    if (A.avisos.some((a) => /DI del fabricante/.test(a.msg))) throw new Error("acero no debe tener aviso de DI pendiente");
+    if (!/pendiente/.test(red().desc) === false) throw new Error("la partida de acero no debe decir pendiente");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 /* ===== R. Regresión por motor (rev 2.9.22, decisión del dueño): un proyecto fijo con cifras esperadas por disciplina ===== */
 const REG_DIR = "parches/regresion-motores/";
 const REG_PROY = fs.readFileSync(REG_DIR + "regresion-motores.emp.json", "utf8");
@@ -7007,23 +7036,24 @@ t("R.9 H-52 un error real de aire comprimido (clase médica en tubería no inoxi
     eq(V.ok, false, "VALID.ok debe dar falso con un error real de aire comprimido:");
   } finally { S.aire = aire0; G("recompute")(); }
 });
-t("R.10 H-52 un diámetro de tubería fuera de catálogo en soportería (H-48) ya cuenta en VALID.errs, no queda invisible", () => {
+t("R.10 H-52 / H-218 un gasto que no cabe en el catálogo del material no queda invisible: en cobre (ASTM B88 hasta 4\") el tramo queda fuera de catálogo con error en aire, llega a VALID.errs y a soportería entra con el tope, no con un 5\"-6\" que SoporteCalc no tiene", () => {
   const aire0 = JSON.parse(JSON.stringify(S.aire)), sop0 = JSON.parse(JSON.stringify(S.soporte));
   try {
-    /* Demanda enorme a propósito para que la red principal de aire resuelva
-       en 5"-6", que SoporteCalc no tiene catalogado en cobre (H-48/H-77) —
-       mismo mecanismo que R.2 (calcularTramo directo), aquí por la ruta real
-       de captura hasta soportería. */
-    /* Arranque en ceros: defaultAire() ya no trae longitud de red de
-       ejemplo; sin Lprincipal/Lramales no hay tramos que soportar. */
+    /* Demanda enorme a propósito. Antes de H-218 la red de cobre resolvía en 5"-6" de cédula 40 (que SoporteCalc no tiene
+       catalogado en cobre: H-48/H-77) y el error salía en soportería. Con los DI de ASTM B88 el catálogo de cobre termina en 4":
+       el tramo queda fuera de catálogo en el propio motor de aire (error visible) y soportería recibe 4" (en catálogo). La
+       visibilidad del error de catálogo de SoporteCalc por la ruta directa la sigue vigilando R.2. */
     S.aire = { ...G("defaultAire")(), material: "cobre", Lprincipal: 120, Lramales: 90,
       consumos: [{ id: "r10", tipo: "generico", nombre: "Carga de prueba", cant: 1, lmin: 60000, bar: 6, uso: 1 }] };
     S.soporte = G("defaultSoporte")();
     G("recompute")();
-    if (!(G("SOPORTE").avisos.some((a) => a.lvl === "err"))) throw new Error("el caso no aísla lo que se prueba: SOPORTE debe traer un aviso de nivel err");
+    const A = G("AIRE");
+    eq(A.tramos[0].tope, true, "la troncal de cobre queda en el tope del catálogo (4\" B88):"); eq(A.tramos[0].nom, "4\"", "tope:");
+    if (!A.avisos.some((a) => a.lvl === "err" && /fuera de catálogo/.test(a.msg))) throw new Error("el tramo fuera de catálogo debe ser error visible en aire");
+    if (G("SOPORTE").avisos.some((a) => a.lvl === "err" && /catalogado en cobre/.test(a.msg))) throw new Error("soportería ya no debe recibir un cobre fuera de su catálogo por esta ruta");
     const V = G("validateAll")();
-    if (!V.rows.some((r) => r.lvl === "err")) throw new Error("el error de soportería no llegó a validateAll()");
-    eq(V.ok, false, "VALID.ok debe dar falso con un diámetro real fuera de catálogo:");
+    if (!V.rows.some((r) => r.lvl === "err" && /fuera de catálogo/.test(r.msg || r.texto || JSON.stringify(r)))) throw new Error("el error de aire no llegó a validateAll()");
+    eq(V.ok, false, "VALID.ok debe dar falso con un tramo fuera de catálogo:");
   } finally { S.aire = aire0; S.soporte = sop0; G("recompute")(); }
 });
 

@@ -110,8 +110,11 @@ function calcular(c) {
   const capSecadorA1 = principal.fadReal * nUnidades;                             // ISO 7183 Tabla 2 A1: factor 1.0 sobre el caudal del compresor (H-215)
   const enA1 = tC === 35 && Math.abs(pDescarga - 7) < 1e-9;
   const eps = EPS[c.material], diams = c.material === "cobre" ? { hoy: DIAM_SCH40, b88: B88_L } : { hoy: DIAM_SCH40 };
-  const troncal = dimensionar(fad, c.Lp, pDescarga, tC, eps, diams.hoy, CASA.vMaxTroncal, CASA.dPred / 2, CASA.Leq);
-  const ramal = dimensionar(fad * CASA.ramalFrac, c.Lr, pDescarga, tC, eps, diams.hoy, CASA.vMaxRamal, CASA.dPred / 2, CASA.Leq);
+  /* H-218 (cerrado 25-sep-2026, aire v5): cobre con los DI de ASTM B88; acero con cédula 40; aluminio/inox con cédula 40 sólo
+     como indicativo (DI del fabricante pendiente, con aviso). */
+  const diMat = diams.b88 || diams.hoy, diPendiente = !(c.material === "cobre" || /^acero/.test(c.material));
+  const troncal = dimensionar(fad, c.Lp, pDescarga, tC, eps, diMat, CASA.vMaxTroncal, CASA.dPred / 2, CASA.Leq);
+  const ramal = dimensionar(fad * CASA.ramalFrac, c.Lr, pDescarga, tC, eps, diMat, CASA.vMaxRamal, CASA.dPred / 2, CASA.Leq);
   const troncalB88 = diams.b88 ? dimensionar(fad, c.Lp, pDescarga, tC, eps, diams.b88, CASA.vMaxTroncal, CASA.dPred / 2, CASA.Leq) : null;
   const rho = rhoDe(pDescarga, tC, P_ATM);
   const kWesp = principal.vsd ? CASA.kWespVsd : CASA.kWesp, fCorr = 1 + (pDescarga - 7) * CASA.kWporBar;
@@ -120,7 +123,7 @@ function calcular(c) {
   /* H-219b: la energía y las fugas se pagan sobre lo que se consume (medio + fugas), no sobre el FAD de diseño con reserva. */
   const kWmedio = (medio * (1 + CASA.fugas)) / 1000 * kWesp * fCorr, mxnAnoMedio = kWmedio * CASA.horas * CASA.tarifa, mxnFugasMedio = (medio * CASA.fugas) / (medio * (1 + CASA.fugas)) * mxnAnoMedio;
   return { cls, sec, tC, pUso, lista, nPuntos, pico, medio, simul, demanda, fugas, conFugas, reserva, fadSinPurga, purga, fad, dPfiltros, pDescarga, corrP, exento, principal, cubre,
-    nUnidades, totalUnidades, tCiclo, qc, vTeorico, tanqueUnit, nTanques, tanqueHoy, capSecadorA1, enA1, rho, troncal, ramal, troncalB88, kWesp, fCorr, kWoper, mxnAno, mxnFugas, kWmedio, mxnAnoMedio, mxnFugasMedio };
+    nUnidades, totalUnidades, tCiclo, qc, vTeorico, tanqueUnit, nTanques, tanqueHoy, capSecadorA1, enA1, diPendiente, rho, troncal, ramal, troncalB88, kWesp, fCorr, kWoper, mxnAno, mxnFugas, kWmedio, mxnAnoMedio, mxnFugasMedio };
 }
 
 /* ---------- casos ---------- */
@@ -177,14 +180,15 @@ function filasDe(n, c, A) {
   fila("m2", `el motor declara si el punto de operación es A1 (1) o si la corrección del fabricante queda pendiente (0)${A.enA1 ? "" : " · aquí pendiente"}`, `${A.tC} °C ${A.enA1 ? "=" : "≠"} 35 o ${r(A.pDescarga, 3)} bar ${A.enA1 ? "=" : "≠"} 7`, "ISO 7183:2007 Tabla 2 opción A1", "primaria", "AIRE.enA1 ? 1 : 0", A.enA1 ? 1 : 0, 0);
   fila("n", "densidad del aire en línea (kg/m³)", `ρ = p/(R·T) = (${r(A.pDescarga, 3)}×100 + ${r(P_ATM, 3)})×1000 / (287.05 × ${r(A.tC + 273.15, 2)}) = ${r(A.rho, 4)}`, "gas ideal, R = 287.05 J/(kg·K); pAtm por altitud ASHRAE Fundamentals 2021 cap. 1 ec. 3 (memoria)", "memoria", "AIRE.rho", r(A.rho, 4), 1e-3);
   if (c.material !== "cobre") {
-    fila("o", `troncal: diámetro interior elegido (mm) = ${T.nom} de cédula 40 (${c.material}: H-218 pide DI del fabricante; se vigila el valor de hoy)`, `primer DI de DIAM_AIRE con V ≤ 8 m/s y Δp ≤ 0.15 bar en ${c.Lp} m → ${T.nom} (${T.d} mm)`, CASA_SRC("6792-6793 y 6969-6981", "DI de cédula 40 para todo material; V ≤ 8 m/s; mitad de la caída objetivo"), "memoria", "AIRE.tramos[0].d", T.d, 0.01);
+    fila("o", `troncal: diámetro interior elegido (mm) = ${T.nom} de cédula 40 (${c.material}: ${A.diPendiente ? "DI del fabricante pendiente, cédula 40 sólo como indicativo con aviso" : "cédula 40 es su DI, ASME B36.10"}; H-218)`, `primer DI de DIAM_AIRE con V ≤ 8 m/s y Δp ≤ 0.15 bar en ${c.Lp} m → ${T.nom} (${T.d} mm)`, CASA_SRC("6792-6793 y 6969-6981", "DI de cédula 40 para todo material; V ≤ 8 m/s; mitad de la caída objetivo"), "memoria", "AIRE.tramos[0].d", T.d, 0.01);
+    fila("o2", `el motor declara si el DI es del fabricante y queda pendiente (1) o tiene fuente (0) · ${c.material}`, A.diPendiente ? "aluminio/inox → 1" : "acero → 0", "H-218 (cerrado 25-sep-2026)", "memoria", "AIRE.diPendiente ? 1 : 0", A.diPendiente ? 1 : 0, 0);
     fila("p", `troncal ${T.nom}: velocidad (m/s)`, `Q = ${r(A.fad, 2)}/60000 × 101.325/${r(A.pDescarga * 100 + P_ATM, 3)} = ${r(T.Q, 6)} m³/s; A = π·${T.d}²/4 mm² → V = ${r(T.V, 4)}`, "continuidad; caudal de aire libre a 101.325 kPa llevado a la presión de línea (referencia no declarada en la suite: H-219)", "memoria", "AIRE.tramos[0].V", r(T.V, 4), 1e-3);
     fila("q", `troncal ${T.nom}: gradiente de presión (Pa/m)`, `Re = ρVD/μ = ${Math.round(T.Re)}; ε/D = ${r(EPS[c.material] / T.d, 6)}; f Haaland = ${r(T.f, 5)} (Colebrook ${r(T.fC, 5)} → ${r(T.PamC, 3)} Pa/m de referencia); Δp/L = f·ρ·V²/(2D) = ${r(T.Pam, 3)}`, "Darcy-Weisbach con f de Haaland (1983); μ = 1.85e-5 Pa·s criterio de la casa (index.html:6951)", "memoria", "AIRE.tramos[0].Pam", r(T.Pam, 3), 0.05);
     fila("r", `troncal ${T.nom}: caída en ${c.Lp} m con 40 % de longitud equivalente (bar)`, `${r(T.Pam, 3)} × ${c.Lp} × 1.4 / 1e5 = ${r(T.dPbar, 5)}`, CASA_SRC("6955", "Leq 1.4 declarado"), "memoria", "AIRE.tramos[0].dPbar", r(T.dPbar, 5), 1e-4);
     fila("t", `ramal (40 % del FAD = ${r(A.fad * 0.4, 2)} L/min): diámetro interior elegido (mm) = ${Rm.nom}`, `primer DI con V ≤ 15 m/s y Δp ≤ 0.15 bar en ${c.Lr} m → ${Rm.nom} (${Rm.d} mm)`, CASA_SRC("6982", "ramal = 40 % del FAD sin fuente (H-222); V ≤ 15 m/s"), "memoria", "AIRE.tramos[1].d", Rm.d, 0.01);
     fila("u", `ramal ${Rm.nom}: velocidad (m/s)`, `Q = ${r(A.fad * 0.4, 2)}/60000 × 101.325/${r(A.pDescarga * 100 + P_ATM, 3)} = ${r(Rm.Q, 6)} m³/s; V = Q/A = ${r(Rm.V, 4)}`, "continuidad (misma referencia que la troncal)", "memoria", "AIRE.tramos[1].V", r(Rm.V, 4), 1e-3);
   } else {
-    fila("o", `troncal en cobre tipo L ${c.Lp} m: DI real de ASTM B88 (mm) · hoy la suite usa cédula 40 (${T.nom} = ${T.d} mm, V ${r(T.V, 3)} m/s) y con el DI real de B88 el 1" da V ${r(tramo(A.fad, B88_L[2][0], c.Lp, A.pDescarga, A.tC, EPS.cobre, CASA.Leq).V, 3)} m/s > 8 → ${A.troncalB88.nom}`, `B88 tipo L 1¼": DE 1.375" − 2×0.055" = 1.265" = ${A.troncalB88.d} mm; V = ${r(A.troncalB88.V, 4)} m/s ≤ 8; Δp = ${r(A.troncalB88.dPbar, 5)} bar ≤ 0.15`, "ASTM B88 tubo de cobre tipo L (DE nominal + 1/8\", pared 0.055\" en 1¼\"); mismos DI en index.html:9765 TUB_AGUA.cobre", "primaria", "AIRE.tramos[0].d", A.troncalB88.d, 0.01, "fase2:H-218");
+    fila("o", `troncal en cobre tipo L ${c.Lp} m: DI real de ASTM B88 (mm) · antes de H-218 la suite usaba cédula 40 (1" = 26.6 mm) y con el DI real de B88 el 1" da V ${r(tramo(A.fad, B88_L[2][0], c.Lp, A.pDescarga, A.tC, EPS.cobre, CASA.Leq).V, 3)} m/s > 8 → ${A.troncalB88.nom}`, `B88 tipo L 1¼": DE 1.375" − 2×0.055" = 1.265" = ${A.troncalB88.d} mm; V = ${r(A.troncalB88.V, 4)} m/s ≤ 8; Δp = ${r(A.troncalB88.dPbar, 5)} bar ≤ 0.15`, "ASTM B88 tubo de cobre tipo L (DE nominal + 1/8\", pared 0.055\" en 1¼\"); mismos DI en index.html:9765 TUB_AGUA.cobre", "primaria", "AIRE.tramos[0].d", A.troncalB88.d, 0.01);
   }
   if (n === 1 || n === 2 || n === 6) {
     fila("v", `potencia de operación (kW) con potencia específica ${A.kWesp} kW/(m³/min)${A.principal.vsd ? " (VSD)" : ""} corregida ${r((A.pDescarga - 7) * 7, 2)} % por presión, más secador ${A.sec.kWm3} kW/(m³/min) sobre la capacidad del secador (ISO 7183 A1, H-215)`, `${r(A.fad / 1000, 5)} × ${A.kWesp} × ${r(A.fCorr, 5)} + ${r(A.capSecadorA1 / 1000, 5)} × ${A.sec.kWm3} = ${r(A.kWoper, 4)}`, CASA_SRC("6992-6993", "potencia específica y +7 %/bar sin fuente; se calcula sobre el FAD de diseño (H-219b)"), "memoria", "AIRE.kWoper", r(A.kWoper, 4), 0.01);
