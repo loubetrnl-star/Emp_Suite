@@ -101,16 +101,16 @@
    }
   },
   "vent": {
-   "ver": "1",
+   "ver": "2",
    "cifras": {
     "m3h": 19781.892946410004,
     "demand": 11643.25659,
     "sp": 1,
-    "primary": "GB-360"
+    "primary": "CSW-30"
    }
   },
   "quote": {
-   "ver": "11",
+   "ver": "12",
    "cifras": {
     "direct": 10607684.847310027,
     "sub": 16034576.415193837,
@@ -142,7 +142,7 @@
       137000
      ],
      [
-      "Ventilación: GB-360 · 11,643 CFM de extracción instalada con arrancador y curbs",
+      "Ventilación: CSW-30 · 11,643 CFM de extracción instalada con arrancador y curbs",
       11643,
       1688235
      ],

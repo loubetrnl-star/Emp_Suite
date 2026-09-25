@@ -1493,7 +1493,7 @@ function buildMemoriaPdf() {
   pdfHeading(d, "7. Equipos seleccionados");
   pdfTable(d, ["Zona", "Marca", "Modelo", "Capacidad", "Tecnologia"],
     LOADS.map((r, i) => [S.zones[i].name, "Carrier", r.eq.primary.model, `${r.eq.primary.TR} TR`, r.eq.techLabel])
-      .concat([["Ventilacion", "Greenheck", VENT.eq.primary.model, `${VENT.eq.primary.cfmMin}-${VENT.eq.primary.cfmMax} CFM`, VENT.eq.primary.family]]),
+      .concat([VENT.eq && VENT.eq.primary ? ["Ventilacion", "Greenheck", VENT.eq.primary.model, `${VENT.eq.primary.cfmMin}-${VENT.eq.primary.cfmMax} CFM`, VENT.eq.primary.family] : ["Ventilacion", "Greenheck", "sin modelo", VENT.demand > 0 ? "ningun modelo del catalogo cubre el caudal (H-154)" : "sin caudal", "-"]]),
     [110, 70, 100, 80, 130]);
   pdfFirmas(d);
   pdfTrazabilidad(d, ["load", "clean", "equip", "vent", "duct"]);
@@ -2191,8 +2191,8 @@ function buildVentPdf() {
         E.candidates.slice(0, 6).map((c) => [c.model.model, c.model.family, `${n(c.model.cfmMin, 0)} - ${n(c.model.cfmMax, 0)}`, n(c.model.sp, 2), n(c.fit, 0)]),
         [110, 150, 90, 60, 50]);
     }
-  } else if (E && E.primary && R.demand > 0) {
-    pdfParagraph(d, `NO HAY SELECCION VALIDA. Ningun modelo del catalogo Greenheck cubre ${n(R.demand, 0)} CFM (objetivo ${n(E.target, 0)} CFM). El modelo mas cercano del catalogo es ${E.primary.model} con rango ${n(E.primary.cfmMin, 0)} a ${n(E.primary.cfmMax, 0)} CFM; se cita solo como referencia y no es una seleccion. Hay que dividir la extraccion en varios equipos o cambiar de familia.`);
+  } else if (E && E.closest && R.demand > 0) {
+    pdfParagraph(d, `NO HAY SELECCION VALIDA. Ningun modelo del catalogo Greenheck cubre ${n(R.demand, 0)} CFM (objetivo ${n(E.target, 0)} CFM): no se propone modelo (H-154). El modelo mas cercano del catalogo es ${E.closest.model} con rango ${n(E.closest.cfmMin, 0)} a ${n(E.closest.cfmMax, 0)} CFM; se cita solo como referencia y no es una seleccion. Hay que dividir la extraccion en varios equipos o cambiar de familia.`);
   } else {
     pdfParagraph(d, "Sin seleccion: no hay caudal de demanda, por lo que no se presenta ningun modelo del catalogo.");
   }
@@ -3880,8 +3880,8 @@ const ENGINES = {
       if (!v) return w;
       const cfm = num(v.demand);
       if (cfm > 0 && v.sp > 2.5) w.push({ lvl: "warn", msg: `Ventilación: ${n(v.sp, 2)} in.wg de presión estática es alto para extracción general. Revisar pérdidas de ducto, filtro y persiana.` });
-      if (cfm > 0 && v.eq && v.eq.primary && v.eq.cubre === false)
-        w.push({ lvl: "err", msg: `Ventilación: ningún modelo Greenheck del catálogo cubre ${n(cfm, 0)} CFM a ${n(v.sp, 2)} in.wg; el modelo más cercano del catálogo es ${v.eq.primary.model}, con rango ${n(v.eq.primary.cfmMin, 0)}–${n(v.eq.primary.cfmMax, 0)} CFM. Si la demanda rebasa ese rango, hay que dividir la extracción en varios equipos o cambiar de familia; si queda por debajo, revisar el caudal capturado o cambiar de familia.` });
+      if (cfm > 0 && v.eq && v.eq.closest && v.eq.cubre === false)
+        w.push({ lvl: "err", msg: `Ventilación: ningún modelo Greenheck del catálogo cubre ${n(cfm, 0)} CFM a ${n(v.sp, 2)} in.wg (no se propone modelo, H-154); el modelo más cercano del catálogo es ${v.eq.closest.model}, con rango ${n(v.eq.closest.cfmMin, 0)}–${n(v.eq.closest.cfmMax, 0)} CFM. Si la demanda rebasa ese rango, hay que dividir la extracción en varios equipos o cambiar de familia; si queda por debajo, revisar el caudal capturado o cambiar de familia.` });
       if (cfm > 0 && v.oaCfm > 0 && v.achCfm > 0 && v.oaCfm > v.achCfm * 1.02)
         w.push({ lvl: "warn", msg: `Ventilación: el aire exterior de ASHRAE 62.1 pide ${n(v.oaCfm, 0)} CFM y los cambios de aire capturados dan ${n(v.achCfm, 0)} CFM. Rige el aire exterior: los cambios por hora capturados se quedan cortos contra la norma.` });
       return w;
@@ -8715,25 +8715,33 @@ function pickVent(cfm, mode, sp) {
           : ["roof_exhauster", "inline", "centrifugal", "erv"];
   const target = cfm * 1.1;
   const pool = GREEN.filter((e) => pref.includes(e.tech));
-  const tier = (e) => pref.indexOf(e.tech) * 3; // la familia propia del modo manda sobre las alternas
-  const rank = (e) => tier(e) + ((e.cfmMin * .95 <= target && e.cfmMax >= target * .95) ? 0 : e.cfmMax >= target ? 1 + (e.cfmMin - target) / 1e4 : 2 + (target - e.cfmMax) / 1e3);
-  const sorted = [...pool].sort((a, b) => rank(a) - rank(b) || a.cfm - b.cfm);
-  const primary = sorted[0] || GREEN[0];
+  /* H-154 + H-156 (rev 2.9.24, vent v2): la cobertura REAL manda (cfmMin ≤ objetivo ≤ cfmMax, sin la tolerancia ×0.9 que
+     aceptaba un modelo corto). La familia propia del modo sólo ordena ENTRE los que cubren (y luego el de menor caudal
+     nominal). Si nadie cubre, no hay modelo: `primary` es null (nada llega a propuesta, memoria integral ni eléctrico) y
+     `closest` (el más cercano por caudal) sólo sirve para el aviso. Antes la familia preferida se imponía a la cobertura:
+     11,643 CFM elegía GB-360 (4,000–9,000) y decía «ningún modelo cubre» aunque el CSW-30 (7,000–18,000) cubría (H-24 dejaba
+     primary como «el menos malo»; ahora el menos malo es closest, no primary). */
+  const coversReal = (e) => e.cfmMin <= target && e.cfmMax >= target;
+  const tier = (e) => pref.indexOf(e.tech) * 3; // la familia propia del modo va primero, sólo entre los que cubren
+  const dist = (e) => e.cfmMax < target ? target - e.cfmMax : e.cfmMin > target ? e.cfmMin - target : 0;
+  const cubren = pool.filter(coversReal).sort((a, b) => tier(a) - tier(b) || a.cfm - b.cfm);
+  const noCubren = pool.filter((e) => !coversReal(e)).sort((a, b) => dist(a) - dist(b) || tier(a) - tier(b) || a.cfm - b.cfm);
+  const sorted = cubren.concat(noCubren);
+  const primary = cfm > 0 ? (cubren[0] || null) : null;
+  const closest = cfm > 0 ? (cubren[0] || noCubren[0] || null) : null;
   const cands = sorted.slice(0, 10).map((e) => {
-    const covers = e.cfmMin * .9 <= target && e.cfmMax >= target * .9;
+    const covers = coversReal(e);
     const fit = covers ? 100 - Math.min(25, Math.abs(e.cfm - target) / 80) : e.cfmMax >= target ? 70 - Math.min(30, (e.cfmMin - target) / 100) : 45 - Math.min(30, (target - e.cfmMax) / 150);
     return { model: e, fit: Math.round(Math.max(0, Math.min(100, fit))) };
   });
   const spWarn = primary && sp > primary.sp * 1.15 ? `SP del sistema (${sp.toFixed(2)}") supera el punto de catálogo del modelo (${primary.sp}"): revisar curva en CAPS.` : "";
-  /* H-24 · Cuando nada del catálogo alcanza, `primary` NO es null: es el menos
-     malo. Antes eso se veía igual que una selección buena. Se declara aparte si
-     el modelo cubre de verdad el caudal pedido, y quien valide usa esta bandera
-     en vez de preguntar si existe primary, que siempre existe. */
-  const cubre = !!(primary && cfm > 0 && primary.cfmMin * .9 <= target && primary.cfmMax >= target * .9);
+  const cubre = !!primary;
   return {
-    primary, candidates: cands, target, spWarn, cubre,
+    primary, closest, candidates: cands, target, spWarn, cubre,
     families: [...new Set(sorted.map((e) => e.tech))].map((t) => ({ tech: t, label: VTECH_LABEL[t], model: sorted.find((e) => e.tech === t) })),
-    sizingNote: `Selección Greenheck ≥ ${target.toFixed(0)} CFM (demanda ${cfm.toFixed(0)} + 10 % margen) · rango del modelo ${primary.cfmMin}–${primary.cfmMax} CFM.${cfm > 0 && !cubre ? " NINGÚN modelo del catálogo cubre este caudal: el que se muestra es el más cercano, no una selección válida. Dividir en varios equipos." : ""}`,
+    sizingNote: !(cfm > 0) ? "Sin caudal de demanda: no se selecciona ningún modelo."
+      : primary ? `Selección Greenheck ≥ ${target.toFixed(0)} CFM (demanda ${cfm.toFixed(0)} + 10 % margen): rige la cobertura real del catálogo (cfmMin ≤ objetivo ≤ cfmMax) y, entre los que cubren, la familia propia del modo (H-154) · rango del modelo ${primary.cfmMin}–${primary.cfmMax} CFM.`
+      : `Selección Greenheck ≥ ${target.toFixed(0)} CFM (demanda ${cfm.toFixed(0)} + 10 % margen): NINGÚN modelo del catálogo cubre este caudal; no se propone modelo. El más cercano (${closest.model}, ${closest.cfmMin}–${closest.cfmMax} CFM) se cita sólo como referencia. Dividir en varios equipos.`,
   };
 }
 
@@ -17959,14 +17967,15 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "4", clean: "2", equip: "1", duct: "1", vent: "1", quote: "11", valor: "1", kaizen: "1", elec: "8", hidro: "8", fuego: "3", aire: "5", civil: "3", soporte: "2" };
+const MOTOR_VER = { load: "4", clean: "2", equip: "1", duct: "1", vent: "2", quote: "12", valor: "1", kaizen: "1", elec: "8", hidro: "8", fuego: "3", aire: "5", civil: "3", soporte: "2" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
     { ver: "3", rev: "2.9.21", que: "cuarto limpio con presión positiva sin infiltración; unidad de aire exterior dedicada + serpentín seco (ADP desde la latente interna); crédito sensible del aire exterior topado en deshumidificación; cambios por hora obligatorios; calor del ventilador Q·ΔP/η" },
     { ver: "4", rev: "2.9.24", que: "H-120: el DET de muros y cubierta se corrige por la condición de diseño del sitio, (25.6 − ti) + (tm − 29.4) K con tm = to − rango/2 (corrección CLTD, ASHRAE Fundamentals 1997 cap. 28; ratificar con Carrier Tabla 20A)" }],
+  vent: [{ ver: "2", rev: "2.9.24", que: "H-154 + H-156: la cobertura real manda en la selección Greenheck (cfmMin ≤ objetivo ≤ cfmMax, sin tolerancia ×0.9); la familia del modo sólo ordena entre los que cubren; si nadie cubre no hay modelo (proyecto fijo: GB-360 → CSW-30 para 11,643 CFM)" }],
   clean: [{ ver: "2", rev: "2.9.16", que: "sin pisos de 1 m² ni 2.2 m; 5 Pa de ISO 14644-4 con aviso; ceros capturados respetados" }],
-  quote: [{ ver: "2", rev: "2.9.16", que: "red hidráulica por diámetro con precio capturado; sin 50 m supuestos; partidas pendientes" }, { ver: "3", rev: "2.9.19", que: "tramo con longitud y sin unidades mueble queda pendiente" }, { ver: "4", rev: "2.9.23", que: "precio de tubería por renglón con origen (referencia de mercado o proveedor local), IVA desglosado y por metro; sin precio: partida Por cotizar en el Budget, bloqueo sólo en la formal" }, { ver: "5", rev: "2.9.23", que: "precios en USD sólo se convierten con tipo de cambio capturado con fecha; sin fecha salen Por cotizar y bloquean la formal (nada se estima)" }, { ver: "6", rev: "2.9.23", que: "referencias sólo de California y sólo material (mano de obra por capturar; combinados → Por cotizar); referencias IUSA retiradas; flete, aduana e importación como renglón propio siempre Por cotizar hasta capturarlo" }, { ver: "7", rev: "2.9.24", que: "H-198: un tramo de agua sin diámetro verificado (fuera del catálogo del material, o PEAD sin SDR ni fuente) va Por cotizar con sus metros; ya no se cotiza con el precio del mayor diámetro ni pide precio de un diámetro que no le corresponde" }, { ver: "8", rev: "2.9.24", que: "H-196: cisterna y equipo de bombeo sin precio semilla (9,500 MXN/m³ y 14,500 MXN/HP sin fuente): van Por cotizar con su volumen y su potencia; la bomba sólo cuando la presión de la red no alcanza; cisterna en 0 queda pendiente de volumen, nunca cisterna de 0 m³" }, { ver: "9", rev: "2.9.24", que: "H-206: bomba contra incendio y reserva sin precio fijo (385,000 MXN + 9,500 MXN/m³ sin fuente): Por cotizar con capacidad (gpm y L/min), presión, potencia y volumen declarados" }, { ver: "10", rev: "2.9.24", que: "dependencia de aire v3 (H-215): la partida del secador lleva la capacidad nominal de ISO 7183 A1 y declara si la corrección del fabricante está pendiente" }, { ver: "11", rev: "2.9.24", que: "dependencia de aire v5 (H-218): la partida de la red declara «diámetros indicativos: DI del fabricante pendiente» en aluminio e inoxidable" }],
+  quote: [{ ver: "2", rev: "2.9.16", que: "red hidráulica por diámetro con precio capturado; sin 50 m supuestos; partidas pendientes" }, { ver: "3", rev: "2.9.19", que: "tramo con longitud y sin unidades mueble queda pendiente" }, { ver: "4", rev: "2.9.23", que: "precio de tubería por renglón con origen (referencia de mercado o proveedor local), IVA desglosado y por metro; sin precio: partida Por cotizar en el Budget, bloqueo sólo en la formal" }, { ver: "5", rev: "2.9.23", que: "precios en USD sólo se convierten con tipo de cambio capturado con fecha; sin fecha salen Por cotizar y bloquean la formal (nada se estima)" }, { ver: "6", rev: "2.9.23", que: "referencias sólo de California y sólo material (mano de obra por capturar; combinados → Por cotizar); referencias IUSA retiradas; flete, aduana e importación como renglón propio siempre Por cotizar hasta capturarlo" }, { ver: "7", rev: "2.9.24", que: "H-198: un tramo de agua sin diámetro verificado (fuera del catálogo del material, o PEAD sin SDR ni fuente) va Por cotizar con sus metros; ya no se cotiza con el precio del mayor diámetro ni pide precio de un diámetro que no le corresponde" }, { ver: "8", rev: "2.9.24", que: "H-196: cisterna y equipo de bombeo sin precio semilla (9,500 MXN/m³ y 14,500 MXN/HP sin fuente): van Por cotizar con su volumen y su potencia; la bomba sólo cuando la presión de la red no alcanza; cisterna en 0 queda pendiente de volumen, nunca cisterna de 0 m³" }, { ver: "9", rev: "2.9.24", que: "H-206: bomba contra incendio y reserva sin precio fijo (385,000 MXN + 9,500 MXN/m³ sin fuente): Por cotizar con capacidad (gpm y L/min), presión, potencia y volumen declarados" }, { ver: "10", rev: "2.9.24", que: "dependencia de aire v3 (H-215): la partida del secador lleva la capacidad nominal de ISO 7183 A1 y declara si la corrección del fabricante está pendiente" }, { ver: "11", rev: "2.9.24", que: "dependencia de aire v5 (H-218): la partida de la red declara «diámetros indicativos: DI del fabricante pendiente» en aluminio e inoxidable" }, { ver: "12", rev: "2.9.24", que: "dependencia de vent v2 (H-154): la partida de ventilación nombra el modelo que cubre de verdad (o ninguno)" }],
   elec: [{ ver: "2", rev: "2.9.16", que: "canalización con las áreas del conductor de la memoria (THW-LS por omisión, NOM-001-SEDE Cap. 10 Tabla 5)" }, { ver: "3", rev: "2.9.18", que: "siete áreas THHN/THWN-2 corregidas a la Tabla 5" }, { ver: "4", rev: "2.9.19", que: "sin compresor de aire cuando no hay demanda" },
     { ver: "5", rev: "2.9.24", que: "H-183: conductor de puesta a tierra con la Tabla 250-122 de la NOM-001-SEDE-2012 (p. 151): 400 A → 2 AWG (antes 3 AWG, valor del NEC), renglones hasta 6000 A y columna de aluminio (hasta 100 A la tabla sólo da cobre)" },
     { ver: "6", rev: "2.9.24", que: "H-177: equipo con motocompresor hermético con MCA y MOP por el art. 440: conductor por la MCA de placa (440-4(b), 440-35; una MCA estimada por la suite no lo baja del 125 %) y protección igual al MOP o al valor inmediato inferior de 240-6(a) completo (16, 32, 63 A; abajo de 15 A sólo fusibles de 1, 3, 6, 10 A), sin el 250 % de la Tabla 430-52 (40VMA-240: 150 → 90 A; 40MBC-24: 25 → 15 A). Aceptar la cédula conserva MCA y MOP (marcados estimados); una carga sin kW no fija el principal" },
@@ -19641,7 +19650,7 @@ function viewVent() {
     fields = `<div class="row">${inp("Ancho de rejilla (m)", "vent.louverW", "number", "0.1")}${inp("Alto de rejilla (m)", "vent.louverH", "number", "0.1")}</div>
       <div class="row">${inp("Área libre (%)", "vent.freeArea", "number", "1")}${inp("Velocidad de cara (fpm)", "vent.faceVel", "number", "25")}</div>`;
   }
-  const gs = GSPECS[r.eq.primary.productLine];
+  const gs = r.eq.primary ? GSPECS[r.eq.primary.productLine] : null;
   return `<div class="grid two">
     <div class="card"><h3>Ventilación</h3><div class="body">
       ${inp("Nombre del sistema", "vent.name", "text")}
@@ -19653,7 +19662,7 @@ function viewVent() {
       <details><summary>Avanzado: pérdidas de presión</summary>
       <div class="row">${inp("Pérdida en ductos (in.w.g.)", "vent.ductLoss", "number", "0.05", "vent.ductLoss", S.vent)}${inp("Pérdida en filtros (in.w.g.)", "vent.filterLoss", "number", "0.05", "vent.filterLoss", S.vent)}</details>
       ${propuestaHtml("load>vent")}
-      <button class="btn-primary" data-act="pdf-sub" data-kind="green" data-id="${VENT.eq.primary.id}">Submittal del ventilador en PDF</button>
+      ${VENT.eq && VENT.eq.primary ? `<button class="btn-primary" data-act="pdf-sub" data-kind="green" data-id="${VENT.eq.primary.id}">Submittal del ventilador en PDF</button>` : `<div class="hint">${R.demand > 0 ? "Ningún modelo del catálogo cubre el caudal: no se propone modelo ni submittal (H-154)." : "Sin caudal: sin modelo."}</div>`}
     </div></div>
     <div class="grid" style="gap:14px">
       <div class="card"><h3>Demanda y selección<span class="tag">Greenheck CAPS</span></h3><div class="body">

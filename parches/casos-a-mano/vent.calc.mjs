@@ -110,9 +110,9 @@ const CHECKS = (lvl) => lvl ? `ENGINES.vent.checks(VENT).filter((x) => x.lvl ===
   fila("CM.vent.2.c", "aire exterior de diseño", ent, `máx(${r(o.vbz)}, 46×30/1.699011 = ${r(o.byP)}, 700×1.8/1.699011 = ${r(o.byA)}) = ${r(o.oa)} (rige ${o.rige})`, FCASA("2986 y 8566-8567", "Tab.45"), "criterio de la casa", "VENT.oaCfm", r(o.oa), 0.5, "vigente");
   fila("CM.vent.2.d", "demanda", ent, `máx(${r(a)}, ${r(o.oa)}) = ${r(dem)} CFM`, FCASA("8569", "rige el mayor"), "criterio de la casa", "VENT.demand", r(dem), 0.5, "vigente");
   fila("CM.vent.2.e", "objetivo de selección", ent, `${r(dem)} × 1.1 = ${r(obj)} CFM`, FCASA("8619", "margen 10 %"), "criterio de la casa", "VENT.eq.target", r(obj), 0.5, "vigente");
-  fila("CM.vent.2.f", "H-154: algún modelo del pool general cubre el objetivo (CSW-30 7,000–18,000)", ent, `cubren ${r(obj, 0)} CFM: ${c.map((m) => `${m.model} ${m.min}–${m.max}`).join(", ")} → cubre = 1 (hoy 0: la familia preferida GB-360 4,000–9,000 se impone)`, FCAT, "criterio de la casa", "Number(VENT.eq.cubre)", 1, 0, "fase2:H-154");
-  fila("CM.vent.2.g", "H-154: máximo del modelo elegido = 18,000 (CSW-30)", ent, `${c[0].model} ${c[0].min}–${c[0].max} → cfmMax ${c[0].max} (hoy 9,000)`, FCAT, "criterio de la casa", "VENT.eq.primary.cfmMax", c[0].max, 0, "fase2:H-154");
-  fila("CM.vent.2.h", "H-154: sin aviso de «ningún modelo cubre»", ent, "0 errores (hoy 1)", FCASA("3874-3880", "matriz de validación"), "criterio de la casa", CHECKS("err"), 0, 0, "fase2:H-154");
+  fila("CM.vent.2.f", "H-154: algún modelo del pool general cubre el objetivo (CSW-30 7,000–18,000)", ent, `cubren ${r(obj, 0)} CFM: ${c.map((m) => `${m.model} ${m.min}–${m.max}`).join(", ")} → cubre = 1 (antes de H-154: 0, la familia preferida GB-360 4,000–9,000 se imponía)`, FCAT, "criterio de la casa", "Number(VENT.eq.cubre)", 1, 0, "vigente");
+  fila("CM.vent.2.g", "H-154: máximo del modelo elegido = 18,000 (CSW-30)", ent, `${c[0].model} ${c[0].min}–${c[0].max} → cfmMax ${c[0].max} (antes de H-154: 9,000)`, FCAT, "criterio de la casa", "VENT.eq.primary.cfmMax", c[0].max, 0, "vigente");
+  fila("CM.vent.2.h", "H-154: sin aviso de «ningún modelo cubre»", ent, "0 errores (antes de H-154: 1)", FCASA("3874-3880", "matriz de validación"), "criterio de la casa", CHECKS("err"), 0, 0, "vigente");
   const op = oaGeneral("production", A, P);
   fila("CM.vent.2.i", "variante producción (General manufacturing Rp 5, Ra 0.9): rige Vbz", "mode general, spaceType production, area 700, height 4.71, occ 46, ach 6", `(5×46 + 0.9×700) = 860 L/s = 3,096 m³/h = ${r(op.vbz)} CFM > Tab.45 (${r(op.byP)}, ${r(op.byA)}) → oa ${r(op.oa)}`, F621, "primaria", "VENT.oaCfm", r(op.oa), 0.5, "vigente");
 }
@@ -143,7 +143,7 @@ const CHECKS = (lvl) => lvl ? `ENGINES.vent.checks(VENT).filter((x) => x.lvl ===
   fila("CM.vent.5.b", "reposición 80 %", ent, `${r(dem)} × 0.8 = ${r(mua)} CFM`, FCASA("8583", "reposición 80 %"), "criterio de la casa", "VENT.mua", r(mua), 0.5, "vigente");
   fila("CM.vent.5.c", "caudal en m³/h", ent, `${r(dem)} × 1.699011 = ${r(dem * M3H_CFM, 1)}`, "conversión exacta", "primaria", "VENT.m3h", r(dem * M3H_CFM, 1), 1, "vigente");
   fila("CM.vent.5.d", "objetivo de selección", ent, `${r(dem)} × 1.1 = ${r(obj)} CFM`, FCASA("8619", "margen 10 %"), "criterio de la casa", "VENT.eq.target", r(obj), 0.5, "vigente");
-  fila("CM.vent.5.e", "H-156: un modelo con objetivo por encima de su máximo no se declara «cubre» (CUBE-140 851–3,124 contra 3,248)", ent, `${r(obj, 0)} > 3,124 → cubre ∧ objetivo>cfmMax debe ser 0 (hoy 1: tolerancia ×0.9 acepta 3,124 ≥ ${r(obj * 0.9, 0)})`, FCASA("8635", "cobertura real, H-156"), "criterio de la casa", "Number(VENT.eq.cubre && VENT.eq.target > VENT.eq.primary.cfmMax)", 0, 0, "fase2:H-156");
+  fila("CM.vent.5.e", "H-156: un modelo con objetivo por encima de su máximo no se declara «cubre» (CUBE-140 851–3,124 contra 3,248)", ent, `${r(obj, 0)} > 3,124 → cubre ∧ objetivo>cfmMax debe ser 0 (hoy 1: tolerancia ×0.9 acepta 3,124 ≥ ${r(obj * 0.9, 0)})`, FCASA("8635", "cobertura real, H-156"), "criterio de la casa", "Number(VENT.eq.cubre && VENT.eq.target > VENT.eq.primary.cfmMax)", 0, 0, "vigente");
 }
 /* ===== 6 · Campana de isla sencilla 2.4 × 1.5 m, carga media ===== */
 {
@@ -208,8 +208,8 @@ const CHECKS = (lvl) => lvl ? `ENGINES.vent.checks(VENT).filter((x) => x.lvl ===
   const ent = "mode general, spaceType office, area 400, height 6, occ 30, ach 6.4";
   fila("CM.vent.14.a", "demanda por cambios/h", ent, `2,400 × 6.4 = 15,360 m³/h ÷ 1.699011 = ${r(a)} CFM (> oa ${r(o.oa)})`, FCASA("8559", "conversión"), "primaria", "VENT.demand", r(dem), 0.5, "vigente");
   fila("CM.vent.14.b", "objetivo de selección", ent, `${r(dem)} × 1.1 = ${r(obj)} CFM`, FCASA("8619", "margen 10 %"), "criterio de la casa", "VENT.eq.target", r(obj), 0.5, "vigente");
-  fila("CM.vent.14.c", "H-156: GB-360 (4,000–9,000) no cubre 9,945 con margen real; no se acepta «cubre» con objetivo > máximo", ent, `${r(obj, 0)} > 9,000 → 0 (hoy 1: 9,000 ≥ ${r(obj * 0.9, 0)} por la tolerancia ×0.9)`, FCASA("8635", "cobertura real, H-156"), "criterio de la casa", "Number(VENT.eq.cubre && VENT.eq.target > VENT.eq.primary.cfmMax)", 0, 0, "fase2:H-156");
-  fila("CM.vent.14.d", "H-154 (+H-156): con cobertura real primero, sí hay modelo (CSW-22 4,000–10,000)", ent, `cubren ${r(obj, 0)}: ${c.map((m) => `${m.model} ${m.min}–${m.max}`).join(", ")} → cubre 1 y cfmMax ≥ objetivo`, FCAT, "criterio de la casa", "Number(VENT.eq.cubre && VENT.eq.primary.cfmMax >= VENT.eq.target)", 1, 0, "fase2:H-154");
+  fila("CM.vent.14.c", "H-156: GB-360 (4,000–9,000) no cubre 9,945 con margen real; no se acepta «cubre» con objetivo > máximo", ent, `${r(obj, 0)} > 9,000 → 0 (hoy 1: 9,000 ≥ ${r(obj * 0.9, 0)} por la tolerancia ×0.9)`, FCASA("8635", "cobertura real, H-156"), "criterio de la casa", "Number(VENT.eq.cubre && VENT.eq.target > VENT.eq.primary.cfmMax)", 0, 0, "vigente");
+  fila("CM.vent.14.d", "H-154 (+H-156): con cobertura real primero, sí hay modelo (CSW-22 4,000–10,000)", ent, `cubren ${r(obj, 0)}: ${c.map((m) => `${m.model} ${m.min}–${m.max}`).join(", ")} → cubre 1 y cfmMax ≥ objetivo`, FCAT, "criterio de la casa", "Number(VENT.eq.cubre && VENT.eq.primary.cfmMax >= VENT.eq.target)", 1, 0, "vigente");
 }
 /* ===== 15 · SP alta: ductos 2.0 + filtros 0.5 → 2.75 in.w.g. (aviso) ===== */
 {

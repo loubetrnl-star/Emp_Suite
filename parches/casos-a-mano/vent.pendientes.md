@@ -1,13 +1,19 @@
 # vent · pendientes de la Fase 1 (rev 2.9.24, 22-sep-2026)
 
-Motor de ventilación (`vent`, v1). Hoja: `vent.csv` (58 filas: 46 vigentes, 12 fase2) · cálculo independiente:
+Motor de ventilación (`vent`, v2). Hoja: `vent.csv` (58 filas: 46 vigentes, 12 fase2) · cálculo independiente:
 `vent.calc.mjs` · módulo: `pruebas-motores/vent.mjs` (16 pruebas CM.vent.0–15) · compuerta: `parches/mutantes/vent.json`
 (34 mutantes: 27 de lógica vigente, 6 de lógica fase2:H-nnn, 1 valor por omisión fase2:H-160).
+
+## 0. Cierres de la Fase 2
+
+| Hallazgo | Estado | Qué cambió |
+|---|---|---|
+| H-154 (+H-156: familia preferida sobre cobertura; tolerancia ×0.9) | **Cerrado** (vent v1 → v2, quote v11 → v12 por dependencia, 25-sep-2026) | `pickVent`: `coversReal` (cfmMin ≤ objetivo ≤ cfmMax), `cubren` ordenados por familia del modo y caudal nominal, `primary` = primero que cubre o null, `closest` sólo para el aviso; consumidores blindados (memoria integral, PDF de ventilación, matriz, pantalla sin botón de submittal, eléctrico sin carga sin modelo). Prueba S.64; filas 2.f/2.g/2.h, 5.e, 14.c/14.d de fase2 a vigentes; mutantes m06/m19/m20 reapuntados a `coversReal`/`primary`, m21 a vigente. Proyecto fijo: GB-360 → CSW-30. |
 
 ## Pruebas que hoy protegen valores incorrectos (se marcan, no se arreglan)
 | Prueba | Dónde | Qué consagra | Hallazgo |
 |---|---|---|---|
-| R.1 golden por motor | pruebas.mjs:5898; esperado en parches/regresion-motores/regresion-motores.esperado.json (`motores.vent.cifras.primary = "GB-360"`) | Para 11,643 CFM elige GB-360 (4,000–9,000) con `cubre = false`, aunque el CSW-30 (7,000–18,000) del mismo pool cubre 12,808 CFM | H-154 |
+| ~~R.1 golden por motor~~ | esperado regenerado en H-154 (`primary = "CSW-30"`) | — | H-154 |
 | S.23 | pruebas.mjs:5358 | «el modo cocina sin medidas … y la cotización sigue vacía»: sólo mide `capturaReal`; la demanda da 30 CFM (piso 0.1 ft) y QUOTE.aux lleva 2 partidas de ventilación | H-155 |
 | genera.mjs (fixture) | parches/regresion-motores/genera.mjs | Declara ventilación 400 m² / 6 m / 30 personas y calcula con lo heredado (700 / 4.71 / 46) | AUDITORIA.md §4 |
 
@@ -16,10 +22,10 @@ Fuera de R.1 ninguna prueba del banco afirmaba un número del motor: por eso sob
 ## Filas fase2 (valor correcto por norma que hoy la suite NO da; se exigen sólo con `CM_FASE2=1`)
 | Fila | H | Esperado | Suite hoy |
 |---|---|---|---|
-| CM.vent.2.f/2.g/2.h | H-154 | 11,643 CFM (objetivo 12,808): cubre = 1, cfmMax 18,000 (CSW-30), 0 errores | cubre 0, GB-360 (9,000), 1 error «ningún modelo cubre» |
-| CM.vent.14.d | H-154 (+H-156) | 9,041 CFM (objetivo 9,945): cubre = 1 con cfmMax ≥ objetivo (CSW-22 4,000–10,000) | GB-360 con cubre = 1 y objetivo > 9,000 |
-| CM.vent.5.e | H-156 | campana 2,953 CFM (objetivo 3,248): no se acepta «cubre» con objetivo > máximo (CUBE-140 3,124) | cubre = 1 por la tolerancia ×0.9 |
-| CM.vent.14.c | H-156 | 9,945 > 9,000 → cubre ∧ objetivo > máximo = 0 | 1 |
+| ~~CM.vent.2.f/2.g/2.h~~ | H-154 | **vigentes desde el 25-sep-2026** | = esperado |
+| ~~CM.vent.14.d~~ | H-154 (+H-156) | **vigente desde el 25-sep-2026** (CSW-22) | = esperado |
+| ~~CM.vent.5.e~~ | H-156 | **vigente desde el 25-sep-2026** | = esperado |
+| ~~CM.vent.14.c~~ | H-156 | **vigente desde el 25-sep-2026** | = esperado |
 | CM.vent.3.a/3.b | H-157 | almacén 200 m² / 12 pers: Rp 5 L/s·pers → 254.27 CFM | Rp 2.5 → Vbz 190.7 y rige Tab.45 211.89 |
 | CM.vent.7.b | H-159 | visera con carga pesada: no permitida → 0 CFM | 300 CFM/ft inventados → 1,968.5 CFM |
 | CM.vent.9.d | H-155 | rejilla sin área libre capturada → 0 CFM | piso 5 % × 400 fpm = 258.3 CFM |
@@ -54,8 +60,8 @@ cambia a `estado: "vigente"` (debe morir con la fila ya exigida).
 | m17 | campana sin «rige el mayor» | vigente | MUERTO | CM.vent.8 |
 | m18 | rejilla piso de velocidad 600 fpm | vigente | MUERTO | CM.vent.9 |
 | m19 | cobertura tolerancia ×0.5 | vigente | MUERTO | CM.vent.12 |
-| m20 | cobertura tolerancia ×0.8 | fase2:H-156 | VIVO | sólo lo mata la cobertura real (fila 5.e / 14.c con CM_FASE2=1) |
-| m21 | familia preferida no manda (tier×0) | fase2:H-154 | MUERTO | **sólo R.1** (el golden que consagra GB-360): muere afirmando el valor incorrecto; por eso queda fase2 |
+| m20 | cobertura real con tolerancia ×0.8 (reapuntado en H-154/H-156) | vigente | MUERTO | 5.e, 14.c, S.64 |
+| m21 | familia preferida no manda (tier×0) | vigente desde H-154 | MUERTO | S.64 (1,907 CFM: G-140 sobre CSW-12) |
 | m22 | piso 0.1 ft → 0.2 ft en campana | fase2:H-155 | VIVO | sólo lo mata demanda 0 sin medidas (fila 10.a con CM_FASE2=1) |
 | m23 | piso área libre 5 % → 10 % | fase2:H-155 | VIVO | sólo lo mata demanda 0 sin área libre (fila 9.d con CM_FASE2=1) |
 | m24 | omisión 6 → 3 cambios/h | fase2:H-160 · no es lógica | VIVO | decisión del dueño (H-160); los casos capturan `ach` a mano |

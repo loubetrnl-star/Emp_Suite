@@ -32,13 +32,14 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 |---|---|---|
 | 1 | 2.9.15 | lógica de partida |
 
-## Ventilación (`vent`) · v1
+## Ventilación (`vent`) · v2
 
 | Versión | Rev | Hallazgo / cambio de lógica |
 |---|---|---|
 | 1 | 2.9.15 | lógica de partida |
+| 2 | 2.9.24 | H-154 + H-156: la cobertura real manda en la selección Greenheck (cfmMin ≤ objetivo ≤ cfmMax, sin la tolerancia ×0.9); la familia propia del modo sólo ordena entre los que cubren (luego el de menor caudal nominal); si nadie cubre no hay modelo (`primary` null: nada llega a propuesta, memoria integral ni eléctrico) y `closest` sólo alimenta el aviso. Proyecto fijo: 11,643 CFM → CSW-30 (7,000–18,000) en vez de GB-360 (4,000–9,000) con «ningún modelo cubre» |
 
-## Cotización (`quote`) · v11
+## Cotización (`quote`) · v12
 
 | Versión | Rev | Hallazgo / cambio de lógica |
 |---|---|---|
@@ -47,6 +48,7 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 | 3 | 2.9.19 | tramo con longitud y sin unidades mueble queda pendiente |
 | 4 | 2.9.23 | precio de tubería por renglón con origen (referencia de mercado o proveedor local), IVA desglosado y por metro; sin precio: partida Por cotizar en el Budget, bloqueo sólo en la formal |
 | 5 | 2.9.23 | precios en USD sólo se convierten con tipo de cambio capturado con fecha; sin fecha salen Por cotizar y bloquean la formal (nada se estima) |
+| 12 | 2.9.24 | dependencia de vent v2 (H-154): la partida de ventilación nombra el modelo que cubre de verdad, o ninguno |
 | 11 | 2.9.24 | dependencia de aire v5 (H-218): la partida de la red declara «diámetros indicativos: DI del fabricante pendiente» en aluminio e inoxidable |
 | 10 | 2.9.24 | dependencia de aire v3 (H-215): la partida del secador lleva la capacidad nominal de ISO 7183 A1 y declara si la corrección del fabricante queda pendiente |
 | 9 | 2.9.24 | H-206: la bomba contra incendio y su reserva no llevan precio fijo (385,000 MXN + 9,500 MXN/m³ sin fuente ni fecha): van «Por cotizar» (sección D) con capacidad (gpm y L/min), presión, potencia y volumen (m³ = L/min × min) declarados; con red municipal que alcanza no hay bomba ni reserva. `QUOTE_SEED.bombaFuego` y `cisternaM3` retirados. Proyecto fijo: −1,697,446.66 MXN directos |

@@ -6708,6 +6708,45 @@ t("S.63 (H-218) el diámetro interior de la red de aire es del material: cobre t
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+t("S.64 (H-154 + H-156) selección Greenheck: la cobertura real manda (cfmMin ≤ objetivo ≤ cfmMax, sin tolerancia ×0.9); la familia del modo sólo ordena entre los que cubren; si nadie cubre no hay modelo (ni en propuesta, ni en eléctrico) y el más cercano sólo sirve para el aviso", () => {
+  const guardado = JSON.stringify(S);
+  const pdfTxt = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");
+  const armar = (campos) => { G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.64"; Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.64" }; }); Object.assign(S.vent, campos); ["vent.area", "vent.height", "vent.occ"].forEach((k) => G("marcarPropio")(k)); G("recompute")(); return G("VENT"); };
+  try {
+    /* 1) Geometría del fixture: 11,643 CFM (objetivo 12,808). El GB-360 (4,000–9,000) no cubre; el CSW-30 (7,000–18,000) sí. */
+    let V = armar({ mode: "general", spaceType: "office", area: 700, height: 4.71, occ: 46, ach: 6, ductLoss: .5, filterLoss: .25 });
+    eq(V.eq.cubre, true, "hay modelo que cubre:"); eq(V.eq.primary.model, "CSW-30", "el que cubre (antes GB-360 por la familia preferida):");
+    if (!(V.eq.primary.cfmMin <= V.eq.target && V.eq.target <= V.eq.primary.cfmMax)) throw new Error("el objetivo no cae dentro del rango del modelo elegido");
+    if (G("validateAll")().rows.some((r) => r.lvl === "err" && /ningún modelo/.test(r.msg))) throw new Error("no debe haber aviso de «ningún modelo cubre»");
+    if (!G("propuestaElecFilas")().some((c) => /CSW-30/.test(c.nombre))) throw new Error("el eléctrico debe traer el CSW-30 como carga");
+    /* 2) Familia del modo dentro de los que cubren: oficina chica → un roof exhauster (G-099), no un centrífugo. */
+    V = armar({ mode: "general", spaceType: "office", area: 100, height: 3, occ: 10, ach: 6, ductLoss: .5, filterLoss: .25 });
+    eq(V.eq.primary.tech, "roof_exhauster", "la familia propia del modo va primero entre los que cubren:"); eq(V.eq.cubre, true);
+    /* 2b) Con 1,907 CFM (objetivo 2,098) cubren G-140 (1,233–2,115, nominal 1,674) y CSW-12 (800–2,500, nominal 1,650): manda la familia, no el menor nominal. */
+    V = armar({ mode: "general", spaceType: "office", area: 180, height: 3, occ: 10, ach: 6 });
+    eq(V.eq.primary.tech, "roof_exhauster", "entre los que cubren manda la familia del modo aunque otro tenga menor nominal:"); contiene(V.eq.primary.model, "G-140", "modelo:");
+    /* 3) H-156: 9,945 CFM de objetivo no lo cubre el GB-360 (máx 9,000) aunque 9,000 ≥ 0.9 × 9,945: rige la cobertura real → CSW-22 (4,000–10,000). */
+    V = armar({ mode: "general", spaceType: "office", area: 400, height: 6, occ: 30, ach: 6.4 });
+    eq(V.eq.primary.model, "CSW-22", "sin tolerancia ×0.9 el GB-360 no cubre 9,945:"); eq(V.eq.cubre, true);
+    /* 4) Nadie cubre (21,189 CFM > 18,000): sin modelo. */
+    V = armar({ mode: "general", spaceType: "office", area: 1000, height: 6, occ: 0, ach: 6 });
+    eq(V.eq.cubre, false, "nadie cubre:"); eq(V.eq.primary, null, "sin modelo:"); eq(V.eq.closest.model, "CSW-30", "el más cercano sólo para el aviso:");
+    const errs = G("validateAll")().rows.filter((r) => r.lvl === "err" && /ningún modelo/.test(r.msg));
+    eq(errs.length, 1, "la matriz lo declara:"); contiene(errs[0].msg, "CSW-30", "y nombra al más cercano:");
+    if (G("propuestaElecFilas")().some((c) => /extracción/.test(c.nombre))) throw new Error("sin modelo no hay carga de ventilación en el eléctrico");
+    const partida = (G("QUOTE").aux || []).find((x) => x.mot === "vent");
+    if (partida && /CSW|GB-/.test(partida.desc)) throw new Error("sin modelo la partida no debe nombrar un modelo");
+    contiene(pdfTxt(G("buildVentPdf")()), "NO HAY SELECCION VALIDA", "el PDF de ventilación lo dice:");
+    contiene(pdfTxt(G("buildMemoriaPdf")()), "sin modelo", "la memoria integral no inventa un modelo:");
+    S.tab = "ventilacion"; G("render")();
+    if (/Submittal del ventilador/.test(w.document.getElementById("view").textContent)) throw new Error("sin modelo no hay botón de submittal");
+    /* 5) Campana: CUBE-140 (851–3,124) no cubre 3,248 → sube al siguiente que cubra. */
+    V = armar({ mode: "kitchen", hoodType: "wall", duty: "medium", hoodL: 3.0, hoodW: 1.2, ductLoss: .5, filterLoss: .25 });
+    if (V.eq.cubre && V.eq.target > V.eq.primary.cfmMax) throw new Error("se declaró «cubre» con el objetivo arriba del máximo del modelo");
+    eq(V.eq.cubre, true, "hay campana que cubre 3,248:"); if (V.eq.primary.model === "CUBE-140") throw new Error("CUBE-140 no cubre 3,248");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 /* ===== R. Regresión por motor (rev 2.9.22, decisión del dueño): un proyecto fijo con cifras esperadas por disciplina ===== */
 const REG_DIR = "parches/regresion-motores/";
 const REG_PROY = fs.readFileSync(REG_DIR + "regresion-motores.emp.json", "utf8");
