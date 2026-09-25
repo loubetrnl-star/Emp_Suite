@@ -8249,7 +8249,11 @@ function computeSoporte(Gc) {
      mismo, directo del capturado, sin esperar a que corra la cotización. */
   const nEquipItems = (S.quote && Array.isArray(S.quote.items) ? S.quote.items : [])
     .reduce((a, it) => (typeof CARRIER !== "undefined" && CARRIER.some((x) => x.id === it.id)) ? a + num(it.qty, 0) : a, 0);
+  /* H-231 (rev 2.9.24, soporte v4): en modo gobernado (instantánea aceptada) las bases son las de la instantánea (snap.nEquip =
+     equipos cotizados + unidades de aire al tomarla); antes el conteo en vivo sumaba AIRE.totalUnidades = 0 del sustituto y se
+     perdía el compresor (3 → 2 bases). */
   const nEquipos = num(Gc.basesEquipo, 0) > 0 ? num(Gc.basesEquipo)
+    : (typeof QUOTE !== "undefined" && QUOTE && QUOTE.deSnap) ? num(QUOTE.nEquip, 0)
     : nEquipItems + ((typeof AIRE !== "undefined" && AIRE) ? num(AIRE.totalUnidades, 0) : 0);
 
   /* ---- Partidas: despiece real de SoporteCalc (varilla, perfil, anclaje,
@@ -17329,7 +17333,7 @@ function computeSoporteGobernado(G) {
     Lmon: num(snap.fuego && snap.fuego.Lmon),
   };
   AIRE = { tramos: (snap.aire || []).map((t) => ({ etiqueta: t.etiqueta, L: num(t.L), d: num(t.d) })), totalUnidades: 0 };
-  QUOTE = { nEquip: num(snap.nEquip) };
+  QUOTE = { nEquip: num(snap.nEquip), deSnap: true }; /* H-231: las bases salen de snap.nEquip, no del conteo en vivo */
   S.hidro = { ...(S.hidro || {}), material: snap.hidroMat };
   S.aire = { ...(S.aire || {}), material: snap.aireMat };
   try { return computeSoporte(G); }
@@ -18016,7 +18020,7 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "5", clean: "3", equip: "1", duct: "1", vent: "3", quote: "12", valor: "1", kaizen: "1", elec: "8", hidro: "8", fuego: "3", aire: "5", civil: "3", soporte: "3" };
+const MOTOR_VER = { load: "5", clean: "3", equip: "1", duct: "1", vent: "3", quote: "12", valor: "1", kaizen: "1", elec: "8", hidro: "8", fuego: "3", aire: "5", civil: "3", soporte: "4" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
@@ -18046,7 +18050,8 @@ const MOTOR_CAMBIOS = {
     { ver: "5", rev: "2.9.24", que: "H-218: diámetro interior por material: cobre tipo L con los DI de ASTM B88 (TUB_AGUA.cobre: 55 m de cobre 1\" → 1 1/4\"), acero con cédula 40, aluminio e inoxidable con cédula 40 sólo como indicativo y el DI del fabricante pendiente (aviso, memoria, PDF y partida). Proyecto fijo (aluminio): sin cambio de cifras, con la pendencia declarada" }],
   civil: [{ ver: "2", rev: "2.9.16", que: "sin área clasificada no hay partidas de área clasificada" }, { ver: "3", rev: "2.9.19", que: "un cuarto limpio vacío no cuenta como área clasificada" }],
   soporte: [{ ver: "2", rev: "2.9.16", que: "renta de elevación sólo con algo que montar" },
-    { ver: "3", rev: "2.9.24", que: "H-232: 0 meses de renta capturados se respetan (sin renta) y sin captura la renta queda pendiente con aviso (antes el 0 se volvía 1 mes y la omisión 3)" }],
+    { ver: "3", rev: "2.9.24", que: "H-232: 0 meses de renta capturados se respetan (sin renta) y sin captura la renta queda pendiente con aviso (antes el 0 se volvía 1 mes y la omisión 3)" },
+    { ver: "4", rev: "2.9.24", que: "H-231: con la instantánea motores>soporte aceptada las bases de equipo salen de snap.nEquip (antes el conteo en vivo perdía el compresor: 3 → 2)" }],
 };
 const motorVer = (id) => MOTOR_VER[id] || "1";
 function cambiosMotorTexto(id, desde) { return (MOTOR_CAMBIOS[id] || []).filter((c) => +c.ver > +(desde || 1)).map((c) => `v${c.ver} (rev ${c.rev}): ${c.que}`).join("; ") || "cambio de lógica del motor"; }

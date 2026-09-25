@@ -6902,6 +6902,21 @@ t("S.71 (H-232) renta de elevación: 0 meses capturados se respeta (sin renta), 
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+t("S.72 (H-231) al aceptar la instantánea motores>soporte las bases de equipo salen de snap.nEquip (2 equipos cotizados + 1 compresor = 3), no de un conteo en vivo que pierde el compresor", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("importarRespaldo")(fs.readFileSync("parches/regresion-motores/regresion-motores.emp.json", "utf8")); S.tab = "tablero"; G("KZ_CACHE").key = null; G("VZ_CACHE").key = null; G("recompute")();
+    eq(G("SOPORTE").nEquipos, 3, "en vivo: 2 equipos cotizados + 1 compresor:");
+    const bases = () => (G("SOPORTE").part || []).filter((p) => /[Bb]ase/.test(p.desc)).reduce((a, p) => a + p.qty, 0);
+    const enVivo = bases();
+    G("propAceptar")("motores>soporte"); G("recompute")();
+    if (!S.soporte.snap) throw new Error("no quedó instantánea aceptada");
+    eq(S.soporte.snap.nEquip, 3, "la instantánea guardó 3:");
+    eq(G("SOPORTE").nEquipos, 3, "gobernado: las bases siguen siendo 3 (antes 2: se perdía el compresor):");
+    eq(bases(), enVivo, "las partidas de base no cambian al aceptar la instantánea:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 /* ===== R. Regresión por motor (rev 2.9.22, decisión del dueño): un proyecto fijo con cifras esperadas por disciplina ===== */
 const REG_DIR = "parches/regresion-motores/";
 const REG_PROY = fs.readFileSync(REG_DIR + "regresion-motores.emp.json", "utf8");

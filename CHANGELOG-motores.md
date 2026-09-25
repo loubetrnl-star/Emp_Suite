@@ -123,11 +123,12 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 | 2 | 2.9.16 | sin área clasificada no hay partidas de área clasificada |
 | 3 | 2.9.19 | un cuarto limpio vacío no cuenta como área clasificada |
 
-## Soportería (`soporte`) · v3
+## Soportería (`soporte`) · v4
 
 | Versión | Rev | Hallazgo / cambio de lógica |
 |---|---|---|
 | 1 | 2.9.15 | lógica de partida |
 | 2 | 2.9.16 | renta de elevación sólo con algo que montar |
 | 3 | 2.9.24 | H-232 (política de pisos 2.9.16): 0 meses de renta capturados se respetan (sin partida) y sin captura la renta queda pendiente (aviso en el motor y pendiente en la cotización); `defaultSoporte().mesesElevacion` pasa de 3 a null. Antes el 0 se volvía 1 mes y la omisión 3. Proyecto fijo (3 meses capturados): sin cambio |
+| 4 | 2.9.24 | H-231: en modo gobernado (instantánea motores>soporte aceptada) las bases de equipo salen de `snap.nEquip` (equipos cotizados + unidades de aire al tomar la instantánea); antes el conteo en vivo sumaba 0 unidades de aire del sustituto y perdía el compresor (3 → 2 bases, −18,500 MXN). Proyecto fijo (en vivo): sin cambio |
 

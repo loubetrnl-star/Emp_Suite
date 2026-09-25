@@ -91,6 +91,6 @@
     "buscar": "const alturaColgado = num(Gc.alturaColgadoM, 0) > 0 ? num(Gc.alturaColgadoM) : hTrab;", "reemplazar": "const alturaColgado = num(Gc.alturaColgadoM, 0) > 0 ? num(Gc.alturaColgadoM) : 0.5;", "estado": "fase2:H-225" },
   { "id": "soporte.m46", "que": "SDS supuesto por omisión 1.0 → 0.5 (valor por omisión sin captura ni fuente)", "logica": false,
     "buscar": "sismoSDS: 1.0,", "reemplazar": "sismoSDS: 0.5,", "estado": "fase2:H-226" },
-  { "id": "soporte.m47", "que": "modo gobernado: unidades de aire de la instantánea 0 → 5 (las bases deberían salir de snap.nEquip)", "logica": true,
-    "buscar": "AIRE = { tramos: (snap.aire || []).map((t) => ({ etiqueta: t.etiqueta, L: num(t.L), d: num(t.d) })), totalUnidades: 0 };", "reemplazar": "AIRE = { tramos: (snap.aire || []).map((t) => ({ etiqueta: t.etiqueta, L: num(t.L), d: num(t.d) })), totalUnidades: 5 };", "estado": "fase2:H-231" }
+  { "id": "soporte.m47", "que": "H-231: el modo gobernado vuelve a contar las bases en vivo (pierde el compresor)", "logica": true,
+    "buscar": "QUOTE = { nEquip: num(snap.nEquip), deSnap: true };", "reemplazar": "QUOTE = { nEquip: num(snap.nEquip), deSnap: false };", "estado": "vigente" }
 ]
