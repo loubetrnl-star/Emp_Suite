@@ -1,8 +1,8 @@
 # hidro · pendientes de la Fase 1 y cierre de la Fase 2 (rev 2.9.24, 22/24-sep-2026)
 
-Motor hidrosanitario (`hidro`, v5). Entregas: `hidro.calc.mjs` (cálculo independiente, imprime y escribe la hoja),
-`hidro.csv` (91 filas: 69 vigentes, 22 `fase2:H-nnn`), `pruebas-motores/hidro.mjs` (20 pruebas `CM.hidro.*`),
-`parches/mutantes/hidro.json` (45 mutantes; ver §3). Banco al cierre de H-194: 452/452 sin base, 458/458 con base. Con
+Motor hidrosanitario (`hidro`, v6). Entregas: `hidro.calc.mjs` (cálculo independiente, imprime y escribe la hoja),
+`hidro.csv` (99 filas: 78 vigentes, 21 `fase2:H-nnn`), `pruebas-motores/hidro.mjs` (22 pruebas `CM.hidro.*`),
+`parches/mutantes/hidro.json` (51 mutantes; ver §3). Banco al cierre de H-195: 455/455 sin base, 461/461 con base. Con
 `CM_FASE2=1` las filas fase2 fallan hoy, ninguna pasa por casualidad (arnés `tmp-fase1/fase2-filas.mjs`, no commiteado).
 
 ## 0. Hallazgos cerrados en la Fase 2
@@ -10,6 +10,12 @@ Motor hidrosanitario (`hidro`, v5). Entregas: `hidro.calc.mjs` (cálculo indepen
 | Hallazgo | Estado | Qué cambió |
 |---|---|---|
 | H-194 (presión mínima por mueble sin fuente; CDT con residual fijo de 15 m) | **Cerrado** (hidro v4 → v5, 24-sep-2026) | `MUEBLES` guarda la presión en psi de la Tabla 604.3 del IPC 2015 (texto literal en `parches/normas-texto/IPC-2015_Tabla-604.3_y_424.3_upcodes.txt`) y la convierte con 0.703070 m/psi: WC con fluxómetro 35 psi = 24.607 m (antes 10.5), mingitorio 25 (antes 10.5), WC de tanque 20 (antes 5.6), regadera 20 por §424.3 (antes 8.4), lavabo/fregadero/lavadero/bebedero 8 (5.6246, antes 5.6), toma de manguera 8 (antes 10.5); tarja de laboratorio asimilada a sink, service 8 psi (criterio de la casa, declarado); lavaojos 21 m sin cambio (H-195). Sin muebles: 8 psi, el menor renglón (criterio de la casa). La CDT lleva máx(residual capturado, mínima de norma del mueble más exigente); memoria, PDF, Excel (URS) y pantalla dicen cuál rige y de dónde sale. Filas 1.z–1.ac de fase2 a vigente; nuevas 12.a–j, 13.a, 14.a–b; retiradas 1.m–1.o (consagraban el residual fijo); 10.a recalculada. Pruebas 22.5, L.1, S.20 (antes → después) y S.36 (v5) actualizadas. Aguas abajo: quote v6 regenerado (partida de cisterna y bomba 29,000 → 36,250 MXN, precio semilla de H-196). |
+
+| H-195 (lavaojos/regadera de emergencia como 6 UM de Hunter) | **Cerrado con fuente secundaria** (hidro v5 → v6, 25-sep-2026); **ratificar con Z358.1-2014** | Fuente: cartas de OSHA del 18-abr-2002 (Z358.1 §4.1: regadera ≥ 75.7 L/min = 20 gpm, volumen para 15 min) y del 22-nov-1993 (Z358.1-1990: lavaojos fijo ≥ 1.5 L/min = 0.4 gal/min), párrafos en `parches/normas-texto/OSHA-cartas-Z358.1_regadera-y-lavaojos.txt`. `lavaojos` pasa a «Regadera de emergencia (con o sin lavaojos)» con `emergGpm` 20; mueble nuevo `lavaojos_solo` (0.4 gpm). Ninguno entra a Hunter (0 UM; antes 6); su gasto se suma fijo al del sistema (todos a la vez, criterio de la casa) y cada tramo declara el que conduce (`qEmergLmin`, L/min; aviso si ninguno lo lleva, 0.5 % de tolerancia de redondeo). Volumen para 15 min (`volEmerg`) con aviso si la cisterna no lo guarda. Presión 21 m (30 psi) y UD (4 y 1) declarados criterio de la casa: las cartas no dan presión y 709.1 no lista el equipo (UD a H-203). Temperatura: no se calcula (Z358.1 la fija; OSHA la deja al patrón). Filas 5.a de fase2 a vigente; nuevas 5.b–c, 15.a–d, 16.a–b; prueba S.53. Proyecto fijo sin cambio de cifras. |
+
+Defecto latente registrado (fuera del alcance de H-195, sin prueba todavía): `muebleDe(id)` devuelve el WC con fluxómetro para un
+id desconocido (`|| MUEBLES[0]`), así que un mueble que no existe en la tabla se calcula como WC con fluxómetro (10 UM, 35 psi) en
+vez de rechazarse. Lo mostró la prueba 16.a antes de agregar `lavaojos_solo`.
 
 ## 1. Pruebas que hoy protegen valores incorrectos (se marcan; se corrigen en la Fase 2 con su hallazgo)
 
@@ -29,7 +35,7 @@ presMinReq 5.6246 (sin muebles rige el residual de la casa). El módulo `pruebas
 | Fila | H | Esperado (fuente) | Suite hoy |
 |---|---|---|---|
 | ~~CM.hidro.1.z–1.ac~~ | H-194 | **vigentes desde el 24-sep-2026** (presMinReq 24.607 m, CDT 29.563 m, 1.7883 kW, 2.5 HP) | = esperado |
-| CM.hidro.5.a | H-195 | Qtotal 1.2618 L/s (75.7 L/min, Z358.1 vía OSHA, **secundaria**, BLOQUEADO) con sólo 1 lavaojos/regadera | 0.6587 (6 UM en Hunter) |
+| ~~CM.hidro.5.a~~ | H-195 | **vigente desde el 25-sep-2026** (Qtotal 1.2618 L/s = 20 gpm fuera de Hunter; Z358.1-1990 vía OSHA, secundaria) | = esperado |
 | CM.hidro.1.ad | H-196 | importe «Cisterna … y equipo de bombeo» 0 (Por cotizar) | 29,000 MXN (9,500 × 0 m³ + 14,500 × 2 HP) |
 | CM.hidro.3.d | H-197 | cisterna 0 L con 0 días capturados (respetar captura) | 3,000 L (piso 0.5 día) |
 | CM.hidro.7.a | H-197 | ΔT 0 K con 40/40 °C (calentador pendiente) | 5 K (piso) |
@@ -66,6 +72,12 @@ MUERE (22.5, S.20, R.1, CM.hidro.1/.10/.12); m09 y m35 reapuntados a las líneas
 (CDT sin mínima de norma, CDT sin residual, psi → m, mingitorio, WC de tanque, regadera, manguera, sin muebles): todos MUERTOS,
 m41–m44 sólo por CM.hidro.12, m39 sólo por L.1 y CM.hidro.14, m45 sólo por L.1 y CM.hidro.13. La tabla de abajo es la corrida
 de la Fase 1 (37 mutantes).
+
+**Al cierre de H-195 (25-sep-2026), corrida de los 7 mutantes tocados (`--solo`): todos MUERTOS.** m32 reapuntado (regadera 20 →
+10 gpm; ya no «6 → 60 UM») y pasa a vigente: S.53, CM.hidro.5/15. Nuevos: m46 (lavaojos 0.4 → 0.2 gpm: S.53, CM.hidro.16), m47
+(el gasto de emergencia no se suma al sistema: S.53, CM.hidro.5/15/16), m48 (el tramo ignora el gasto capturado: S.53,
+CM.hidro.15), m49 (15 → 10 min: S.53, CM.hidro.5/16), m50 (la regadera vuelve a Hunter con 6 UM: S.53, CM.hidro.5/15), m51 (sin
+el aviso de tramo: sólo S.53). Total 51 mutantes; fase2 vivos previstos: m12, m14, m24, m28, m29, m30, m37.
 
 Resultado de la Fase 1: **37 mutantes · 0 vivos en lógica vigente · código de salida 0** (compuerta cerrada). 26 muertos (25 de
 lógica vigente + m34, que no es lógica); 11 en estado fase2, de los que 9 siguen vivos (previsto) y 2 mueren igual.

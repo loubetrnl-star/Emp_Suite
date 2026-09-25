@@ -249,11 +249,11 @@
   },
   {
     "id": "hidro.m32",
-    "que": "lavaojos/regadera de emergencia 6 → 60 UM (H-195 saca el mueble de Hunter)",
+    "que": "H-195: regadera de emergencia 20 → 10 gpm (Z358.1-1990 §4.1 vía OSHA da 20); antes «6 → 60 UM», el mueble ya no entra a Hunter",
     "logica": true,
-    "buscar": "um: 6, umPriv: 6, ud: 4, presMin: 21, tipo: \"tanque\", cal: 0 },",
-    "reemplazar": "um: 60, umPriv: 6, ud: 4, presMin: 21, tipo: \"tanque\", cal: 0 },",
-    "estado": "fase2:H-195"
+    "buscar": "ud: 4, presMin: 21, emergGpm: 20,",
+    "reemplazar": "ud: 4, presMin: 21, emergGpm: 10,",
+    "estado": "vigente"
   },
   {
     "id": "hidro.m33",
@@ -357,6 +357,54 @@
     "logica": true,
     "buscar": ": 8 * PSI_MCA;",
     "reemplazar": ": 5.6;",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m46",
+    "que": "H-195: lavaojos fijo 0.4 → 0.2 gal/min (Z358.1-1990 vía OSHA da 0.4)",
+    "logica": true,
+    "buscar": "presMin: 21, emergGpm: 0.4,",
+    "reemplazar": "presMin: 21, emergGpm: 0.2,",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m47",
+    "que": "H-195: el gasto de emergencia no se suma al del sistema",
+    "logica": true,
+    "buscar": "const Qtotal = hunterQ(umTotal, tipoSistema) + qEmerg;",
+    "reemplazar": "const Qtotal = hunterQ(umTotal, tipoSistema);",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m48",
+    "que": "H-195: el tramo ignora el gasto de emergencia capturado",
+    "logica": true,
+    "buscar": "const Q = hunterQ(um, tipo) + qEmergLmin / 60;",
+    "reemplazar": "const Q = hunterQ(um, tipo);",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m49",
+    "que": "H-195: volumen de emergencia para 10 min en vez de 15",
+    "logica": true,
+    "buscar": "const EMERG_MIN = 15;",
+    "reemplazar": "const EMERG_MIN = 10;",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m50",
+    "que": "H-195: la regadera de emergencia vuelve a Hunter con 6 UM (conducta anterior)",
+    "logica": true,
+    "buscar": "nombre: \"Regadera de emergencia (con o sin lavaojos)\", um: 0, umPriv: 0,",
+    "reemplazar": "nombre: \"Regadera de emergencia (con o sin lavaojos)\", um: 6, umPriv: 6,",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m51",
+    "que": "H-195: sin el aviso de tramo que no lleva el gasto de emergencia",
+    "logica": true,
+    "buscar": "if (tramos.length && qEmerg > 0 && qEmMax < qEmerg * 60 * 0.995)",
+    "reemplazar": "if (false)",
     "estado": "vigente"
   }
 ]

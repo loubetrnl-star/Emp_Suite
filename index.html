@@ -2486,6 +2486,7 @@ function buildHidroPdf() {
     ["Gasto probable total", `${n(R.Qtotal, 2)} L/s (${n(R.Qtotal * 60, 0)} L/min)`],
     ["Perdida acumulada", `${n(R.hfTotal, 2)} m`],
     ["Presion residual en el mueble mas desfavorable", `${n(R.presDisp, 1)} m contra ${n(R.presMinReq, 1)} m requeridos`],
+    ...(R.qEmerg > 0 ? [["Equipo de emergencia", `${n(R.qEmerg * 60, 1)} L/min fijos fuera de Hunter, incluidos en el gasto · ${n(R.volEmerg, 0)} L para ${EMERG_MIN} min (ANSI Z358.1-1990 via cartas de OSHA, secundaria; ratificar con Z358.1-2014)`]] : []),
     ["Agua caliente", `${n(R.Qcal, 2)} L/s · ${n(R.kWcal, 1)} kW termicos para elevar ${n(R.dT, 0)} K`],
   ]);
   pdfHeading(d, "5. Drenaje sanitario");
@@ -9974,8 +9975,13 @@ function computeElec(E) {
    regadera 20 (renglón «balanced-pressure, thermostatic or combination», la válvula que §424.3 exige en toda regadera
    individual; el renglón «Shower» de 8 psi no cumple 424.3). La tarja de laboratorio no está en la tabla y 604.3 remite al
    fabricante: se asimila a sink, service (8 psi), criterio de la casa. El lavaojos / regadera de emergencia tampoco está en
-   604.3: conserva 21 m (30 psi) pendiente de ANSI Z358.1 (H-195, BLOQUEADO). Antes, sin fuente: WC con fluxómetro 10.5,
-   WC de tanque 5.6, mingitorio 10.5, regadera 8.4, toma de manguera 10.5 m. */
+   604.3: conserva 21 m (30 psi) como criterio de la casa (H-195: las cartas de OSHA sobre Z358.1 no dan presión). Antes, sin
+   fuente: WC con fluxómetro 10.5, WC de tanque 5.6, mingitorio 10.5, regadera 8.4, toma de manguera 10.5 m.
+   H-195 (rev 2.9.24, hidro v6): la regadera de emergencia y el lavaojos fijo no entran a Hunter (E103.3(2) no los lista;
+   antes 6 UM cada uno): su gasto es fijo, emergGpm, y se suma al del sistema. Fuente SECUNDARIA: ANSI Z358.1-1990 citada por
+   OSHA, carta del 18-abr-2002 (§4.1: regadera ≥ 75.7 L/min = 20 gpm, volumen para ≥ 15 min) y del 22-nov-1993 (lavaojos fijo
+   ≥ 1.5 L/min = 0.4 gal/min); ratificar con Z358.1-2014. UD: 709.1 no los lista; se conservan 4 (regadera, valor anterior
+   sin fuente, H-203) y 1 para el lavaojos fijo (asimilado a lavabo, criterio de la casa). */
 const PSI_MCA = 6894.757 / 9806.65;
 const MUEBLES = [
   { id: "wc_flux",   nombre: "Inodoro con fluxómetro",      um: 10,  umPriv: 6,   ud: 8, psi: 35, tipo: "fluxometro", cal: 0 },
@@ -9988,9 +9994,11 @@ const MUEBLES = [
   { id: "bebedero",  nombre: "Bebedero",                    um: 0.5, umPriv: 0.5, ud: 0.5, psi: 8, tipo: "tanque", cal: 0 },
   { id: "tarja_lab", nombre: "Tarja de laboratorio",        um: 3,   umPriv: 2,   ud: 2, psi: 8,  psiCasa: true, tipo: "tanque", cal: .5 },
   { id: "manguera",  nombre: 'Toma de manguera 3/4"',       um: 5,   umPriv: 3,   ud: 3, psi: 8,  tipo: "tanque", cal: 0 },
-  { id: "lavaojos",  nombre: "Lavaojos / regadera de emergencia", um: 6, umPriv: 6, ud: 4, presMin: 21, tipo: "tanque", cal: 0 },
+  { id: "lavaojos",  nombre: "Regadera de emergencia (con o sin lavaojos)", um: 0, umPriv: 0, ud: 4, presMin: 21, emergGpm: 20, tipo: "tanque", cal: 0 },
+  { id: "lavaojos_solo", nombre: "Lavaojos de emergencia fijo (sin regadera)", um: 0, umPriv: 0, ud: 1, presMin: 21, emergGpm: 0.4, tipo: "tanque", cal: 0 },
 ].map((m) => ({ ...m, presMin: m.psi != null ? m.psi * PSI_MCA : m.presMin,
-  presFuente: m.psi == null ? "ANSI Z358.1 vía OSHA, sin ratificar (H-195)" : m.psiCasa ? `${m.psi} psi, asimilada a sink, service (criterio de la casa)` : `${m.psi} psi, IPC 2015 Tabla 604.3` }));
+  presFuente: m.psi == null ? "30 psi, criterio de la casa sin fuente: 604.3 no lo lista y las cartas de OSHA sobre Z358.1 no dan presión; confirmar con el fabricante" : m.psiCasa ? `${m.psi} psi, asimilada a sink, service (criterio de la casa)` : `${m.psi} psi, IPC 2015 Tabla 604.3` }));
+const EMERG_MIN = 15;   // minutos de agua para el equipo de emergencia: Z358.1-1990 §4.1 vía carta OSHA 18-abr-2002 (secundaria)
 const muebleDe = (id) => MUEBLES.find((m) => m.id === id) || MUEBLES[0];
 
 /* Curva de Hunter: unidades mueble → gasto probable en L/s.
@@ -10164,8 +10172,17 @@ function computeHidro(H) {
   const presMinReq = lista.length ? Math.max(...lista.map((x) => x.presMin)) : 8 * PSI_MCA;
   const masExigente = lista.length ? lista.reduce((a, x) => (x.presMin > a.presMin ? x : a), lista[0]) : null;
 
-  const Qtotal = hunterQ(umTotal, tipoSistema);
+  /* H-195: equipo de emergencia con gasto fijo, fuera de Hunter; se suma al gasto probable (criterio de la casa: todos los
+     equipos capturados operan a la vez y coinciden con el pico de los muebles). */
+  const emerg = lista.filter((x) => x.emergGpm > 0);
+  const qEmerg = emerg.reduce((a, x) => a + x.emergGpm * x.cant, 0) * GPM_LS;
+  const volEmerg = qEmerg * 60 * EMERG_MIN;
+  const Qtotal = hunterQ(umTotal, tipoSistema) + qEmerg;
   memo.push(`${lista.reduce((a, x) => a + x.cant, 0)} muebles · ${n(umTotal, 1)} unidades mueble de suministro (uso ${H.uso === "privado" ? "privado" : "público"}) · ${n(udTotal, 0)} unidades de descarga.`);
+  if (emerg.length) {
+    memo.push(`Equipo de emergencia fuera de Hunter, con gasto fijo: ${emerg.map((x) => `${x.cant} × ${x.nombre.toLowerCase()} a ${n(x.emergGpm * GPM_LS * 60, 1)} L/min (${x.emergGpm} gpm)`).join(" · ")} = ${n(qEmerg * 60, 1)} L/min que se suman al gasto probable, todos a la vez (criterio de la casa). Volumen para ${EMERG_MIN} min: ${n(volEmerg, 0)} L. Fuente secundaria: ANSI Z358.1-1990 citada por OSHA (cartas del 18-abr-2002 y del 22-nov-1993); falta ratificar con el texto de Z358.1-2014. La temperatura del agua (templada) la fija Z358.1; OSHA la deja a la evaluación del patrón: no se calcula aquí.`);
+    avisos.push({ lvl: "warn", msg: `La presión de ${n(emerg[0].presMin, 1)} m en el equipo de emergencia es criterio de la casa sin fuente (la Tabla 604.3 no lo lista y remite al fabricante): confírmala con la placa del equipo.` });
+  }
   memo.push(`Gasto probable por el método de Hunter (IPC apéndice E, Table E103.3(3); el agua caliente con la curva de tanque), curva de ${tipoSistema === "fluxometro" ? "fluxómetro" : "tanque"}: ${n(Qtotal, 2)} L/s (${n(Qtotal * 60, 0)} L/min). El mueble más exigente pide ${n(presMinReq, 1)} m de columna de agua en su llave (${masExigente ? `${masExigente.nombre}: ${masExigente.presFuente}` : "sin muebles capturados: 8 psi, el menor renglón de la IPC 2015 Tabla 604.3"}).`);
   if (umTotal > 0 && umTotal < 10) avisos.push({ lvl: "warn", msg: `Con ${n(umTotal, 1)} unidades mueble el método de Hunter pierde sentido estadístico: por debajo de unas diez unidades conviene calcular el gasto simultáneo real de los muebles que puedan abrirse a la vez.` });
 
@@ -10174,7 +10191,9 @@ function computeHidro(H) {
     const caliente = t.servicio === "caliente";
     const um = Math.max(0, num(t.um));
     const tipo = t.tipoUM === "auto" ? tipoSistema : t.tipoUM;
-    const Q = hunterQ(um, tipo);
+    /* H-195: el gasto de emergencia que lleva el tramo se captura en L/min y se suma fijo a su Hunter. */
+    const qEmergLmin = Math.max(0, num(t.qEmergLmin, 0));
+    const Q = hunterQ(um, tipo) + qEmergLmin / 60;
     const s = sizeAgua(Q, mat, caliente);
     /* rev 2.9.16 · DECISIÓN DEL DUEÑO (pisos internos): sólo se quedan los pisos con norma, y cuando se aplican se avisan y quedan en la memoria; los que no tenían sustento salieron.
        Un tramo sin longitud se calculaba con 10 m supuestos. Ahora su pérdida es cero, el tramo queda marcado y hay
@@ -10187,7 +10206,7 @@ function computeHidro(H) {
     const Leq = L * 1.3;
     const hf = J * Leq;
     const alt = num(t.alt, 0);
-    return { ...t, um, Q, ...s, L, Lcap: L, sinL: !(L > 0), Leq, J, hf, alt, caliente, perdida: hf + alt };
+    return { ...t, um, qEmergLmin, Q, ...s, L, Lcap: L, sinL: !(L > 0), Leq, J, hf, alt, caliente, perdida: hf + alt };
   });
   const sinLong = tramos.filter((t) => t.sinL);
   if (sinLong.length) avisos.push({ lvl: "err", msg: `${sinLong.length} tramo(s) de agua sin longitud capturada (${sinLong.map((t) => t.tag || t.nombre || "tramo").slice(0, 4).join(", ")}): su pérdida no se calcula ni se supone, así que la presión requerida no los incluye. Captura su longitud.` });
@@ -10199,6 +10218,10 @@ function computeHidro(H) {
   const umMax = tramos.reduce((a, t) => Math.max(a, t.um), 0);
   if (tramos.length && umMax < umTotal - .01)
     avisos.push({ lvl: "warn", msg: `El tramo con más unidades mueble lleva ${n(umMax, 1)} UM y los muebles capturados suman ${n(umTotal, 1)}. La alimentación general tiene que llevar todas: revisa el acumulado de los tramos o el diámetro saldrá chico.` });
+  const qEmMax = tramos.reduce((a, t) => Math.max(a, t.qEmergLmin), 0);
+  /* La captura va en L/min redondeados (75.7 por 20 gpm = 75.708): 0.5 % de tolerancia de redondeo. */
+  if (tramos.length && qEmerg > 0 && qEmMax < qEmerg * 60 * 0.995)
+    avisos.push({ lvl: "warn", msg: `El gasto del equipo de emergencia (${n(qEmerg * 60, 1)} L/min) no lo lleva completo ningún tramo (el que más lleva: ${n(qEmMax, 1)} L/min). Captura en cada tramo el gasto de emergencia que conduce, o sus diámetros no lo incluyen.` });
   const hfTotal = tramos.reduce((a, t) => a + t.perdida, 0);
   const presDisp = num(H.presRed, 25) - hfTotal;
   const presOk = presDisp >= presMinReq;
@@ -10267,9 +10290,11 @@ function computeHidro(H) {
   const kWbomba = 9.81 * Qtotal * cdt / 1000 / .6;
   const hpBomba = Math.ceil(kWbomba / .746 * 2) / 2;
   memo.push(`Cisterna: dotación ${dot.l} L por ${dot.unidad} y día × ${n(num(H.habitantes, 0), 0)} = ${n(consumoDia, 0)} L/día · ${n(num(H.diasReserva, 1), 1)} día(s) de reserva = ${n(cisterna, 0)} L (${n(cisterna / 1000, 1)} m³).`);
+  if (volEmerg > 0 && cisterna < volEmerg)
+    avisos.push({ lvl: "warn", msg: `La cisterna (${n(cisterna, 0)} L) no guarda los ${n(volEmerg, 0)} L que el equipo de emergencia necesita para ${EMERG_MIN} min (Z358.1-1990 vía OSHA, secundaria).` });
   memo.push(`Equipo de bombeo: ${n(Qtotal, 2)} L/s a ${n(cdt, 1)} m de carga dinámica total (altura del edificio ${n(num(H.alturaEdificio, 6), 1)} m + fricción de los tramos ${n(hfTramos, 2)} m + ${n(presCdt, 1)} m en el mueble más alto: ${rigeNorma ? `rige la mínima de norma del mueble más exigente, ${masExigente ? masExigente.nombre.toLowerCase() : "mueble"}, IPC 2015 Tabla 604.3, sobre el residual de ${n(presResidual, 1)} m de la casa` : `rige el residual de ${n(presResidual, 1)} m, criterio de la casa, sobre la mínima de norma de ${n(presMinReq, 1)} m`}) → ${n(kWbomba, 2)} kW al eje, ${n(hpBomba, 1)} HP nominales con 60 % de eficiencia del conjunto. Hidroneumático o velocidad variable según el perfil de demanda.`);
 
-  return { lista, umTotal, udTotal, wcTotal, tipoSistema, umCal, presMinReq, masExigente, Qtotal,
+  return { lista, umTotal, udTotal, wcTotal, tipoSistema, umCal, presMinReq, masExigente, qEmerg, volEmerg, Qtotal,
     tramos, hfTotal, presDisp, presOk, ramal, bajada, colector, pend, ventD,
     Qcal, dT, kWcal, dot, consumoDia, cisterna, presResidual, presCdt, rigeNorma, hfTramos, cdt, kWbomba, hpBomba, mat, memo, avisos };
 }
@@ -17834,7 +17859,7 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "4", clean: "2", equip: "1", duct: "1", vent: "1", quote: "6", valor: "1", kaizen: "1", elec: "8", hidro: "5", fuego: "2", aire: "2", civil: "3", soporte: "2" };
+const MOTOR_VER = { load: "4", clean: "2", equip: "1", duct: "1", vent: "1", quote: "6", valor: "1", kaizen: "1", elec: "8", hidro: "6", fuego: "2", aire: "2", civil: "3", soporte: "2" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
@@ -17848,7 +17873,8 @@ const MOTOR_CAMBIOS = {
     { ver: "7", rev: "2.9.24", que: "H-179: nada se supone. Sin distancia al tablero, sin transformador (kVA y Z de placa) o sin longitud de una carga, la caída del alimentador, la corriente de falla con su capacidad interruptiva y la caída del ramal quedan «pendiente» con aviso (antes 30 m, 150 kVA / Z 4 % y 25 m supuestos; 0 m daba 0.00 %). Las cargas de otros motores ya no traen distancia automática (Ltablero + 10 a 30 m). Sin longitud el calibre se declara mínimo por ampacidad. El 80 % del transformador se revisa con sólo el kVA. Proyectos guardados antes conservan sus valores, marcados «sin confirmar». La memoria, el PDF y el libro dan la L de cada carga. Cubre H-189" },
     { ver: "8", rev: "2.9.24", que: "H-178: la corriente de un motor de uso general sale de la Tabla 430-250 (trifásico) o 430-248 (monofásico, con su columna de 127 V) de la NOM-001-SEDE-2012 (430-6(a)(1)), no de kW/(1.732·V·fp): hp de placa (campo nuevo) o, sin él, el renglón inmediato superior al kW por la columna kW de la propia tabla (decisión del dueño 2; 15 kW → 25 hp → 68 A, antes 46.31 A → 4 AWG/125 A, ahora 3 AWG/175 A). Su kVA en la demanda sale de esa corriente. El hp de catálogo o estimado por otro motor (compresor, bombas) no es de placa: sólo puede subir el renglón. Los FFU entran como aparato (Exc. 2). Fuera de la tabla, corriente ESTIMADA con aviso, o PENDIENTE sin kW. Los proyectos que aceptaron la cédula antes salen con la propuesta «Desactualizada»" }],
   hidro: [{ ver: "2", rev: "2.9.16", que: "tramo sin longitud ya no supone 10 m" }, { ver: "3", rev: "2.9.18", que: "curva de Hunter de IPC apéndice E Table E103.3(3)" }, { ver: "4", rev: "2.9.19", que: "renglones de 2500 a 5000 UM de la misma tabla" },
-    { ver: "5", rev: "2.9.24", que: "H-194: presión mínima en la salida de cada mueble por la Tabla 604.3 del IPC 2015 (WC con fluxómetro 35 psi = 24.6 m, antes 10.5 m sin fuente; mingitorio 25, WC de tanque 20, regadera 20 por §424.3, lavabo/fregadero/lavadero/bebedero/manguera 8 psi); la carga dinámica de la bomba lleva máx(residual capturado, mínima de norma del mueble más exigente), antes sólo el residual fijo de 15 m" }],
+    { ver: "5", rev: "2.9.24", que: "H-194: presión mínima en la salida de cada mueble por la Tabla 604.3 del IPC 2015 (WC con fluxómetro 35 psi = 24.6 m, antes 10.5 m sin fuente; mingitorio 25, WC de tanque 20, regadera 20 por §424.3, lavabo/fregadero/lavadero/bebedero/manguera 8 psi); la carga dinámica de la bomba lleva máx(residual capturado, mínima de norma del mueble más exigente), antes sólo el residual fijo de 15 m" },
+    { ver: "6", rev: "2.9.24", que: "H-195: regadera de emergencia (20 gpm = 75.7 L/min) y lavaojos fijo (0.4 gal/min = 1.5 L/min, mueble nuevo) fuera de Hunter con gasto fijo sumado al del sistema, antes 6 unidades mueble cada uno; volumen para 15 min; el tramo declara el gasto de emergencia que conduce (L/min) con aviso si ninguno lo lleva. Fuente secundaria: ANSI Z358.1-1990 citada por OSHA (cartas del 18-abr-2002 y 22-nov-1993); ratificar con Z358.1-2014" }],
   fuego: [{ ver: "2", rev: "2.9.16", que: "sin área no hay demanda, bomba ni reserva; área mínima de operación NFPA 13 con aviso" }],
   aire: [{ ver: "2", rev: "2.9.16", que: "sin demanda no se cuentan unidades" }],
   civil: [{ ver: "2", rev: "2.9.16", que: "sin área clasificada no hay partidas de área clasificada" }, { ver: "3", rev: "2.9.19", que: "un cuarto limpio vacío no cuenta como área clasificada" }],
@@ -20314,7 +20340,7 @@ function viewHidro() {
         return `<div class="list-item" style="align-items:center;gap:10px">
           <div style="flex:1;min-width:0">
             <div style="font-size:15.5px;font-weight:600">${esc(m.nombre)}</div>
-            <div class="sub">${m[H.uso === "privado" ? "umPriv" : "um"]} UM · ${m.ud} UD · pide ${n(m.presMin, 1)} m (${esc(m.presFuente)})</div>
+            <div class="sub">${m.emergGpm ? `${n(m.emergGpm * GPM_LS * 60, 1)} L/min fijos (${m.emergGpm} gpm, Z358.1-1990 vía OSHA, secundaria), fuera de Hunter` : `${m[H.uso === "privado" ? "umPriv" : "um"]} UM`} · ${m.ud} UD · pide ${n(m.presMin, 1)} m (${esc(m.presFuente)})</div>
           </div>
           <input type="number" min="0" step="1" style="width:74px" value="${cant}" data-mueble="${m.id}" aria-label="${esc("Cantidad de " + m.nombre)}" />
         </div>`;
@@ -20343,6 +20369,7 @@ function viewHidro() {
           <div class="row">${inp("Etiqueta", `hidro.tramos.${i}.tag`, "text")}${sel("Servicio", `hidro.tramos.${i}.servicio`, [["fria", "Agua fría"], ["caliente", "Agua caliente"]])}</div>
           <div class="row">${inp("Unidades mueble acumuladas", `hidro.tramos.${i}.um`, "number", "1")}${inp("Longitud (m)", `hidro.tramos.${i}.L`, "number", "1")}</div>
           ${inp("Altura estática que vence (m)", `hidro.tramos.${i}.alt`, "number", "0.5")}
+          ${R.qEmerg > 0 ? inp("Gasto de emergencia que conduce (L/min, fijo, fuera de Hunter)", `hidro.tramos.${i}.qEmergLmin`, "number", "0.1") : ""}
         </details>`).join("")}
       </div></div>
       <div class="card"><h3>Drenaje sanitario</h3><div class="body">

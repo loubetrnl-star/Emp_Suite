@@ -1,0 +1,39 @@
+Cartas de interpretación de OSHA (29 CFR 1910.151(c)) que citan ANSI Z358.1 — leídas en osha.gov el 25-sep-2026 para H-195
+(rev 2.9.24, motor hidro v6). Obra del gobierno de EE. UU. (dominio público). Transcripción literal de los párrafos usados.
+Carácter: SECUNDARIA respecto de ANSI/ISEA Z358.1 (citan la edición 1990). Z358.1-2014 no está en texto: se ratifica con él.
+
+=====================================================================================================================
+1) 18 de abril de 2002 — Mr. Paul Hagmann
+   https://www.osha.gov/laws-regs/standardinterpretations/2002-04-18-1
+
+Question 3: While reading product literature on emergency shower units, it stated that 30 gpm was fairly standard among
+drench showers; are there specific requirements for the rate of flow for an emergency eyewash or shower unit?
+
+Reply: OSHA has adopted no specific requirements regarding flow rates for drenching/flushing facilities. ANSI Z358.1
+provides detailed information regarding the installation and operation of emergency eyewash and shower equipment,
+including the requirements for flow rate. Section 4.1 of ANSI Z358.1 specifies that emergency shower heads shall be
+capable of delivering a minimum of 75.7 liters per minute (20 gpm) of flushing fluid at a velocity low enough to be
+non-injurious to the user. A sufficient volume of flushing fluid shall be available to supply the flow rate for a
+minimum fifteen minute period.
+
+(Question 1, sobre la temperatura) "... it is the employer's responsibility to assess the particular conditions related
+to the eyewash/shower unit, such as water temperature, to ensure that the eyewash/shower unit provides suitable
+protection against caustic chemicals/materials to which employees may be exposed."
+(La pregunta 1 y la 4 se refieren a la edición ANSI Z358.1-1990.)
+
+=====================================================================================================================
+2) 22 de noviembre de 1993 — lavaojos de plomería
+   https://www.osha.gov/laws-regs/standardinterpretations/1993-11-22
+
+"For details on emergency eyewash and shower equipment, we reference consensus standard ANSI Z358.1-1990."
+"Some of the specifications of ANSI Z358.1-1990 are listed as follows: Plumbed emergency eyewash units must be able to
+deliver not less than 1.5 liters (.4 gallons) of clean water per minute. The water must be readily available to wash both
+eyes simultaneously and the flushing streams must rise to approximately equal heights. [...]"
+
+=====================================================================================================================
+Lo que NO dicen (y por eso la suite lo declara criterio de la casa o pendiente):
+- Presión mínima de operación del equipo (la suite conserva 30 psi = 21 m, criterio de la casa; IPC 604.3 no lo lista y
+  remite al fabricante).
+- Simultaneidad de varios equipos (la suite los suma todos, criterio de la casa conservador).
+- Periodo para el lavaojos fijo (la carta de 1993 no lo da; la suite usa los 15 min de la regadera, criterio de la casa).
+- Temperatura del agua templada (Z358.1 la fija; no se calcula).

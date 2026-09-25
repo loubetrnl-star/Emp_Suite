@@ -1,4 +1,4 @@
-/* pruebas-motores/hidro.mjs · Fase 1 (rev 2.9.24) · casos calculados a mano del motor hidrosanitario (`hidro`, v5).
+/* pruebas-motores/hidro.mjs · Fase 1 (rev 2.9.24) · casos calculados a mano del motor hidrosanitario (`hidro`, v6).
    Hoja: parches/casos-a-mano/hidro.csv (generada por parches/casos-a-mano/hidro.calc.mjs, cálculo independiente de la
    suite). Cada prueba arma el estado del caso, evalúa las filas de su prefijo con CM.comprobar (números con tolerancia)
    y restaura S en finally. Las filas «fase2:H-nnn» sólo se exigen con CM_FASE2=1.
@@ -55,7 +55,7 @@ export default async function ({ t, G, S, CM }) {
   conEstado("CM.hidro.4 (IPC 2015 E103.3(2)/(3) tanque, 709.1, 710.1, 906.2) cuatro WC con tanque, sin otro mueble: sistema de tanque y drenaje",
     () => { S.hidro = { ...fixture(), tramos: [], muebles: [{ id: "wc_tanque", cant: 4 }] }; }, ["CM.hidro.4"]);
 
-  conEstado("CM.hidro.5 (ANSI/ISEA Z358.1-2014 vía OSHA, secundaria) regadera de emergencia: demanda fija fuera de Hunter [fase2:H-195]",
+  conEstado("CM.hidro.5 (H-195: ANSI Z358.1-1990 §4.1 vía carta OSHA 18-abr-2002, secundaria) regadera de emergencia: demanda fija de 20 gpm fuera de Hunter y volumen para 15 min",
     () => { S.hidro = { ...fixture(), tramos: [], muebles: [{ id: "lavaojos", cant: 1 }] }; }, ["CM.hidro.5"]);
 
   conEstado("CM.hidro.6 (decisión del dueño H-198; ASTM D2846 CTS hasta 2\") CPVC: los renglones «SIN VERIFICAR» de 2 1/2\" a 4\" se retiran [fase2:H-198]",
@@ -85,4 +85,10 @@ export default async function ({ t, G, S, CM }) {
     () => { S.hidro = { ...fixture(), muebles: [] }; }, ["CM.hidro.13"]);
   conEstado("CM.hidro.14 (H-194: IPC 2015 Tabla 604.3; residual 15 m criterio de la casa) con sólo lavabos la CDT lleva el residual de la casa, que es mayor que la mínima de norma",
     () => { S.hidro = { ...fixture(), muebles: [{ id: "lavabo", cant: 2 }] }; }, ["CM.hidro.14"]);
+
+  /* H-195 (rev 2.9.24, hidro v6): regadera de emergencia y lavaojos fuera de Hunter, con gasto fijo (Z358.1-1990 vía OSHA). */
+  conEstado("CM.hidro.15 (H-195: IPC 2015 E103.3(3); Z358.1-1990 §4.1 vía OSHA) fixture + regadera de emergencia: gasto del sistema y del tramo que la lleva",
+    () => { S.hidro = fixture(); S.hidro.muebles.push({ id: "lavaojos", cant: 1 }); S.hidro.tramos[0].qEmergLmin = 75.7; }, ["CM.hidro.15"]);
+  conEstado("CM.hidro.16 (H-195: Z358.1-1990 vía carta OSHA 22-nov-1993) dos lavaojos fijos sin regadera: 0.4 gal/min cada uno",
+    () => { S.hidro = { ...fixture(), tramos: [], muebles: [{ id: "lavaojos_solo", cant: 2 }] }; }, ["CM.hidro.16"]);
 }

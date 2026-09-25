@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* parches/casos-a-mano/hidro.calc.mjs · Fase 1 (rev 2.9.24) · motor hidrosanitario (`hidro`, v4; v5 con H-194)
+/* parches/casos-a-mano/hidro.calc.mjs · Fase 1 (rev 2.9.24) · motor hidrosanitario (`hidro`, v4; v5 con H-194; v6 con H-195)
 
    Cálculo INDEPENDIENTE de la suite: no carga index.html, no usa cifrasMotor ni el esperado de regresión. Transcribe
    las tablas de norma que el motor necesita, resuelve cada caso a mano e imprime los esperados. Con `--csv` escribe la
@@ -25,9 +25,9 @@
    · ASTM B88 tipo L (diámetro exterior y pared) — SECUNDARIA: Copper Development Association, Copper Tube Handbook,
        tabla de dimensiones (https://www.copper.org/publications/pub_list/pdf/copper_tube_handbook.pdf); no hay texto de
        ASTM B88 en parches/normas-texto.
-   · ANSI/ISEA Z358.1-2014 (regadera de emergencia 20 gpm = 75.7 L/min durante 15 min, agua tibia) — SECUNDARIA: carta de
-       interpretación de OSHA (2002) citada en PLAN-CRITICOS.md §4.8; el 22-sep-2026 osha.gov respondió 403 y no se pudo
-       releer. El hallazgo H-195 sigue BLOQUEADO hasta ratificar con el texto.
+   · ANSI Z358.1 (regadera de emergencia 20 gpm = 75.7 L/min con volumen para 15 min; lavaojos fijo 0.4 gal/min) — SECUNDARIA:
+       cartas de OSHA del 18-abr-2002 y 22-nov-1993, que citan la edición 1990, releídas en osha.gov el 25-sep-2026 (párrafos en
+       parches/normas-texto/OSHA-cartas-Z358.1_regadera-y-lavaojos.txt). H-195 se corrige con ellas; ratificar con Z358.1-2014.
    · Hazen-Williams en SI: hf/L = 10.67 · Q^1.852 / (C^1.852 · D^4.87) (Q en m³/s, D en m) — fórmula clásica; C = 140
        para cobre tipo L es el valor de la suite (criterio de la casa, index.html:9765, sin cita).
    · Criterios de la casa (index.html): velocidad máxima 2.4 m/s fría y 1.5 m/s caliente (9784), 30 % de longitud
@@ -353,10 +353,25 @@ fila("CM.hidro.4.g", "ventilación primaria con bajada de 100 mm", E4,
   "100/2 = 50 mm", "IPC 2015 §906.2 (up.codes)", PRIM,
   "HIDRO.ventD", ventilacion(bajadaIPC(ud4, 4, true)), 0);
 
-/* =========================================================================================================== CASO 5 · lavaojos / regadera de emergencia */
-fila("CM.hidro.5.a", "regadera de emergencia: demanda fija de 75.7 L/min fuera de Hunter (hoy 6 UM → curva de tanque 10.44 gpm = 0.659 L/s)", "sólo lavaojos×1; sin tramos",
-  "20 gpm × 3.785411784 / 60 = 1.261804 L/s (75.7 L/min durante 15 min, agua tibia)", "ANSI/ISEA Z358.1-2014 vía carta OSHA 2002 (PLAN-CRITICOS §4.8): SECUNDARIA, BLOQUEADO hasta el texto", "secundaria",
-  "HIDRO.Qtotal", 20 * GPM_LS, "1%", "fase2:H-195");
+/* =========================================================================================================== CASO 5 · regadera de emergencia (H-195)
+   Fuente SECUNDARIA, leída el 24-sep-2026: cartas de interpretación de OSHA que citan ANSI Z358.1 (edición 1990):
+     · 18-abr-2002 (§4.1 de Z358.1): regadera de emergencia ≥ 75.7 L/min (20 gpm), volumen para ≥ 15 min.
+       https://www.osha.gov/laws-regs/standardinterpretations/2002-04-18-1
+     · 22-nov-1993 (Z358.1-1990): lavaojos fijo ≥ 1.5 L/min (0.4 gal/min).
+       https://www.osha.gov/laws-regs/standardinterpretations/1993-11-22
+   Ninguna carta da presión ni temperatura (la de 2002 deja la temperatura a la evaluación del patrón). Z358.1-2014 no está
+   en texto: se ratifica con él. Los equipos de emergencia salen de Hunter (E103.3(2) no los lista) y su gasto se suma fijo. */
+const Q_REG_EMERG = 20 * GPM_LS, Q_LAVAOJOS = 0.4 * GPM_LS;              // L/s
+const E5 = "sólo lavaojos×1 (regadera de emergencia con lavaojos); sin tramos";
+fila("CM.hidro.5.a", "regadera de emergencia: demanda fija de 20 gpm fuera de Hunter (antes 6 UM → curva de tanque 10.44 gpm = 0.659 L/s)", E5,
+  "20 gpm × 3.785411784 / 60 = 1.261804 L/s", "ANSI Z358.1-1990 §4.1 vía carta OSHA 18-abr-2002 (SECUNDARIA; ratificar con Z358.1-2014)", "secundaria",
+  "HIDRO.Qtotal", Q_REG_EMERG, "0.05%");
+fila("CM.hidro.5.b", "la regadera de emergencia no suma unidades mueble (E103.3(2) no la lista; antes 6 UM)", E5,
+  "0 WSFU", "IPC 2015 Table E103.3(2) (up.codes): sin renglón de equipo de emergencia", PRIM,
+  "HIDRO.umTotal", 0, 0);
+fila("CM.hidro.5.c", "volumen de agua para 15 min de la regadera de emergencia", E5,
+  "20 gpm × 15 min × 3.785411784 L/gal = 1,135.62 L", "ANSI Z358.1-1990 §4.1 vía carta OSHA 18-abr-2002 (SECUNDARIA)", "secundaria",
+  "HIDRO.volEmerg", 20 * 15 * GAL_L, 0.01);
 
 /* =========================================================================================================== CASO 6 · CPVC arriba de 2" */
 fila("CM.hidro.6.a", "renglones CPVC de 2 1/2\", 3\" y 4\" marcados «SIN VERIFICAR» retirados del catálogo (hoy 3 renglones; con 3.7 L/s la suite elige 2 1/2\" = 63 mm)", "material cpvc (fixture)",
@@ -501,6 +516,33 @@ fila("CM.hidro.14.b", "con sólo lavabos (5.62 m < 15 m) la CDT lleva el residua
   `0 + ${hf1t.toFixed(5)} (72 WSFU tanque ${(q72t).toFixed(5)} L/s en ${s1t.nom}) + ${hf2t.toFixed(5)} (20 WSFU tanque ${(q20t).toFixed(5)} L/s en ${s2t.nom}) + máx(15, 5.6246) = ${cdt14.toFixed(4)} m`,
   `IPC 2015 Table 604.3; residual 15 ${CASA(9853)}; CDT ${CASA(9950)}`, NCASA,
   "HIDRO.cdt", cdt14, 0.01);   // ±0.01: el ramal de 20 UM va en 1" y el DI independiente (26.035 mm, B88 vía CDA) difiere 0.005 mm del de la suite (26.04): 0.007 m en hf; la fila vigila el +15 contra +5.62/+24.6
+
+/* =========================================================================================================== CASO 15 · fixture + regadera de emergencia (H-195)
+   El gasto de emergencia se suma al de Hunter del sistema; el tramo que lo lleva lo declara capturado (L/min). */
+const E15 = "fixture + lavaojos×1; AF-GENERAL con 75.7 L/min de emergencia capturados";
+const q15 = q72 + 75.7 / 60;                                              // gasto del tramo: Hunter + lo capturado
+const s15 = seleccionCobre(q15, V_MAX_FRIA);
+fila("CM.hidro.15.a", "gasto del sistema: Hunter de los muebles (72 WSFU fluxómetro) más la regadera de emergencia fija", E15,
+  `${q72.toFixed(6)} + 20 gpm × 0.0630902 = ${(q72 + Q_REG_EMERG).toFixed(6)} L/s`, `${IPC_E} Table E103.3(3); Z358.1-1990 §4.1 vía OSHA (secundaria)`, "secundaria",
+  "HIDRO.Qtotal", q72 + Q_REG_EMERG, "0.05%");
+fila("CM.hidro.15.b", "las unidades mueble no cambian con la regadera de emergencia (72, no 78)", E15,
+  "4×10 + 2×5 + 4×2 + 1×4 + 2×5 = 72", `${IPC_E} Table E103.3(2)`, PRIM,
+  "HIDRO.umTotal", umFix, 0.001);
+fila("CM.hidro.15.c", "gasto del tramo que lleva la emergencia: Hunter del tramo + 75.7 L/min capturados", E15,
+  `${q72.toFixed(6)} + 75.7 / 60 = ${q15.toFixed(6)} L/s`, `${IPC_E} Table E103.3(3); gasto de emergencia capturado en el tramo`, PRIM,
+  "HIDRO.tramos[0].Q", q15, "0.05%");
+fila("CM.hidro.15.d", "diámetro de ese tramo con la emergencia: 2 1/2\" tipo L (2\" da más de 2.4 m/s)", E15,
+  `V(2") = ${vel(q15, DI('2"')).toFixed(3)} > 2.4 m/s → ${s15.nom} (${s15.d.toFixed(3)} mm)`, `ASTM B88 tipo L vía CDA; V máx ${CASA(9784)}`, "secundaria",
+  "HIDRO.tramos[0].d", s15.d, 0.01);
+
+/* =========================================================================================================== CASO 16 · lavaojos sin regadera (H-195) */
+const E16 = "sólo lavaojos_solo×2 (lavaojos fijo sin regadera); sin tramos";
+fila("CM.hidro.16.a", "dos lavaojos fijos: 2 × 0.4 gal/min fuera de Hunter", E16,
+  "2 × 0.4 gpm × 0.0630902 = 0.050472 L/s", "ANSI Z358.1-1990 vía carta OSHA 22-nov-1993 (SECUNDARIA; ratificar con Z358.1-2014)", "secundaria",
+  "HIDRO.Qtotal", 2 * Q_LAVAOJOS, "0.05%");
+fila("CM.hidro.16.b", "volumen para 15 min de los dos lavaojos", E16,
+  "2 × 0.4 gpm × 15 min × 3.785411784 = 45.42 L", "ANSI Z358.1 vía OSHA (secundaria): 15 min, el mismo periodo que la regadera (criterio de la casa para el lavaojos fijo)", "secundaria",
+  "HIDRO.volEmerg", 2 * 0.4 * 15 * GAL_L, 0.01);
 
 /* ------------------------------------------------------------------ salida */
 const ids = new Set();
