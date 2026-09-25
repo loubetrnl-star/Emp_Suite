@@ -11,6 +11,7 @@ módulo `pruebas-motores/soporte.mjs` (12 pruebas), compuerta `parches/mutantes/
 | H-225 (colgado = altura de trabajo sin captura) | **Cerrado** (soporte v4 → v5, quote v12 → v13 por dependencia, 25-sep-2026) | Campo «Altura de colgado (m)» en pantalla (con la altura de trabajo como sugerencia); sin captura `colgadoPendiente`: sin partida de varilla, aviso, pendiente en la cotización. Prueba S.73; Q.3 reescrita (capturada manda; sin captura 0 ML); fila 15.g de fase2 a vigente y 11.j sin varilla (soporte.csv regenerado). Mutante m45 reapuntado (vuelve a la altura de trabajo): MUERTO. Proyecto fijo: 385,760 → 344,576 MXN. |
 | H-226 (SDS 1.0, losa, f'c 250 supuestos) | **Cerrado** (soporte v5 → v6, quote v13 → v14 por dependencia, 25-sep-2026) | Campos SDS + fuente, tipo de estructura y f'c; `anclajeCapturado` exige SDS con fuente y estructura (f'c en losa); sin ellos el anclaje se predimensiona con referencia declarada y va Por cotizar (aviso, memoria, partida en G); la memoria imprime Fp/ap/Rp con el aviso «DECLARADOS». Prueba S.74; fila 15.h de fase2 a vigente y 11.j sin anclaje; mutantes m46 reapuntado (default 1.0) y m48 nuevo: MUERTOS. Proyecto fijo: 344,576 → 336,216 MXN. |
 | H-230 (modo «valores propios» inventaba 50/100/32 mm y 400×300) | **Cerrado** (soporte v6 → v7, 25-sep-2026) | Campos de medidas del ducto y diámetro + material por tubería en el modo manual; `manualPendientes` (aviso y pendiente en la cotización) cuando falta el dato; la memoria dice «capturados a mano». Prueba S.75 (sin fila CM: la señal es nSoportes = 0 con aviso, como se anticipó). |
+| H-229 (cobre ½"–¾" a 1.8 m y 2½" a 3.0 m con fuente «MSS» que no los daba) | **Cerrado** (soporte v7 → v8, quote v14 → v15, 25-sep-2026) | `ESPAC_COBRE` al mínimo de MSS SP-58-2018 (PHD) e IPC 2009 T308.5 (MCP), secundarias con URL en el código y declaradas en la memoria (ratificar con texto). Prueba S.76; L.2 reescrita; filas 3.b/3.c y 4.a–4.d de fase2 a vigentes (4.m/4.n de acero siguen fase2:H-233, fuera del plan). Mutante m05 reapuntado (vuelve a 1.8 / 2.4): MUERTO. |
 | H-231 (bases 3 → 2 al aceptar la instantánea) | **Cerrado** (soporte v3 → v4, 25-sep-2026) | En modo gobernado `nEquipos = snap.nEquip` (el sustituto QUOTE lleva `deSnap`). Prueba S.72; fila 11d.a de fase2 a vigente; mutante m47 reapuntado (deSnap falso): MUERTO. |
 
 ## 0. Cambios de entrada por otros motores
@@ -24,7 +25,7 @@ módulo `pruebas-motores/soporte.mjs` (12 pruebas), compuerta `parches/mutantes/
 
 | Prueba | Línea | Qué consagra | Hallazgo |
 |---|---|---|---|
-| L.2 | 3793 | cobre ½"–¾" a 1.8 m y «la misma cifra que el motor» para ½"–1¼"; MSS SP-58-2018 (PHD) da 5 ft = 1.52 m; el mínimo MSS/IPC (decisión 4) es 1.52 m | H-229 |
+| ~~L.2~~ | reescrita en H-229 (25-sep-2026): 1.524 / 1.829 m | H-229 |
 | ~~Q.3~~ | reescrita en H-225 (25-sep-2026): capturada manda; sin captura 0 ML y sugerencia | H-225 |
 | R.1 | 5898 | golden de 385,760 MXN: contiene el colgado = trabajo, el anclaje M10 con SDS 1.0 supuesto, una varilla por soporte de ducto rectangular y las 3 bases en vivo | H-225, H-226, H-227, H-231 |
 | 22.8 | 3232 | no protege un error de soportería, pero fija los diámetros de hidro (52.5/35.05 acero, 63/43.59 CPVC) que aquí son ENTRADA; si hidro los mueve en su Fase 2, truena 22.8 y CM.soporte.7/15 (precondición) | dependencia hidro |
@@ -33,10 +34,10 @@ módulo `pruebas-motores/soporte.mjs` (12 pruebas), compuerta `parches/mutantes/
 
 | Fila | H-nnn | Esperado | Suite hoy | Fuente |
 |---|---|---|---|---|
-| CM.soporte.3.b / 3.c | H-229 | cobre ¾" 1.524 m → 15 soportes en 20 m | 1.8 m → 13 | mín(MSS SP-58-2018 vía PHD, IPC 2009 T308.5 vía MCP) |
-| CM.soporte.4.a / 4.b | H-229 | cobre ½" y ¾" 1.524 m | 1.8 | ídem |
-| CM.soporte.4.c | H-229 | cobre 2½" 2.743 m | 3.0 | ídem |
-| CM.soporte.4.d | H-229 | cobre 4" 3.048 m (IPC tubing ≥ 1½" 10 ft gobierna sobre MSS 12 ft) | 3.7 | consecuencia de la decisión 4 no listada en H-229: ratificar |
+| ~~CM.soporte.3.b / 3.c~~ | H-229 | **vigentes desde el 25-sep-2026** | = esperado | mín(MSS SP-58-2018 vía PHD, IPC 2009 T308.5 vía MCP) |
+| ~~CM.soporte.4.a / 4.b~~ | H-229 | **vigentes desde el 25-sep-2026** | = esperado | ídem |
+| ~~CM.soporte.4.c~~ | H-229 | **vigente desde el 25-sep-2026** | = esperado | ídem |
+| ~~CM.soporte.4.d~~ | H-229 | **vigente desde el 25-sep-2026** (3.048 m: IPC 10 ft gobierna) | = esperado | consecuencia de la decisión 4: ratificar |
 | CM.soporte.4.m / 4.n | H-233 | acero 4" y 6" de plomería 3.658 m (IPC 12 ft gobierna sobre MSS 14/17 ft) | 4.3 / 5.2 | decisión 4 (mínimo de ambas); H-233 es severidad A, no está en el plan de críticos: el integrador decide si entra |
 | CM.soporte.4.r / 4.s | H-228 | CPVC 4" y 6" 1.219 m | 1.8 | IPC 2009 T308.5 (CPVC ≥ 1¼": 4 ft) |
 | CM.soporte.5.e | H-227 | ducto rectangular 2 varillas por soporte | 1 | SMACNA DCS Tabla 5-1 «pair» · **BLOQUEADO: requiere texto** |
@@ -50,7 +51,7 @@ módulo `pruebas-motores/soporte.mjs` (12 pruebas), compuerta `parches/mutantes/
 
 | id | H-nnn | Por qué no se mata hoy con una prueba legítima |
 |---|---|---|
-| soporte.m05 | H-229 | pone los claros MSS reales en cobre ½"–1¼"; sólo L.2 lo mata, afirmando 1.8 m |
+| soporte.m05 | H-229 | reapuntado al cierre: vuelve a 1.8 / 2.4 m; MUERTO (S.76, L.2, CM.soporte.3/4, R.1) |
 | soporte.m06 | H-228 | termoplástico > 3" a 3.0 m; sólo se mataría afirmando el 1.8 m actual (el correcto es 1.22) |
 | soporte.m08 | H-232 | reapuntado al cierre: vuelve a poner el piso de 1 mes; MUERTO (S.71, 11c.a) |
 | soporte.m16 | H-227 | par de varillas en ducto rectangular; lo matan R.1/S.20 afirmando 1 varilla (SMACNA bloqueado) |

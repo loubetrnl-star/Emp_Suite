@@ -3725,7 +3725,8 @@ t("22.8 2.5 la soportería hidráulica lee hidro.material: cobre y termoplástic
        interior real es ligeramente mayor al placeholder en cada nominal, así
        que el segundo tramo ya no necesita subir de 1-1/4" a 1-1/2"). */
     const esperado = {
-      cobre: { fam: "cobre", d: [50.42, 38.23], e: [2.4, 2.4], n: [12, 9] },
+      /* H-229: cobre 2" y 1½" al mínimo MSS/IPC = 8 ft = 2.438 m (antes 2.4). */
+      cobre: { fam: "cobre", d: [50.42, 38.23], e: [2.438, 2.438], n: [12, 9] },
       /* H-198 (rev 2.9.24): CPVC CTS sólo llega a 2" (43.59 mm); la general (3.7 L/s) queda fuera de catálogo con el tope de 2" y va
          «Por cotizar» (antes 63 mm, renglón «SIN VERIFICAR»). La soportería sigue contándola con 43.59 mm: dependencia de soporte. */
       cpvc: { fam: "plastico", d: [43.59, 43.59], e: [1.2, 1.2], n: [22, 16] },
@@ -3743,7 +3744,8 @@ t("22.8 2.5 la soportería hidráulica lee hidro.material: cobre y termoplástic
       eq(JSON.stringify(h.det.map((d) => d.d)), JSON.stringify(x.d), `${material} diámetros del caso:`);
       eq(JSON.stringify(h.det.map((d) => d.e)), JSON.stringify(x.e), `${material} espaciamientos:`);
       eq(JSON.stringify(h.det.map((d) => d.n)), JSON.stringify(x.n), `${material} soportes por tramo:`);
-      eq(JSON.stringify(filasPdf()), JSON.stringify(x.e.map((e, i) => [String(e), String(x.n[i])])), `${material} PDF conteo por tramo:`);
+      /* El PDF imprime el claro con un decimal (2.438 → «2.4»). */
+      eq(JSON.stringify(filasPdf()), JSON.stringify(x.e.map((e, i) => [String(Math.round(e * 10) / 10), String(x.n[i])])), `${material} PDF conteo por tramo:`);
     });
     /* El gobernador congela el material aceptado y avisa si cambia. */
     preparar("cobre");
@@ -4257,22 +4259,16 @@ t("L.1.1 2.2 sin discrepancia relevante (≤ 0.5 m) no avisa", () => {
     if (H.avisos.some((a) => /no coincide/.test(a.msg))) throw new Error("con 0.3 m de diferencia no debería avisar");
   } finally { S.hidro = guardado; G("recompute")(); }
 });
-t("L.2 2.5 tablas de espaciamiento de cobre y termoplástico ajustadas a MSS SP-58 tabla 3 / IPC 308.5 (decisión del dueño, SUPERADA por H-75)", () => {
-  /* H-75 (15-sep-2026): la decisión 2.5 original (cobre ¾"=1.5 m, sin
-     respaldo documental) quedó superada — se adopta 1.8 m (el valor de
-     código, MSS SP-58 para cobre de 1¼" y menor), que es lo que ya regía en
-     vivo vía C_SOP.ESPAC_COBRE desde la integración de SoporteCalc (rev
-     2.9.8). SOP_COBRE (código muerto, esta función) se alineó al mismo valor
-     para no dejar una tercera cifra suelta. */
+t("L.2 2.5 / H-229 tablas de espaciamiento: cobre al mínimo de MSS SP-58-2018 e IPC 2009 T308.5 (decisión 4 del dueño), la tabla viva es la única cifra; termoplástico con su tabla propia", () => {
+  /* H-75 (15-sep-2026) había alineado todo a 1.8 m «de código»; H-229 (25-sep-2026) sustituye ese valor por el mínimo de las
+     dos tablas (secundarias declaradas, ratificar con texto): ¾" = 5 ft = 1.524 m, 1¼" = 6 ft = 1.829 m. */
   const esp = G("espSoporte");
-  cerca(esp(20, "cobre"), 1.8, 0.001, `cobre ¾" (20 mm):`);
-  /* rev 2.9.16 · SOP_COBRE (tabla muerta) salió de la lista activa: espSoporte lee la tabla viva C_SOP.ESPAC_COBRE, que da 1.8 m
-     en 1¼" (la prueba protegía antes la tabla muerta, que decía 2.1 m: observación L-1 de la bitácora 2.9.14). */
-  cerca(esp(32, "cobre"), 1.8, 0.001, `cobre 1¼" (32 mm), tabla viva:`);
+  cerca(esp(20, "cobre"), 1.524, 0.001, `cobre ¾" (20 mm):`);
+  cerca(esp(32, "cobre"), 1.829, 0.001, `cobre 1¼" (32 mm), tabla viva:`);
   cerca(esp(32, "cobre"), G("C_SOP").ESPAC_COBRE['1-1/4"'], 1e-12, "misma cifra que el motor:");
   cerca(esp(32, "acero"), G("C_SOP").ESPAC_ACERO['1-1/4"'], 1e-12, "acero, misma cifra que el motor:");
   for (const k of ["SOP_ACERO", "SOP_COBRE"]) if (w.eval(`typeof ${k}`) !== "undefined") throw new Error(`${k} sigue en la lista activa`);
-  cerca(esp(15, "cobre"), 1.8, 0.001, `cobre ½" (15 mm):`);
+  cerca(esp(15, "cobre"), 1.524, 0.001, `cobre ½" (15 mm):`);
   cerca(esp(25, "plastico"), 0.9, 0.001, `termoplástico 1" (25 mm):`);
   if (!(esp(20, "cobre") < esp(20, "acero"))) throw new Error("el cobre debe seguir dando menos distancia que el acero en el mismo diámetro");
   if (!(esp(25, "plastico") < esp(32, "plastico"))) throw new Error("el termoplástico debe dar menos distancia en 1\" que en 1¼\"–2\"");
@@ -6986,6 +6982,19 @@ t("S.75 (H-230) el modo «valores propios» pide diámetro y material (y medidas
     S.soporte.tubAireMat = "acero"; G("recompute")();
     const aireAcero = G("SOPORTE").sopcalc.tramos.find((t) => /Aire comprimido/.test(t.descripcion));
     if (!(aireAcero && Math.abs(aireAcero.peso.total - aireCobre.peso.total) > 1e-9)) throw new Error("el material capturado no cambia el peso del tramo: no llegó a SoporteCalc");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+t("S.76 (H-229, decisión 4 del dueño) claros de cobre = mínimo de MSS SP-58-2018 (PHD) e IPC 2009 T308.5 (MCP), secundarias declaradas: ½\"–¾\" 1.524 m, 1\"–1¼\" 1.829, 1½\"–2\" 2.438, 2½\" 2.743, 3\"–4\" 3.048 (antes 1.8 / 2.4 / 3.0 / 3.7); la memoria declara la fuente", () => {
+  const guardado = JSON.stringify(S);
+  const esp = G("espSoporte"), ft = (x) => x * 0.3048;
+  try {
+    cerca(esp(15, "cobre"), ft(5), 0.001, "½\" = mín(MSS 5, IPC 6) ft:"); cerca(esp(20, "cobre"), ft(5), 0.001, "¾\":");
+    cerca(esp(25, "cobre"), ft(6), 0.001, "1\" = mín(MSS 6, IPC 6):"); cerca(esp(32, "cobre"), ft(6), 0.001, "1¼\" = mín(MSS 7, IPC 6):");
+    cerca(esp(40, "cobre"), ft(8), 0.001, "1½\":"); cerca(esp(50, "cobre"), ft(8), 0.001, "2\":");
+    cerca(esp(65, "cobre"), ft(9), 0.001, "2½\" (antes 3.0):"); cerca(esp(80, "cobre"), ft(10), 0.001, "3\":"); cerca(esp(100, "cobre"), ft(10), 0.001, "4\" = mín(MSS 12, IPC 10) (antes 3.7):");
+    G("importarRespaldo")(fs.readFileSync("parches/regresion-motores/regresion-motores.emp.json", "utf8")); S.tab = "tablero"; G("KZ_CACHE").key = null; G("VZ_CACHE").key = null; G("recompute")();
+    if (!G("SOPORTE").memo.some((m) => /MSS SP-58-2018/.test(m) && /IPC 2009/.test(m) && /secundaria/.test(m))) throw new Error("la memoria no declara el mínimo MSS/IPC como secundaria por ratificar");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 

@@ -42,7 +42,7 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 | 2 | 2.9.24 | H-154 + H-156: la cobertura real manda en la selección Greenheck (cfmMin ≤ objetivo ≤ cfmMax, sin la tolerancia ×0.9); la familia propia del modo sólo ordena entre los que cubren (luego el de menor caudal nominal); si nadie cubre no hay modelo (`primary` null: nada llega a propuesta, memoria integral ni eléctrico) y `closest` sólo alimenta el aviso. Proyecto fijo: 11,643 CFM → CSW-30 (7,000–18,000) en vez de GB-360 (4,000–9,000) con «ningún modelo cubre» |
 | 3 | 2.9.24 | H-155: sin medidas no hay caudal: campana sin largo o fondo y rejilla sin ancho, alto, área libre o velocidad de cara dan demanda 0 con aviso de error en el motor y la matriz (antes pisos de 0.1 ft, 5 % y 100 fpm fabricaban 30 y 258 CFM y sus partidas). `avisos` en el resultado de computeVent. Proyecto fijo: sin cambio |
 
-## Cotización (`quote`) · v14
+## Cotización (`quote`) · v15
 
 | Versión | Rev | Hallazgo / cambio de lógica |
 |---|---|---|
@@ -51,6 +51,7 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 | 3 | 2.9.19 | tramo con longitud y sin unidades mueble queda pendiente |
 | 4 | 2.9.23 | precio de tubería por renglón con origen (referencia de mercado o proveedor local), IVA desglosado y por metro; sin precio: partida Por cotizar en el Budget, bloqueo sólo en la formal |
 | 5 | 2.9.23 | precios en USD sólo se convierten con tipo de cambio capturado con fecha; sin fecha salen Por cotizar y bloquean la formal (nada se estima) |
+| 15 | 2.9.24 | dependencia de soporte v8 (H-229): más soportes de cobre con los claros MSS/IPC |
 | 14 | 2.9.24 | dependencia de soporte v6 (H-226): el anclaje va Por cotizar mientras no haya SDS con fuente, estructura y f'c |
 | 13 | 2.9.24 | dependencia de soporte v5 (H-225): sin altura de colgado la varilla sale pendiente, no cotizada |
 | 12 | 2.9.24 | dependencia de vent v2 (H-154): la partida de ventilación nombra el modelo que cubre de verdad, o ninguno |
@@ -125,7 +126,7 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 | 2 | 2.9.16 | sin área clasificada no hay partidas de área clasificada |
 | 3 | 2.9.19 | un cuarto limpio vacío no cuenta como área clasificada |
 
-## Soportería (`soporte`) · v7
+## Soportería (`soporte`) · v8
 
 | Versión | Rev | Hallazgo / cambio de lógica |
 |---|---|---|
@@ -136,4 +137,5 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 | 5 | 2.9.24 | H-225 («nada se estima»): campo «Altura de colgado (m)» en pantalla; sin captura la varilla roscada queda pendiente (aviso en el motor, pendiente en la cotización; la altura de trabajo sólo se sugiere). Antes se tomaba la altura de trabajo: 7.2 m por varilla, 633.6 ML = 41,184 MXN en el proyecto fijo. Proyecto fijo: 385,760 → 344,576 MXN |
 | 6 | 2.9.24 | H-226 («nada se estima»): SDS del sitio con su fuente, tipo de estructura y f'c se capturan en pantalla; sin ellos SoporteCalc predimensiona con valores de referencia DECLARADOS (SDS 1.0, losa f'c 250; las fórmulas no cambian) y el anclaje va «Por cotizar» (sección G) con sus piezas; la memoria imprime Fp, SDS (capturado o de referencia), Ip, ap, Rp, z/h y el aviso «ap y Rp son valores DECLARADOS». Antes SDS 1.0 / losa / f'c 250 se afirmaban como datos. Proyecto fijo: 344,576 → 336,216 MXN |
 | 7 | 2.9.24 | H-230 («nada se estima»): el modo «valores propios» pide ancho y alto del ducto, y diámetro y material (acero / cobre / termoplástico) de cada tubería capturada a mano; sin ellos la línea no se cuenta ni se cotiza y queda pendiente (aviso en el motor, pendiente en la cotización); la memoria dice que las medidas son capturadas a mano. Antes se inventaban 400×300 mm y 50 / 100 / 32 mm de acero y la memoria los imprimía como calculados. Proyecto fijo (modo motores): sin cambio |
+| 8 | 2.9.24 | H-229 (decisión 4 del dueño): claros de cobre = mínimo de ANSI/MSS SP-58-2018 (reproducción PHD, URL en el código) e IPC 2009 Tabla 308.5 (folleto MCP, URL): ½"–¾" 1.524 m, 1"–1¼" 1.829, 1½"–2" 2.438, 2½" 2.743, 3"–4" 3.048 (antes 1.8 / 2.4 / 3.0 / 3.7 m sin fuente). Secundarias declaradas en la memoria; ratificar con el texto. Proyecto fijo (cobre): más soportes |
 

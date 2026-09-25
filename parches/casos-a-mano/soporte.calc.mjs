@@ -138,17 +138,17 @@ const SRC_MIN = `mínimo de ${SRC_MSS} e ${SRC_IPC} · decisión 4 del dueño`;
   const ENT1 = `cobre tipo L 1\" (DE 28.58, pared 1.27 mm), agua, L 20 m, hidrosanitario; mismo ctx que el caso A`;
   const ENT2 = `cobre tipo L ¾\" (DE 22.23, pared 1.14 mm), agua, L 20 m, hidrosanitario; mismo ctx que el caso A`;
   fila("CM.soporte.2.a", "peso lineal lleno cobre 1\"", ENT1, `π/4(28.58²−26.04²)·1e-6·8940 = ${r(p1.tubo, 3)} + π/4·26.04²·1e-6·1000 = ${r(p1.fluido, 3)}; suma ×1.10`, "ASTM B88 tipo L; ρ 8940; ×1.10 criterio de la casa (index.html:7552)", "secundaria", "CM_SOP.B.peso.total", r(p1.total, 3), 0.005);
-  fila("CM.soporte.2.b", "claro máximo cobre 1\"", ENT1, `min(MSS 6 ft, IPC ≤1¼\" 6 ft) = ${r(e1, 3)} m (la suite tabula 1.8)`, SRC_MIN, "secundaria", "CM_SOP.B.espaciamiento.e_m", r(e1, 3), 0.04);
-  fila("CM.soporte.2.c", "número de soportes cobre 1\"", ENT1, `ceil(20/1.8) + 1 = ${nSop(20, 1.8)}`, "criterio de la casa (index.html:7778) con el claro MSS/IPC", "secundaria", "CM_SOP.B.n_soportes", nSop(20, 1.8), 0);
+  fila("CM.soporte.2.b", "claro máximo cobre 1\"", ENT1, `min(MSS 6 ft, IPC ≤1¼\" 6 ft) = ${r(e1, 3)} m (antes de H-229 la suite tabulaba 1.8)`, SRC_MIN, "secundaria", "CM_SOP.B.espaciamiento.e_m", r(e1, 3), 0.04);
+  fila("CM.soporte.2.c", "número de soportes cobre 1\" (H-229: con el claro MSS/IPC; antes ceil(20/1.8)+1 = 13)", ENT1, `ceil(20/${r(e1, 3)}) + 1 = ${nSop(20, e1)}`, "criterio de la casa (index.html:7778) con el claro MSS/IPC", "secundaria", "CM_SOP.B.n_soportes", nSop(20, e1), 0);
   fila("CM.soporte.3.a", "peso lineal lleno cobre ¾\"", ENT2, `π/4(22.23²−19.95²)·1e-6·8940 = ${r(p2.tubo, 3)} + π/4·19.95²·1e-6·1000 = ${r(p2.fluido, 3)}; suma ×1.10`, "ASTM B88 tipo L; ×1.10 criterio de la casa", "secundaria", "CM_SOP.B2.peso.total", r(p2.total, 3), 0.005);
-  fila("CM.soporte.3.b", "claro máximo cobre ¾\" (hoy 1.8 m)", ENT2, `min(MSS 5 ft, IPC 6 ft) = 5 × 0.3048 = ${r(e2, 3)} m`, SRC_MIN, "secundaria", "CM_SOP.B2.espaciamiento.e_m", r(e2, 3), 0.04, "fase2:H-229");
-  fila("CM.soporte.3.c", "número de soportes cobre ¾\" (hoy 13)", ENT2, `ceil(20/${r(e2, 3)}) + 1 = ${nSop(20, e2)}`, SRC_MIN, "secundaria", "CM_SOP.B2.n_soportes", nSop(20, e2), 0, "fase2:H-229");
+  fila("CM.soporte.3.b", "claro máximo cobre ¾\" (antes de H-229: 1.8 m)", ENT2, `min(MSS 5 ft, IPC 6 ft) = 5 × 0.3048 = ${r(e2, 3)} m`, SRC_MIN, "secundaria", "CM_SOP.B2.espaciamiento.e_m", r(e2, 3), 0.04, "vigente");
+  fila("CM.soporte.3.c", "número de soportes cobre ¾\" (antes de H-229: 13)", ENT2, `ceil(20/${r(e2, 3)}) + 1 = ${nSop(20, e2)}`, SRC_MIN, "secundaria", "CM_SOP.B2.n_soportes", nSop(20, e2), 0, "vigente");
 }
 /* --- Tabla de claros espSoporte(d_mm, fam): mínimo MSS/IPC por diámetro --- */
 {
   const T = [
-    ["a", 15, "cobre", '1/2"', "fase2:H-229", "hoy 1.8"], ["b", 20, "cobre", '3/4"', "fase2:H-229", "hoy 1.8"], ["c", 65, "cobre", '2-1/2"', "fase2:H-229", "hoy 3.0"],
-    ["d", 100, "cobre", '4"', "fase2:H-229", "hoy 3.7; IPC 10 ft (tubing ≥ 1½\") gobierna sobre MSS 12 ft"],
+    ["a", 15, "cobre", '1/2"', "vigente", "antes de H-229: 1.8"], ["b", 20, "cobre", '3/4"', "vigente", "antes de H-229: 1.8"], ["c", 65, "cobre", '2-1/2"', "vigente", "antes de H-229: 3.0"],
+    ["d", 100, "cobre", '4"', "vigente", "antes de H-229: 3.7; IPC 10 ft (tubing ≥ 1½\") gobierna sobre MSS 12 ft"],
     ["e", 50, "cobre", '2"', "vigente", ""], ["f", 40, "cobre", '1-1/2"', "vigente", ""], ["g", 80, "cobre", '3"', "vigente", ""], ["h", 32, "cobre", '1-1/4"', "vigente", "IPC 6 ft < MSS 7 ft"],
     ["i", 50, "acero", '2"', "vigente", ""], ["j", 15, "acero", '1/2"', "vigente", ""], ["k", 40, "acero", '1-1/2"', "vigente", ""], ["l", 80, "acero", '3"', "vigente", ""],
     ["m", 100, "acero", '4"', "fase2:H-233", "hoy 4.3; IPC 12 ft gobierna sobre MSS 14 ft (plomería; incendio sigue NFPA 13)"],
