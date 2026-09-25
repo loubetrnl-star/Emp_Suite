@@ -1,8 +1,8 @@
 # hidro · pendientes de la Fase 1 y cierre de la Fase 2 (rev 2.9.24, 22/24-sep-2026)
 
-Motor hidrosanitario (`hidro`, v7). Entregas: `hidro.calc.mjs` (cálculo independiente, imprime y escribe la hoja),
-`hidro.csv` (103 filas: 85 vigentes, 18 `fase2:H-nnn`), `pruebas-motores/hidro.mjs` (25 pruebas `CM.hidro.*`),
-`parches/mutantes/hidro.json` (55 mutantes; ver §3). Banco al cierre de H-197: 459/459 sin base, 465/465 con base. Con
+Motor hidrosanitario (`hidro`, v8). Entregas: `hidro.calc.mjs` (cálculo independiente, imprime y escribe la hoja),
+`hidro.csv` (105 filas: 88 vigentes, 17 `fase2:H-nnn`), `pruebas-motores/hidro.mjs` (25 pruebas `CM.hidro.*`),
+`parches/mutantes/hidro.json` (61 mutantes; ver §3). Banco al cierre de H-198: 460/460 sin base, 466/466 con base. Con
 `CM_FASE2=1` las filas fase2 fallan hoy, ninguna pasa por casualidad (arnés `tmp-fase1/fase2-filas.mjs`, no commiteado).
 
 ## 0. Hallazgos cerrados en la Fase 2
@@ -14,6 +14,10 @@ Motor hidrosanitario (`hidro`, v7). Entregas: `hidro.calc.mjs` (cálculo indepen
 | H-195 (lavaojos/regadera de emergencia como 6 UM de Hunter) | **Cerrado con fuente secundaria** (hidro v5 → v6, 25-sep-2026); **ratificar con Z358.1-2014** | Fuente: cartas de OSHA del 18-abr-2002 (Z358.1 §4.1: regadera ≥ 75.7 L/min = 20 gpm, volumen para 15 min) y del 22-nov-1993 (Z358.1-1990: lavaojos fijo ≥ 1.5 L/min = 0.4 gal/min), párrafos en `parches/normas-texto/OSHA-cartas-Z358.1_regadera-y-lavaojos.txt`. `lavaojos` pasa a «Regadera de emergencia (con o sin lavaojos)» con `emergGpm` 20; mueble nuevo `lavaojos_solo` (0.4 gpm). Ninguno entra a Hunter (0 UM; antes 6); su gasto se suma fijo al del sistema (todos a la vez, criterio de la casa) y cada tramo declara el que conduce (`qEmergLmin`, L/min; aviso si ninguno lo lleva, 0.5 % de tolerancia de redondeo). Volumen para 15 min (`volEmerg`) con aviso si la cisterna no lo guarda. Presión 21 m (30 psi) y UD (4 y 1) declarados criterio de la casa: las cartas no dan presión y 709.1 no lista el equipo (UD a H-203). Temperatura: no se calcula (Z358.1 la fija; OSHA la deja al patrón). Filas 5.a de fase2 a vigente; nuevas 5.b–c, 15.a–d, 16.a–b; prueba S.53. Proyecto fijo sin cambio de cifras. |
 
 | H-197 (pisos sin norma: 0.5 día, ΔT 5 K, pendiente 0.5 %) | **Cerrado** (hidro v6 → v7, 25-sep-2026) | Días capturados se respetan (0 o negativos = cisterna 0, pendiente con aviso); ΔT ≤ 0 = calentador pendiente con aviso (kW 0); pendiente capturada se respeta y sólo sube a la mínima de IPC 2015 §704.1 para el diámetro del colector (releído en up.codes el 25-sep-2026), con aviso, y la memoria y el PDF dicen cuál rige. Filas 3.d, 7.a, 7.b de fase2 a vigente; nuevas 3.e, 7.c, 7.d, 7.e; prueba S.54. Proyecto fijo sin cambio de cifras. |
+
+| H-198 (CPVC 2½–4" «SIN VERIFICAR» elegidos y cotizados; PEAD sin SDR) | **Cerrado** (hidro v7 → v8, quote v6 → v7, 25-sep-2026) | Se retiran los tres renglones de CPVC arriba de 2" CTS (Spears/Lubrizol: CTS SDR-11 no se fabrica arriba de 2"; la familia IPS queda pendiente de fuente). `sizeAgua` marca `fueraCatalogo` cuando ningún diámetro lleva el gasto a la velocidad máxima: error visible en hidro y la cotización lo manda «Por cotizar» con sus metros, sin pedir precio del tope. PEAD (`sinFuente`: diámetros genéricos sin SDR ni fuente) da error visible y toda su tubería va «Por cotizar». Fila 6.a de fase2 a vigente; nuevas 6.b–c; prueba S.55; 22.8 y CM.soporte.7 recalculadas (la general en CPVC llega a soportería con 43.59 mm en vez de 63). |
+
+**Dependencia para soporte (H-198):** la soportería sigue contando un tramo fuera de catálogo con el diámetro tope (43.59 mm en CPVC) y un tramo de PEAD con su DI genérico. Debería dejarlos «pendiente de diámetro verificado». No se tocó la lógica de soportería (regla del motor ajeno); sólo se recalculó su caso 7 con la nueva entrada.
 
 Defecto latente registrado (fuera del alcance de H-195, sin prueba todavía): `muebleDe(id)` devuelve el WC con fluxómetro para un
 id desconocido (`|| MUEBLES[0]`), así que un mueble que no existe en la tabla se calcula como WC con fluxómetro (10 UM, 35 psi) en
@@ -40,7 +44,7 @@ presMinReq 5.6246 (sin muebles rige el residual de la casa). El módulo `pruebas
 | ~~CM.hidro.5.a~~ | H-195 | **vigente desde el 25-sep-2026** (Qtotal 1.2618 L/s = 20 gpm fuera de Hunter; Z358.1-1990 vía OSHA, secundaria) | = esperado |
 | CM.hidro.1.ad | H-196 | importe «Cisterna … y equipo de bombeo» 0 (Por cotizar) | 29,000 MXN (9,500 × 0 m³ + 14,500 × 2 HP) |
 | ~~CM.hidro.3.d, 7.a, 7.b~~ | H-197 | **vigentes desde el 25-sep-2026** (0 L con 0 días; ΔT 0; pendiente 1.0417 % de 704.1) | = esperado |
-| CM.hidro.6.a | H-198 | 0 renglones CPVC arriba de 2" CTS (retirar «SIN VERIFICAR») | 3 renglones (63/75/100 mm) |
+| ~~CM.hidro.6.a~~ | H-198 | **vigente desde el 25-sep-2026** (0 renglones CPVC arriba de 2" CTS) | = esperado |
 | CM.hidro.1.u | H-199 | umCal 9 WSFU (E103.3(2) columna hot: lavabo público 1.5 × 4 + fregadero 3) | 7.2 (fracciones 0.6 sin fuente) |
 | CM.hidro.1.v | H-199 | Qcal 0.86434 L/s (13.7 gpm, curva de tanque) | 0.73740 |
 | CM.hidro.1.w | H-199 | kWcal 97.69 kW | 83.34 |
@@ -85,6 +89,15 @@ a vigente, reapuntados a las líneas nuevas (piso de 0.5 día, de ΔT 5 K y de p
 CM.hidro.7.d), m54 y m55 (sin avisos de cisterna y calentador pendientes: sólo S.54). Total 55; fase2 vivos previstos: m12 (H-202),
 m24 y m37 (H-199), m28 (H-203).
 
+**Al cierre de H-198 (25-sep-2026), corrida de los 7 mutantes tocados (`--solo`): todos MUERTOS.** m31 pasa de fase2 a vigente,
+reapuntado al DI de 2" CTS (43.59 → 50 mm; el renglón de 2 1/2" ya no existe): 22.8, CM.hidro.6.b/c, CM.soporte.7. Nuevos: m56 (el
+tope del catálogo no marca `fueraCatalogo`: S.55), m57 (quote cotiza el tramo fuera de catálogo con el precio del tope: S.55), m58
+(quote cotiza PEAD por diámetro aunque haya precio capturado: S.55), m59 (se pide precio del tope para el tramo fuera de catálogo:
+S.55), m60 y m61 (sin el error visible de fuera de catálogo / PEAD sin SDR: S.55). m58 y m59 salieron VIVOS en la primera corrida
+(S.55 capturaba precio sólo para CPVC 2" y probaba `hidroDiametrosSinPrecio` con el ramal cotizable); se reforzó S.55 (PEAD con precio
+en todos sus diámetros; sólo la general sin precios) y los dos murieron. Total 61; fase2 vivos previstos: m12 (H-202), m24 y m37
+(H-199), m28 (H-203).
+
 Resultado de la Fase 1: **37 mutantes · 0 vivos en lógica vigente · código de salida 0** (compuerta cerrada). 26 muertos (25 de
 lógica vigente + m34, que no es lógica); 11 en estado fase2, de los que 9 siguen vivos (previsto) y 2 mueren igual.
 
@@ -120,7 +133,7 @@ lógica vigente + m34, que no es lógica); 11 en estado fase2, de los que 9 sigu
 | hidro.m28 | UD WC fluxómetro 8 → 4 (el mutante es el valor de 709.1) | fase2:H-203 | VIVO | sólo lo mataría afirmar 52 UD · fila CM.hidro.1.x |
 | hidro.m29 | sin piso de ΔT 5 K | fase2:H-197 | VIVO | fila CM.hidro.7.a |
 | hidro.m30 | sin piso de pendiente 0.5 % | fase2:H-197 | VIVO | fila CM.hidro.7.b |
-| hidro.m31 | CPVC 2 1/2" «SIN VERIFICAR» 63 → 55 mm | fase2:H-198 | MUERTO | 22.8 (soportería lee el DI) · fila CM.hidro.6.a |
+| hidro.m31 | DI de CPVC 2" CTS 43.59 → 50 mm (reapuntado en H-198; antes 2 1/2" 63 → 55) | vigente | MUERTO | 22.8 (soportería lee el DI) · fila CM.hidro.6.a |
 | hidro.m32 | lavaojos 6 → 60 UM | fase2:H-195 | VIVO | fila CM.hidro.5.a (BLOQUEADO, secundaria) |
 | hidro.m33 | presión disponible con la mitad de la pérdida | vigente | MUERTO | 22.5, CM.hidro.1 |
 | hidro.m34 | precio semilla bomba 14,500 → 0 (`logica: false`) | fase2:H-196 | MUERTO | S.18, S.35 · fila CM.hidro.1.ad |

@@ -73,12 +73,12 @@ export default async function ({ t, eq, cerca, G, S, CM, REG_PROY }) {
     G("recompute")();
     return (G("SOPORTE").porTuberia || []).find((x) => x.etiqueta === "Hidráulica y sanitario");
   };
-  t("CM.soporte.7 (IPC 2009 T308.5 vía MCP · criterio de la casa peso termoplástico) hidráulica CPVC: dos tramos de 25 y 18 m (63 y 43.59 mm entregados por hidro)", () => {
+  t("CM.soporte.7 (IPC 2009 T308.5 vía MCP · criterio de la casa peso termoplástico) hidráulica CPVC: dos tramos de 25 y 18 m (43.59 y 43.59 mm entregados por hidro; la general fuera de catálogo por H-198)", () => {
     const guardado = JSON.stringify(S);
     try {
       const h = soloHidro("cpvc");
       if (!h || h.fam !== "plastico") throw new Error("el caso no aísla lo que se quiere probar: debe agrupar como termoplástico");
-      eq(JSON.stringify(h.det.map((d) => d.d)), JSON.stringify([63, 43.59]), "diámetros que entrega hidro (entrada del caso, no del motor de soportería):");
+      eq(JSON.stringify(h.det.map((d) => d.d)), JSON.stringify([43.59, 43.59]), "diámetros que entrega hidro (entrada del caso; H-198: la general llega con el tope de 2\" CTS, antes 63 mm):");
       eq(JSON.stringify(h.det.map((d) => d.L)), JSON.stringify([25, 18]), "longitudes capturadas:");
       cerca(G("SOPORTE").mTub, 43, 0.01, "sólo la red hidráulica aporta metros de tubería:"); eq(G("SOPORTE").mDucto, 0, "sin ducto:");
       comprobar("CM.soporte.7");

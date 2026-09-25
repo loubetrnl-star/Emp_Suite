@@ -8419,14 +8419,24 @@ function computeQuote() {
     const grupos = new Map();
     let sinL = 0;
     let sinUM = 0;
+    const sinDiam = [];
     HIDRO.tramos.forEach((t) => {
       if (!(t.Lcap > 0)) { sinL++; return; }
       /* rev 2.9.19 · Un tramo con longitud pero sin unidades mueble no tiene diámetro calculado (sizeAgua da el primero del
          catálogo): no se cotiza como si fuera de 1/2"; queda pendiente. */
       if (!(t.um > 0)) { sinUM++; return; }
+      /* H-198 (quote v7): sin diámetro verificado (fuera de catálogo o material sin fuente dimensional) no se cotiza con el
+         precio de otro diámetro: «Por cotizar» con sus metros. */
+      if (t.fueraCatalogo || T.sinFuente) { sinDiam.push(t); return; }
       /* El nombre del diámetro puede traer una nota interna («· SIN VERIFICAR…»): al cliente sólo llega el diámetro. */
       const nom = String(t.nom).split(" ·")[0];
       grupos.set(nom, (grupos.get(nom) || 0) + t.Lcap);
+    });
+    sinDiam.forEach((t) => {
+      const motivo = T.sinFuente ? ["pendiente de SDR y fuente dimensional", "SDR and dimensional source pending", "sin SDR ni fuente"]
+        : ["gasto fuera del catálogo verificado del material", "flow outside the material's verified catalog", "fuera de catálogo"];
+      pendientes.push({ mot: "hidro", desc: `Tubería de ${T.label}, tramo ${t.tag} (${n(t.Lcap, 1)} m)`, descEn: `${T.labelEn} water piping, run ${t.tag} (${n(t.Lcap, 1)} m)`, motivo: motivo[0], motivoEn: motivo[1] });
+      porCotizar.push({ sec: "F", mot: "hidro", clave: null, desc: `Tubería de ${T.label}, tramo ${t.tag}: diámetro pendiente (${motivo[2]})`, descEn: `${T.labelEn} water piping, run ${t.tag}: diameter pending (${motivo[1]})`, un: "ML", qty: t.Lcap, motivo: motivo[2] });
     });
     if (sinUM > 0) pendientes.push({ mot: "hidro", desc: `${sinUM} tramo(s) de agua con longitud pero sin unidades mueble`, descEn: `${sinUM} water run(s) with length but no fixture units`,
       motivo: "pendiente de unidades mueble (sin diámetro calculado)", motivoEn: "fixture units pending (no calculated diameter)" });
@@ -10051,17 +10061,17 @@ function hunterQ(um, tipo) {
    CPVC en CTS/SDR-11 NO se fabrica arriba de 2" nominal (lo confirman los dos
    fabricantes explícitamente: arriba de 2" la industria usa la familia IPS,
    con el OD del acero, no el del cobre — es una tabla dimensional distinta).
-   Los tres tamaños grandes de CPVC (2 1/2", 3", 4") se DEJAN con el valor
-   anterior (heredado de la tabla genérica, nunca verificado) marcados como tal
-   abajo — no se inventa un dato IPS que no se investigó, y así ningún proyecto
-   con CPVC grande cambia de número en este cambio; sizeAgua() ya tiene su
-   propio aviso "tope del catálogo" para cuando el gasto exige más de lo que
-   hay tabulado. PEAD no estaba en el alcance de esta decisión: queda igual. */
+   H-198 (rev 2.9.24, hidro v8): se RETIRAN los tres tamaños grandes de CPVC
+   (2 1/2", 3", 4"), que venían de la tabla genérica marcados «SIN VERIFICAR» y
+   se elegían y cotizaban sin aviso. Un tramo cuyo gasto no cabe en 2" CTS a la
+   velocidad máxima queda fuera de catálogo: error visible y «Por cotizar»
+   (familia IPS pendiente de fuente). PEAD trae diámetros interiores genéricos
+   sin SDR ni fuente dimensional: sinFuente, error visible y «Por cotizar». */
 const TUB_AGUA = {
   cobre:  { C: 140, label: "Cobre tipo L", labelEn: "Type L copper", d: [[13.84, "1/2\""], [19.94, "3/4\""], [26.04, "1\""], [32.13, "1 1/4\""], [38.23, "1 1/2\""], [50.42, "2\""], [62.61, "2 1/2\""], [74.80, "3\""], [99.19, "4\""]] },
-  cpvc:   { C: 150, label: "CPVC CTS SDR-11", labelEn: "CPVC CTS SDR-11", d: [[11.91, "1/2\""], [17.65, "3/4\""], [22.89, "1\""], [28.07, "1 1/4\""], [33.25, "1 1/2\""], [43.59, "2\""], [63, "2 1/2\" · SIN VERIFICAR, CTS/SDR-11 no llega aquí"], [75, "3\" · SIN VERIFICAR, CTS/SDR-11 no llega aquí"], [100, "4\" · SIN VERIFICAR, CTS/SDR-11 no llega aquí"]] },
+  cpvc:   { C: 150, label: "CPVC CTS SDR-11", labelEn: "CPVC CTS SDR-11", d: [[11.91, "1/2\""], [17.65, "3/4\""], [22.89, "1\""], [28.07, "1 1/4\""], [33.25, "1 1/2\""], [43.59, "2\""]] },
   acero:  { C: 120, label: "Acero cédula 40", labelEn: "Schedule 40 steel", d: [[15.80, "1/2\""], [20.93, "3/4\""], [26.64, "1\""], [35.05, "1 1/4\""], [40.89, "1 1/2\""], [52.50, "2\""], [62.71, "2 1/2\""], [77.93, "3\""], [102.26, "4\""]] },
-  pead:   { C: 150, label: "PEAD",         labelEn: "HDPE", d: [[19, "3/4\""], [25, "1\""], [32, "1 1/4\""], [38, "1 1/2\""], [50, "2\""], [63, "2 1/2\""], [75, "3\""], [100, "4\""], [150, "6\""]] },
+  pead:   { C: 150, label: "PEAD (DI sin SDR ni fuente, pendiente)", labelEn: "HDPE (ID without SDR or source, pending)", sinFuente: true, d: [[19, "3/4\""], [25, "1\""], [32, "1 1/4\""], [38, "1 1/2\""], [50, "2\""], [63, "2 1/2\""], [75, "3\""], [100, "4\""], [150, "6\""]] },
   /* rev 2.9.22 · PP-R PN20 (SDR 7.4), diámetro interior según DIN 8077 (exterior 20–110 mm). C 150 (Hazen-Williams, tubería lisa). */
   ppr:    { C: 150, label: "PP-R PN20 (SDR 7.4)", labelEn: "PP-R PN20 (SDR 7.4)", d: [[13.2, "20 mm"], [16.6, "25 mm"], [21.2, "32 mm"], [26.6, "40 mm"], [33.2, "50 mm"], [42.0, "63 mm"], [50.0, "75 mm"], [60.0, "90 mm"], [73.2, "110 mm"]] },
 };
@@ -10083,10 +10093,12 @@ function sizeAgua(Q_ls, material, caliente) {
   const t = TUB_AGUA[material] || TUB_AGUA.cobre;
   const vmax = caliente ? V_MAX_CAL : V_MAX_FRIA;
   for (const [d, nom] of t.d) {
-    if (velAgua(Q_ls, d) <= vmax) return { d, nom, C: t.C, V: velAgua(Q_ls, d), rige: "velocidad" };
+    if (velAgua(Q_ls, d) <= vmax) return { d, nom, C: t.C, V: velAgua(Q_ls, d), rige: "velocidad", fueraCatalogo: false };
   }
+  /* H-198: ningún diámetro del catálogo lleva el gasto: el tramo queda fuera de catálogo (error y «Por cotizar»); la
+     hidráulica se calcula con el tope sólo para mostrar cuánto se pasa. */
   const [d, nom] = t.d[t.d.length - 1];
-  return { d, nom, C: t.C, V: velAgua(Q_ls, d), rige: "tope del catálogo" };
+  return { d, nom, C: t.C, V: velAgua(Q_ls, d), rige: "tope del catálogo", fueraCatalogo: true };
 }
 
 /* Drenaje sanitario. Unidades de descarga máximas por diámetro.
@@ -10210,6 +10222,9 @@ function computeHidro(H) {
     const alt = num(t.alt, 0);
     return { ...t, um, qEmergLmin, Q, ...s, L, Lcap: L, sinL: !(L > 0), Leq, J, hf, alt, caliente, perdida: hf + alt };
   });
+  /* H-198: tramo sin diámetro verificado (fuera del catálogo del material) y material sin fuente dimensional: error. */
+  tramos.filter((t) => t.fueraCatalogo && t.um > 0).forEach((t) => avisos.push({ lvl: "err", msg: `${t.tag}: ${n(t.Q, 2)} L/s no caben en el mayor diámetro verificado de ${TUB_AGUA[mat].label} (${t.nom.split(" ·")[0]}) a ${t.caliente ? V_MAX_CAL : V_MAX_FRIA} m/s: el tramo queda fuera de catálogo y «Por cotizar». Cambia de material o divide el gasto.` }));
+  if (TUB_AGUA[mat].sinFuente && tramos.length) avisos.push({ lvl: "err", msg: `${TUB_AGUA[mat].label}: la tabla trae diámetros interiores genéricos, sin SDR ni fuente dimensional. Los diámetros y pérdidas son indicativos y la tubería va «Por cotizar» hasta capturar el SDR con su fuente.` });
   const sinLong = tramos.filter((t) => t.sinL);
   if (sinLong.length) avisos.push({ lvl: "err", msg: `${sinLong.length} tramo(s) de agua sin longitud capturada (${sinLong.map((t) => t.tag || t.nombre || "tramo").slice(0, 4).join(", ")}): su pérdida no se calcula ni se supone, así que la presión requerida no los incluye. Captura su longitud.` });
   /* Cruce interno: el tramo que más unidades mueble acumula es, por definición,
@@ -17876,14 +17891,14 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "4", clean: "2", equip: "1", duct: "1", vent: "1", quote: "6", valor: "1", kaizen: "1", elec: "8", hidro: "7", fuego: "2", aire: "2", civil: "3", soporte: "2" };
+const MOTOR_VER = { load: "4", clean: "2", equip: "1", duct: "1", vent: "1", quote: "7", valor: "1", kaizen: "1", elec: "8", hidro: "8", fuego: "2", aire: "2", civil: "3", soporte: "2" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
     { ver: "3", rev: "2.9.21", que: "cuarto limpio con presión positiva sin infiltración; unidad de aire exterior dedicada + serpentín seco (ADP desde la latente interna); crédito sensible del aire exterior topado en deshumidificación; cambios por hora obligatorios; calor del ventilador Q·ΔP/η" },
     { ver: "4", rev: "2.9.24", que: "H-120: el DET de muros y cubierta se corrige por la condición de diseño del sitio, (25.6 − ti) + (tm − 29.4) K con tm = to − rango/2 (corrección CLTD, ASHRAE Fundamentals 1997 cap. 28; ratificar con Carrier Tabla 20A)" }],
   clean: [{ ver: "2", rev: "2.9.16", que: "sin pisos de 1 m² ni 2.2 m; 5 Pa de ISO 14644-4 con aviso; ceros capturados respetados" }],
-  quote: [{ ver: "2", rev: "2.9.16", que: "red hidráulica por diámetro con precio capturado; sin 50 m supuestos; partidas pendientes" }, { ver: "3", rev: "2.9.19", que: "tramo con longitud y sin unidades mueble queda pendiente" }, { ver: "4", rev: "2.9.23", que: "precio de tubería por renglón con origen (referencia de mercado o proveedor local), IVA desglosado y por metro; sin precio: partida Por cotizar en el Budget, bloqueo sólo en la formal" }, { ver: "5", rev: "2.9.23", que: "precios en USD sólo se convierten con tipo de cambio capturado con fecha; sin fecha salen Por cotizar y bloquean la formal (nada se estima)" }, { ver: "6", rev: "2.9.23", que: "referencias sólo de California y sólo material (mano de obra por capturar; combinados → Por cotizar); referencias IUSA retiradas; flete, aduana e importación como renglón propio siempre Por cotizar hasta capturarlo" }],
+  quote: [{ ver: "2", rev: "2.9.16", que: "red hidráulica por diámetro con precio capturado; sin 50 m supuestos; partidas pendientes" }, { ver: "3", rev: "2.9.19", que: "tramo con longitud y sin unidades mueble queda pendiente" }, { ver: "4", rev: "2.9.23", que: "precio de tubería por renglón con origen (referencia de mercado o proveedor local), IVA desglosado y por metro; sin precio: partida Por cotizar en el Budget, bloqueo sólo en la formal" }, { ver: "5", rev: "2.9.23", que: "precios en USD sólo se convierten con tipo de cambio capturado con fecha; sin fecha salen Por cotizar y bloquean la formal (nada se estima)" }, { ver: "6", rev: "2.9.23", que: "referencias sólo de California y sólo material (mano de obra por capturar; combinados → Por cotizar); referencias IUSA retiradas; flete, aduana e importación como renglón propio siempre Por cotizar hasta capturarlo" }, { ver: "7", rev: "2.9.24", que: "H-198: un tramo de agua sin diámetro verificado (fuera del catálogo del material, o PEAD sin SDR ni fuente) va Por cotizar con sus metros; ya no se cotiza con el precio del mayor diámetro ni pide precio de un diámetro que no le corresponde" }],
   elec: [{ ver: "2", rev: "2.9.16", que: "canalización con las áreas del conductor de la memoria (THW-LS por omisión, NOM-001-SEDE Cap. 10 Tabla 5)" }, { ver: "3", rev: "2.9.18", que: "siete áreas THHN/THWN-2 corregidas a la Tabla 5" }, { ver: "4", rev: "2.9.19", que: "sin compresor de aire cuando no hay demanda" },
     { ver: "5", rev: "2.9.24", que: "H-183: conductor de puesta a tierra con la Tabla 250-122 de la NOM-001-SEDE-2012 (p. 151): 400 A → 2 AWG (antes 3 AWG, valor del NEC), renglones hasta 6000 A y columna de aluminio (hasta 100 A la tabla sólo da cobre)" },
     { ver: "6", rev: "2.9.24", que: "H-177: equipo con motocompresor hermético con MCA y MOP por el art. 440: conductor por la MCA de placa (440-4(b), 440-35; una MCA estimada por la suite no lo baja del 125 %) y protección igual al MOP o al valor inmediato inferior de 240-6(a) completo (16, 32, 63 A; abajo de 15 A sólo fusibles de 1, 3, 6, 10 A), sin el 250 % de la Tabla 430-52 (40VMA-240: 150 → 90 A; 40MBC-24: 25 → 15 A). Aceptar la cédula conserva MCA y MOP (marcados estimados); una carga sin kW no fija el principal" },
@@ -17892,7 +17907,8 @@ const MOTOR_CAMBIOS = {
   hidro: [{ ver: "2", rev: "2.9.16", que: "tramo sin longitud ya no supone 10 m" }, { ver: "3", rev: "2.9.18", que: "curva de Hunter de IPC apéndice E Table E103.3(3)" }, { ver: "4", rev: "2.9.19", que: "renglones de 2500 a 5000 UM de la misma tabla" },
     { ver: "5", rev: "2.9.24", que: "H-194: presión mínima en la salida de cada mueble por la Tabla 604.3 del IPC 2015 (WC con fluxómetro 35 psi = 24.6 m, antes 10.5 m sin fuente; mingitorio 25, WC de tanque 20, regadera 20 por §424.3, lavabo/fregadero/lavadero/bebedero/manguera 8 psi); la carga dinámica de la bomba lleva máx(residual capturado, mínima de norma del mueble más exigente), antes sólo el residual fijo de 15 m" },
     { ver: "6", rev: "2.9.24", que: "H-195: regadera de emergencia (20 gpm = 75.7 L/min) y lavaojos fijo (0.4 gal/min = 1.5 L/min, mueble nuevo) fuera de Hunter con gasto fijo sumado al del sistema, antes 6 unidades mueble cada uno; volumen para 15 min; el tramo declara el gasto de emergencia que conduce (L/min) con aviso si ninguno lo lleva. Fuente secundaria: ANSI Z358.1-1990 citada por OSHA (cartas del 18-abr-2002 y 22-nov-1993); ratificar con Z358.1-2014" },
-    { ver: "7", rev: "2.9.24", que: "H-197: sin pisos sin norma. Días de reserva capturados se respetan (0 = cisterna pendiente con aviso; antes piso de 0.5 día); ΔT ≤ 0 = calentador pendiente con aviso (antes piso de 5 K); la pendiente del colector se respeta y sólo sube, con aviso, a la mínima de IPC 2015 §704.1 para su diámetro (antes piso de 0.5 % sin norma)" }],
+    { ver: "7", rev: "2.9.24", que: "H-197: sin pisos sin norma. Días de reserva capturados se respetan (0 = cisterna pendiente con aviso; antes piso de 0.5 día); ΔT ≤ 0 = calentador pendiente con aviso (antes piso de 5 K); la pendiente del colector se respeta y sólo sube, con aviso, a la mínima de IPC 2015 §704.1 para su diámetro (antes piso de 0.5 % sin norma)" },
+    { ver: "8", rev: "2.9.24", que: "H-198: CPVC sin los renglones de 2 1/2\", 3\" y 4\" «SIN VERIFICAR» (CTS SDR-11 llega a 2\"); un tramo que no cabe en el mayor diámetro verificado queda fuera de catálogo con error visible, y PEAD (diámetros genéricos sin SDR ni fuente) da error visible" }],
   fuego: [{ ver: "2", rev: "2.9.16", que: "sin área no hay demanda, bomba ni reserva; área mínima de operación NFPA 13 con aviso" }],
   aire: [{ ver: "2", rev: "2.9.16", que: "sin demanda no se cuentan unidades" }],
   civil: [{ ver: "2", rev: "2.9.16", que: "sin área clasificada no hay partidas de área clasificada" }, { ver: "3", rev: "2.9.19", que: "un cuarto limpio vacío no cuenta como área clasificada" }],
@@ -19069,7 +19085,8 @@ function buildMemoriaIntegralPdf() {
 /* rev 2.9.22 · Diámetros calculados que no tienen precio capturado (los que la cotización necesita). */
 function hidroDiametrosSinPrecio() {
   if (!HIDRO || !(HIDRO.umTotal > 0)) return [];
-  const noms = [...new Set(HIDRO.tramos.filter((t) => t.Lcap > 0 && t.um > 0).map((t) => String(t.nom).split(" ·")[0]))];
+  if ((TUB_AGUA[HIDRO.mat] || {}).sinFuente) return [];
+  const noms = [...new Set(HIDRO.tramos.filter((t) => t.Lcap > 0 && t.um > 0 && !t.fueraCatalogo).map((t) => String(t.nom).split(" ·")[0]))];
   return noms.filter((nom) => { const e = hidroPUEntrada(claveHidroPU(HIDRO.mat, nom)); return !(e && e.precioM > 0); });
 }
 /* Plantilla CSV: material,clave,diametro,precio_por_metro,moneda,fuente — una fila por cada diámetro que el motor puede producir. */

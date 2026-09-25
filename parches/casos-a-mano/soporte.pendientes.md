@@ -3,6 +3,13 @@
 Motor de soportería (`soporte`, v2). Hoja: `soporte.csv` (93 filas, 17 `fase2`), cálculo independiente `soporte.calc.mjs`,
 módulo `pruebas-motores/soporte.mjs` (12 pruebas), compuerta `parches/mutantes/soporte.json` (47 mutantes, 7 `fase2`).
 
+## 0. Cambios de entrada por otros motores
+
+- **H-198 (hidro v8, 25-sep-2026):** hidro retiró el CPVC de 2½" «SIN VERIFICAR» (63 mm). En el caso 7 la general llega con el
+  tope de 2" CTS (43.59 mm) marcada fuera de catálogo; se recalcularon 7.a–7.i con `soporte.calc.mjs` (peso y carga del tramo 1
+  con nominal 40 en vez de 65; soportes sin cambio). **Dependencia abierta para soporte:** un tramo fuera de catálogo o de
+  PEAD sin SDR no debería contarse con un diámetro que no existe: «pendiente de diámetro verificado».
+
 ## 1. Pruebas de `pruebas.mjs` que protegen valores incorrectos (no se tocan en la Fase 1)
 
 | Prueba | Línea | Qué consagra | Hallazgo |

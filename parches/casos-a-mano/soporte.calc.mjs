@@ -186,18 +186,21 @@ const SRC_MIN = `mínimo de ${SRC_MSS} e ${SRC_IPC} · decisión 4 del dueño`;
   fila("CM.soporte.6.b", "número de soportes", ENT, `ceil(30/4.6) + 1 = ${n}`, "NFPA 13 tope + criterio de la casa (index.html:7778)", "memoria", "CM_SOP.F.n_soportes", n, 0);
   fila("CM.soporte.6.c", "varilla mínima NFPA 13 para 6\": ½\" (índice 1 del catálogo)", ENT, "NFPA 13 Tabla 17.1.6.1: 5\" a 8\" → ½\" = índice 1 en C_SOP.VARILLA", "NFPA 13 varilla mínima por diámetro (texto no disponible)", "memoria", "CM_SOP.F.varillaIdx", 1, 0);
 }
-/* --- Hidráulica CPVC por el estado: 63 y 43.59 mm entregados por hidro, 25 y 18 m --- */
+/* --- Hidráulica CPVC por el estado: 43.59 y 43.59 mm entregados por hidro, 25 y 18 m ---
+   H-198 (rev 2.9.24): hidro ya no trae CPVC arriba de 2" CTS (el 2½" de 63 mm era un renglón «SIN VERIFICAR»). La general
+   (3.7 L/s) queda fuera de catálogo en hidro y llega aquí con el tope de 2" (43.59 mm); la soportería la sigue contando
+   (dependencia registrada: debería quedar pendiente). Antes: 63 mm, nominal 65. */
 {
-  const e1 = claroMin("cpvc", '2-1/2"'), e2 = claroMin("cpvc", '1-1/2"');   // 63 → nominal 65 (2½"); 43.59 → 40 (1½"): ambos ≥ 1¼" → 4 ft
+  const e1 = claroMin("cpvc", '1-1/2"'), e2 = claroMin("cpvc", '1-1/2"');   // 43.59 → nominal 40 (1½") en los dos: ≥ 1¼" → 4 ft
   const n1 = nSop(25, 1.2), n2 = nSop(18, 1.2);
-  const wl1 = pesoPlastico(63), carga1 = wl1 * 1.2;
-  const ENT = "hidro.material cpvc; tramos AF-GENERAL 72 UM 25 m (d 63 mm) y AF-RAMAL 20 UM 18 m (d 43.59 mm) entregados por hidro; ductos, incendio, aire y equipos vacíos; defaultSoporte()";
+  const wl1 = pesoPlastico(43.59), carga1 = wl1 * 1.2;
+  const ENT = "hidro.material cpvc; tramos AF-GENERAL 72 UM 25 m (d 43.59 mm, fuera de catálogo en hidro por H-198) y AF-RAMAL 20 UM 18 m (d 43.59 mm) entregados por hidro; ductos, incendio, aire y equipos vacíos; defaultSoporte()";
   const H = "SOPORTE.porTuberia.find((x) => x.etiqueta === 'Hidráulica y sanitario').det";
-  fila("CM.soporte.7.a", "claro CPVC 63 mm (2½\")", ENT, `IPC CPVC ≥ 1¼\": 4 ft × 0.3048 = ${r(e1, 3)} m (la suite tabula 1.2)`, SRC_IPC, "secundaria", `${H}[0].e`, r(e1, 3), 0.03);
+  fila("CM.soporte.7.a", "claro CPVC 43.59 mm (tope de 2\" CTS; antes 63 mm)", ENT, `IPC CPVC ≥ 1¼\": 4 ft × 0.3048 = ${r(e1, 3)} m (la suite tabula 1.2)`, SRC_IPC, "secundaria", `${H}[0].e`, r(e1, 3), 0.03);
   fila("CM.soporte.7.b", "soportes tramo 1 (25 m)", ENT, `ceil(25/1.2) + 1 = ${n1}`, `${SRC_IPC} + criterio de la casa (index.html:8110)`, "secundaria", `${H}[0].n`, n1, 0);
   fila("CM.soporte.7.c", "soportes tramo 2 (18 m, 43.59 mm → 1½\", 4 ft)", ENT, `ceil(18/1.2) + 1 = ${n2}`, `${SRC_IPC} + criterio de la casa`, "secundaria", `${H}[1].n`, n2, 0);
-  fila("CM.soporte.7.d", "peso lineal lleno CPVC 63 mm (camino propio)", ENT, `nominal 65: (8.63 × 0.22 + 3.087) × 1.10 = ${r(wl1, 3)} kg/m`, "criterio de la casa (index.html:7372-7386)", "secundaria", `${H}[0].wl`, r(wl1, 3), 0.01);
-  fila("CM.soporte.7.e", "carga por soporte CPVC 63 mm", ENT, `${r(wl1, 3)} × 1.2 = ${r(carga1, 3)} kgf`, "criterio de la casa (index.html:8112)", "secundaria", `${H}[0].carga`, r(carga1, 3), 0.02);
+  fila("CM.soporte.7.d", "peso lineal lleno CPVC 43.59 mm (camino propio; antes 63 mm)", ENT, `nominal 40 (DN más cercano a 43.59): (4.05 × 0.22 + 1.314) × 1.10 = ${r(wl1, 3)} kg/m`, "criterio de la casa (index.html:7372-7386)", "secundaria", `${H}[0].wl`, r(wl1, 3), 0.01);
+  fila("CM.soporte.7.e", "carga por soporte CPVC 43.59 mm (antes 63 mm)", ENT, `${r(wl1, 3)} × 1.2 = ${r(carga1, 3)} kgf`, "criterio de la casa (index.html:8112)", "secundaria", `${H}[0].carga`, r(carga1, 3), 0.02);
   fila("CM.soporte.7.f", "soportes totales (sólo la red hidráulica)", ENT, `${n1} + ${n2} = ${n1 + n2}`, SRC_IPC, "secundaria", "SOPORTE.nSoportes", n1 + n2, 0);
   fila("CM.soporte.7.g", "abrazaderas cotizadas = soportes", ENT, `${n1 + n2}`, "criterio de la casa (index.html:8184)", "secundaria", "SOPORTE.part.filter((p) => /^Abrazadera/.test(p.desc)).reduce((a, p) => a + p.qty, 0)", n1 + n2, 0);
   fila("CM.soporte.7.h", "anclas del termoplástico (hoy 0)", ENT, `una por soporte y varilla: ${n1 + n2} × 1 = ${n1 + n2}`, "H-228: el termoplástico sale sin anclas ni tuercas; criterio de la casa del despiece (index.html:7853-7862) aplicado también al camino propio", "secundaria", "SOPORTE.part.filter((p) => /^Anclaje/.test(p.desc)).reduce((a, p) => a + p.qty, 0)", n1 + n2, 0, "fase2:H-228");

@@ -241,11 +241,11 @@
   },
   {
     "id": "hidro.m31",
-    "que": "CPVC 2 1/2\" «SIN VERIFICAR» con otro DI (63 → 55 mm): nada lo vigila porque el renglón se retira",
+    "que": "H-198: DI de CPVC 2\" CTS 43.59 → 50 mm (antes: el renglón «SIN VERIFICAR» de 2 1/2\", ya retirado)",
     "logica": true,
-    "buscar": "[63, \"2 1/2\\\" · SIN VERIFICAR, CTS/SDR-11 no llega aquí\"]",
-    "reemplazar": "[55, \"2 1/2\\\" · SIN VERIFICAR, CTS/SDR-11 no llega aquí\"]",
-    "estado": "fase2:H-198"
+    "buscar": "[43.59, \"2\\\"\"]] },",
+    "reemplazar": "[50, \"2\\\"\"]] },",
+    "estado": "vigente"
   },
   {
     "id": "hidro.m32",
@@ -436,6 +436,54 @@
     "que": "H-197: sin el aviso de calentador pendiente con ΔT ≤ 0",
     "logica": true,
     "buscar": "if (umCal > 0 && !(dT > 0))",
+    "reemplazar": "if (false)",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m56",
+    "que": "H-198: el tope del catálogo no marca el tramo fuera de catálogo",
+    "logica": true,
+    "buscar": "rige: \"tope del catálogo\", fueraCatalogo: true",
+    "reemplazar": "rige: \"tope del catálogo\", fueraCatalogo: false",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m57",
+    "que": "H-198 (quote): el tramo fuera de catálogo se cotiza con el precio del tope",
+    "logica": true,
+    "buscar": "if (t.fueraCatalogo || T.sinFuente) { sinDiam.push(t); return; }",
+    "reemplazar": "if (T.sinFuente) { sinDiam.push(t); return; }",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m58",
+    "que": "H-198 (quote): PEAD sin SDR se cotiza por diámetro",
+    "logica": true,
+    "buscar": "if (t.fueraCatalogo || T.sinFuente) { sinDiam.push(t); return; }",
+    "reemplazar": "if (t.fueraCatalogo) { sinDiam.push(t); return; }",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m59",
+    "que": "H-198 (precios): se pide precio del diámetro tope para el tramo fuera de catálogo",
+    "logica": true,
+    "buscar": "t.Lcap > 0 && t.um > 0 && !t.fueraCatalogo",
+    "reemplazar": "t.Lcap > 0 && t.um > 0",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m60",
+    "que": "H-198: sin el error visible del tramo fuera de catálogo",
+    "logica": true,
+    "buscar": "tramos.filter((t) => t.fueraCatalogo && t.um > 0).forEach(",
+    "reemplazar": "tramos.filter(() => false).forEach(",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m61",
+    "que": "H-198: sin el error visible de PEAD sin SDR ni fuente",
+    "logica": true,
+    "buscar": "if (TUB_AGUA[mat].sinFuente && tramos.length)",
     "reemplazar": "if (false)",
     "estado": "vigente"
   }

@@ -3693,7 +3693,9 @@ t("22.8 2.5 la soportería hidráulica lee hidro.material: cobre y termoplástic
        que el segundo tramo ya no necesita subir de 1-1/4" a 1-1/2"). */
     const esperado = {
       cobre: { fam: "cobre", d: [50.42, 38.23], e: [2.4, 2.4], n: [12, 9] },
-      cpvc: { fam: "plastico", d: [63, 43.59], e: [1.2, 1.2], n: [22, 16] },
+      /* H-198 (rev 2.9.24): CPVC CTS sólo llega a 2" (43.59 mm); la general (3.7 L/s) queda fuera de catálogo con el tope de 2" y va
+         «Por cotizar» (antes 63 mm, renglón «SIN VERIFICAR»). La soportería sigue contándola con 43.59 mm: dependencia de soporte. */
+      cpvc: { fam: "plastico", d: [43.59, 43.59], e: [1.2, 1.2], n: [22, 16] },
       pead: { fam: "plastico", d: [50, 38], e: [1.2, 1.2], n: [22, 16] },
       acero: { fam: "acero", d: [52.5, 35.05], e: [3, 2.1], n: [10, 10] },
     };
@@ -6140,8 +6142,8 @@ t("S.36 (rev 2.9.20, decisión del dueño) versión por motor en el sello: sólo
   llenarTodoS();
   const MV = G("MOTOR_VER");
   /* H-107: carga v3 = lógica de la rev 2.9.21 (declarada en la 2.9.24); H-120: carga v4 = corrección CLTD por sitio. H-183: eléctrico v5 = Tabla 250-122 de la NOM; H-177: v6 = art. 440 con MCA/MOP; H-179: v7 = nada se supone (pendientes); H-178: v8 = corriente de motor por la Tabla 430-250/248.
-     H-194: hidro v5 = presión mínima por mueble de la Tabla 604.3 del IPC 2015 y CDT con máx(residual, mínima); H-195: v6 = equipo de emergencia fuera de Hunter; H-197: v7 = sin pisos sin norma (días, ΔT, pendiente 704.1). */
-  eq(MV.elec, "8", "eléctrico v8 (H-178):"); eq(MV.hidro, "7", "hidro v7 (H-197):"); eq(MV.load, "4", "carga v4:"); eq(MV.duct, "1", "ductos sin cambio de lógica: v1:");
+     H-194: hidro v5 = presión mínima por mueble de la Tabla 604.3 del IPC 2015 y CDT con máx(residual, mínima); H-195: v6 = equipo de emergencia fuera de Hunter; H-197: v7 = sin pisos sin norma (días, ΔT, pendiente 704.1); H-198: v8 = CPVC sólo hasta 2" CTS, fuera de catálogo y PEAD sin SDR como error. */
+  eq(MV.elec, "8", "eléctrico v8 (H-178):"); eq(MV.hidro, "8", "hidro v8 (H-198):"); eq(MV.load, "4", "carga v4:"); eq(MV.duct, "1", "ductos sin cambio de lógica: v1:");
   Object.keys(MV).forEach((id) => { const c = G("MOTOR_CAMBIOS")[id] || []; if (MV[id] !== "1" && !c.some((x) => x.ver === MV[id])) throw new Error(`${id}: la versión ${MV[id]} no tiene hallazgo registrado`); });
   const s0 = JSON.stringify(S.sellos || {});
   try {
@@ -6149,9 +6151,9 @@ t("S.36 (rev 2.9.20, decisión del dueño) versión por motor en el sello: sólo
     S.sellos = { duct: { ts: 5, huella: G("huellaMotor")("duct") }, hidro: { ts: 5, huella: G("huellaMotor")("hidro") } }; G("recompute")();
     eq(G("selloDe")("duct").estado, "calculado", "ductos (motor v1, sin cambio):");
     const sh = G("selloDe")("hidro");
-    eq(sh.estado, "desactualizado", "hidro (motor v1 → v7):"); contiene(sh.texto, "v1 → v7", "texto:"); contiene(sh.texto, "Hunter", "nombra el hallazgo:"); contiene(sh.texto, "604.3", "nombra H-194:"); contiene(sh.texto, "Z358.1", "nombra H-195:"); contiene(sh.texto, "704.1", "nombra H-197:");
+    eq(sh.estado, "desactualizado", "hidro (motor v1 → v8):"); contiene(sh.texto, "v1 → v8", "texto:"); contiene(sh.texto, "Hunter", "nombra el hallazgo:"); contiene(sh.texto, "604.3", "nombra H-194:"); contiene(sh.texto, "Z358.1", "nombra H-195:"); contiene(sh.texto, "704.1", "nombra H-197:"); contiene(sh.texto, "catálogo", "nombra H-198:");
     const m = G("motoresCambiados")();
-    eq(m.map((x) => x.id).join(","), "hidro", "lista para el aviso al abrir:"); eq(m[0].de + ">" + m[0].a, "1>7", "de → a:");
+    eq(m.map((x) => x.id).join(","), "hidro", "lista para el aviso al abrir:"); eq(m[0].de + ">" + m[0].a, "1>8", "de → a:");
     /* Un sello viejo abre sin error y conserva su ver; el saneado acepta ver/resumen/previo y descarta basura. */
     const viejo = JSON.parse(JSON.stringify(S)); viejo.sellos = { hidro: { ts: 5, huella: G("huellaMotor")("hidro"), ver: "3", resumen: { Gasto: "1 L/s" }, previo: { ver: "2", ts: 4, resumen: { Gasto: "0.9 L/s" } } }, duct: { ts: 5, huella: G("huellaMotor")("duct"), ver: "x9", resumen: "no" } };
     const sv = G("sanearEstado")(viejo).sellos;
@@ -6161,14 +6163,14 @@ t("S.36 (rev 2.9.20, decisión del dueño) versión por motor en el sello: sólo
     const Q0 = G("HIDRO").Qtotal;
     clicS(boton("hidro", "calc-motor"));
     const sn = S.sellos.hidro;
-    eq(sn.ver, "7", "sello nuevo con la versión del motor:"); eq(sn.previo.ver, "1", "previo:"); eq(sn.previo.resumen.Gasto, "3.924 L/s", "cifras de antes:");
+    eq(sn.ver, "8", "sello nuevo con la versión del motor:"); eq(sn.previo.ver, "1", "previo:"); eq(sn.previo.resumen.Gasto, "3.924 L/s", "cifras de antes:");
     contiene(sn.resumen.Gasto, G("n")(Q0, 3), "cifras de después:");
     eq(G("selloDe")("hidro").estado, "calculado", "vuelto a sellar:");
     conPdfCapturado((salida) => {
       clicS(boton("hidro", "pdf-memoria-motor"));
       const txt = textoPdf(salida()[salida().length - 1].b);
-      contiene(txt, "CAMBIO DE MOTOR v1 -> v7", "la memoria dice el cambio:"); /* el PDF parte los renglones en varios Tj: se buscan las piezas */
-      contiene(txt, "ANTES", "antes:"); contiene(txt, "3.924 L/s", "cifra de antes:"); contiene(txt, "DESPUES", "después:"); contiene(txt, "motor v1", "versión de antes:"); contiene(txt, "motor v7", "versión de después:");
+      contiene(txt, "CAMBIO DE MOTOR v1 -> v8", "la memoria dice el cambio:"); /* el PDF parte los renglones en varios Tj: se buscan las piezas */
+      contiene(txt, "ANTES", "antes:"); contiene(txt, "3.924 L/s", "cifra de antes:"); contiene(txt, "DESPUES", "después:"); contiene(txt, "motor v1", "versión de antes:"); contiene(txt, "motor v8", "versión de después:");
     });
     eq(w.eval("MEMO_CAMBIO"), null, "la bandera de la memoria se limpia:");
   } finally { S.sellos = JSON.parse(s0); G("recompute")(); }
@@ -6394,6 +6396,47 @@ t("S.54 (H-197) sin pisos sin norma: 0 días de reserva = cisterna pendiente, Δ
     contiene(H.memo.join(" "), "704.1", "la memoria dice de dónde sale la pendiente:");
     H = arma({ pendiente: 3 }); eq(H.pend, 3, "3 % capturado se respeta:");
     if (H.avisos.some((a) => /704\.1/.test(a.msg))) throw new Error("con pendiente mayor que la mínima no hay aviso de 704.1");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+t("S.55 (H-198) CPVC sin renglones «SIN VERIFICAR» arriba de 2\" CTS y PEAD sin SDR: el tramo sin diámetro verificado es error visible y va «Por cotizar», nunca con el precio de otro diámetro", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    const T = G("TUB_AGUA");
+    eq(T.cpvc.d.filter((x) => x[0] > 43.59).length, 0, "CPVC sin renglones arriba de 2\" CTS:");
+    if (Object.values(T).some((m) => m.d.some((x) => /SIN VERIFICAR/.test(x[1])))) throw new Error("queda un renglón «SIN VERIFICAR» en TUB_AGUA");
+    S.perms = { ...(S.perms || {}), "hidro>quote": { ts: 1, via: "S.55" } };
+    const muebles = [{ id: "wc_flux", cant: 4 }, { id: "ming_flux", cant: 2 }, { id: "lavabo", cant: 4 }, { id: "fregadero", cant: 1 }, { id: "manguera", cant: 2 }];
+    const tramos = () => [{ ...G("defaultTramoAgua")("AF-GENERAL"), um: 72, L: 25, alt: 0 }, { ...G("defaultTramoAgua")("AF-RAMAL"), um: 20, L: 18, alt: 0 }];
+    const ml = () => (G("QUOTE").aux || []).filter((x) => x.mot === "hidro" && x.un === "ML");
+    const pc = () => (G("QUOTE").porCotizar || []).filter((x) => x.mot === "hidro");
+    /* CPVC: la general no cabe en 2" CTS. */
+    S.hidro = { ...G("defaultHidro")(), material: "cpvc", muebles, tramos: tramos() };
+    S.quote.hidroPU = { [G("claveHidroPU")("cpvc", '2"')]: 300 };
+    G("recompute")();
+    let H = G("HIDRO");
+    eq(H.tramos[0].fueraCatalogo, true, "la general queda fuera de catálogo:"); eq(H.tramos[1].fueraCatalogo, false, "el ramal cabe en 2\":");
+    if (!H.avisos.some((a) => a.lvl === "err" && /AF-GENERAL/.test(a.msg) && /catálogo/.test(a.msg))) throw new Error("el tramo fuera de catálogo debe dar error visible");
+    eq(ml().reduce((s, x) => s + x.qty, 0), 18, "sólo el ramal se cotiza con el precio de 2\" (antes también la general, con el de 2 1/2\"):");
+    const g = pc().find((x) => /AF-GENERAL/.test(x.desc));
+    if (!g) throw new Error("la general debe ir «Por cotizar»");
+    eq(g.qty, 25, "con sus metros:");
+    eq(G("hidroDiametrosSinPrecio")().join(","), "", "el tramo fuera de catálogo no pide precio de un diámetro que no le corresponde:");
+    S.hidro = { ...G("defaultHidro")(), material: "cpvc", muebles, tramos: tramos().slice(0, 1) };
+    S.quote.hidroPU = {};
+    G("recompute")();
+    eq(G("hidroDiametrosSinPrecio")().join(","), "", "sólo con el tramo fuera de catálogo y sin precios, no se pide el precio del tope:");
+    /* PEAD: diámetros sin SDR ni fuente. */
+    S.hidro = { ...G("defaultHidro")(), material: "pead", muebles, tramos: tramos() };
+    S.quote.hidroPU = Object.fromEntries(G("TUB_AGUA").pead.d.map((x) => [G("claveHidroPU")("pead", String(x[1]).split(" ·")[0]), 300]));
+    G("recompute")(); H = G("HIDRO");
+    if (!H.avisos.some((a) => a.lvl === "err" && /PEAD/.test(a.msg) && /SDR/.test(a.msg))) throw new Error("PEAD sin SDR debe dar error visible");
+    eq(ml().length, 0, "PEAD no se cotiza por diámetro aunque haya precio capturado:");
+    if (!pc().every((x) => /SDR/.test(x.desc))) throw new Error("PEAD va «Por cotizar» por falta de SDR, no por falta de precio");
+    eq(pc().reduce((s, x) => s + x.qty, 0), 43, "los 43 m van «Por cotizar»:");
+    /* Cobre: sin cambio. */
+    S.hidro = { ...G("defaultHidro")(), material: "cobre", muebles, tramos: tramos() }; G("recompute")(); H = G("HIDRO");
+    eq(H.tramos.map((x) => !!x.fueraCatalogo).join(","), "false,false", "cobre dentro del catálogo:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 

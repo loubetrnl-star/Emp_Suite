@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* parches/casos-a-mano/hidro.calc.mjs · Fase 1 (rev 2.9.24) · motor hidrosanitario (`hidro`, v4; v5 con H-194; v6 con H-195; v7 con H-197)
+/* parches/casos-a-mano/hidro.calc.mjs · Fase 1 (rev 2.9.24) · motor hidrosanitario (`hidro`, v4; v5 con H-194; v6 con H-195; v7 con H-197; v8 con H-198)
 
    Cálculo INDEPENDIENTE de la suite: no carga index.html, no usa cifrasMotor ni el esperado de regresión. Transcribe
    las tablas de norma que el motor necesita, resuelve cada caso a mano e imprime los esperados. Con `--csv` escribe la
@@ -379,7 +379,15 @@ fila("CM.hidro.5.c", "volumen de agua para 15 min de la regadera de emergencia",
 /* =========================================================================================================== CASO 6 · CPVC arriba de 2" */
 fila("CM.hidro.6.a", "renglones CPVC de 2 1/2\", 3\" y 4\" marcados «SIN VERIFICAR» retirados del catálogo (hoy 3 renglones; con 3.7 L/s la suite elige 2 1/2\" = 63 mm)", "material cpvc (fixture)",
   "TUB_AGUA.cpvc.d sin renglones con DI > 43.59 mm (2\" CTS SDR-11) → 0", "PLAN-CRITICOS.md §2 Fase 2 H-198 «retirar renglones no verificados → error y Por cotizar»; ASTM D2846 (memoria): CTS hasta 2\"", "decisión del dueño",
-  "TUB_AGUA.cpvc.d.filter((x) => x[0] > 43.59).length", 0, 0, "fase2:H-198");
+  "TUB_AGUA.cpvc.d.filter((x) => x[0] > 43.59).length", 0, 0);
+/* H-198: el mayor CPVC verificado es 2" CTS SDR-11, DI 43.59 mm (Spears/Lubrizol, secundaria, la misma que cita la suite). */
+const DI_CPVC_2 = 43.59;
+fila("CM.hidro.6.b", "la general (3.69961 L/s) excede el CPVC verificado: 2\" CTS da más de 2.4 m/s → tramo fuera de catálogo (1)", "material cpvc (fixture)",
+  `V(2" CTS, 43.59 mm) = ${vel(q72, DI_CPVC_2).toFixed(3)} m/s > 2.4 → no hay diámetro verificado que la lleve`, "Spears CTS SDR-11 (secundaria); V máx " + CASA(9784), "secundaria",
+  "HIDRO.tramos[0].fueraCatalogo ? 1 : 0", 1, 0);
+fila("CM.hidro.6.c", "el ramal (2.208157 L/s) sí cabe en 2\" CTS: dentro del catálogo (0)", "material cpvc (fixture)",
+  `V(2" CTS) = ${vel(q20, DI_CPVC_2).toFixed(3)} m/s ≤ 2.4`, "Spears CTS SDR-11 (secundaria); V máx " + CASA(9784), "secundaria",
+  "HIDRO.tramos[1].fueraCatalogo ? 1 : 0", 0, 0);
 
 /* =========================================================================================================== CASO 7 · pisos sin norma (H-197): ΔT y pendiente */
 fila("CM.hidro.7.a", "tempEntrada = tempSalida = 40 °C: ΔT 0 y calentador pendiente (antes piso ΔT 5 K)", "fixture; tempEntrada 40; tempSalida 40",

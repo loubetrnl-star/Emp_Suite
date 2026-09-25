@@ -1,4 +1,4 @@
-/* pruebas-motores/hidro.mjs · Fase 1 (rev 2.9.24) · casos calculados a mano del motor hidrosanitario (`hidro`, v7).
+/* pruebas-motores/hidro.mjs · Fase 1 (rev 2.9.24) · casos calculados a mano del motor hidrosanitario (`hidro`, v8).
    Hoja: parches/casos-a-mano/hidro.csv (generada por parches/casos-a-mano/hidro.calc.mjs, cálculo independiente de la
    suite). Cada prueba arma el estado del caso, evalúa las filas de su prefijo con CM.comprobar (números con tolerancia)
    y restaura S en finally. Las filas «fase2:H-nnn» sólo se exigen con CM_FASE2=1.
@@ -60,7 +60,7 @@ export default async function ({ t, G, S, CM }) {
   conEstado("CM.hidro.5 (H-195: ANSI Z358.1-1990 §4.1 vía carta OSHA 18-abr-2002, secundaria) regadera de emergencia: demanda fija de 20 gpm fuera de Hunter y volumen para 15 min",
     () => { S.hidro = { ...fixture(), tramos: [], muebles: [{ id: "lavaojos", cant: 1 }] }; }, ["CM.hidro.5"]);
 
-  conEstado("CM.hidro.6 (decisión del dueño H-198; ASTM D2846 CTS hasta 2\") CPVC: los renglones «SIN VERIFICAR» de 2 1/2\" a 4\" se retiran [fase2:H-198]",
+  conEstado("CM.hidro.6 (H-198, decisión del dueño; CPVC CTS SDR-11 hasta 2\" según Spears/Lubrizol, secundaria) CPVC: sin los renglones «SIN VERIFICAR» de 2 1/2\" a 4\"; el tramo que no cabe en 2\" queda fuera de catálogo",
     () => { S.hidro = { ...fixture(), material: "cpvc" }; }, ["CM.hidro.6"]);
 
   conEstado("CM.hidro.7.a/c (H-197, decisión del dueño) ΔT 0 no se sube a 5 K: calentador pendiente",
