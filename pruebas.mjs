@@ -7122,6 +7122,32 @@ t("S.79 (H-244, decisión 5 del dueño) la tabiquería no son los muros de carga
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+t("S.80 (H-254, regla d «tal cual») el factor de plaza no toca la sección H ni los precios con origen declarado (referencia o proveedor): la importación de 18,500 MXN sale 18,500 en Mexicali (antes 19,980) y el precio por metro de tubería sale tal cual; el resto del catálogo sí lleva el 1.08", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("importarRespaldo")(fs.readFileSync("parches/regresion-motores/regresion-motores.emp.json", "utf8")); S.tab = "tablero"; G("KZ_CACHE").key = null; G("VZ_CACHE").key = null;
+    S.quote.importacion = { monto: 18500, moneda: "MXN", fuente: "agente aduanal (cotización capturada)", fecha: "2026-09-20" };
+    G("recompute")();
+    const Q0 = G("QUOTE"), cat0 = G("catalogoConceptos")();
+    S.quote.plaza = "mexicali"; G("recompute")();
+    const Q = G("QUOTE"), cat = G("catalogoConceptos")();
+    const filas = (c) => c.secciones.flatMap((s) => s.partidas);
+    const h = filas(cat).find((p) => p.sec === "H");
+    if (!h) throw new Error("falta la partida de importación capturada");
+    cerca(h.unit, 18500, 1e-6, "importación capturada tal cual en Mexicali (antes 18,500 × 1.08 = 19,980):");
+    const conOrigen = Q.aux.filter((a) => a.origen);
+    if (!conOrigen.length) throw new Error("el caso no aísla lo que se quiere probar: debe haber tubería con precio de origen declarado");
+    conOrigen.forEach((a) => { const p = filas(cat).find((x) => x.desc === a.desc); cerca(p.unit, a.unit, 1e-9, "precio por metro con origen (" + a.origen + ") tal cual:"); });
+    /* El resto sí lleva el factor: una partida de equipo sube 8 %. */
+    const eq0 = filas(cat0).find((p) => p.sec === "B"), eq1 = filas(cat).find((p) => p.desc === eq0.desc);
+    cerca(eq1.unit, eq0.unit * 1.08, 1e-6, "partida de equipo con el factor de Mexicali:");
+    /* Costo directo = afectos × 1.08 + exentos, y cuadra con el catálogo. */
+    const exentos = Q.aux.filter((a) => a.sec === "H" || a.origen).reduce((s, a) => s + a.total, 0);
+    cerca(Q.direct, (Q.equipTotal + Q.auxTotal - exentos) * 1.08 + exentos, 1e-6, "costo directo con los exentos fuera del factor:");
+    cerca(cat.subtotal, Q.direct, 1e-6, "el catálogo cuadra con el costo directo:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 /* ===== R. Regresión por motor (rev 2.9.22, decisión del dueño): un proyecto fijo con cifras esperadas por disciplina ===== */
 const REG_DIR = "parches/regresion-motores/";
 const REG_PROY = fs.readFileSync(REG_DIR + "regresion-motores.emp.json", "utf8");
