@@ -6776,6 +6776,32 @@ t("S.65 (H-155) sin medidas no hay caudal: campana sin largo o fondo y rejilla s
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+t("S.66 (H-127) presión negativa de contención: −10 Pa capturados se respetan (no se vuelven +5): fuga y reposición con |ΔP|, piso de 5 Pa sobre |ΔP|, y la memoria, el PDF y el Excel dicen el signo y citan el Anexo 1 §4.14 (10 Pa guía)", () => {
+  const guardado = JSON.stringify(S);
+  const pdfTxt = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");
+  const armar = (dp) => { G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.66"; S.clean = { ci: 0, rooms: [{ ...G("defaultRoom")("Sala de pesadas"), iso: "iso7", area: 40, height: 3, occ: 2, dp, crackLen: 6, oaFrac: .1 }] }; G("recompute")(); return G("CLEAN").cur; };
+  try {
+    const pos = armar(10), neg = armar(-10);
+    eq(neg.dP, 10, "|ΔP| = 10 Pa:"); eq(neg.dPneg, true, "sentido negativo declarado:"); eq(neg.dPcap, -10, "captura respetada:");
+    cerca(neg.leak, pos.leak, 1e-9, "la fuga por rendijas se calcula con |ΔP| (misma que a +10 Pa):"); cerca(neg.makeup, pos.makeup, 1e-9, "y la reposición también:");
+    if (!neg.memo.some((m) => /NEGATIVA/.test(m) && /4\.14/.test(m))) throw new Error("la memoria no declara la presión negativa con el Anexo 1 §4.14");
+    if (neg.memo.some((m) => /Presurización \+10/.test(m))) throw new Error("la memoria sigue diciendo +10 Pa con −10 capturados");
+    const txt = pdfTxt(G("buildLimpioPdf")(neg));
+    contiene(txt, "-10 Pa", "el PDF imprime el signo:"); if (/\+10 Pa/.test(txt)) throw new Error("el PDF sigue diciendo +10 Pa");
+    contiene(txt, "4.14", "el PDF cita el Anexo 1:");
+    const xl = Buffer.from(G("buildPropuestaXlsx")({ lang: "es", mon: "MXN" })).toString("utf8");
+    if (/<v>5<\/v>/.test(xl) && !/<v>-10<\/v>/.test(xl)) throw new Error("el Excel sigue imprimiendo 5 Pa en vez de −10");
+    contiene(xl, "contenci", "el Excel dice que es contención:");
+    /* Piso de 5 Pa sobre |ΔP|: −2 Pa → 5 Pa con aviso, sentido negativo. */
+    const chico = armar(-2);
+    eq(chico.dP, 5, "piso sobre |ΔP|:"); eq(chico.pisoDP, true); eq(chico.dPneg, true);
+    /* Aviso de 10 Pa guía del Anexo 1 con 7 Pa. */
+    const siete = armar(7);
+    if (!siete.memo.some((m) => /4\.14/.test(m) && /10 Pa/.test(m))) throw new Error("con 7 Pa la memoria debe citar los 10 Pa guía del Anexo 1 §4.14");
+    if (siete.dPneg) throw new Error("7 Pa no es negativa");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 /* ===== R. Regresión por motor (rev 2.9.22, decisión del dueño): un proyecto fijo con cifras esperadas por disciplina ===== */
 const REG_DIR = "parches/regresion-motores/";
 const REG_PROY = fs.readFileSync(REG_DIR + "regresion-motores.emp.json", "utf8");

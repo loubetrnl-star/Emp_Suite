@@ -13,12 +13,13 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 | 3 | 2.9.21 | cuarto limpio con presión positiva sin infiltración; unidad de aire exterior dedicada + serpentín seco (ADP desde la latente interna); crédito sensible del aire exterior topado en deshumidificación; cambios por hora obligatorios; calor del ventilador Q·ΔP/η. Declarada en la rev 2.9.24 (H-107): la 2.9.21 movió estas cifras sin subir la versión |
 | 4 | 2.9.24 | H-120: el DET de muros y cubierta se corrige por la condición de diseño del sitio, (25.6 − ti) + (tm − 29.4) K con tm = to − rango/2 (corrección CLTD, ASHRAE Fundamentals 1997 cap. 28, texto secundario; ratificar con Carrier Parte 1 Tabla 20A). Tijuana +0.31 K; Mexicali +9.01 K |
 
-## Cuartos limpios (`clean`) · v2
+## Cuartos limpios (`clean`) · v3
 
 | Versión | Rev | Hallazgo / cambio de lógica |
 |---|---|---|
 | 1 | 2.9.15 | lógica de partida |
 | 2 | 2.9.16 | sin pisos de 1 m² ni 2.2 m; 5 Pa de ISO 14644-4 con aviso; ceros capturados respetados |
+| 3 | 2.9.24 | H-127: se respeta el signo de la presión diferencial capturada (un cuarto de contención va en negativa: EU GMP Anexo 1 (2022) §4.14, texto en parches/normas-texto); antes −10 Pa se volvían +5 Pa y el Excel imprimía «5 · Capturado». Piso de 5 Pa y fuga por rendijas sobre \|ΔP\|; `dPcap`, `dPneg`, `dPsigno` en el resultado; memoria, PDF y Excel imprimen el signo y citan los 10 Pa guía del Anexo 1. Proyecto fijo (positiva): sin cambio de cifras |
 
 ## Selección de equipo (`equip`) · v1
 

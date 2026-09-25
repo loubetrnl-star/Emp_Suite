@@ -1697,14 +1697,14 @@ function buildLimpioPdf(r) {
     ["Filtracion", r.cls.filt],
     ["Cambios de aire", `${r.ach} 1/h (${r.achManual ? "fijados por el proyecto" : `nivel ${c.level === "min" ? "minimo" : c.level === "max" ? "maximo" : "medio"} del rango ISO`})`],
     ["Cobertura de filtros en techo", `${(r.covReal * 100).toFixed(0)} % (objetivo ${(r.cov * 100).toFixed(0)} %)`],
-    ["Presion diferencial", `+${r.dP} Pa (cascada 12.5 Pa por salto de clase)`],
+    ["Presion diferencial", `${r.dPsigno || "+"}${r.dP} Pa${r.dPneg ? " (negativa: contencion, Anexo 1 (2022) seccion 4.14)" : " (cascada 12.5 Pa por salto de clase; Anexo 1 (2022) seccion 4.14: 10 Pa guia entre grados)"}`],
   ]);
   pdfHeading(d, "2. Dimensiones y caudales");
   pdfRows(d, [
     ["Area / altura / volumen", `${r.area} m2 · ${(r.vol / Math.max(1, r.area)).toFixed(2)} m · ${r.vol.toFixed(0)} m3`],
     ["Suministro", `${r.supply.toFixed(0)} m3/h = ${r.supplyCfm.toFixed(0)} CFM`],
     ["FFU 1.17x0.57 m @ 629 CFM", `${r.ffu} unidades (por caudal ${r.ffuByFlow} · por cobertura ${r.ffuByCov})`],
-    ["Fuga por rendijas", `${r.leak.toFixed(0)} m3/h (a +${r.dP} Pa)`],
+    ["Fuga por rendijas", `${r.leak.toFixed(0)} m3/h (a ${r.dPsigno || "+"}${r.dP} Pa)`],
     ["Aire de reposicion", `${r.makeup.toFixed(0)} m3/h`],
   ]);
   pdfHeading(d, "3. Calor de los ventiladores de filtro");
@@ -5412,7 +5412,7 @@ function buildPropuestaXlsx(opt) {
       af.push([xT(c.name, XS.TD), xT((ISO_CLASSES[c.iso] || ISO_CLASSES.iso7).label.split(" · ")[0], XS.TD), xN(+num(c.area).toFixed(1), XS.NUM),
         xN(+num(c.height).toFixed(2), XS.NUM), xN(+(num(c.area) * num(c.height)).toFixed(1), XS.NUM),
         xN(R ? +num(R.ach).toFixed(0) : 0, XS.NUM), xN(R ? Math.round(num(R.supply)) : 0, XS.NUM),
-        xN(R ? +num(R.dP).toFixed(1) : num(c.dp, 0), XS.NUM), xT(L("Capturado en cuartos limpios", "Captured in cleanrooms"), XS.TD)]);
+        xN(R ? +((R.dPneg ? -1 : 1) * num(R.dP)).toFixed(1) : num(c.dp, 0), XS.NUM), xT(R && R.dPneg ? L("Capturado en cuartos limpios (negativa: contencion, Anexo 1 4.14)", "Captured in cleanrooms (negative: containment, Annex 1 4.14)") : L("Capturado en cuartos limpios", "Captured in cleanrooms"), XS.TD)]);
     });
   }
   af.push([]);
@@ -8866,7 +8866,11 @@ function computeClean(c) {
   /* Piso CON norma: ISO 14644-4 pide entre 5 y 20 Pa de diferencial entre clases; abajo de 5 Pa rige 5 Pa y se avisa.
      Sin captura (campo ausente) el valor de la casa es 12.5 Pa; un 0 capturado ya no se toma por «ausente» (antes
      `c.dp || 12.5` convertía el 0 en 12.5, y lo mismo pasaba con la rendija y la fracción de aire exterior). */
-  const dPcap = num(c.dp, 12.5), dP = Math.max(5, dPcap), pisoDP = !vacio && dPcap < 5;
+  /* H-127 (rev 2.9.24, clean v3): se respeta el SIGNO capturado. Un cuarto de contención va en presión negativa (EU GMP Anexo 1
+     (2022) §4.14: presión positiva salvo contención con esclusas positivas o negativas); antes Math.max(5, −10) lo volvía +5 Pa.
+     El piso de 5 Pa y la fuga por rendijas van sobre |ΔP|; el Anexo 1 §4.14 da 10 Pa como valor guía entre grados adyacentes. */
+  const dPcap = num(c.dp, 12.5), dPabs = Math.abs(dPcap), dPneg = !vacio && dPcap < 0;
+  const dP = Math.max(5, dPabs), pisoDP = !vacio && dPabs < 5, dPsigno = dPneg ? "-" : "+";
   const crackLen = Math.max(0, num(c.crackLen, 6));
   const crackA = crackLen * 0.003; // rendija 3 mm
   const leak = vacio ? 0 : 0.827 * crackA * Math.sqrt(dP) * 3600;  // m³/h
@@ -8888,17 +8892,19 @@ function computeClean(c) {
   const ffuHeat = ffu * FFU.watts;   // se informa para pasarlo a la zona, no para sumar carga aquí
   const memo = vacio ? [`${name}: sin área o sin altura capturada. No se calcula y no se supone ninguna (rev 2.9.16).`] : [
     `${cls.label} · ${cls.gmp} · filtración ${cls.filt}.`,
-    ...(pisoDP ? [`PISO DE NORMA APLICADO: se capturaron ${n(dPcap, 1)} Pa de presurización; ISO 14644-4 pide al menos 5 Pa entre clases, así que rige 5 Pa.`] : []),
+    ...(pisoDP ? [`PISO DE NORMA APLICADO: se capturaron ${n(dPcap, 1)} Pa de presurización; ISO 14644-4 pide al menos 5 Pa entre clases, así que rige 5 Pa${dPneg ? " en depresión" : ""}.`] : []),
+    ...(dPneg ? [`PRESIÓN NEGATIVA (contención): se capturaron ${n(dPcap, 1)} Pa; el cuarto queda en depresión respecto al entorno. EU GMP Anexo 1 (2022) §4.14 pide presión positiva salvo contención de materiales peligrosos con esclusas presurizadas: la fuga por rendijas y la reposición se calculan con |ΔP| = ${n(dP, 1)} Pa y la cascada debe revisarse (H-127).`] : []),
+    ...(dPabs < 10 ? [`EU GMP Anexo 1 (2022) §4.14: 10 Pa como valor guía mínimo entre grados adyacentes; aquí ${dPsigno}${n(dP, 1)} Pa.`] : []),
     achManual ? `Cambios de aire fijados en ${achManual} 1/h por requerimiento del proyecto (el rango de la clase es ${cls.ach[0]}–${cls.ach[2]}).`
       : `Cambios de aire ${ach} 1/h, nivel ${c.level === "min" ? "mínimo" : c.level === "max" ? "máximo" : "medio"} del rango ISO ${cls.ach[0]}–${cls.ach[2]}.`,
     `Caudal de suministro: ${ach} cambios/h × ${vol.toFixed(0)} m³ = ${supply.toFixed(0)} m³/h (${supplyCfm.toFixed(0)} CFM).`,
     `FFU 1.17×0.57 m @ ${FFU.cfm} CFM (1.17 × 0.57 m a 0.445 m/s = 1 068 m³/h): rige ${ffuByFlow >= ffuByCov ? "caudal" : "cobertura de techo"} → ${ffu} unidades (cobertura real ${(covReal * 100).toFixed(0)} % ≥ objetivo ${(cov * 100).toFixed(0)} %).`,
-    `Presurización +${dP} Pa: fuga por rendijas ${leak.toFixed(0)} m³/h (${crackLen} m × 3 mm) · reposición ${makeup.toFixed(0)} m³/h = máx(fuga+25 % → ${(leak * 1.25).toFixed(0)}, ${(num(c.oaFrac, .1) * 100).toFixed(0)} % del suministro → ${oaMin.toFixed(0)}, aire exterior por ocupantes y área → ${occOA.toFixed(0)}) m³/h. El aire exterior usa la misma regla que carga térmica y ventilación: máx(${P.OA_PERS} m³/h por persona, ${P.OA_M2} m³/h por m²).`,
+    `Presurización ${dPsigno}${dP} Pa${dPneg ? " (negativa, contención)" : ""}: fuga por rendijas ${leak.toFixed(0)} m³/h (${crackLen} m × 3 mm) · reposición ${makeup.toFixed(0)} m³/h = máx(fuga+25 % → ${(leak * 1.25).toFixed(0)}, ${(num(c.oaFrac, .1) * 100).toFixed(0)} % del suministro → ${oaMin.toFixed(0)}, aire exterior por ocupantes y área → ${occOA.toFixed(0)}) m³/h. El aire exterior usa la misma regla que carga térmica y ventilación: máx(${P.OA_PERS} m³/h por persona, ${P.OA_M2} m³/h por m²).`,
     `Calor de los ventiladores de filtro: ${ffu} × ${FFU.watts} W = ${(ffuHeat / 1000).toFixed(2)} kW. Se traslada a la zona de carga térmica; aquí no se suma.`,
     `Cascada recomendada: +12.5 Pa por salto de clase · esclusas con ${dP} Pa al pasillo · retorno bajo (rejillas a 150 mm NPT).`,
   ];
   return { name, area, cls, ach, achManual, cov, covReal, vol, supply, supplyCfm,
-    ffu, ffuByFlow, ffuByCov, dP, leak, makeup, ffuHeat, memo, vacio, pisoDP };
+    ffu, ffuByFlow, ffuByCov, dP, dPcap, dPneg, dPsigno, leak, makeup, ffuHeat, memo, vacio, pisoDP };
 }
 
 /* ---------- Motor de ductos (SMACNA + Ductmate) ---------- */
@@ -17983,7 +17989,7 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "4", clean: "2", equip: "1", duct: "1", vent: "3", quote: "12", valor: "1", kaizen: "1", elec: "8", hidro: "8", fuego: "3", aire: "5", civil: "3", soporte: "2" };
+const MOTOR_VER = { load: "4", clean: "3", equip: "1", duct: "1", vent: "3", quote: "12", valor: "1", kaizen: "1", elec: "8", hidro: "8", fuego: "3", aire: "5", civil: "3", soporte: "2" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
@@ -17991,7 +17997,8 @@ const MOTOR_CAMBIOS = {
     { ver: "4", rev: "2.9.24", que: "H-120: el DET de muros y cubierta se corrige por la condición de diseño del sitio, (25.6 − ti) + (tm − 29.4) K con tm = to − rango/2 (corrección CLTD, ASHRAE Fundamentals 1997 cap. 28; ratificar con Carrier Tabla 20A)" }],
   vent: [{ ver: "2", rev: "2.9.24", que: "H-154 + H-156: la cobertura real manda en la selección Greenheck (cfmMin ≤ objetivo ≤ cfmMax, sin tolerancia ×0.9); la familia del modo sólo ordena entre los que cubren; si nadie cubre no hay modelo (proyecto fijo: GB-360 → CSW-30 para 11,643 CFM)" },
     { ver: "3", rev: "2.9.24", que: "H-155: sin medidas no hay caudal: campana sin largo o fondo y rejilla sin ancho, alto, área libre o velocidad dan demanda 0 con aviso (antes pisos de 0.1 ft, 5 % y 100 fpm fabricaban 30 y 258 CFM y sus partidas)" }],
-  clean: [{ ver: "2", rev: "2.9.16", que: "sin pisos de 1 m² ni 2.2 m; 5 Pa de ISO 14644-4 con aviso; ceros capturados respetados" }],
+  clean: [{ ver: "2", rev: "2.9.16", que: "sin pisos de 1 m² ni 2.2 m; 5 Pa de ISO 14644-4 con aviso; ceros capturados respetados" },
+    { ver: "3", rev: "2.9.24", que: "H-127: se respeta el signo de la presión diferencial capturada (contención en negativa, EU GMP Anexo 1 (2022) §4.14); piso de 5 Pa y fuga por rendijas sobre |ΔP|; el signo sale en memoria, PDF y Excel; aviso con los 10 Pa guía del Anexo 1" }],
   quote: [{ ver: "2", rev: "2.9.16", que: "red hidráulica por diámetro con precio capturado; sin 50 m supuestos; partidas pendientes" }, { ver: "3", rev: "2.9.19", que: "tramo con longitud y sin unidades mueble queda pendiente" }, { ver: "4", rev: "2.9.23", que: "precio de tubería por renglón con origen (referencia de mercado o proveedor local), IVA desglosado y por metro; sin precio: partida Por cotizar en el Budget, bloqueo sólo en la formal" }, { ver: "5", rev: "2.9.23", que: "precios en USD sólo se convierten con tipo de cambio capturado con fecha; sin fecha salen Por cotizar y bloquean la formal (nada se estima)" }, { ver: "6", rev: "2.9.23", que: "referencias sólo de California y sólo material (mano de obra por capturar; combinados → Por cotizar); referencias IUSA retiradas; flete, aduana e importación como renglón propio siempre Por cotizar hasta capturarlo" }, { ver: "7", rev: "2.9.24", que: "H-198: un tramo de agua sin diámetro verificado (fuera del catálogo del material, o PEAD sin SDR ni fuente) va Por cotizar con sus metros; ya no se cotiza con el precio del mayor diámetro ni pide precio de un diámetro que no le corresponde" }, { ver: "8", rev: "2.9.24", que: "H-196: cisterna y equipo de bombeo sin precio semilla (9,500 MXN/m³ y 14,500 MXN/HP sin fuente): van Por cotizar con su volumen y su potencia; la bomba sólo cuando la presión de la red no alcanza; cisterna en 0 queda pendiente de volumen, nunca cisterna de 0 m³" }, { ver: "9", rev: "2.9.24", que: "H-206: bomba contra incendio y reserva sin precio fijo (385,000 MXN + 9,500 MXN/m³ sin fuente): Por cotizar con capacidad (gpm y L/min), presión, potencia y volumen declarados" }, { ver: "10", rev: "2.9.24", que: "dependencia de aire v3 (H-215): la partida del secador lleva la capacidad nominal de ISO 7183 A1 y declara si la corrección del fabricante está pendiente" }, { ver: "11", rev: "2.9.24", que: "dependencia de aire v5 (H-218): la partida de la red declara «diámetros indicativos: DI del fabricante pendiente» en aluminio e inoxidable" }, { ver: "12", rev: "2.9.24", que: "dependencia de vent v2 (H-154): la partida de ventilación nombra el modelo que cubre de verdad (o ninguno)" }],
   elec: [{ ver: "2", rev: "2.9.16", que: "canalización con las áreas del conductor de la memoria (THW-LS por omisión, NOM-001-SEDE Cap. 10 Tabla 5)" }, { ver: "3", rev: "2.9.18", que: "siete áreas THHN/THWN-2 corregidas a la Tabla 5" }, { ver: "4", rev: "2.9.19", que: "sin compresor de aire cuando no hay demanda" },
     { ver: "5", rev: "2.9.24", que: "H-183: conductor de puesta a tierra con la Tabla 250-122 de la NOM-001-SEDE-2012 (p. 151): 400 A → 2 AWG (antes 3 AWG, valor del NEC), renglones hasta 6000 A y columna de aluminio (hasta 100 A la tabla sólo da cobre)" },
