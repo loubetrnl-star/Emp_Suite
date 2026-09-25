@@ -1,0 +1,35 @@
+UMC 2018 (Uniform Mechanical Code, IAPMO) §510.5 «Other Grease Ducts», tal como lo publica up.codes en el Nevada Mechanical
+Code 2018 (adopción estatal del UMC 2018). Leído el 25-sep-2026 (H-165, decisión 7 del dueño: «opción (b) con UMC: cita
+textual de la sección y los espesores tal como vienen en up.codes»).
+URL: https://up.codes/s/other-grease-ducts
+Carácter: primaria en línea (texto público del código adoptado), como el IPC 2015 de Connecticut (H-194). Los corchetes
+[NFPA 96:x] son del propio código: el UMC extrae esos párrafos de NFPA 96, así que el espesor y la soldadura son también los
+de NFPA 96 §7.5.1.1 y §7.5.2.1 en la edición que el UMC 2018 extrae. Ratificar con el texto de NFPA 96 cuando el dueño lo pase.
+
+---------------------------------------------------------------------------------------------------------------------------
+510.5 Other Grease Ducts
+"Other grease ducts shall comply with the requirements of Section 510.5.1 through Section 510.5.5. [NFPA 96:7.5]"
+
+510.5.1 Materials
+"Ducts shall be constructed of and supported by carbon steel not less than 0.060 of an inch (1.524 mm) (No. 16 MSG) in
+thickness or stainless steel not less than 0.048 of an inch (1.219 mm) (No. 18 MSG) in thickness. [NFPA 96:7.5.1.1]"
+
+510.5.2 Factory-Built Grease Ducts
+"Factory-built grease ducts listed in accordance with UL 1978 shall be permitted to use materials in accordance with their
+listing. [NFPA 96:7.5.1.2]"
+
+510.5.3 Installation
+"Seams, joints, penetrations, and duct-to-hood collar connections shall have a liquid-tight continuous external weld.
+[NFPA 96:7.5.2.1]"
+Excepciones (resumen de la página, no literal): 1) ducto de grasa de fábrica listado UL 1978, juntas no soldadas según su
+listado; 2) conexión ducto-collar de campana según la Figura 510.5.3; 3) penetraciones con dispositivos listados
+herméticos a grasa probados en la misma severidad de fuego; 4) soldadura interior permitida si la junta queda lisa y
+accesible para inspección.
+
+510.4 (misma página de sección 510.0, https://up.codes/s/exhaust-duct-systems): «Listed Grease Ducts» — ductos de fábrica
+según su listado (UL 1978). 510.5 rige los ductos de grasa hechos en obra (no listados).
+
+---------------------------------------------------------------------------------------------------------------------------
+Referencia del dueño para NFPA 96 (PLAN-CRITICOS.md §4, decisión 7): acero No. 16 MSG (~0.054 in) o inoxidable No. 18 MSG
+(~0.043 in), soldadura continua hermética. El UMC 2018 dice 0.060 / 0.048 in: es el más exigente y rige (la decisión 7 pide
+usar el más exigente y documentar ambos).

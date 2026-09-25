@@ -17,9 +17,12 @@
      Pa/m: redondo = primer diámetro de la serie con Pa/m ≤ 0.8·1.02 (sizeRoundEF 9161), rectangular = mínimo de
      |De − De_obj| + 5·|Pa/m − 0.8| + 2·(w/h − 1) con 1.5 ≤ V ≤ 20 m/s, w/h ≤ aspecto + 0.05 y Pa/m ≤ 0.8·1.08 (sizeRect
      9173); calibre por lado mayor en pulgadas con RECT_G/ROUND_G (9080-9097, sin número de tabla SMACNA: H-170/H-168) y
-     espesor galvanizado GAUGE_T (9079); grasa +2 calibres (9145); lámina = perímetro × L × 1.12 (traslapes, H-175);
+     espesor galvanizado GAUGE_T (9079); lámina = perímetro × L × 1.12 (traslapes, H-175);
      acero 7,850 kg/m³; juntas cada 1.219 m (rectangular) o cada tramo comercial de 3.048 m (espiro); soportes cada 2.4 m
      (1.8 m si el lado mayor pasa de 900 mm).
+   · Ducto de grasa: UMC 2018 §510.5.1 y §510.5.3 (up.codes, Nevada Mechanical Code 2018 = UMC 2018 adoptado; extrae NFPA 96
+     §7.5; parches/normas-texto/UMC-2018_510.5_ducto-de-grasa_upcodes.txt): acero al carbón ≥ 0.060 in (No. 16 MSG) o inoxidable
+     ≥ 0.048 in (No. 18 MSG), soldadura externa continua; si la tabla de la casa pide un calibre más pesado, rige la tabla (H-165).
    · Política de la casa «nada se estima» / «arranque en ceros» (decisión del dueño, 17-sep-2026): un tramo sin medida
      posible, sin caudal o con medida bloqueada sin capturar no lleva sección, kilos ni importe (H-166); generar desde la
      carga no pone longitudes ni accesorios que nadie capturó (H-167). */
@@ -59,18 +62,20 @@ function sizeRect(Q, obj, aspecto, hmax = 0) {
   }
   return best;                                           // null = ninguna medida de la serie cumple
 }
-const calibre = (tabla, pc, longMm, grasa) => {
+const calibre = (tabla, pc, longMm) => {
   const pulg = longMm / 25.4; let g = tabla[pc].at(-1)[1];
   for (const [max, gg] of tabla[pc]) if (pulg <= max) { g = gg; break; }
-  if (grasa) g = GAUGE_ORDER[Math.min(GAUGE_ORDER.length - 1, GAUGE_ORDER.indexOf(g) + 2)];
   return g;
 };
+/* UMC 2018 §510.5.1: espesor mínimo del ducto de grasa en pulgadas y su número MSG */
+const UMC_GRASA = { acero: { g: 16, th_in: 0.060 }, inox: { g: 18, th_in: 0.048 } };
 /* Un tramo rectangular: Q en L/s, medida (w×h) ya resuelta, L en m, accesorios [[C, cant]]. */
-function tramoRect(Qls, w, h, L, acc, pc = "2", grasa = false) {
+function tramoRect(Qls, w, h, L, acc, pc = "2", grasa = null) {
   const Q = Qls / 1000, De = huebscher(w, h), A = w / 1000 * h / 1000, V = Q / A;
   const p = pam(Q, De), pc2 = pam(Q, De, colebrook), dyn = .5 * RHO * V * V;
   const fit = acc.reduce((a, [C, n]) => a + C * n * dyn, 0);
-  const g = calibre(RECT_G, pc, Math.max(w, h), grasa), th = GAUGE_T[g] * 25.4;
+  let g = calibre(RECT_G, pc, Math.max(w, h)), th = GAUGE_T[g] * 25.4;
+  if (grasa) { const u = UMC_GRASA[grasa]; if (GAUGE_ORDER.indexOf(g) <= GAUGE_ORDER.indexOf(u.g)) { g = u.g; th = u.th_in * 25.4; } }
   const sheet = 2 * (w + h) / 1000 * L * 1.12, kg = sheet * th / 1000 * STEEL;
   return { w, h, De, V, Pam: p, PamColebrook: pc2, fit, total: p * L + fit, g, th, sheet, kg,
     joints: Math.max(1, Math.ceil(L / 1.219)), hangers: Math.max(1, Math.ceil(L / (Math.max(w, h) > 900 ? 1.8 : 2.4))) };
@@ -145,13 +150,18 @@ const resFijo = FIJO.map((c) => {
   fila("CM.duct.5.f", "espiroducto: recorte (m)", ent, `12 − ${t.enteras} × 3.048 = ${t.recorte} m`, "criterio de la casa (despieceSeg)", "criterio de la casa", "DUCT.segs[0].despiece.recorte", t.recorte, 0.001);
   fila("CM.duct.5.g", "coples entre piezas", ent, `${t.enteras} + 1 piezas − 1 = ${t.coples}`, "criterio de la casa (despieceSeg)", "criterio de la casa", "DUCT.boq.despiece.coples", t.coples, 0);
 }
-/* ---- CM.duct.6: ducto de grasa 500 L/s clase ½" (H-165 BLOQUEADO: hoy +2 calibres galvanizado) ---- */
+/* ---- CM.duct.6: ducto de grasa 500 L/s clase ½" (H-165: UMC 2018 §510.5.1, antes tabla galvanizada + 2 = cal 22) ---- */
 {
   const s = sizeRect(.5, .8, 3);
-  const t = tramoRect(500, s.w, s.h, 6, CODOS, "0.5", true);
-  const ent = "grasa 500 L/s, 6 m, rectangular a fricción 0.8 Pa/m, aspecto 3, clase ½\", galvanizado";
+  const t = tramoRect(500, s.w, s.h, 6, CODOS, "0.5", "acero"), ti = tramoRect(500, s.w, s.h, 6, CODOS, "0.5", "inox");
+  const ent = "grasa 500 L/s, 6 m, rectangular a fricción 0.8 Pa/m, aspecto 3, clase ½\", material del proyecto galvanizado";
+  const FU = "UMC 2018 §510.5.1 (up.codes, Nevada Mechanical Code 2018; extrae NFPA 96 §7.5.1.1)";
   fila("CM.duct.6.a", "medida del ducto de grasa (ancho mm)", ent, `${s.w} × ${s.h}`, FS, "criterio de la casa", "DUCT.segs[0].w", s.w, 0);
-  fila("CM.duct.6.b", "calibre del ducto de grasa hoy", ent, `lado mayor ${Math.max(s.w, s.h)} mm → tabla clase ½" y +2 calibres = ${t.g}`, "criterio de la casa (index.html:9145; H-165 BLOQUEADO: NFPA 96 sin texto)", "criterio de la casa", "DUCT.segs[0].gauge.gauge", t.g, 0);
+  fila("CM.duct.6.b", "calibre del ducto de grasa (acero al carbón)", ent, `lado mayor ${Math.max(s.w, s.h)} mm: la tabla de la casa pide ${calibre(RECT_G, "0.5", Math.max(s.w, s.h))}, más ligero que el mínimo: No. ${t.g} MSG`, FU, "primaria en línea", "DUCT.segs[0].gauge.gauge", t.g, 0);
+  fila("CM.duct.6.d", "espesor del ducto de grasa (mm)", ent, `0.060 in × 25.4 = ${r(t.th, 4)} mm`, FU, "primaria en línea", "DUCT.segs[0].gauge.th_mm", r(t.th, 4), 0.0001);
+  fila("CM.duct.6.e", "kilos del ducto de grasa", ent, `2·(${s.w / 1000}+${s.h / 1000}) × 6 × 1.12 = ${r(t.sheet, 3)} m² × ${r(t.th, 4)} mm × 7.85 = ${r(t.kg, 2)} kg`, `${FU}; ${FK}`, "primaria en línea", "DUCT.segs[0].kg", r(t.kg, 2), 0.05);
+  fila("CM.duct.6.f", "calibre del ducto de grasa inoxidable", "ídem con el proyecto en acero inoxidable", `No. ${ti.g} MSG, 0.048 in = ${r(ti.th, 4)} mm`, FU, "primaria en línea", "DUCT.segs[0].gauge.gauge", ti.g, 0);
+  fila("CM.duct.6.g", "espesor del ducto de grasa inoxidable (mm)", "ídem con el proyecto en acero inoxidable", `0.048 in × 25.4 = ${r(ti.th, 4)} mm`, FU, "primaria en línea", "DUCT.segs[0].gauge.th_mm", r(ti.th, 4), 0.0001);
   fila("CM.duct.6.c", "aviso de velocidad bajo 7.6 m/s", ent, `V = ${r(t.V, 3)} m/s ${t.V < 7.6 ? "< 7.6 → 1 aviso" : "≥ 7.6 → sin aviso"}`, "criterio de la casa (index.html:9352; cita NFPA 96 derogada, H-162)", "criterio de la casa", "DUCT.segs[0].warn.filter((x) => /grasa/.test(x)).length", t.V < 7.6 ? 1 : 0, 0);
 }
 /* ---- CM.duct.9: suministro de 1,500 L/s + extracción de 1,000 L/s: la medida la decide la puntuación de la casa y la

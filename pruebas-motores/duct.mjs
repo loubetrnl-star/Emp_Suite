@@ -55,8 +55,9 @@ export default async function ({ t, G, S, CM }) {
   caso(5, "(Darcy-Weisbach/Haaland; criterio de la casa ROUND_G y despiece) redondo bloqueado Ø500 1,000 L/s 12 m", [
     [null, () => tramos([seg("R-1", 1000, { shape: "round", lock: true, d: 500, length: 12 })])],
   ]);
-  caso(6, "(criterio de la casa +2 calibres; H-165 BLOQUEADO) grasa 500 L/s clase ½\"", [
-    [null, () => { G("S").duct.meta.pc = "0.5"; tramos([seg("GR-1", 500, { service: "kitchen_grease", length: 6 })]); }],
+  caso(6, "(UMC 2018 §510.5.1, H-165) grasa 500 L/s clase ½\": acero al carbón 16 MSG 0.060 in; inoxidable 18 MSG 0.048 in", [
+    [["a", "b", "c", "d", "e"], () => { G("S").duct.meta.pc = "0.5"; tramos([seg("GR-1", 500, { service: "kitchen_grease", length: 6 })]); }],
+    [["f", "g"], () => { const s = G("S"); s.duct.meta.pc = "0.5"; s.duct.meta.material = "stainless"; tramos([seg("GR-1", 500, { service: "kitchen_grease", length: 6 })]); }],
   ]);
   caso(9, "(criterio de la casa: puntuación del dimensionado; H-25) suministro 1,500 L/s → 600×450 y extracción 1,000 L/s fuera del circuito del equipo", [
     [null, () => tramos([seg("SA-9", 1500, { length: 10 }), seg("EX-9", 1000, { service: "exhaust", length: 10 })])],

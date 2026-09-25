@@ -6196,7 +6196,7 @@ t("S.36 (rev 2.9.20, decisión del dueño) versión por motor en el sello: sólo
   const MV = G("MOTOR_VER");
   /* H-107: carga v3 = lógica de la rev 2.9.21 (declarada en la 2.9.24); H-120: carga v4 = corrección CLTD por sitio. H-183: eléctrico v5 = Tabla 250-122 de la NOM; H-177: v6 = art. 440 con MCA/MOP; H-179: v7 = nada se supone (pendientes); H-178: v8 = corriente de motor por la Tabla 430-250/248.
      H-194: hidro v5 = presión mínima por mueble de la Tabla 604.3 del IPC 2015 y CDT con máx(residual, mínima); H-195: v6 = equipo de emergencia fuera de Hunter; H-197: v7 = sin pisos sin norma (días, ΔT, pendiente 704.1); H-198: v8 = CPVC sólo hasta 2" CTS, fuera de catálogo y PEAD sin SDR como error. */
-  eq(MV.elec, "8", "eléctrico v8 (H-178):"); eq(MV.hidro, "8", "hidro v8 (H-198):"); eq(MV.load, "5", "carga v5 (H-141):"); eq(MV.duct, "3", "ductos v3 (H-167):"); eq(MV.equip, "1", "selección sin cambio de lógica: v1:");
+  eq(MV.elec, "8", "eléctrico v8 (H-178):"); eq(MV.hidro, "8", "hidro v8 (H-198):"); eq(MV.load, "5", "carga v5 (H-141):"); eq(MV.duct, "4", "ductos v4 (H-165):"); eq(MV.equip, "1", "selección sin cambio de lógica: v1:");
   Object.keys(MV).forEach((id) => { const c = G("MOTOR_CAMBIOS")[id] || []; if (MV[id] !== "1" && !c.some((x) => x.ver === MV[id])) throw new Error(`${id}: la versión ${MV[id]} no tiene hallazgo registrado`); });
   const s0 = JSON.stringify(S.sellos || {});
   try {
@@ -7301,6 +7301,45 @@ t("S.84 (H-167) «Generar desde carga» trae sólo los caudales: sin longitudes 
     eq(Q.pendientes.filter((p) => p.mot === "duct" && /longitud/.test(p.motivo)).length, 3, "quedan pendientes los otros tres:");
     /* La propuesta de cruce dice qué trae y qué no */
     contiene(G("PROPUESTAS")["load>duct"].que, "sin longitudes ni accesorios", "texto de la propuesta load>duct:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+t("S.85 (H-165) ducto de grasa según UMC 2018 §510.5.1 y §510.5.3 (up.codes, Nevada Mechanical Code 2018; extrae NFPA 96 §7.5): acero al carbón ≥ 0.060 in (No. 16 MSG) o inoxidable ≥ 0.048 in (No. 18 MSG), soldadura externa continua hermética, nunca galvanizado ni aluminio; sus kilos no entran a la partida de lámina galvanizada y quedan «Por cotizar»", () => {
+  const guardado = JSON.stringify(S);
+  const pdfTxt = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");
+  const armar = (material) => {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.85";
+    Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.85" }; });
+    S.duct.meta.pc = "0.5"; S.duct.meta.material = material;
+    S.duct.segments = [{ ...G("defaultSegment")("GR-1", 500), service: "kitchen_grease", length: 6 }, { ...G("defaultSegment")("TR-1", 6000), length: 18 }];
+    G("recompute")(); return G("DUCT");
+  };
+  try {
+    /* 1) Galvanizado elegido para el proyecto: el ducto de grasa es de acero al carbón 16 MSG, 0.060 in (antes cal 22 galvanizado). */
+    let D = armar("galvanized"), g = D.segs[0].gauge;
+    eq(g.gauge, 16, "calibre del ducto de grasa (antes 22):"); cerca(g.th_in, 0.060, 1e-9, "espesor en pulgadas (UMC 2018 §510.5.1):"); cerca(g.th_mm, 1.524, 1e-6, "espesor en mm:");
+    if (/galvaniz/i.test(g.material + " " + g.ref)) throw new Error("el ducto de grasa no es galvanizado: " + g.material + " · " + g.ref);
+    contiene(g.joint, "Soldadura externa continua", "junta (UMC 2018 §510.5.3):"); contiene(g.ref, "UMC 2018 §510.5.1", "cita:"); contiene(g.ref, "NFPA 96", "queda por ratificar con NFPA 96:");
+    const s0 = D.segs[0]; cerca(s0.kg, s0.sheet * 1.524 / 1000 * 7850, 1e-6, "kilos con 1.524 mm de acero:");
+    /* El tramo de suministro sigue galvanizado con su tabla. */
+    if (!/Galvanizado/.test(D.segs[1].gauge.material)) throw new Error("el suministro sigue galvanizado");
+    /* 2) Cotización: la lámina galvanizada no lleva los kilos de grasa; el ducto de grasa soldado sale «Por cotizar» (ES/EN). */
+    const Q = G("QUOTE"), lam = Q.aux.find((a) => a.mot === "duct" && a.un === "KG");
+    cerca(lam.qty, D.segs[1].kg, 1e-6, "la partida de lámina galvanizada sólo lleva el suministro:");
+    if (/grasa/i.test(lam.desc)) throw new Error("la partida galvanizada no debe nombrar la grasa");
+    const pc = (Q.porCotizar || []).find((p) => p.mot === "duct" && /grasa/i.test(p.desc));
+    if (!pc || !/UMC 2018/.test(pc.desc) || !pc.descEn || !(Math.abs(pc.qty - s0.kg) < 1e-6)) throw new Error("el ducto de grasa soldado debe salir Por cotizar con sus kilos y la cita (ES/EN): " + JSON.stringify(pc));
+    /* 3) Cédula PDF: calibre 16, junta soldada y la nota UMC. */
+    const ced = pdfTxt(G("buildCedulaPdf")());
+    contiene(ced, "UMC 2018", "la cédula cita el UMC:"); contiene(ced, "Soldadura externa continua", "la cédula imprime la junta soldada:");
+    /* 4) Inoxidable: 18 MSG, 0.048 in. */
+    D = armar("stainless"); g = D.segs[0].gauge;
+    eq(g.gauge, 18, "inoxidable: calibre:"); cerca(g.th_in, 0.048, 1e-9, "inoxidable: espesor:"); contiene(g.material, "inoxidable", "material:");
+    /* 5) Aluminio no está permitido para grasa: se toma acero al carbón, con aviso, y los kilos con densidad de acero. */
+    D = armar("aluminum"); g = D.segs[0].gauge;
+    eq(g.gauge, 16, "aluminio: el ducto de grasa pasa a acero al carbón 16 MSG:");
+    if (!D.segs[0].warn.some((x) => /aluminio/i.test(x) && /510\.5\.1/.test(x))) throw new Error("debe avisar que la grasa no puede ser de aluminio: " + JSON.stringify(D.segs[0].warn));
+    cerca(D.segs[0].kg, D.segs[0].sheet * 1.524 / 1000 * 7850, 1e-6, "aluminio: kilos de la grasa con acero:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 

@@ -22,6 +22,7 @@ se marca «de memoria» o «secundaria» y el hallazgo queda BLOQUEADO hasta rec
 | ASHRAE-1997_CLTD-correccion_extracto-curso-CED.txt | Fórmula de corrección CLTD (ASHRAE Fundamentals 1997 cap. 28): CLTDc = CLTD + (78 − TR) + (TM − 85), TM = Tmax − DR/2 | **Secundaria** (curso CED que reproduce ASHRAE 1997) | https://www.cedengineering.com (M06-004, A. Bhatia) |
 | OSHA-cartas-Z358.1_regadera-y-lavaojos.txt | Cartas de interpretación de OSHA del 18-abr-2002 y 22-nov-1993 que citan ANSI Z358.1-1990 (regadera de emergencia 75.7 L/min × 15 min; lavaojos fijo 1.5 L/min), párrafos literales (H-195) | **Secundaria** (OSHA cita Z358.1; dominio público) | https://www.osha.gov/laws-regs/standardinterpretations/2002-04-18-1 · https://www.osha.gov/laws-regs/standardinterpretations/1993-11-22 |
 | IPC-2015_Tabla-604.3_y_424.3_upcodes.txt | IPC 2015 §604.3 con la Tabla 604.3 completa (gasto y presión mínimos en la salida de cada mueble) y §424.3 (válvula de regadera), transcripción literal leída el 24-sep-2026 (H-194) | **Primaria en línea** (texto público del código adoptado por Connecticut) | https://up.codes/viewer/connecticut/ipc-2015/chapter/6/water-supply-and-distribution#604.3 · https://up.codes/viewer/connecticut/ipc-2015/chapter/4/fixtures-faucets-and-fixture-fittings#424.3 |
+| UMC-2018_510.5_ducto-de-grasa_upcodes.txt | UMC 2018 §510.5 «Other Grease Ducts»: §510.5.1 espesores (acero al carbón 0.060 in / No. 16 MSG, inoxidable 0.048 in / No. 18 MSG) y §510.5.3 soldadura externa continua hermética; cada párrafo trae su origen [NFPA 96:7.5.x] (H-165, decisión 7 del dueño) | **Primaria en línea** (Nevada Mechanical Code 2018 = UMC 2018 adoptado, leído el 25-sep-2026); ratificar con NFPA 96 | https://up.codes/s/other-grease-ducts · https://up.codes/s/exhaust-duct-systems |
 
 ## Fuentes en línea consultadas (no copiadas)
 - IPC 2015 y 2024 (up.codes): E103.3(2)/(3), 604.3, 704.1, 709.1, 710.1, 906.2 — texto público en línea, se cita con URL en cada commit.
@@ -29,5 +30,5 @@ se marca «de memoria» o «secundaria» y el hallazgo queda BLOQUEADO hasta rec
 - NFPA 20 §4.9 (up.codes), NYC 1 RCNY §29-09 (tabla CPVC) — secundarias.
 
 ## No disponibles (bloquean hallazgos)
-SMACNA HVAC DCS (tablas de calibre, colgantes, redondo espiral), NFPA 13 / 20 / 96 (texto), ASCE 7-16/22 cap. 13,
+SMACNA HVAC DCS (tablas de calibre, colgantes, redondo espiral), NFPA 13 / 20 / 96 (texto; de NFPA 96 sólo los párrafos que el UMC 2018 extrae, arriba), ASCE 7-16/22 cap. 13,
 ACI 318-19 cap. 17, ANSI/ISEA Z358.1-2014, Carrier Handbook Parte 1 Tabla 20A.

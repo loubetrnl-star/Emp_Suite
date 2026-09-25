@@ -28,13 +28,14 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 |---|---|---|
 | 1 | 2.9.15 | lógica de partida |
 
-## Ductos y calibres (`duct`) · v3
+## Ductos y calibres (`duct`) · v4
 
 | Versión | Rev | Hallazgo / cambio de lógica |
 |---|---|---|
 | 1 | 2.9.15 | lógica de partida |
 | 2 | 2.9.24 | H-166 (política «nada se estima»): un tramo sin caudal, con medida bloqueada sin capturar (o fuera de la serie estándar) o sin ninguna medida de la serie que cumpla (1.5–20 m/s, aspecto, alto máximo, fricción) no lleva sección, kilos, soportes ni importe: `error` (ES) / `errorEn` como primer aviso del tramo, «sin medida» en la tabla, la hoja del tramo, el panel de cadena, la cédula PDF, la memoria y el Excel (EN «no size»); `sizeRect` devuelve null sin candidato. Antes 400×200 (sin candidato, rectangular bloqueado, tramo sin caudal) o Ø250 (redondo bloqueado): 6,000 L/s con alto máximo 200 mm salía a 75 m/s; 25 m sin caudal = 225 kg en la cotización. Proyecto fijo: cifras sin cambio |
 | 3 | 2.9.24 | H-167 («arranque en ceros», decisión del dueño 17-sep-2026): «Generar desde carga» (`chainToDuct`) trae sólo los caudales de la carga; ya no pone longitudes (principal 20 m, ramales 10 m, aire exterior 15 m) ni accesorios (tee 0.65 + salida 1.0 por ramal, entrada 0.03, los 2 codos de `defaultSegment` en el principal): 889 kg = 146,684 MXN en el caso de la auditoría. Un tramo sin longitud lleva el aviso «Pendiente de longitud» y 0 juntas, esquineros y soportes (antes 1 junta y 1 soporte mínimos con 0 m). Proyecto fijo: cifras sin cambio |
+| 4 | 2.9.24 | H-165 (decisión 7 del dueño, opción b con UMC): ducto de grasa hecho en obra según UMC 2018 §510.5.1 (texto de up.codes, Nevada Mechanical Code 2018 = UMC 2018 adoptado; extrae NFPA 96 §7.5.1.1): acero al carbón ≥ 0.060 in (1.524 mm, No. 16 MSG) o inoxidable ≥ 0.048 in (1.219 mm, No. 18 MSG); §510.5.3: soldadura externa continua hermética a líquidos. Nunca galvanizado ni aluminio (con aluminio elegido se toma acero al carbón y se avisa); si la tabla de la casa pide un calibre más pesado, rige la tabla. La referencia del dueño para NFPA 96 (0.054 / 0.043 in) es menos exigente: rige el UMC; ratificar con NFPA 96. Antes: tabla galvanizada + 2 calibres (500 L/s clase ½": cal 22, 0.853 mm) con juntas T-1/TDC. Kilos de grasa aparte (`boq.kgGrasa`) y calibre de grasa aparte en el despiece. Proyecto fijo (sin grasa): cifras sin cambio |
 
 ## Ventilación (`vent`) · v3
 
@@ -44,7 +45,7 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 | 2 | 2.9.24 | H-154 + H-156: la cobertura real manda en la selección Greenheck (cfmMin ≤ objetivo ≤ cfmMax, sin la tolerancia ×0.9); la familia propia del modo sólo ordena entre los que cubren (luego el de menor caudal nominal); si nadie cubre no hay modelo (`primary` null: nada llega a propuesta, memoria integral ni eléctrico) y `closest` sólo alimenta el aviso. Proyecto fijo: 11,643 CFM → CSW-30 (7,000–18,000) en vez de GB-360 (4,000–9,000) con «ningún modelo cubre» |
 | 3 | 2.9.24 | H-155: sin medidas no hay caudal: campana sin largo o fondo y rejilla sin ancho, alto, área libre o velocidad de cara dan demanda 0 con aviso de error en el motor y la matriz (antes pisos de 0.1 ft, 5 % y 100 fpm fabricaban 30 y 258 CFM y sus partidas). `avisos` en el resultado de computeVent. Proyecto fijo: sin cambio |
 
-## Cotización (`quote`) · v22
+## Cotización (`quote`) · v23
 
 | Versión | Rev | Hallazgo / cambio de lógica |
 |---|---|---|
@@ -61,6 +62,7 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 | 20 | 2.9.24 | H-252 (decisión 6 del dueño, opción a; PLAN.md §1 «nunca estimar»): todo precio sin origen declarado (catálogo semilla de la casa: PRICE_SEED/ley de potencia, QUOTE_SEED, PU_CIVIL, SIS_*, PU_SOP_*, ELEVACION, COMPRESORES/SECADORES/TUB_AIRE; también un número tecleado sin fuente ni fecha) se marca «SEMILLA · SIN FUENTE» (EN «SEED · NO SOURCE») en cada partida del Budget (pantalla, PDF y Excel) y bloquea la formal con su conteo. Sin marca: tubería hidráulica con origen (referencia o proveedor) e importación capturada con fuente y fecha. `buildLicitacionPdf({borrador: true})` (sin botón) sirve para revisar el documento y sale «BORRADOR INTERNO · NO ES OFERTA». Proyecto fijo: cifras sin cambio |
 | 21 | 2.9.24 | H-166 (dependencia de ductos): la lámina de un tramo de ducto sin sección no entra a los kilos de la partida y queda pendiente con su razón (ES/EN). Proyecto fijo: cifras sin cambio |
 | 22 | 2.9.24 | H-167 (dependencia de ductos): cada tramo de ducto sin longitud capturada queda pendiente de longitud (ES/EN) en la cotización; no lleva lámina. Proyecto fijo: cifras sin cambio |
+| 23 | 2.9.24 | H-165 (dependencia de ductos): los kilos del ducto de grasa ya no entran a la partida de «lámina galvanizada»; salen «Por cotizar» (sección B) como ducto soldado de acero al carbón 16 MSG o inoxidable 18 MSG con su cita UMC 2018 §510.5 (ES/EN). Proyecto fijo: cifras sin cambio |
 | 14 | 2.9.24 | dependencia de soporte v6 (H-226): el anclaje va Por cotizar mientras no haya SDS con fuente, estructura y f'c |
 | 13 | 2.9.24 | dependencia de soporte v5 (H-225): sin altura de colgado la varilla sale pendiente, no cotizada |
 | 12 | 2.9.24 | dependencia de vent v2 (H-154): la partida de ventilación nombra el modelo que cubre de verdad, o ninguno |
