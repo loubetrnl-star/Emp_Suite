@@ -7383,6 +7383,39 @@ t("S.86 (H-181) la cotización eléctrica sigue al cálculo: el alimentador se c
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+t("S.87 (H-224, parte no bloqueada) la soportería de la red contra incendio usa el material de la red: acero como acero, cobre con MSS SP-58 (el mismo camino que la hidráulica de cobre) y CPVC «pendiente de tabla NFPA 13», nunca soportado como acero (motores, instantánea y captura a mano)", () => {
+  const guardado = JSON.stringify(S);
+  const armar = (material, soporte) => {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.87";
+    Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.87" }; });
+    S.fuego = { ...S.fuego, riesgo: "ord2", area: 700, altura: 4.71, rociador: "k80", material, Lramal: 30, Lmontante: 12, presFuente: 30, fuente: "cisterna" };
+    S.soporte = { ...S.soporte, alturaColgadoM: 1, ...(soporte || {}) };
+    G("recompute")(); return G("SOPORTE");
+  };
+  const redFuego = (SP) => (SP.porTuberia || []).find((x) => x.etiqueta === "Contra incendio");
+  try {
+    let SP = armar("acero_neg");
+    if (!(G("FUEGO").nTotal > 0)) throw new Error("el caso no aísla lo que se quiere probar: la red contra incendio debe tener rociadores");
+    eq(redFuego(SP).fam, "acero", "acero negro: se soporta como acero:");
+    /* Cobre: antes «acero». */
+    SP = armar("cobre"); eq(redFuego(SP).fam, "cobre", "red de cobre: se soporta como cobre (MSS SP-58):");
+    /* CPVC: sin tabla NFPA 13 no se soporta ni como acero ni con los claros de plomería del IPC; queda pendiente. */
+    SP = armar("cpvc");
+    const rf = redFuego(SP);
+    if (rf && rf.m > 0) throw new Error("la red de CPVC no debe soportarse sin la tabla NFPA 13 (salió " + rf.fam + ", " + rf.m + " m)");
+    if (!SP.manualPendientes.some((p) => /CPVC/.test(p.que) && /NFPA 13/.test(p.falta) && p.queEn && p.faltaEn)) throw new Error("la red de CPVC debe quedar pendiente de tabla NFPA 13 (ES/EN): " + JSON.stringify(SP.manualPendientes));
+    if (!G("QUOTE").pendientes.some((p) => p.mot === "soporte" && /NFPA 13/.test(p.motivo))) throw new Error("el pendiente llega a la cotización");
+    /* Instantánea aceptada con la red de cobre: la reconstrucción conserva el material. */
+    armar("cobre"); S.soporte.snap = G("snapshotSoporte")(); G("recompute")();
+    eq(redFuego(G("SOPORTE")).fam, "cobre", "con la instantánea aceptada la red sigue siendo de cobre:");
+    /* Captura a mano: la red contra incendio en CPVC tampoco toma los claros del IPC. */
+    SP = armar("acero_neg", { usarMotores: false, tubFuegoM: 20, tubFuegoD: 50, tubFuegoMat: "cpvc" });
+    const rm = redFuego(SP);
+    if (rm && rm.m > 0) throw new Error("a mano, la red contra incendio en CPVC no se soporta con los claros de plomería");
+    if (!SP.manualPendientes.some((p) => /NFPA 13/.test(p.falta))) throw new Error("a mano, la red contra incendio en CPVC queda pendiente de tabla NFPA 13");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 /* ===== R. Regresión por motor (rev 2.9.22, decisión del dueño): un proyecto fijo con cifras esperadas por disciplina ===== */
 const REG_DIR = "parches/regresion-motores/";
 const REG_PROY = fs.readFileSync(REG_DIR + "regresion-motores.emp.json", "utf8");

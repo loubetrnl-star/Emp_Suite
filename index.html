@@ -8225,11 +8225,19 @@ function computeSoporte(Gc) {
          con el caudal de rociadores, FUEGO.mon con caudal total), así que se
          reporta el mismo dato en dos tramos: el cabezal, más delgado, pide
          espaciamiento más cerrado y salía subcontado. */
-      if (FUEGO.ram) agregarTuberia([{ tag: "Cabezal del área de diseño", L: FUEGO.Lram, d: FUEGO.ram.d }], "acero", "contra_incendio", "Contra incendio");
-      if (FUEGO.mon) agregarTuberia([{ tag: "Montante", L: FUEGO.Lmon, d: FUEGO.mon.d }], "acero", "contra_incendio", "Contra incendio");
-      if (!FUEGO.ram && !FUEGO.mon) {
-        const Lf = Math.max(0, num(S.fuego && S.fuego.Lramal, 30)) + Math.max(0, num(S.fuego && S.fuego.Lmontante, 12));
-        agregarTuberia([{ tag: "Red contra incendio", L: Lf, d: 100 }], "acero", "contra_incendio", "Contra incendio");
+      /* H-224 (rev 2.9.24, soporte v11; parte no bloqueada): la red se soporta con SU material (antes siempre acero). Acero negro o
+         galvanizado → acero; cobre → cobre, con el mínimo de MSS SP-58-2018 que ya usa la hidráulica (decisión 4 del dueño);
+         CPVC → pendiente: su claro sale de NFPA 13 (Tabla 17.4.2.1(a)), cuyo texto no está (BLOQUEADO), así que no se soporta
+         como acero ni con los claros de plomería del IPC. */
+      const tubF = FUEGO.tub || "acero_neg", famF = tubF === "cobre" ? "cobre" : /^acero/.test(tubF) ? "acero" : null;
+      if (!famF) manualPendientes.push({ que: "Red contra incendio en CPVC", queEn: "CPVC fire protection piping", falta: "claro de soporte de NFPA 13 para CPVC (sin texto de la norma: no se soporta como acero ni con los claros de plomería del IPC)", faltaEn: "NFPA 13 hanger spacing for CPVC (no code text: not supported as steel nor with IPC plumbing spacing)" });
+      else {
+        if (FUEGO.ram) agregarTuberia([{ tag: "Cabezal del área de diseño", L: FUEGO.Lram, d: FUEGO.ram.d }], famF, "contra_incendio", "Contra incendio");
+        if (FUEGO.mon) agregarTuberia([{ tag: "Montante", L: FUEGO.Lmon, d: FUEGO.mon.d }], famF, "contra_incendio", "Contra incendio");
+        if (!FUEGO.ram && !FUEGO.mon) {
+          const Lf = Math.max(0, num(S.fuego && S.fuego.Lramal, 30)) + Math.max(0, num(S.fuego && S.fuego.Lmontante, 12));
+          agregarTuberia([{ tag: "Red contra incendio", L: Lf, d: 100 }], famF, "contra_incendio", "Contra incendio");
+        }
       }
     }
     if (typeof AIRE !== "undefined" && AIRE && AIRE.tramos)
@@ -8245,6 +8253,8 @@ function computeSoporte(Gc) {
     /* H-230: cada línea a mano lleva su diámetro y su material capturados; sin diámetro no se inventa (antes 50 / 100 / 32 mm de acero). */
     const manual = (tag, tagEn, L, d, mat, disciplina, etiqueta) => {
       if (!(num(L) > 0)) return;
+      /* H-224: la red contra incendio a mano en termoplástico no toma los claros de plomería del IPC: pendiente de NFPA 13. */
+      if (disciplina === "contra_incendio" && num(d, 0) > 0 && mat !== "acero" && mat !== "cobre") { manualPendientes.push({ que: "Red contra incendio en CPVC", queEn: "CPVC fire protection piping", falta: "claro de soporte de NFPA 13 para CPVC (sin texto de la norma: no se soporta como acero ni con los claros de plomería del IPC)", faltaEn: "NFPA 13 hanger spacing for CPVC (no code text: not supported as steel nor with IPC plumbing spacing)" }); return; }
       /* H-228: el termoplástico a mano lleva subtipo (cpvc / ppr / pead); el «plastico» genérico de antes queda pendiente de subtipo. */
       if (num(d, 0) > 0) agregarTuberia([{ tag: `${tag} (capturado a mano, ${n(num(d), 0)} mm ${mat})`, L: num(L), d: num(d) }], mat === "cobre" ? "cobre" : mat === "acero" ? "acero" : "plastico", disciplina, etiqueta, mat === "plastico" ? null : mat);
       else manualPendientes.push({ que: `${tag} capturado a mano (${n(num(L), 0)} m)`, queEn: `${tagEn} entered by hand (${n(num(L), 0)} m)`, falta: "diámetro (mm) y material", faltaEn: "diameter (mm) and material" });
@@ -17526,6 +17536,8 @@ function snapshotSoporte() {
       nTotal: num(FUEGO.nTotal),
       Lram: FUEGO.ram ? num(FUEGO.Lram) : 0, ramD: FUEGO.ram ? num(FUEGO.ram.d, 100) : 100,
       Lmon: FUEGO.mon ? num(FUEGO.Lmon) : 0, monD: FUEGO.mon ? num(FUEGO.mon.d, 100) : 100,
+      /* H-224: el material viaja sólo cuando no es acero, así la firma de las instantáneas de acero no cambia. */
+      ...(FUEGO.tub && !/^acero/.test(FUEGO.tub) ? { tub: FUEGO.tub } : {}),
     } : { nTotal: 0, Lram: 0, ramD: 100, Lmon: 0, monD: 100 },
     aire: at.map((t) => ({ etiqueta: t.etiqueta || "", L: num(t.L), d: num(t.d) })),
     aireMat: (S.aire && S.aire.material === "cobre") ? "cobre" : "acero",
@@ -17562,6 +17574,7 @@ function computeSoporteGobernado(G) {
     Lram: num(snap.fuego && snap.fuego.Lram),
     mon: (snap.fuego && num(snap.fuego.Lmon) > 0) ? { d: num(snap.fuego.monD, 100) } : null,
     Lmon: num(snap.fuego && snap.fuego.Lmon),
+    tub: (snap.fuego && snap.fuego.tub) || "acero_neg",   // H-224
   };
   AIRE = { tramos: (snap.aire || []).map((t) => ({ etiqueta: t.etiqueta, L: num(t.L), d: num(t.d) })), totalUnidades: 0 };
   QUOTE = { nEquip: num(snap.nEquip), deSnap: true }; /* H-231: las bases salen de snap.nEquip, no del conteo en vivo */
@@ -18252,7 +18265,7 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "5", clean: "3", equip: "1", duct: "4", vent: "3", quote: "24", valor: "1", kaizen: "1", elec: "8", hidro: "8", fuego: "3", aire: "5", civil: "5", soporte: "10" };
+const MOTOR_VER = { load: "5", clean: "3", equip: "1", duct: "4", vent: "3", quote: "24", valor: "1", kaizen: "1", elec: "8", hidro: "8", fuego: "3", aire: "5", civil: "5", soporte: "11" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
@@ -18289,7 +18302,7 @@ const MOTOR_CAMBIOS = {
     { ver: "6", rev: "2.9.24", que: "H-226: SDS (con fuente), tipo de estructura y f'c se capturan; sin ellos el anclaje se predimensiona con valores de referencia declarados y va Por cotizar; la memoria imprime Fp, ap y Rp con su aviso (antes SDS 1.0 / losa f'c 250 supuestos como datos)" },
     { ver: "7", rev: "2.9.24", que: "H-230: el modo «valores propios» pide medidas del ducto, diámetro y material de cada tubería; sin ellos la línea queda pendiente (antes 400×300, 50/100/32 mm de acero inventados)" },
     { ver: "8", rev: "2.9.24", que: "H-229 (decisión 4): claros de cobre al mínimo de MSS SP-58-2018 (PHD) e IPC 2009 T308.5 (MCP), secundarias declaradas: ½\"–¾\" 1.524 m, 1\"–1¼\" 1.829, 1½\"–2\" 2.438, 2½\" 2.743, 3\"–4\" 3.048 (antes 1.8 / 2.4 / 3.0 / 3.7)" },
-    { ver: "9", rev: "2.9.24", que: "H-228: claros del termoplástico por subtipo, IPC 2009 T308.5 (MCP, secundaria): CPVC ≤1\" 0.9 m (dueño) y ≥1¼\" 1.219 (antes 1.2 / 1.8), PP-R ≤1\" 0.813 y ≥1¼\" 1.219; PEAD sin renglón queda pendiente de claro; cada soporte de termoplástico lleva ancla (sujeta a H-226) y 4+4 tuercas/rondanas como el despiece (antes 0)" }, { ver: "10", rev: "2.9.24", que: "H-166 (dependencia de ductos): el tramo de ducto sin sección no se soporta con 400×200 ni Ø250 supuestos: queda pendiente con su razón y fuera de los metros y la cotización de soportes" }],
+    { ver: "9", rev: "2.9.24", que: "H-228: claros del termoplástico por subtipo, IPC 2009 T308.5 (MCP, secundaria): CPVC ≤1\" 0.9 m (dueño) y ≥1¼\" 1.219 (antes 1.2 / 1.8), PP-R ≤1\" 0.813 y ≥1¼\" 1.219; PEAD sin renglón queda pendiente de claro; cada soporte de termoplástico lleva ancla (sujeta a H-226) y 4+4 tuercas/rondanas como el despiece (antes 0)" }, { ver: "10", rev: "2.9.24", que: "H-166 (dependencia de ductos): el tramo de ducto sin sección no se soporta con 400×200 ni Ø250 supuestos: queda pendiente con su razón y fuera de los metros y la cotización de soportes" }, { ver: "11", rev: "2.9.24", que: "H-224 (parte no bloqueada): la red contra incendio se soporta con su material: acero como acero, cobre con MSS SP-58-2018; CPVC queda pendiente de la tabla NFPA 13 (sin texto), nunca como acero ni con los claros del IPC (antes toda la red como acero); también a mano y con la instantánea" }],
 };
 const motorVer = (id) => MOTOR_VER[id] || "1";
 function cambiosMotorTexto(id, desde) { return (MOTOR_CAMBIOS[id] || []).filter((c) => +c.ver > +(desde || 1)).map((c) => `v${c.ver} (rev ${c.rev}): ${c.que}`).join("; ") || "cambio de lógica del motor"; }

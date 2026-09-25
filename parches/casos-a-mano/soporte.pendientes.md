@@ -61,9 +61,13 @@ módulo `pruebas-motores/soporte.mjs` (12 pruebas), compuerta `parches/mutantes/
 
 ## 4. Lo que NO quedó cubierto y por qué
 
-- **H-224 (red contra incendio en CPVC/cobre soportada como acero):** no hay fila numérica. La tabla NFPA 13
-  17.4.2.1(a) no está en texto (BLOQUEADO) y «pendiente de tabla» no es un número comparable. Cuando llegue el texto,
-  la fila es `SOPORTE.porTuberia.find(g => g.etiqueta === "Contra incendio").det[0].e` con S.fuego.material = "cpvc".
+- **H-224 (red contra incendio en CPVC/cobre soportada como acero):** **parte no bloqueada cerrada el 25-sep-2026** (soporte
+  v11, prueba S.87, mutantes m52–m54 MUERTOS): la red se soporta con su material (`FUEGO.tub`): acero como acero, cobre por
+  MSS SP-58-2018; CPVC queda en `manualPendientes` «pendiente de NFPA 13» (también a mano y con la instantánea). **Sigue
+  BLOQUEADO el claro de CPVC**: la Tabla NFPA 13 17.4.2.1(a) no está en texto. Cuando llegue, la fila es
+  `SOPORTE.porTuberia.find(g => g.etiqueta === "Contra incendio").det[0].e` con S.fuego.material = "cpvc".
+- **Mutante m19 (claro de cobre 2"):** estaba apuntando a la tabla anterior a H-229 (no se aplicaba); reapuntado el
+  25-sep-2026 a `ESPAC_COBRE` (2.438 → 3.4 m): MUERTO (22.8, S.76, R.1, CM.soporte.4/11).
 - **H-230 (cerrado 25-sep-2026; S.75):** sin fila. El valor correcto es
   «pendiente de diámetro», no un número; la Fase 2 define la señal (p. ej. nSoportes = 0 con aviso) y entonces se agrega.
 - **H-235 (riostras NFPA 13 aplicadas a ductos, hidráulica y aire):** las filas 1.m/1.n/11.b/11.c vigilan la
