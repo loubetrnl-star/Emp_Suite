@@ -6861,6 +6861,26 @@ t("S.69 (H-141, decisión (a) del dueño) la diversidad del edificio se aplica U
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+t("S.70 (H-142) el submittal no inventa datos del equipo: peso, dimensiones, carga de refrigerante y número de revisión van «No declarado» salvo lo que tenga documento (50TC-A07: carga 14 lb 2 oz del Form 50TC-7-16-03PD); un chiller no lleva caudal de aire ni un split «AHRI 550/590»", () => {
+  const fila = (sub, k) => { const r = sub.rows.find((x) => x[0] === k); return r ? String(r[1]) : null; };
+  const split = G("carrierSubmittal")(G("CARRIER").find((e) => e.model === "24ACC618"));
+  ["Peso", "Dimensiones", "Carga de refrigerante"].forEach((k) => contiene(fila(split, k) || "", "No declarado", k + " sin documento:"));
+  if (/estimad/.test(fila(split, "Dimensiones"))) throw new Error("las dimensiones siguen «estimadas»");
+  if (/R[123]$/.test(split.rev) || /Rev R[123]/.test(fila(split, "No. de submittal"))) throw new Error("sigue el número de revisión inventado: " + split.rev);
+  if (/550\/590/.test(fila(split, "Certificaciones"))) throw new Error("un split DX no certifica AHRI 550/590 (chiller)");
+  const sec = (sub, k) => String((sub.sections.find((s) => s[0].startsWith(k)) || [])[1] || "");
+  if (/en condiciones AHRI/.test(sec(split, "2."))) throw new Error("la capacidad sigue «en condiciones AHRI de catálogo» sin documento");
+  contiene(sec(split, "7."), "No declarado", "sección 7 sin inventar:");
+  const chiller = G("carrierSubmittal")(G("CARRIER").find((e) => e.model === "30RB-040"));
+  if (fila(chiller, "Caudal de aire") != null) throw new Error("un chiller no lleva «Caudal de aire»");
+  contiene(fila(chiller, "Certificaciones"), "550/590", "el chiller sí lleva AHRI 550/590:");
+  const rtu = G("carrierSubmittal")(G("CARRIER").find((e) => e.model === "50TC-A07"));
+  contiene(fila(rtu, "Carga de refrigerante"), "14 lb 2 oz", "50TC-A07 con dato documentado:"); contiene(fila(rtu, "Carga de refrigerante"), "50TC-7-16-03PD", "y su fuente:");
+  contiene(fila(rtu, "Peso") || "", "No declarado", "el peso del 50TC no está cargado como dato: no se inventa:");
+  const gh = G("greenSubmittal")(G("GREEN")[0]);
+  if (/R[123]$/.test(gh.rev)) throw new Error("el submittal Greenheck sigue con revisión inventada: " + gh.rev);
+});
+
 /* ===== R. Regresión por motor (rev 2.9.22, decisión del dueño): un proyecto fijo con cifras esperadas por disciplina ===== */
 const REG_DIR = "parches/regresion-motores/";
 const REG_PROY = fs.readFileSync(REG_DIR + "regresion-motores.emp.json", "utf8");

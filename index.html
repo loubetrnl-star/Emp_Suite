@@ -938,6 +938,10 @@ function carrierSpecRows(e) {
   r.push(["Documento de referencia", line.docs], ["Notas de catálogo", e.notes], ["Recomendado para", e.bestFor]);
   return r;
 }
+/* H-142 · Datos físicos con documento. Sólo lo que está en un texto de parches/normas-texto/, con su fuente; nada de fórmulas. */
+const CARRIER_FISICO = {
+  "50TC-A07": { cargaRefrig: "14 lb 2 oz de R-410A (Puron)", ahri: "AHRI 340/360", fuente: "Carrier Form 50TC-7-16-03PD, Physical Data (Cooling) 6 tons" },
+};
 function carrierSubmittal(e) {
   const { line, cfm, power, btuh } = carrierSheet(e);
   const tr = e.TR;
@@ -948,29 +952,33 @@ function carrierSubmittal(e) {
   const volts = el.volts, ph = el.ph, fla = el.fla, mca = el.mca, mop = el.mop, rla = el.rla;
   const liquid = tr <= 2 ? '3/8"' : tr <= 5 ? '3/8-1/2"' : tr <= 12 ? '1/2-5/8"' : tr <= 30 ? '5/8-7/8"' : '1-1/8" o mayor';
   const suction = tr <= 2 ? '5/8"' : tr <= 5 ? '3/4-7/8"' : tr <= 12 ? '7/8-1-1/8"' : tr <= 30 ? '1-1/8-1-3/8"' : '1-5/8" o mayor';
-  let dims, weight = `${Math.round(tr * 45 + 80)}-${Math.round(tr * 70 + 120)} lb`;
-  if (e.tech === "paquete") { dims = `~${Math.round(60 + tr * 2)} × ${Math.round(40 + tr)} × ${Math.round(36 + tr * .5)} in (L×A×H estimado)`; weight = `${Math.round(tr * 90 + 400)}-${Math.round(tr * 140 + 700)} lb`; }
-  else if (e.tech === "chiller_fancoil") { dims = `~${Math.round(80 + tr * 1.2)} × ${Math.round(40 + tr * .4)} × ${Math.round(70 + tr * .3)} in estimado`; weight = `${Math.round(tr * 55 + 800)}-${Math.round(tr * 90 + 2000)} lb`; }
-  else if (e.tech === "VRF") { dims = `~${Math.round(35 + tr * .4)} × ${Math.round(12 + tr * .2)} × ${Math.round(50 + tr * .5)} in estimado`; weight = `${Math.round(tr * 35 + 150)}-${Math.round(tr * 55 + 280)} lb`; }
-  else if (e.tech === "AHU") { dims = `Secciones modulares · ~${Math.round(tr * 8 + 40)} in de ancho estimado`; weight = `${Math.round(tr * 40 + 200)}-${Math.round(tr * 80 + 600)} lb`; }
-  else if (e.tech === "PTAC") { dims = "~42 × 16 × 16 in (gabinete de muro PTAC)"; weight = `${Math.round(90 + tr * 30)}-${Math.round(140 + tr * 40)} lb`; }
-  else dims = `Condensadora ~${Math.round(30 + tr * 2)} × ${Math.round(30 + tr)} × ${Math.round(28 + tr)} in estimado`;
-  const charge = e.tech === "AHU" ? "No aplica (solo aire)" : `${(tr * 2.8).toFixed(1)}-${(tr * 4.2).toFixed(1)} lb típico (fábrica + campo)`;
+  /* H-142 (rev 2.9.24): peso, dimensiones y carga de refrigerante NO se inventan con fórmulas lineales en TR (el 50TC-A07 daba
+     16.8–25.2 lb de carga contra 14 lb 2 oz del documento). Sólo lo que tenga documento cargado en la suite (CARRIER_FISICO,
+     con su fuente); lo demás «No declarado». El número de revisión tampoco se fabrica. */
+  const fis = CARRIER_FISICO[e.model] || null;
+  const ND = "No declarado (sin documento del fabricante cargado en la suite; tomar del Product Data o de la placa)";
+  let dims = ND, weight = fis && fis.pesoLb ? `${fis.pesoLb} lb (${fis.fuente})` : ND;
+  if (false) { dims = `~${Math.round(60 + tr * 2)} × ${Math.round(40 + tr)} × ${Math.round(36 + tr * .5)} in (L×A×H estimado)`; weight = `${Math.round(tr * 90 + 400)}-${Math.round(tr * 140 + 700)} lb`; }
+  else if (false) { dims = `~${Math.round(80 + tr * 1.2)} × ${Math.round(40 + tr * .4)} × ${Math.round(70 + tr * .3)} in estimado`; weight = `${Math.round(tr * 55 + 800)}-${Math.round(tr * 90 + 2000)} lb`; }
+  const charge = e.tech === "AHU" ? "No aplica (solo aire)" : fis && fis.cargaRefrig ? `${fis.cargaRefrig} (${fis.fuente})` : ND;
   const esp = (e.tech === "paquete" || e.tech === "AHU") ? "0,5-2,0 in.w.g. (ESP externo configurable)"
     : e.tech === "VRF" ? "ESP por unidad interior (ver Product Data indoor)" : "0,2-0,8 in.w.g. (evaporadora)";
-  const certs = ["Certificado AHRI (serie aplicable)", "Listado UL / cUL", "Ruta ASHRAE 90.1 según línea",
-    e.tech === "chiller_fancoil" ? "AHRI 550/590 (chiller)" : "AHRI 210/240 o 340/360"];
+  /* H-142: certificaciones por familia y sólo con documento: el 50TC declara AHRI 340/360 en su Product Data; el resto queda
+     «según catálogo del fabricante (sin documento en la suite)». */
+  const certs = ["Listado UL / cUL (según catálogo del fabricante)",
+    e.tech === "chiller_fancoil" ? "AHRI 550/590 (chiller; según catálogo del fabricante, sin documento en la suite)"
+      : fis && fis.ahri ? `${fis.ahri} (${fis.fuente})` : "AHRI 210/240 o 340/360 según capacidad (sin documento en la suite)"];
   const tag = `AC-${e.model.replace(/[^\w]/g, "").slice(-4)}`;
   return {
     no: `CAR-${e.model.replace(/[^\w]/g, "")}-${Math.round(tr * 10)}`,
-    rev: `R${1 + (e.model.charCodeAt(e.model.length - 1) % 3)}`, tag, brand: "Carrier",
+    rev: "—", tag, brand: "Carrier",
     model: e.model, family: e.family, productLine: e.productLine,
     rows: [
-      ["No. de submittal", `CAR-${e.model.replace(/[^\w]/g, "")}-${Math.round(tr * 10)} · Rev ${1 + (e.model.charCodeAt(e.model.length - 1) % 3)}`],
+      ["No. de submittal", `CAR-${e.model.replace(/[^\w]/g, "")}-${Math.round(tr * 10)} · Rev — (sin número de revisión del fabricante)`],
       ["Tag de equipo", tag], ["Fabricante", "Carrier"], ["Modelo", e.model],
       ["Familia / línea", `${e.family} · ${e.productLine}`], ["Familia HAP", line.hapFamily],
       ["Capacidad frigorífica", `${tr} TR · ${e.kW} kW térmicos · ${btuh.toLocaleString("es-MX")} BTU/h`],
-      ["Caudal de aire", `${cfm} CFM`], ["Presión estática externa", esp],
+      ...(e.tech === "chiller_fancoil" ? [] : [["Caudal de aire", `${cfm} CFM (nominal estimado de la familia, H-142)`], ["Presión estática externa", esp]]),
       ["Eficiencia", line.efficiency], ["Refrigerante", line.refrigerant], ["Carga de refrigerante", charge],
       ["Alimentación", `${volts} V · ${ph} fase(s)`], ["FLA / RLA", `${fla} A / ${rla} A`],
       ["MCA / MOP", `${mca} A / ${mop} A`], ["Potencia eléctrica estimada", `${power} kW`],
@@ -989,10 +997,10 @@ function carrierSubmittal(e) {
     ],
     sections: [
       ["1. Identificación", `Carrier ${e.family} modelo ${e.model} · Tag ${tag} · línea ${e.productLine}`],
-      ["2. Capacidad de enfriamiento", `${tr} TR (${e.kW} kW / ${btuh.toLocaleString("es-MX")} BTU/h) en condiciones AHRI de catálogo`],
-      ["3. Caudal de aire", `${cfm} CFM nominal estimado · ${esp}`],
+      ["2. Capacidad de enfriamiento", `${tr} TR (${e.kW} kW / ${btuh.toLocaleString("es-MX")} BTU/h) nominales del catálogo de la casa${fis && fis.ahri ? ` (${fis.ahri}, ${fis.fuente})` : " (condiciones de prueba no documentadas en la suite)"}`],
+      ["3. Caudal de aire", e.tech === "chiller_fancoil" ? "No aplica (chiller): el caudal es de agua helada" : `${cfm} CFM nominal estimado · ${esp}`],
       ["4. Eléctrico", `${volts} V / ${ph} fase(s) · FLA ${fla} A · MCA ${mca} A · MOP ${mop} A · ~${power} kW`],
-      ["5. Refrigerante", `${line.refrigerant} · carga típica ${charge} · compresor ${line.compressor}`],
+      ["5. Refrigerante", `${line.refrigerant} · carga ${charge} · compresor ${line.compressor}`],
       ["6. Conexiones", `Líquido ${liquid} · succión ${suction} (o agua/glicol en chiller y fan-coil)`],
       ["7. Dimensiones y peso", `${dims} · peso ${weight}`],
       ["8. Controles y certificación", `${line.connectivity || "Controles de línea"} · ${certs.join("; ")}`],
@@ -1001,7 +1009,7 @@ function carrierSubmittal(e) {
       ["11. Procedencia y trazabilidad", `${procedencia(e)}${fueraDeRango(e) ? ` · AVISO: ${fueraDeRango(e)}` : ""} · criterio de selección de la familia: ${criterioDe((famOfModel(e) || {}).id || "rtu").manda} · ${selloNorma("equip")} · ${REV_SELLO()}`],
     ],
     notes: [e.notes, e.bestFor, line.application,
-      "Valores eléctricos y dimensionales son estimaciones de submittal de ingeniería: confirmar contra Product Data y placa de fábrica."],
+      "Valores eléctricos son estimaciones de submittal de ingeniería: confirmar contra Product Data y placa de fábrica. Peso, dimensiones y carga de refrigerante sólo se imprimen con documento del fabricante cargado en la suite (H-142)."],
   };
 }
 
@@ -1132,10 +1140,10 @@ function greenSubmittal(e) {
     e.tech === "louver" ? "AMCA 500-L" : "AMCA de sonido cuando aplica"];
   const tag = `EF-${e.model.replace(/[^\w]/g, "").slice(-4)}`;
   return {
-    no: `GH-${e.model.replace(/[^\w]/g, "")}-${mid}`, rev: `R${1 + (e.model.length % 3)}`, tag, brand: "Greenheck",
+    no: `GH-${e.model.replace(/[^\w]/g, "")}-${mid}`, rev: "—", tag, brand: "Greenheck",
     model: e.model, family: e.family, productLine: e.productLine,
     rows: [
-      ["No. de submittal", `GH-${e.model.replace(/[^\w]/g, "")}-${mid} · Rev ${1 + (e.model.length % 3)}`],
+      ["No. de submittal", `GH-${e.model.replace(/[^\w]/g, "")}-${mid} · Rev — (sin número de revisión del fabricante)`],
       ["Tag de equipo", tag], ["Fabricante", "Greenheck"], ["Modelo", e.model],
       ["Familia / línea", `${e.family} · ${e.productLine}`], ["Familia CAPS", line.capsFamily],
       ["Rango de caudal", `${e.cfmMin}-${e.cfmMax} CFM`], ["Caudal de diseño", `${mid} CFM · ${Math.round(mid * 1.699)} m³/h`],
