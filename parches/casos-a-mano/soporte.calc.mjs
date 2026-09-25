@@ -31,6 +31,7 @@ const claroMin = (fam, dn) => {
   if (fam === "acero") return ft(Math.min(MSS_ACERO_FT[dn], IPC_FT.acero));
   if (fam === "cobre") return ft(Math.min(MSS_COBRE_FT[dn], PULG[dn] <= 1.25 ? IPC_FT.cobreChico : IPC_FT.cobreGrande));
   if (fam === "cpvc") return ft(PULG[dn] <= 1 ? IPC_FT.cpvcChico : IPC_FT.cpvcGrande);
+  if (fam === "ppr") return ft(PULG[dn] <= 1 ? IPC_FT.ppChico : IPC_FT.ppGrande);
   throw new Error(fam);
 };
 const NFPA13_TOPE = ft(15);              // [MEM] NFPA 13: 15 ft para acero ≥ 1¼" (la suite topa en 4.6 m)
@@ -154,16 +155,20 @@ const SRC_MIN = `mínimo de ${SRC_MSS} e ${SRC_IPC} · decisión 4 del dueño`;
     ["m", 100, "acero", '4"', "fase2:H-233", "hoy 4.3; IPC 12 ft gobierna sobre MSS 14 ft (plomería; incendio sigue NFPA 13)"],
     ["n", 150, "acero", '6"', "fase2:H-233", "hoy 5.2; IPC 12 ft gobierna sobre MSS 17 ft"],
     ["o", 25, "cpvc", '1"', "vigente", ""], ["p", 50, "cpvc", '2"', "vigente", ""], ["q", 80, "cpvc", '3"', "vigente", ""],
-    ["r", 100, "cpvc", '4"', "fase2:H-228", "hoy 1.8"], ["s", 150, "cpvc", '6"', "fase2:H-228", "hoy 1.8"],
+    ["r", 100, "cpvc", '4"', "vigente", "antes de H-228: 1.8"], ["s", 150, "cpvc", '6"', "vigente", "antes de H-228: 1.8"],
+    ["t", 25, "ppr", '1"', "vigente", "H-228: antes 0.9 como CPVC"], ["u", 50, "ppr", '2"', "vigente", "H-228: antes 1.2"],
   ];
   for (const [l, dmm, fam, dn, estado, nota] of T) {
     const e = claroMin(fam, dn);
-    const famSuite = fam === "cpvc" ? "plastico" : fam;
-    const src = fam === "cpvc" ? `${SRC_IPC} (CPVC ${PULG[dn] <= 1 ? "≤ 1\": 3 ft" : "≥ 1¼\": 4 ft"})` : SRC_MIN;
+    const plast = fam === "cpvc" || fam === "ppr";
+    const famSuite = plast ? "plastico" : fam;
+    const src = fam === "cpvc" ? `${SRC_IPC} (CPVC ${PULG[dn] <= 1 ? "≤ 1\": 3 ft" : "≥ 1¼\": 4 ft"})`
+      : fam === "ppr" ? `${SRC_IPC} (PP ${PULG[dn] <= 1 ? "≤ 1\": 32 in" : "≥ 1¼\": 4 ft"})` : SRC_MIN;
     const form = fam === "cpvc" ? `${PULG[dn] <= 1 ? 3 : 4} ft × 0.3048 = ${r(e, 3)} m`
+      : fam === "ppr" ? `${PULG[dn] <= 1 ? "32 in × 0.0254" : "4 ft × 0.3048"} = ${r(e, 3)} m`
       : fam === "acero" ? `min(MSS ${MSS_ACERO_FT[dn]} ft, IPC 12 ft) × 0.3048 = ${r(e, 3)} m`
       : `min(MSS ${MSS_COBRE_FT[dn]} ft, IPC ${PULG[dn] <= 1.25 ? 6 : 10} ft) × 0.3048 = ${r(e, 3)} m`;
-    fila(`CM.soporte.4.${l}`, `claro máximo ${fam} ${dn}${nota ? " (" + nota + ")" : ""}`, `d = ${dmm} mm nominal, familia ${famSuite}`, form, src, "secundaria", `CM_SOP.esp(${dmm}, '${famSuite}')`, r(e, 3), estado === "vigente" ? 0.06 : 0.02, estado);
+    fila(`CM.soporte.4.${l}`, `claro máximo ${fam} ${dn}${nota ? " (" + nota + ")" : ""}`, `d = ${dmm} mm nominal, familia ${famSuite}`, form, src, "secundaria", plast ? `CM_SOP.esp(${dmm}, 'plastico', '${fam}')` : `CM_SOP.esp(${dmm}, '${famSuite}')`, r(e, 3), plast ? 0.02 : estado === "vigente" ? 0.06 : 0.02, estado);
   }
 }
 /* --- Caso C · ducto rectangular TR-1 1200×700 mm cal. 20, 18 m --- */
@@ -192,19 +197,22 @@ const SRC_MIN = `mínimo de ${SRC_MSS} e ${SRC_IPC} · decisión 4 del dueño`;
    (dependencia registrada: debería quedar pendiente). Antes: 63 mm, nominal 65. */
 {
   const e1 = claroMin("cpvc", '1-1/2"'), e2 = claroMin("cpvc", '1-1/2"');   // 43.59 → nominal 40 (1½") en los dos: ≥ 1¼" → 4 ft
-  const n1 = nSop(25, 1.2), n2 = nSop(18, 1.2);
-  const wl1 = pesoPlastico(43.59), carga1 = wl1 * 1.2;
+  /* H-228 (rev 2.9.24): la suite ya usa el claro IPC (1.219 m, antes 1.2): mismos conteos, carga por soporte ×1.219. */
+  const n1 = nSop(25, e1), n2 = nSop(18, e2);
+  const wl1 = pesoPlastico(43.59), carga1 = wl1 * e1;
   const ENT = "hidro.material cpvc; tramos AF-GENERAL 72 UM 25 m (d 43.59 mm, fuera de catálogo en hidro por H-198) y AF-RAMAL 20 UM 18 m (d 43.59 mm) entregados por hidro; ductos, incendio, aire y equipos vacíos; defaultSoporte()";
   const H = "SOPORTE.porTuberia.find((x) => x.etiqueta === 'Hidráulica y sanitario').det";
-  fila("CM.soporte.7.a", "claro CPVC 43.59 mm (tope de 2\" CTS; antes 63 mm)", ENT, `IPC CPVC ≥ 1¼\": 4 ft × 0.3048 = ${r(e1, 3)} m (la suite tabula 1.2)`, SRC_IPC, "secundaria", `${H}[0].e`, r(e1, 3), 0.03);
-  fila("CM.soporte.7.b", "soportes tramo 1 (25 m)", ENT, `ceil(25/1.2) + 1 = ${n1}`, `${SRC_IPC} + criterio de la casa (index.html:8110)`, "secundaria", `${H}[0].n`, n1, 0);
-  fila("CM.soporte.7.c", "soportes tramo 2 (18 m, 43.59 mm → 1½\", 4 ft)", ENT, `ceil(18/1.2) + 1 = ${n2}`, `${SRC_IPC} + criterio de la casa`, "secundaria", `${H}[1].n`, n2, 0);
+  fila("CM.soporte.7.a", "claro CPVC 43.59 mm (tope de 2\" CTS; antes 63 mm)", ENT, `IPC CPVC ≥ 1¼\": 4 ft × 0.3048 = ${r(e1, 3)} m (antes de H-228 la suite tabulaba 1.2)`, SRC_IPC, "secundaria", `${H}[0].e`, r(e1, 3), 0.002);
+  fila("CM.soporte.7.b", "soportes tramo 1 (25 m)", ENT, `ceil(25/${r(e1, 3)}) + 1 = ${n1}`, `${SRC_IPC} + criterio de la casa (index.html:8110)`, "secundaria", `${H}[0].n`, n1, 0);
+  fila("CM.soporte.7.c", "soportes tramo 2 (18 m, 43.59 mm → 1½\", 4 ft)", ENT, `ceil(18/${r(e2, 3)}) + 1 = ${n2}`, `${SRC_IPC} + criterio de la casa`, "secundaria", `${H}[1].n`, n2, 0);
   fila("CM.soporte.7.d", "peso lineal lleno CPVC 43.59 mm (camino propio; antes 63 mm)", ENT, `nominal 40 (DN más cercano a 43.59): (4.05 × 0.22 + 1.314) × 1.10 = ${r(wl1, 3)} kg/m`, "criterio de la casa (index.html:7372-7386)", "secundaria", `${H}[0].wl`, r(wl1, 3), 0.01);
-  fila("CM.soporte.7.e", "carga por soporte CPVC 43.59 mm (antes 63 mm)", ENT, `${r(wl1, 3)} × 1.2 = ${r(carga1, 3)} kgf`, "criterio de la casa (index.html:8112)", "secundaria", `${H}[0].carga`, r(carga1, 3), 0.02);
+  fila("CM.soporte.7.e", "carga por soporte CPVC 43.59 mm (antes 63 mm)", ENT, `${r(wl1, 3)} × ${r(e1, 3)} = ${r(carga1, 3)} kgf`, "criterio de la casa (index.html:8112)", "secundaria", `${H}[0].carga`, r(carga1, 3), 0.02);
   fila("CM.soporte.7.f", "soportes totales (sólo la red hidráulica)", ENT, `${n1} + ${n2} = ${n1 + n2}`, SRC_IPC, "secundaria", "SOPORTE.nSoportes", n1 + n2, 0);
   fila("CM.soporte.7.g", "abrazaderas cotizadas = soportes", ENT, `${n1 + n2}`, "criterio de la casa (index.html:8184)", "secundaria", "SOPORTE.part.filter((p) => /^Abrazadera/.test(p.desc)).reduce((a, p) => a + p.qty, 0)", n1 + n2, 0);
-  fila("CM.soporte.7.h", "anclas del termoplástico (hoy 0)", ENT, `una por soporte y varilla: ${n1 + n2} × 1 = ${n1 + n2}`, "H-228: el termoplástico sale sin anclas ni tuercas; criterio de la casa del despiece (index.html:7853-7862) aplicado también al camino propio", "secundaria", "SOPORTE.part.filter((p) => /^Anclaje/.test(p.desc)).reduce((a, p) => a + p.qty, 0)", n1 + n2, 0, "fase2:H-228");
-  fila("CM.soporte.7.i", "tuercas y rondanas del termoplástico (hoy 0)", ENT, `(4 tuercas + 4 rondanas) × ${n1 + n2} = ${8 * (n1 + n2)}`, "H-228; criterio de la casa del despiece (index.html:7856-7857)", "secundaria", "SOPORTE.part.filter((p) => /^Tuerca/.test(p.desc)).reduce((a, p) => a + p.qty, 0)", 8 * (n1 + n2), 0, "fase2:H-228");
+  /* H-228 (cerrado 25-sep-2026): sin SDS con fuente las anclas van «Por cotizar» (H-226), así que se cuentan en SOPORTE.anclajesPza
+     (el despiece, antes de la compuerta de precio), no en las partidas con importe. Antes: 0 / 0. */
+  fila("CM.soporte.7.h", "anclas del termoplástico (antes de H-228: 0)", ENT, `una por soporte y varilla: ${n1 + n2} × 1 = ${n1 + n2}`, "H-228: criterio de la casa del despiece (index.html, function despiece) aplicado también al camino propio", "secundaria", "SOPORTE.anclajesPza.reduce((a, x) => a + x.cnt, 0)", n1 + n2, 0);
+  fila("CM.soporte.7.i", "tuercas y rondanas del termoplástico (antes de H-228: 0)", ENT, `(4 tuercas + 4 rondanas) × ${n1 + n2} = ${8 * (n1 + n2)}`, "H-228; criterio de la casa del despiece (index.html, function despiece)", "secundaria", "SOPORTE.part.filter((p) => /^Tuerca/.test(p.desc)).reduce((a, p) => a + p.qty, 0)", 8 * (n1 + n2), 0);
 }
 /* --- Trapecio P1000, luz 600 mm, 200 kgf puntual --- */
 {

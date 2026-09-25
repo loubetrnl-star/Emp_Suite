@@ -3729,8 +3729,9 @@ t("22.8 2.5 la soportería hidráulica lee hidro.material: cobre y termoplástic
       cobre: { fam: "cobre", d: [50.42, 38.23], e: [2.438, 2.438], n: [12, 9] },
       /* H-198 (rev 2.9.24): CPVC CTS sólo llega a 2" (43.59 mm); la general (3.7 L/s) queda fuera de catálogo con el tope de 2" y va
          «Por cotizar» (antes 63 mm, renglón «SIN VERIFICAR»). La soportería sigue contándola con 43.59 mm: dependencia de soporte. */
-      cpvc: { fam: "plastico", d: [43.59, 43.59], e: [1.2, 1.2], n: [22, 16] },
-      pead: { fam: "plastico", d: [50, 38], e: [1.2, 1.2], n: [22, 16] },
+      /* H-228: CPVC ≥ 1¼" = 4 ft (IPC 2009 T308.5); PEAD no está en la tabla y queda pendiente de claro (antes ambos 1.2 con 22/16). */
+      cpvc: { fam: "plastico", d: [43.59, 43.59], e: [1.219, 1.219], n: [22, 16] },
+      pead: { fam: "plastico", d: [50, 38], e: [null, null], n: [0, 0], pdf: [["pendiente", "0"], ["pendiente", "0"]] },
       acero: { fam: "acero", d: [52.5, 35.05], e: [3, 2.1], n: [10, 10] },
     };
     Object.entries(esperado).forEach(([material, x]) => {
@@ -3745,7 +3746,7 @@ t("22.8 2.5 la soportería hidráulica lee hidro.material: cobre y termoplástic
       eq(JSON.stringify(h.det.map((d) => d.e)), JSON.stringify(x.e), `${material} espaciamientos:`);
       eq(JSON.stringify(h.det.map((d) => d.n)), JSON.stringify(x.n), `${material} soportes por tramo:`);
       /* El PDF imprime el claro con un decimal (2.438 → «2.4»). */
-      eq(JSON.stringify(filasPdf()), JSON.stringify(x.e.map((e, i) => [String(Math.round(e * 10) / 10), String(x.n[i])])), `${material} PDF conteo por tramo:`);
+      eq(JSON.stringify(filasPdf()), JSON.stringify(x.pdf || x.e.map((e, i) => [String(Math.round(e * 10) / 10), String(x.n[i])])), `${material} PDF conteo por tramo:`);
     });
     /* El gobernador congela el material aceptado y avisa si cambia. */
     preparar("cobre");
@@ -4269,9 +4270,9 @@ t("L.2 2.5 / H-229 tablas de espaciamiento: cobre al mínimo de MSS SP-58-2018 e
   cerca(esp(32, "acero"), G("C_SOP").ESPAC_ACERO['1-1/4"'], 1e-12, "acero, misma cifra que el motor:");
   for (const k of ["SOP_ACERO", "SOP_COBRE"]) if (w.eval(`typeof ${k}`) !== "undefined") throw new Error(`${k} sigue en la lista activa`);
   cerca(esp(15, "cobre"), 1.524, 0.001, `cobre ½" (15 mm):`);
-  cerca(esp(25, "plastico"), 0.9, 0.001, `termoplástico 1" (25 mm):`);
+  cerca(esp(25, "plastico", "cpvc"), 0.9, 0.001, `termoplástico 1" (25 mm):`);
   if (!(esp(20, "cobre") < esp(20, "acero"))) throw new Error("el cobre debe seguir dando menos distancia que el acero en el mismo diámetro");
-  if (!(esp(25, "plastico") < esp(32, "plastico"))) throw new Error("el termoplástico debe dar menos distancia en 1\" que en 1¼\"–2\"");
+  if (!(esp(25, "plastico", "cpvc") < esp(32, "plastico", "cpvc"))) throw new Error("el termoplástico debe dar menos distancia en 1\" que en 1¼\"–2\"");
 });
 
 /* ===== M. Balance global: compresor, bombas y FFU al cuadro eléctrico ====
@@ -4493,7 +4494,9 @@ t("O.3 el termoplástico no calculado por SoporteCalc sigue por el sistema propi
     const SOP = G("SOPORTE");
     const grupo = (SOP.porTuberia || []).find((x) => x.etiqueta === "Hidráulica y sanitario");
     if (!grupo || grupo.fam !== "plastico") throw new Error("el caso no aísla lo que se quiere probar: debe agrupar como plástico");
-    if (grupo.det.some((d) => d.anclaje || d.trapecio)) throw new Error("un tramo de termoplástico no debería traer anclaje ni trapecio: SoporteCalc no lo calcula");
+    /* H-228: el ancla sí se selecciona por el camino propio (d.ancla); lo que sigue fuera es el trapecio de SoporteCalc. */
+    if (grupo.det.some((d) => d.anclaje || d.trapecio)) throw new Error("un tramo de termoplástico no debería traer anclaje ni trapecio de SoporteCalc: no lo calcula");
+    if (!grupo.det.every((d) => d.ancla)) throw new Error("cada tramo de termoplástico trae su ancla por el camino propio (H-228)");
     if (!SOP.avisos.some((a) => /termopl.stico.*SoporteCalc solo cubre acero y cobre/.test(a.msg)))
       throw new Error("no avisa que el termoplástico se queda fuera del motor integrado");
   } finally { S.hidro = g.hidro; G("recompute")(); }
@@ -6995,6 +6998,64 @@ t("S.76 (H-229, decisión 4 del dueño) claros de cobre = mínimo de MSS SP-58-2
     cerca(esp(65, "cobre"), ft(9), 0.001, "2½\" (antes 3.0):"); cerca(esp(80, "cobre"), ft(10), 0.001, "3\":"); cerca(esp(100, "cobre"), ft(10), 0.001, "4\" = mín(MSS 12, IPC 10) (antes 3.7):");
     G("importarRespaldo")(fs.readFileSync("parches/regresion-motores/regresion-motores.emp.json", "utf8")); S.tab = "tablero"; G("KZ_CACHE").key = null; G("VZ_CACHE").key = null; G("recompute")();
     if (!G("SOPORTE").memo.some((m) => /MSS SP-58-2018/.test(m) && /IPC 2009/.test(m) && /secundaria/.test(m))) throw new Error("la memoria no declara el mínimo MSS/IPC como secundaria por ratificar");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+t("S.77 (H-228) termoplástico por subtipo, IPC 2009 T308.5 (MCP, secundaria): CPVC ≤1\" 0.9 m (dueño; IPC 3 ft) y ≥1¼\" 1.219 (antes 1.2 / 1.8), PP-R ≤1\" 0.813 y ≥1¼\" 1.219, PEAD no está en la tabla → pendiente de claro; cada soporte de termoplástico lleva ancla y 4+4 tuercas/rondanas como el despiece (anclaje sujeto a H-226)", () => {
+  const guardado = JSON.stringify(S);
+  const esp = G("espSoporte");
+  const muebles = [{ id: "wc_flux", cant: 4 }, { id: "ming_flux", cant: 2 }, { id: "lavabo", cant: 4 }, { id: "fregadero", cant: 1 }, { id: "manguera", cant: 2 }];
+  const tramos = () => [{ ...G("defaultTramoAgua")("AF-GENERAL"), um: 72, L: 25, alt: 3 }, { ...G("defaultTramoAgua")("AF-RAMAL BAÑOS"), um: 20, L: 18, alt: 3 }];
+  const qty = (re) => (G("SOPORTE").part || []).filter((p) => re.test(p.desc)).reduce((a, p) => a + p.qty, 0);
+  const pcAncla = () => (G("QUOTE").porCotizar || []).filter((p) => p.mot === "soporte" && p.clave === "anclajeSop").reduce((a, p) => a + p.qty, 0);
+  const hidroDe = () => (G("SOPORTE").porTuberia || []).find((x) => x.etiqueta === "Hidráulica y sanitario");
+  try {
+    cerca(esp(25, "plastico", "cpvc"), 0.9, 0.001, "CPVC 1\" (decisión del dueño, más cerrado que IPC 3 ft = 0.914):");
+    cerca(esp(32, "plastico", "cpvc"), 1.219, 0.001, "CPVC 1¼\" = 4 ft (antes 1.2):"); cerca(esp(50, "plastico", "cpvc"), 1.219, 0.001, "CPVC 2\":");
+    cerca(esp(100, "plastico", "cpvc"), 1.219, 0.001, "CPVC 4\" (antes 1.8):"); cerca(esp(150, "plastico", "cpvc"), 1.219, 0.001, "CPVC 6\" (antes 1.8):");
+    cerca(esp(25, "plastico", "ppr"), 0.813, 0.001, "PP-R 1\" = 32 in:"); cerca(esp(50, "plastico", "ppr"), 1.219, 0.001, "PP-R 2\" = 4 ft:");
+    eq(esp(50, "plastico", "pead"), null, "PEAD: IPC 2009 T308.5 sólo lista PE-AL-PE y PEX, no polietileno liso; sin fuente no hay claro:");
+    eq(esp(50, "plastico"), null, "sin subtipo no hay claro:");
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.77"; Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.77" }; });
+    S.zones[0].area = 200; S.zones[0].height = 6;
+    S.hidro = { ...G("defaultHidro")(), material: "cpvc", muebles, tramos: tramos() };
+    S.fuego = G("defaultFuego")(); S.aire = G("defaultAire")(); S.duct.segments = []; S.quote.items = [];
+    S.soporte = { ...G("defaultSoporte")(), alturaColgadoM: 0.5, sismoSDS: 1.0, sismoFuente: "CFE MDOC-Sismo 2015, sitio Tijuana", estructuraTipo: "losa_concreto", estructuraFc: 250 };
+    G("recompute")();
+    let R = G("SOPORTE"), h = hidroDe();
+    if (!h || h.fam !== "plastico") throw new Error("el caso no aísla lo que se quiere probar: debe agrupar como termoplástico");
+    eq(R.sopcalc.tramos.length, 0, "sólo hay tramos del camino propio (nada en SoporteCalc):");
+    eq(JSON.stringify(h.det.map((d) => d.e)), JSON.stringify([1.219, 1.219]), "CPVC 43.59 mm → 1½\" ≥ 1¼\": 4 ft (antes 1.2):");
+    eq(h.n, 38, "ceil(25/1.219)+1 + ceil(18/1.219)+1:");
+    if (!h.det.every((d) => d.ancla)) throw new Error("cada tramo de termoplástico debe traer su ancla seleccionada (ACI 318-19 cap. 17, camino propio)");
+    eq(qty(/^Anclaje/), 38, "una ancla por soporte, como el despiece de SoporteCalc (antes 0):");
+    eq(qty(/^Tuerca/), 304, "4 tuercas + 4 rondanas por soporte (antes 0):");
+    eq(pcAncla(), 0, "con SDS + fuente + estructura el anclaje se cotiza:");
+    if (!R.memo.some((m) => /IPC 2009/.test(m) && /termopl/i.test(m) && /secundaria/.test(m))) throw new Error("la memoria no declara la fuente (secundaria) del claro del termoplástico");
+    /* Con la instantánea motores>soporte aceptada el subtipo viaja con ella (la familia sola no alcanza). */
+    G("propAceptar")("motores>soporte"); G("recompute")();
+    eq(JSON.stringify(hidroDe().det.map((d) => d.e)), JSON.stringify([1.219, 1.219]), "modo gobernado: CPVC sigue a 4 ft:");
+    delete S.soporte.snap; G("recompute")();
+    /* H-226 también gobierna las anclas del termoplástico: sin SDS con fuente van «Por cotizar». */
+    S.soporte.sismoSDS = null; S.soporte.sismoFuente = ""; G("recompute")();
+    eq(qty(/^Anclaje/), 0, "sin SDS con fuente no se cotizan las anclas del termoplástico:"); eq(pcAncla(), 38, "van «Por cotizar» con sus piezas:");
+    /* PP-R capturado a mano, 1\": 32 in. */
+    S.soporte = { ...G("defaultSoporte")(), usarMotores: false, tubHidroM: 30, tubHidroD: 25, tubHidroMat: "ppr", alturaColgadoM: 0.5 }; G("recompute")(); R = G("SOPORTE"); h = hidroDe();
+    eq(JSON.stringify(h.det.map((d) => d.e)), JSON.stringify([0.813]), "PP-R 25 mm a mano: 32 in (antes 0.9 como CPVC):"); eq(h.n, Math.ceil(30 / 0.813) + 1, "soportes PP-R:");
+    /* PEAD: sin renglón en la tabla, el tramo queda pendiente de claro (no se cuenta ni se cotiza). */
+    S.soporte = { ...G("defaultSoporte")(), alturaColgadoM: 0.5 }; S.hidro.material = "pead"; G("recompute")(); R = G("SOPORTE"); h = hidroDe();
+    eq(R.nSoportes, 0, "PEAD sin claro con fuente: no se cuentan soportes (antes 38 con la tabla de CPVC):");
+    if (!(h && h.det.length === 2 && h.det.every((d) => d.pendiente && d.n === 0 && d.e === null))) throw new Error("los tramos de PEAD deben quedar marcados pendientes: " + JSON.stringify(h && h.det));
+    if (!R.avisos.some((a) => /PEAD/.test(a.msg) && /pendiente/.test(a.msg) && /308\.5/.test(a.msg))) throw new Error("falta el aviso de PEAD pendiente de claro con su fuente");
+    if (!(G("QUOTE").pendientes || []).some((p) => p.mot === "soporte" && /PEAD/.test(p.desc + p.motivo))) throw new Error("la cotización no declara el PEAD pendiente");
+    const pdf = Buffer.from(G("buildSoportePdf")()).toString("latin1");
+    if (!/\(pendiente\) Tj/.test(pdf)) throw new Error("el PDF no imprime «pendiente» en el claro del PEAD");
+    /* El modo a mano ya no ofrece «termoplástico» genérico: pide el subtipo. */
+    S.soporte = { ...G("defaultSoporte")(), usarMotores: false, tubHidroM: 30, tubHidroD: 25, tubHidroMat: "plastico" }; G("recompute")(); R = G("SOPORTE");
+    eq(R.nSoportes, 0, "«plastico» sin subtipo queda pendiente:");
+    S.tab = "soporte"; G("render")();
+    const opciones = [...w.document.querySelectorAll('#view [data-path="soporte.tubHidroMat"] option')].map((o) => o.value);
+    ["cpvc", "ppr", "pead"].forEach((v) => { if (!opciones.includes(v)) throw new Error("falta la opción " + v + " en el material hidráulico a mano: " + opciones.join(",")); });
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 

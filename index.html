@@ -7408,10 +7408,13 @@ function computeCivil(C) {
    ========================================================================= */
 
 /* rev 2.9.16 · DECISIÓN DEL DUEÑO: tablas de espaciamiento SOP_ACERO y SOP_COBRE (código muerto desde 2.9.8) sin uso fuera de la lista activa; quedan archivados, con su valor, en Bitacora-rev-2.9.16.md §archivo. */
-/* Termoplástico (CPVC/PEAD), IPC 308.5: el dueño dio ≤1" (25 mm) a 0.9 m. El
-   resto de los cortes (1¼"–2" a 1.2 m, >3" a 1.8 m) es el que ya traía la
-   tabla; solo se agrega el escalón de 25 mm que faltaba. */
-const SOP_PLASTICO = [[25, 0.9], [50, 1.2], [80, 1.2], [999, 1.8]];
+/* H-228 (rev 2.9.24, soporte v9): claros del termoplástico POR SUBTIPO, IPC 2009 Tabla 308.5 (folleto MCP, fuente
+   secundaria: https://www.mcpcity.com/DocumentCenter/View/1067/Hanger-Spacing-Handout — ratificar con el texto de la norma):
+   CPVC ≤ 1" 3 ft (el dueño dio 0.9 m, más cerrado que los 0.914: se respeta) y ≥ 1¼" 4 ft = 1.219 m; PP ≤ 1" 32 in = 0.813 m
+   y ≥ 1¼" 4 ft = 1.219 m. El polietileno liso (PEAD) NO está en la tabla (sólo PE-AL-PE y PEX): sin fuente no se le da
+   claro y el tramo queda pendiente. Antes: una sola tabla [[25, 0.9], [50, 1.2], [80, 1.2], [999, 1.8]] para los tres
+   subtipos, sin fuente arriba de 1". */
+const SOP_PLASTICO = { cpvc: [[25, 0.9], [999, 1.219]], ppr: [[25, 0.813], [999, 1.219]] };
 /* Los motores entregan el diámetro INTERIOR real en mm (4" cédula 40 = 102.3),
    no el nominal. Las tablas de MSS SP-58 están indexadas por diámetro nominal.
    Buscar "el primero mayor o igual" mandaba el tubo de 4" al renglón de 6":
@@ -7424,9 +7427,10 @@ const dnNominal = (dmm) => DN_NOM.reduce((a, b) =>
 /* rev 2.9.16 · Acero y cobre leen la tabla VIVA (C_SOP.ESPAC_ACERO / ESPAC_COBRE, la que gobierna el motor); sólo el
    termoplástico usa su tabla propia. Ya no hay una segunda cifra para el mismo diámetro. */
 const DN_NPS = { 15: '1/2"', 20: '3/4"', 25: '1"', 32: '1-1/4"', 40: '1-1/2"', 50: '2"', 65: '2-1/2"', 80: '3"', 100: '4"', 150: '6"', 200: '8"', 250: '10"', 300: '12"' };
-const espSoporte = (dmm0, fam) => {
+const espSoporte = (dmm0, fam, sub) => {
   const dmm = dnNominal(dmm0);
-  if (fam === "plastico") return (SOP_PLASTICO.find(([d]) => dmm <= d) || SOP_PLASTICO[SOP_PLASTICO.length - 1])[1];
+  /* H-228: el termoplástico pide subtipo (cpvc / ppr); sin renglón en la tabla (pead, subtipo sin capturar) no hay claro. */
+  if (fam === "plastico") { const tp = SOP_PLASTICO[sub]; return tp ? (tp.find(([d]) => dmm <= d) || tp[tp.length - 1])[1] : null; }
   const t = fam === "cobre" ? C_SOP.ESPAC_COBRE : C_SOP.ESPAC_ACERO;
   const e = t[DN_NPS[dmm]];
   return e === undefined ? null : e;
@@ -8139,14 +8143,14 @@ function computeSoporte(Gc) {
      no un recorte nuestro. */
   let mTub = 0;
   const tramosPlastico = [];
-  const agregarTuberia = (lista, fam, disciplina, etiqueta) => {
+  const agregarTuberia = (lista, fam, disciplina, etiqueta, sub) => {
     (lista || []).forEach((t) => {
       const L = Math.max(0, num(t.L));
       if (L <= 0) return;
       const d = Math.max(10, num(t.d));
       mTub += L;
       if (fam === "plastico") {
-        tramosPlastico.push({ tag: t.tag || etiqueta, etiqueta, d, L });
+        tramosPlastico.push({ tag: t.tag || etiqueta, etiqueta, d, L, sub: sub || null });
       } else {
         tramosSC.push({ id: nuevoId(disciplina), disciplina, tipo: "tuberia",
           descripcion: t.tag || etiqueta, longitud_m: L, material: fam, dn: npsDesdeMM(d), cedula: "ced40",
@@ -8158,7 +8162,7 @@ function computeSoporte(Gc) {
   };
   if (usa) {
     if (typeof HIDRO !== "undefined" && HIDRO && HIDRO.tramos)
-      agregarTuberia(HIDRO.tramos, famSoporteAgua(S.hidro && S.hidro.material), "hidrosanitario", "Hidráulica y sanitario");
+      agregarTuberia(HIDRO.tramos, famSoporteAgua(S.hidro && S.hidro.material), "hidrosanitario", "Hidráulica y sanitario", S.hidro && S.hidro.material);
     if (typeof FUEGO !== "undefined" && FUEGO && FUEGO.nTotal > 0) {
       /* H-XX (15-sep-2026) · Antes se soportaba TODA la red contra incendio
          —cabezal del área de diseño y montante— como un solo tramo, con el
@@ -8187,7 +8191,8 @@ function computeSoporte(Gc) {
     /* H-230: cada línea a mano lleva su diámetro y su material capturados; sin diámetro no se inventa (antes 50 / 100 / 32 mm de acero). */
     const manual = (tag, tagEn, L, d, mat, disciplina, etiqueta) => {
       if (!(num(L) > 0)) return;
-      if (num(d, 0) > 0) agregarTuberia([{ tag: `${tag} (capturado a mano, ${n(num(d), 0)} mm ${mat})`, L: num(L), d: num(d) }], mat === "cobre" ? "cobre" : mat === "plastico" ? "plastico" : "acero", disciplina, etiqueta);
+      /* H-228: el termoplástico a mano lleva subtipo (cpvc / ppr / pead); el «plastico» genérico de antes queda pendiente de subtipo. */
+      if (num(d, 0) > 0) agregarTuberia([{ tag: `${tag} (capturado a mano, ${n(num(d), 0)} mm ${mat})`, L: num(L), d: num(d) }], mat === "cobre" ? "cobre" : mat === "acero" ? "acero" : "plastico", disciplina, etiqueta, mat === "plastico" ? null : mat);
       else manualPendientes.push({ que: `${tag} capturado a mano (${n(num(L), 0)} m)`, queEn: `${tagEn} entered by hand (${n(num(L), 0)} m)`, falta: "diámetro (mm) y material", faltaEn: "diameter (mm) and material" });
     };
     manual("Hidrosanitario", "Plumbing", Gc.tubHidroM, Gc.tubHidroD, Gc.tubHidroMat || "acero", "hidrosanitario", "Hidráulica y sanitario");
@@ -8217,16 +8222,34 @@ function computeSoporte(Gc) {
   });
 
   /* ---- Tramos de termoplástico, con el sistema propio de la suite ---- */
+  /* H-228 (rev 2.9.24, soporte v9): claro por subtipo (IPC 2009 T308.5 vía MCP); sin renglón (PEAD, subtipo sin capturar) el
+     tramo queda pendiente de claro: no se cuenta ni se cotiza. Cada soporte contado lleva su ancla (misma selección ACI 318-19
+     cap. 17 y misma referencia de SDS / estructura que SoporteCalc, sujeta a H-226) y 4 tuercas + 4 rondanas, el criterio del
+     despiece; antes el termoplástico salía sin anclas ni tornillería. */
+  const sdsRef = num(Gc.sismoSDS, 0) > 0 ? num(Gc.sismoSDS) : 1.0;
+  const fcRefMpa = (num(Gc.estructuraFc, 0) > 0 ? num(Gc.estructuraFc) : 250) * 0.0980665;
   const plastResultados = tramosPlastico.map((t) => {
-    const e = espSoporte(t.d, "plastico");
+    const e = espSoporte(t.d, "plastico", t.sub);
+    if (e === null) {
+      const sub = t.sub ? t.sub.toUpperCase() : "sin subtipo";
+      manualPendientes.push({ que: `${t.tag} (${n(t.L, 0)} m, termoplástico ${sub})`, queEn: `${t.tag} (${n(t.L, 0)} m, thermoplastic ${sub})`,
+        falta: t.sub ? "claro con fuente (PEAD no está en IPC 2009 Tabla 308.5; sólo PE-AL-PE y PEX)" : "subtipo de termoplástico (CPVC / PP-R / PEAD)",
+        faltaEn: t.sub ? "spacing with a source (HDPE is not in IPC 2009 Table 308.5; only PE-AL-PE and PEX)" : "thermoplastic subtype (CPVC / PP-R / HDPE)" });
+      avisos.push({ lvl: "warn", msg: `${t.tag}: termoplástico ${sub} pendiente de claro. IPC 2009 Tabla 308.5 (folleto MCP) no trae renglón para ${t.sub ? "polietileno liso (PEAD)" : "un termoplástico sin subtipo"}; sin fuente no se cuenta ni se cotiza (H-228).` });
+      return { ...t, e: null, n: 0, wl: 0, carga: 0, varilla: null, varillaOk: false, adm: 0, ancla: null, pendiente: true };
+    }
     const k = Math.ceil(t.L / e) + 1;
     const wl = pesoLinealLleno(t.d, "plastico");
     const carga = wl * e;
     const V = varillaPorCarga(carga);
-    return { ...t, e, n: k, wl, carga, varilla: V.d, varillaOk: V.alcanza, adm: V.kg };
+    const Fp = Gc.sismico !== false ? fuerzaSismica({ Wp_kgf: carga, SDS: sdsRef, ap: C_SOP.SISMO_DEFECTO.ap, Rp: C_SOP.SISMO_DEFECTO.Rp, z: alturaMontaje, h: hZonas }).Fp_kgf : 0;
+    const A = (Gc.estructuraTipo || "losa_concreto") === "losa_concreto"
+      ? seleccionarAnclaje({ n_anclajes: 1, tension_kgf: carga, cortante_kgf: Fp, fc_mpa: fcRefMpa, agrietado: true, postinstalado: true, borde_min_mm: 9999, tau_cr_mpa: C_SOP.TAU_CR_DEFECTO })
+      : null;
+    return { ...t, e, n: k, wl, carga, varilla: V.d, varillaOk: V.alcanza, adm: V.kg, ancla: A ? A.anclaje : null, pendiente: false };
   });
-  if (plastResultados.length)
-    avisos.push({ lvl: "info", msg: `${plastResultados.length} tramo(s) de termoplástico (CPVC/PEAD): SoporteCalc solo cubre acero y cobre, así que estos siguen con espaciamiento y varilla de la suite (MSS SP-58 / IPC 308.5), sin trapecio ni anclaje calculados.` });
+  if (plastResultados.some((p) => !p.pendiente))
+    avisos.push({ lvl: "info", msg: `${plastResultados.filter((p) => !p.pendiente).length} tramo(s) de termoplástico (CPVC/PP-R): SoporteCalc solo cubre acero y cobre, así que estos siguen con espaciamiento y varilla de la suite (IPC 2009 Tabla 308.5 vía MCP, MSS SP-58 tabla 3) y ancla con el mismo criterio del despiece, sin trapecio (H-228).` });
 
   /* ---- Reconstrucción de porTuberia (compatible con memoria, PDF y pruebas) ---- */
   const porTuberia = [];
@@ -8244,7 +8267,7 @@ function computeSoporte(Gc) {
   plastResultados.forEach((p) => {
     const g = grupoDe(p.etiqueta);
     g.fam = "plastico"; g.n += p.n; g.m += p.L;
-    g.det.push({ tag: p.tag, d: p.d, e: p.e, L: p.L, n: p.n, wl: p.wl, carga: p.carga, varilla: p.varilla, varillaOk: p.varillaOk, adm: p.adm });
+    g.det.push({ tag: p.tag, d: p.d, e: p.e, L: p.L, n: p.n, wl: p.wl, carga: p.carga, varilla: p.varilla, varillaOk: p.varillaOk, adm: p.adm, ancla: p.ancla, pendiente: p.pendiente });
   });
 
   const nSoportesSC = R.resumen.soportes;
@@ -8295,22 +8318,25 @@ function computeSoporte(Gc) {
   /* H-56: mismo criterio de altura de colgado que el resto del despiece —
      antes 0.5 m fijo aquí también, ahora la misma alturaColgado derivada. */
   plastResultados.forEach((p) => { if (p.varilla) varMerge[p.varilla] = redondo((varMerge[p.varilla] || 0) + p.n * alturaColgado, 2); });
-  const colgadoPendiente = !colgadoCapturado && Object.values(R.despiece.anclajes_pza || {}).some((c) => c > 0);
+  /* H-228: las anclas del termoplástico (una por soporte) se suman al despiece de SoporteCalc con la misma compuerta H-226. */
+  const anclMerge = { ...(R.despiece.anclajes_pza || {}) };
+  plastResultados.forEach((p) => { if (p.ancla && p.n > 0) anclMerge[p.ancla] = (anclMerge[p.ancla] || 0) + p.n; });
+  const colgadoPendiente = !colgadoCapturado && Object.values(anclMerge).some((c) => c > 0);
   const sdsCapturado = num(Gc.sismoSDS, 0) > 0 && String(Gc.sismoFuente || "").trim().length > 0;
   const estructuraCapturada = !!Gc.estructuraTipo && (Gc.estructuraTipo !== "losa_concreto" || num(Gc.estructuraFc, 0) > 0);
   const anclajeCapturado = sdsCapturado && estructuraCapturada;
-  const anclajePendiente = !anclajeCapturado && Object.values(R.despiece.anclajes_pza || {}).some((c) => c > 0);
+  const anclajePendiente = !anclajeCapturado && Object.values(anclMerge).some((c) => c > 0);
   if (anclajePendiente) avisos.push({ lvl: "warn", msg: `Anclaje «Por cotizar»: falta ${[!sdsCapturado ? "el SDS del sitio con su fuente" : "", !estructuraCapturada ? "el tipo de estructura (y f'c en losa)" : ""].filter(Boolean).join(" y ")}. Se predimensionó con valores de referencia (SDS ${n(num(Gc.sismoSDS, 0) > 0 ? num(Gc.sismoSDS) : 1.0, 2)}, ${Gc.estructuraTipo || "losa de concreto"}${Gc.estructuraTipo && Gc.estructuraTipo !== "losa_concreto" ? "" : ` f'c ${n(num(Gc.estructuraFc, 0) > 0 ? num(Gc.estructuraFc) : 250, 0)} kg/cm²`}) que no son datos del edificio (H-226).` });
   if (!colgadoPendiente) Object.entries(varMerge).forEach(([id, m]) => P(`Varilla roscada ${id} galvanizada, incluye corte y habilitado`, "ML", m, PU_SOP_VARILLA[id] || 300, "MSS SP-58 tabla 3",
     `${id} galvanized threaded rod, includes cutting and setup`));
   if (colgadoPendiente) avisos.push({ lvl: "warn", msg: `Varilla roscada pendiente: no hay altura de colgado capturada (sugerencia: la altura de trabajo, ${n(colgadoSugerido, 1)} m). Sin captura no se cuentan metros de varilla (H-225).` });
   Object.entries(R.despiece.perfil_m).forEach(([id, m]) => { const p = C_SOP.PERFILES.find((x) => x.id === id); P(`${p.nombre}, incluye corte y anticorrosivo`, "ML", m, PU_SOP_PERFIL[id] || 250, "Trapecio revisado a flexión y deflexión · ASD",
     `${p.nombreEn}, includes cutting and anticorrosive coating`); });
-  if (!anclajePendiente) Object.entries(R.despiece.anclajes_pza).forEach(([id, cnt]) => P(`Anclaje ${id} a concreto, incluye barrenado y limpieza de barreno`, "PIEZA", cnt, PU_SOP_ANCLAJE[id] || 150, "ACI 318-19 cap. 17 · predimensionado, ratificar contra el ESR del fabricante",
+  if (!anclajePendiente) Object.entries(anclMerge).forEach(([id, cnt]) => P(`Anclaje ${id} a concreto, incluye barrenado y limpieza de barreno`, "PIEZA", cnt, PU_SOP_ANCLAJE[id] || 150, "ACI 318-19 cap. 17 · predimensionado, ratificar contra el ESR del fabricante",
     `${id} concrete anchor, includes drilling and hole cleaning`));
   const abrazMerge = R.despiece.abrazaderas_pza + nSoportesPlast;
   P("Abrazadera de sujeción, incluye tornillería", "PIEZA", abrazMerge, PU_SOP_ABRAZADERA, null, "Support clamp, includes hardware");
-  P("Tuerca y rondana galvanizadas", "PIEZA", R.despiece.tuercas_pza + R.despiece.rondanas_pza, PU_SOP_TUERCA_RONDANA, null, "Galvanized nut and washer");
+  P("Tuerca y rondana galvanizadas", "PIEZA", R.despiece.tuercas_pza + R.despiece.rondanas_pza + 8 * nSoportesPlast, PU_SOP_TUERCA_RONDANA, null, "Galvanized nut and washer");
   if (R.despiece.riostras_sismicas_pza || (nLong + nTrans > 0))
     P("Riostra sísmica NFPA 13 cap. 18, incluye herrajes y anclaje", "PIEZA", nLong + nTrans, PU_SOP_RIOSTRA, "NFPA 13 cap. 18",
       "NFPA 13 chap. 18 seismic brace, includes hardware and anchor");
@@ -8344,12 +8370,13 @@ function computeSoporte(Gc) {
     if (rigeSC.anclaje) memo.push(`Anclaje ${rigeSC.anclaje.anclaje} a ${estructuraCapturada ? (Gc.estructuraTipo === "losa_concreto" ? `losa de concreto f'c ${n(num(Gc.estructuraFc), 0)} kg/cm² (capturado)` : `${Gc.estructuraTipo} (capturado)`) : "losa de concreto f'c 250 kg/cm² DE REFERENCIA (tipo de estructura y f'c no capturados: anclaje Por cotizar)"}: interacción tensión-cortante ${n(rigeSC.anclaje.interaccion, 2)} (${rigeSC.anclaje.criterio}), ${rigeSC.anclaje.pasa ? "pasa" : "NO PASA"} — ACI 318-19 cap. 17. Predimensionado: el valor que se firma sale del reporte de evaluación (ESR/ICC-ES) del anclaje que se compre.`);
   }
   memo.push(`${nSoportes} soportes contados de ${n(mDucto + mTub, 0)} m de instalación (${n(mDucto, 0)} m de ducto, ${n(mTub, 0)} m de tubería): varilla, perfil de trapecio y anclaje a concreto revisados por capacidad, no un lote estimado — SoporteCalc v0.1.0 (MSS SP-58, ACI 318-19 cap. 17, ASCE 7-16 §13.3.1, NFPA 13 cap. 18).`);
+  if (plastResultados.some((p) => !p.pendiente)) memo.push(`Claros del termoplástico: IPC 2009 Tabla 308.5 (folleto MCP, fuente secundaria; ratificar con el texto): CPVC ≤ 1" 0.9 m (decisión del dueño, más cerrado que los 3 ft) y ≥ 1¼" 1.219 m; PP-R ≤ 1" 0.813 m y ≥ 1¼" 1.219 m. Varilla MSS SP-58 tabla 3 y ancla ACI 318-19 cap. 17 con el mismo criterio del despiece (una ancla, 4 tuercas y 4 rondanas por soporte), sin trapecio (H-228).`);
   if (Gc.sismico) memo.push(`Arriostramiento sísmico NFPA 13 cap. 18: ${nLong} longitudinales cada 24.4 m y ${nTrans} transversales cada 12.2 m, contados tramo por tramo sobre ${n(mArriostrable, 0)} m de corrida.`);
   if (part.length) memo.push(`Elevación: ${equipo.label.toLowerCase()} por altura de trabajo de ${n(hTrab, 1)} m. ${equipo.nota} NOM-009-STPS exige equipo certificado y personal capacitado para trabajos en altura.`);
 
   return { porTuberia, mDucto, mTub, nSoportes, nLong, nTrans, mArriostrable,
     hTrab, equipo, meses, mesesPendiente, nEquipos, part, total, avisos, memo, alturaColgado, colgadoCapturado, colgadoPendiente, colgadoSugerido,
-    manualPendientes, sdsCapturado, estructuraCapturada, anclajeCapturado, anclajePendiente, anclajesPza: Object.entries(R.despiece.anclajes_pza || {}).map(([id, cnt]) => ({ id, cnt })),
+    manualPendientes, sdsCapturado, estructuraCapturada, anclajeCapturado, anclajePendiente, anclajesPza: Object.entries(anclMerge).map(([id, cnt]) => ({ id, cnt })),
     sopcalc: R };   // corrida completa de SoporteCalc, por si se quiere el detalle fino
 }
 
@@ -17332,6 +17359,8 @@ function snapshotSoporte() {
       gauge: s.gauge ? num(s.gauge.gauge) : null })),
     hidro: ht.map((t) => ({ tag: t.tag || t.etiqueta || "", L: num(t.L), d: num(t.d) })),
     hidroMat: famSoporteAgua(S.hidro && S.hidro.material),
+    /* H-228: el claro del termoplástico depende del subtipo (CPVC / PP-R / PEAD); la familia sola no alcanza. */
+    hidroSub: famSoporteAgua(S.hidro && S.hidro.material) === "plastico" ? (S.hidro.material || null) : null,
     /* H-46 (15-sep-2026) · Antes solo {nTotal, monD}: sin longitudes, el
        cabezal y el montante llegaban reconstruidos con L=0 (agregarTuberia los
        descarta) y la red contra incendio soportaba CERO metros en modo
@@ -17352,7 +17381,7 @@ function resumenSnapSoporte(sn) {
   const m = (xs) => xs.reduce((a, x) => a + Math.max(0, num(x.L)), 0);
   /* Capa 0 · 2.5: el material entra a la firma de la instantánea; si no se
      nombra aquí, la tarjeta desactualizada muestra dos textos idénticos. */
-  const matSop = sn.hidroMat === "plastico" ? "termoplástico" : (sn.hidroMat || "acero");
+  const matSop = sn.hidroMat === "plastico" ? `termoplástico${sn.hidroSub && sn.hidroSub !== "plastico" ? " " + String(sn.hidroSub).toUpperCase() : ""}` : (sn.hidroMat || "acero");
   return `${n(m(sn.duct), 0)} m de ducto (${sn.duct.length} tramos) · ${n(m(sn.hidro), 0)} m de tubería hidráulica soportada como ${matSop} · incendio ${sn.fuego.nTotal} rociador(es) · ${n(m(sn.aire), 0)} m de red de aire · ${sn.nEquip} base(s) de equipo`;
 }
 /* Soportería con instantánea: el motor de soportería no cambia, pero se le
@@ -17379,7 +17408,8 @@ function computeSoporteGobernado(G) {
   };
   AIRE = { tramos: (snap.aire || []).map((t) => ({ etiqueta: t.etiqueta, L: num(t.L), d: num(t.d) })), totalUnidades: 0 };
   QUOTE = { nEquip: num(snap.nEquip), deSnap: true }; /* H-231: las bases salen de snap.nEquip, no del conteo en vivo */
-  S.hidro = { ...(S.hidro || {}), material: snap.hidroMat };
+  /* H-228: con el subtipo guardado; una instantánea vieja sin subtipo queda «plastico» y el claro, pendiente de subtipo. */
+  S.hidro = { ...(S.hidro || {}), material: snap.hidroSub || snap.hidroMat };
   S.aire = { ...(S.aire || {}), material: snap.aireMat };
   try { return computeSoporte(G); }
   finally { [DUCT, HIDRO, FUEGO, AIRE, QUOTE, S.hidro, S.aire] = prev; }
@@ -18065,7 +18095,7 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "5", clean: "3", equip: "1", duct: "1", vent: "3", quote: "15", valor: "1", kaizen: "1", elec: "8", hidro: "8", fuego: "3", aire: "5", civil: "3", soporte: "8" };
+const MOTOR_VER = { load: "5", clean: "3", equip: "1", duct: "1", vent: "3", quote: "15", valor: "1", kaizen: "1", elec: "8", hidro: "8", fuego: "3", aire: "5", civil: "3", soporte: "9" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
@@ -18100,7 +18130,8 @@ const MOTOR_CAMBIOS = {
     { ver: "5", rev: "2.9.24", que: "H-225: la altura de colgado se captura en pantalla; sin captura la varilla roscada queda pendiente (antes se tomaba la altura de trabajo: 633.6 ML en el proyecto fijo)" },
     { ver: "6", rev: "2.9.24", que: "H-226: SDS (con fuente), tipo de estructura y f'c se capturan; sin ellos el anclaje se predimensiona con valores de referencia declarados y va Por cotizar; la memoria imprime Fp, ap y Rp con su aviso (antes SDS 1.0 / losa f'c 250 supuestos como datos)" },
     { ver: "7", rev: "2.9.24", que: "H-230: el modo «valores propios» pide medidas del ducto, diámetro y material de cada tubería; sin ellos la línea queda pendiente (antes 400×300, 50/100/32 mm de acero inventados)" },
-    { ver: "8", rev: "2.9.24", que: "H-229 (decisión 4): claros de cobre al mínimo de MSS SP-58-2018 (PHD) e IPC 2009 T308.5 (MCP), secundarias declaradas: ½\"–¾\" 1.524 m, 1\"–1¼\" 1.829, 1½\"–2\" 2.438, 2½\" 2.743, 3\"–4\" 3.048 (antes 1.8 / 2.4 / 3.0 / 3.7)" }],
+    { ver: "8", rev: "2.9.24", que: "H-229 (decisión 4): claros de cobre al mínimo de MSS SP-58-2018 (PHD) e IPC 2009 T308.5 (MCP), secundarias declaradas: ½\"–¾\" 1.524 m, 1\"–1¼\" 1.829, 1½\"–2\" 2.438, 2½\" 2.743, 3\"–4\" 3.048 (antes 1.8 / 2.4 / 3.0 / 3.7)" },
+    { ver: "9", rev: "2.9.24", que: "H-228: claros del termoplástico por subtipo, IPC 2009 T308.5 (MCP, secundaria): CPVC ≤1\" 0.9 m (dueño) y ≥1¼\" 1.219 (antes 1.2 / 1.8), PP-R ≤1\" 0.813 y ≥1¼\" 1.219; PEAD sin renglón queda pendiente de claro; cada soporte de termoplástico lleva ancla (sujeta a H-226) y 4+4 tuercas/rondanas como el despiece (antes 0)" }],
 };
 const motorVer = (id) => MOTOR_VER[id] || "1";
 function cambiosMotorTexto(id, desde) { return (MOTOR_CAMBIOS[id] || []).filter((c) => +c.ver > +(desde || 1)).map((c) => `v${c.ver} (rev ${c.rev}): ${c.que}`).join("; ") || "cambio de lógica del motor"; }
@@ -20788,11 +20819,11 @@ function viewSoporte() {
       </div><div class="row">
         ${inp("Metros de tubería hidráulica", "soporte.tubHidroM", "number", "1", "sop.h", G)}
         ${inp("Hidráulica: diámetro (mm) · sin él queda pendiente", "soporte.tubHidroD", "number", "1")}
-        ${sel("Hidráulica: material", "soporte.tubHidroMat", [["acero", "Acero"], ["cobre", "Cobre"], ["plastico", "Termoplástico (CPVC / PP-R / PEAD)"]])}
+        ${sel("Hidráulica: material", "soporte.tubHidroMat", [["acero", "Acero"], ["cobre", "Cobre"], ["cpvc", "CPVC"], ["ppr", "PP-R"], ["pead", "PEAD (sin claro en IPC 308.5: queda pendiente)"]])}
       </div><div class="row">
         ${inp("Metros de red contra incendio", "soporte.tubFuegoM", "number", "1", "sop.f", G)}
         ${inp("Incendio: diámetro (mm)", "soporte.tubFuegoD", "number", "1")}
-        ${sel("Incendio: material", "soporte.tubFuegoMat", [["acero", "Acero"], ["cobre", "Cobre"], ["plastico", "Termoplástico (CPVC)"]])}
+        ${sel("Incendio: material", "soporte.tubFuegoMat", [["acero", "Acero"], ["cobre", "Cobre"], ["cpvc", "CPVC"]])}
       </div><div class="row">
         ${inp("Metros de red de aire", "soporte.tubAireM", "number", "1", "sop.a", G)}
         ${inp("Aire: diámetro (mm)", "soporte.tubAireD", "number", "1")}
@@ -20825,7 +20856,7 @@ function viewSoporte() {
       </div>
       ${R.porTuberia.length ? `<div class="tw" style="margin-top:14px"><table>
         <thead><tr><th>Servicio</th><th>Tramo</th><th class="num">Ø mm</th><th class="num">Espac. m</th><th class="num">Long m</th><th class="num">Soportes</th></tr></thead>
-        <tbody>${R.porTuberia.flatMap((x) => x.det.map((d) => `<tr><td>${esc(x.etiqueta)}</td><td>${esc(String(d.tag))}</td><td class="num">${n(d.d, 0)}</td><td class="num">${n(d.e, 1)}</td><td class="num">${n(d.L, 0)}</td><td class="num">${d.n}</td></tr>`)).join("")}</tbody>
+        <tbody>${R.porTuberia.flatMap((x) => x.det.map((d) => `<tr><td>${esc(x.etiqueta)}</td><td>${esc(String(d.tag))}</td><td class="num">${n(d.d, 0)}</td><td class="num">${d.pendiente ? "pendiente" : n(d.e, 1)}</td><td class="num">${n(d.L, 0)}</td><td class="num">${d.n}</td></tr>`)).join("")}</tbody>
       </table></div>` : ""}
     </div></div>
 
@@ -20874,7 +20905,7 @@ function buildSoportePdf() {
   if (R.porTuberia.length) {
     pdfHeading(d, "Conteo por tramo");
     pdfTable(d, ["Servicio", "Tramo", "Diam mm", "Espac m", "Long m", "Soportes"],
-      R.porTuberia.flatMap((x) => x.det.map((t) => [x.etiqueta, String(t.tag), n(t.d, 0), n(t.e, 1), n(t.L, 0), String(t.n)])),
+      R.porTuberia.flatMap((x) => x.det.map((t) => [x.etiqueta, String(t.tag), n(t.d, 0), t.pendiente ? "pendiente" : n(t.e, 1), n(t.L, 0), String(t.n)])),
       [120, 130, 55, 55, 55, 71]);
   }
   pdfHeading(d, "Resumen del conteo");

@@ -39,9 +39,9 @@ módulo `pruebas-motores/soporte.mjs` (12 pruebas), compuerta `parches/mutantes/
 | ~~CM.soporte.4.c~~ | H-229 | **vigente desde el 25-sep-2026** | = esperado | ídem |
 | ~~CM.soporte.4.d~~ | H-229 | **vigente desde el 25-sep-2026** (3.048 m: IPC 10 ft gobierna) | = esperado | consecuencia de la decisión 4: ratificar |
 | CM.soporte.4.m / 4.n | H-233 | acero 4" y 6" de plomería 3.658 m (IPC 12 ft gobierna sobre MSS 14/17 ft) | 4.3 / 5.2 | decisión 4 (mínimo de ambas); H-233 es severidad A, no está en el plan de críticos: el integrador decide si entra |
-| CM.soporte.4.r / 4.s | H-228 | CPVC 4" y 6" 1.219 m | 1.8 | IPC 2009 T308.5 (CPVC ≥ 1¼": 4 ft) |
+| ~~CM.soporte.4.r / 4.s~~ | H-228 | **vigentes desde el 25-sep-2026** (y 4.t / 4.u PP-R nuevas) | = esperado | IPC 2009 T308.5 vía MCP |
 | CM.soporte.5.e | H-227 | ducto rectangular 2 varillas por soporte | 1 | SMACNA DCS Tabla 5-1 «pair» · **BLOQUEADO: requiere texto** |
-| CM.soporte.7.h / 7.i | H-228 | termoplástico: 38 anclas y 304 tuercas/rondanas (una ancla y 4+4 por soporte, mismo criterio del despiece) | 0 / 0 | H-228; la cantidad exacta depende de cómo la Fase 2 sume el camino propio al despiece (ajustar la fila si se decide otro conteo) |
+| ~~CM.soporte.7.h / 7.i~~ | H-228 | **vigentes desde el 25-sep-2026**: 7.h cuenta `SOPORTE.anclajesPza` (sin SDS las anclas van «Por cotizar», H-226) | = esperado | criterio del despiece |
 | ~~CM.soporte.15.g~~ | H-225 | **vigente desde el 25-sep-2026** | = esperado | «Nada se estima» (regla 6). La expresión supone que la Fase 2 deja la partida sin importe o la retira; si opta por otra señal, ajustar la expresión |
 | ~~CM.soporte.15.h~~ | H-226 | **vigente desde el 25-sep-2026** | = esperado | ídem |
 | ~~CM.soporte.11c.a~~ | H-232 | **vigente desde el 25-sep-2026** | = esperado | política de pisos 2.9.16 |
@@ -52,7 +52,7 @@ módulo `pruebas-motores/soporte.mjs` (12 pruebas), compuerta `parches/mutantes/
 | id | H-nnn | Por qué no se mata hoy con una prueba legítima |
 |---|---|---|
 | soporte.m05 | H-229 | reapuntado al cierre: vuelve a 1.8 / 2.4 m; MUERTO (S.76, L.2, CM.soporte.3/4, R.1) |
-| soporte.m06 | H-228 | termoplástico > 3" a 3.0 m; sólo se mataría afirmando el 1.8 m actual (el correcto es 1.22) |
+| soporte.m06 | H-228 | reapuntado al cierre: CPVC ≥ 1¼" vuelve a 1.8 m; MUERTO (22.8, S.77, CM.soporte.4/7). Nuevos m49/m50/m51 (tuercas, anclas, PEAD con tabla de CPVC): MUERTOS (S.77, CM.soporte.7, 22.8) |
 | soporte.m08 | H-232 | reapuntado al cierre: vuelve a poner el piso de 1 mes; MUERTO (S.71, 11c.a) |
 | soporte.m16 | H-227 | par de varillas en ducto rectangular; lo matan R.1/S.20 afirmando 1 varilla (SMACNA bloqueado) |
 | soporte.m45 | H-225 | reapuntado al cierre: sin captura vuelve a la altura de trabajo; MUERTO (S.73, Q.3, 15.g, R.1) |
@@ -76,8 +76,9 @@ módulo `pruebas-motores/soporte.mjs` (12 pruebas), compuerta `parches/mutantes/
   adherencia gobierna en los cuatro anclajes del catálogo (M10 699.7, M12 1019.5, M16 1679.2, M20 2598.7 kgf), así
   que `kc_post` y `phi_conc_tension` sobre Ncb no mueven ningún número del estado; el mutante m15 se mata sólo con
   τcr = 20 MPa (9.a). ACI 318-19 cap. 17 no está en texto.
-- **PP-R ≤ 1" a 0.81 m (IPC 32 in):** `espSoporte(d, fam)` no distingue PP-R de CPVC (ambos «plastico»); la fila
-  requiere la firma que defina la Fase 2 de H-228.
+- **PP-R ≤ 1" a 0.81 m (IPC 32 in):** cubierto desde H-228 (`espSoporte(d, "plastico", sub)`, filas 4.t / 4.u).
+- **PEAD (H-228):** IPC 2009 T308.5 no trae polietileno liso; el tramo queda pendiente de claro (S.77). Sin fila numérica:
+  el valor correcto es «pendiente», no un número.
 - **Precios PU_SOP_* (referencia interna sin fuente ni fecha):** entran como ENTRADA en 11.j (385,760); la regla 6
   («Por cotizar») es de la Fase 4 (quote), no de este motor.
 - **Fuentes:** MSS SP-58-2018 (PHD) e IPC 2009 T308.5 (MCP) son secundarias (URL en `soporte.calc.mjs`); ASCE 7-16

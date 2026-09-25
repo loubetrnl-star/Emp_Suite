@@ -9,8 +9,8 @@
     "buscar": "const SISMO_DEFECTO = { ap: 2.5, Rp: 9.0,", "reemplazar": "const SISMO_DEFECTO = { ap: 2.5, Rp: 90.0,", "estado": "vigente" },
   { "id": "soporte.m05", "que": "H-229: cobre ½\"–1½\" vuelve a los 1.8 / 2.4 m sin fuente (antes de H-229)", "logica": true,
     "buscar": "'1/2\"': 1.524, '3/4\"': 1.524, '1\"': 1.829, '1-1/4\"': 1.829, '1-1/2\"': 2.438,", "reemplazar": "'1/2\"': 1.8, '3/4\"': 1.8, '1\"': 1.8, '1-1/4\"': 1.8, '1-1/2\"': 2.4,", "estado": "vigente" },
-  { "id": "soporte.m06", "que": "termoplástico > 3\" a 3.0 m en vez de 1.8 m (IPC 2009 T308.5: 1.22 m); sólo se mata afirmando 1.8", "logica": true,
-    "buscar": "const SOP_PLASTICO = [[25, 0.9], [50, 1.2], [80, 1.2], [999, 1.8]];", "reemplazar": "const SOP_PLASTICO = [[25, 0.9], [50, 1.2], [80, 1.2], [999, 3.0]];", "estado": "fase2:H-228" },
+  { "id": "soporte.m06", "que": "H-228: CPVC ≥ 1¼\" vuelve a 1.8 m (antes de H-228; IPC 2009 T308.5: 1.219)", "logica": true,
+    "buscar": "const SOP_PLASTICO = { cpvc: [[25, 0.9], [999, 1.219]], ppr: [[25, 0.813], [999, 1.219]] };", "reemplazar": "const SOP_PLASTICO = { cpvc: [[25, 0.9], [999, 1.8]], ppr: [[25, 0.813], [999, 1.219]] };", "estado": "vigente" },
   { "id": "soporte.m07", "que": "tope NFPA 13 4.6 → 46 m (nunca gobierna)", "logica": true,
     "buscar": "const ESPAC_NFPA13_MAX = 4.6;", "reemplazar": "const ESPAC_NFPA13_MAX = 46;", "estado": "vigente" },
   { "id": "soporte.m08", "que": "renta de elevación sin el mes mínimo (0 capturado se respeta); sólo se mata afirmando el piso de 1 mes", "logica": true,
@@ -94,5 +94,11 @@
   { "id": "soporte.m48", "que": "H-226: el anclaje se cotiza aunque falten SDS con fuente, estructura y f'c", "logica": true,
     "buscar": "const anclajeCapturado = sdsCapturado && estructuraCapturada;", "reemplazar": "const anclajeCapturado = true;", "estado": "vigente" },
   { "id": "soporte.m47", "que": "H-231: el modo gobernado vuelve a contar las bases en vivo (pierde el compresor)", "logica": true,
-    "buscar": "QUOTE = { nEquip: num(snap.nEquip), deSnap: true };", "reemplazar": "QUOTE = { nEquip: num(snap.nEquip), deSnap: false };", "estado": "vigente" }
+    "buscar": "QUOTE = { nEquip: num(snap.nEquip), deSnap: true };", "reemplazar": "QUOTE = { nEquip: num(snap.nEquip), deSnap: false };", "estado": "vigente" },
+  { "id": "soporte.m49", "que": "H-228: el termoplástico vuelve a salir sin tuercas ni rondanas", "logica": true,
+    "buscar": "R.despiece.tuercas_pza + R.despiece.rondanas_pza + 8 * nSoportesPlast,", "reemplazar": "R.despiece.tuercas_pza + R.despiece.rondanas_pza + 0 * nSoportesPlast,", "estado": "vigente" },
+  { "id": "soporte.m50", "que": "H-228: el termoplástico vuelve a salir sin anclas", "logica": true,
+    "buscar": "plastResultados.forEach((p) => { if (p.ancla && p.n > 0) anclMerge[p.ancla] = (anclMerge[p.ancla] || 0) + p.n; });", "reemplazar": "plastResultados.forEach((p) => { if (p.ancla && p.n > 0) anclMerge[p.ancla] = (anclMerge[p.ancla] || 0) + 0; });", "estado": "vigente" },
+  { "id": "soporte.m51", "que": "H-228: PEAD vuelve a tomar la tabla de CPVC (sin fuente)", "logica": true,
+    "buscar": "const tp = SOP_PLASTICO[sub]; return", "reemplazar": "const tp = SOP_PLASTICO[sub] || SOP_PLASTICO.cpvc; return", "estado": "vigente" }
 ]
