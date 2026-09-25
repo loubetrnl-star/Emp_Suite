@@ -125,7 +125,7 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 | 2 | 2.9.16 | sin área clasificada no hay partidas de área clasificada |
 | 3 | 2.9.19 | un cuarto limpio vacío no cuenta como área clasificada |
 
-## Soportería (`soporte`) · v6
+## Soportería (`soporte`) · v7
 
 | Versión | Rev | Hallazgo / cambio de lógica |
 |---|---|---|
@@ -135,4 +135,5 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 | 4 | 2.9.24 | H-231: en modo gobernado (instantánea motores>soporte aceptada) las bases de equipo salen de `snap.nEquip` (equipos cotizados + unidades de aire al tomar la instantánea); antes el conteo en vivo sumaba 0 unidades de aire del sustituto y perdía el compresor (3 → 2 bases, −18,500 MXN). Proyecto fijo (en vivo): sin cambio |
 | 5 | 2.9.24 | H-225 («nada se estima»): campo «Altura de colgado (m)» en pantalla; sin captura la varilla roscada queda pendiente (aviso en el motor, pendiente en la cotización; la altura de trabajo sólo se sugiere). Antes se tomaba la altura de trabajo: 7.2 m por varilla, 633.6 ML = 41,184 MXN en el proyecto fijo. Proyecto fijo: 385,760 → 344,576 MXN |
 | 6 | 2.9.24 | H-226 («nada se estima»): SDS del sitio con su fuente, tipo de estructura y f'c se capturan en pantalla; sin ellos SoporteCalc predimensiona con valores de referencia DECLARADOS (SDS 1.0, losa f'c 250; las fórmulas no cambian) y el anclaje va «Por cotizar» (sección G) con sus piezas; la memoria imprime Fp, SDS (capturado o de referencia), Ip, ap, Rp, z/h y el aviso «ap y Rp son valores DECLARADOS». Antes SDS 1.0 / losa / f'c 250 se afirmaban como datos. Proyecto fijo: 344,576 → 336,216 MXN |
+| 7 | 2.9.24 | H-230 («nada se estima»): el modo «valores propios» pide ancho y alto del ducto, y diámetro y material (acero / cobre / termoplástico) de cada tubería capturada a mano; sin ellos la línea no se cuenta ni se cotiza y queda pendiente (aviso en el motor, pendiente en la cotización); la memoria dice que las medidas son capturadas a mano. Antes se inventaban 400×300 mm y 50 / 100 / 32 mm de acero y la memoria los imprimía como calculados. Proyecto fijo (modo motores): sin cambio |
 

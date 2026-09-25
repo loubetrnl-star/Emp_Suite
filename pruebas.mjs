@@ -6962,6 +6962,33 @@ t("S.74 (H-226) los datos del edificio no se suponen: sin SDS con fuente, tipo d
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+t("S.75 (H-230) el modo «valores propios» pide diámetro y material (y medidas del ducto): sin ellos no inventa 50/100/32 mm ni 400×300 y las líneas quedan pendientes con aviso y en la cotización; con ellos cuenta soportes y la memoria dice que son capturados a mano", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.75"; Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.75" }; });
+    S.zones[0].area = 200; S.zones[0].height = 6;
+    S.soporte = { ...G("defaultSoporte")(), usarMotores: false, ductoM: 25, tubHidroM: 30, tubFuegoM: 0, tubAireM: 12, mesesElevacion: 0 };
+    G("recompute")();
+    let R = G("SOPORTE");
+    eq(R.nSoportes, 0, "sin diámetro ni medidas no se cuentan soportes (antes 50/100/32 mm y 400×300 inventados):");
+    const pend = R.avisos.filter((a) => /pendiente/.test(a.msg) && /(diámetro|medidas)/.test(a.msg));
+    eq(pend.length, 3, "un aviso por línea sin dato (ducto, hidráulica, aire):");
+    eq((G("QUOTE").pendientes || []).filter((p) => p.mot === "soporte" && /diámetro|medidas/.test(p.motivo)).length, 3, "la cotización los declara:");
+    S.tab = "soporte"; G("render")();
+    ["soporte.ductoAnchoMm", "soporte.ductoAltoMm", "soporte.tubHidroD", "soporte.tubHidroMat", "soporte.tubAireD", "soporte.tubAireMat"].forEach((p) => { if (!w.document.querySelector('#view [data-path="' + p + '"]')) throw new Error("falta el campo " + p); });
+    /* Con diámetro, material y medidas: se cuenta. */
+    S.soporte.ductoAnchoMm = 400; S.soporte.ductoAltoMm = 300; S.soporte.tubHidroD = 50; S.soporte.tubHidroMat = "acero"; S.soporte.tubAireD = 32; S.soporte.tubAireMat = "cobre"; G("recompute")(); R = G("SOPORTE");
+    if (!(R.nSoportes > 0)) throw new Error("con diámetro y medidas capturados debe contar soportes");
+    if (R.avisos.some((a) => /pendiente/.test(a.msg) && /(diámetro|medidas)/.test(a.msg))) throw new Error("con datos no debe haber avisos de pendiente");
+    if (!R.memo.some((m) => /capturad[oa]s? a mano/.test(m))) throw new Error("la memoria no dice que las medidas son capturadas a mano");
+    const aireCobre = R.sopcalc.tramos.find((t) => /Aire comprimido/.test(t.descripcion));
+    if (!aireCobre || !/cobre/.test(aireCobre.descripcion)) throw new Error("el tramo de aire no dice cobre");
+    S.soporte.tubAireMat = "acero"; G("recompute")();
+    const aireAcero = G("SOPORTE").sopcalc.tramos.find((t) => /Aire comprimido/.test(t.descripcion));
+    if (!(aireAcero && Math.abs(aireAcero.peso.total - aireCobre.peso.total) > 1e-9)) throw new Error("el material capturado no cambia el peso del tramo: no llegó a SoporteCalc");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 /* ===== R. Regresión por motor (rev 2.9.22, decisión del dueño): un proyecto fijo con cifras esperadas por disciplina ===== */
 const REG_DIR = "parches/regresion-motores/";
 const REG_PROY = fs.readFileSync(REG_DIR + "regresion-motores.emp.json", "utf8");

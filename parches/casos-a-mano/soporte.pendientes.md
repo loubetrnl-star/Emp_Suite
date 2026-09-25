@@ -10,6 +10,7 @@ módulo `pruebas-motores/soporte.mjs` (12 pruebas), compuerta `parches/mutantes/
 | H-232 (0 meses → 1; omisión = 3 meses) | **Cerrado** (soporte v2 → v3, 25-sep-2026) | `mesesPendiente` (sin captura) y `meses = max(0, capturado)`; sin partida de renta con 0 o sin captura; aviso en el motor y pendiente en la cotización; `defaultSoporte().mesesElevacion` null. Prueba S.71; fila 11c.a de fase2 a vigente; mutante m08 reapuntado (piso de 1 mes): MUERTO. |
 | H-225 (colgado = altura de trabajo sin captura) | **Cerrado** (soporte v4 → v5, quote v12 → v13 por dependencia, 25-sep-2026) | Campo «Altura de colgado (m)» en pantalla (con la altura de trabajo como sugerencia); sin captura `colgadoPendiente`: sin partida de varilla, aviso, pendiente en la cotización. Prueba S.73; Q.3 reescrita (capturada manda; sin captura 0 ML); fila 15.g de fase2 a vigente y 11.j sin varilla (soporte.csv regenerado). Mutante m45 reapuntado (vuelve a la altura de trabajo): MUERTO. Proyecto fijo: 385,760 → 344,576 MXN. |
 | H-226 (SDS 1.0, losa, f'c 250 supuestos) | **Cerrado** (soporte v5 → v6, quote v13 → v14 por dependencia, 25-sep-2026) | Campos SDS + fuente, tipo de estructura y f'c; `anclajeCapturado` exige SDS con fuente y estructura (f'c en losa); sin ellos el anclaje se predimensiona con referencia declarada y va Por cotizar (aviso, memoria, partida en G); la memoria imprime Fp/ap/Rp con el aviso «DECLARADOS». Prueba S.74; fila 15.h de fase2 a vigente y 11.j sin anclaje; mutantes m46 reapuntado (default 1.0) y m48 nuevo: MUERTOS. Proyecto fijo: 344,576 → 336,216 MXN. |
+| H-230 (modo «valores propios» inventaba 50/100/32 mm y 400×300) | **Cerrado** (soporte v6 → v7, 25-sep-2026) | Campos de medidas del ducto y diámetro + material por tubería en el modo manual; `manualPendientes` (aviso y pendiente en la cotización) cuando falta el dato; la memoria dice «capturados a mano». Prueba S.75 (sin fila CM: la señal es nSoportes = 0 con aviso, como se anticipó). |
 | H-231 (bases 3 → 2 al aceptar la instantánea) | **Cerrado** (soporte v3 → v4, 25-sep-2026) | En modo gobernado `nEquipos = snap.nEquip` (el sustituto QUOTE lleva `deSnap`). Prueba S.72; fila 11d.a de fase2 a vigente; mutante m47 reapuntado (deSnap falso): MUERTO. |
 
 ## 0. Cambios de entrada por otros motores
@@ -62,7 +63,7 @@ módulo `pruebas-motores/soporte.mjs` (12 pruebas), compuerta `parches/mutantes/
 - **H-224 (red contra incendio en CPVC/cobre soportada como acero):** no hay fila numérica. La tabla NFPA 13
   17.4.2.1(a) no está en texto (BLOQUEADO) y «pendiente de tabla» no es un número comparable. Cuando llegue el texto,
   la fila es `SOPORTE.porTuberia.find(g => g.etiqueta === "Contra incendio").det[0].e` con S.fuego.material = "cpvc".
-- **H-230 (modo «valores propios» inventa diámetros 50/100/32 mm y 400×300):** sin fila. El valor correcto es
+- **H-230 (cerrado 25-sep-2026; S.75):** sin fila. El valor correcto es
   «pendiente de diámetro», no un número; la Fase 2 define la señal (p. ej. nSoportes = 0 con aviso) y entonces se agrega.
 - **H-235 (riostras NFPA 13 aplicadas a ductos, hidráulica y aire):** las filas 1.m/1.n/11.b/11.c vigilan la
   aritmética actual (cap. 18, de memoria) sobre TODAS las líneas; no afirman que sea correcto aplicarla fuera de

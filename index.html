@@ -8021,6 +8021,9 @@ function defaultSoporte() {
     alturaTrabajo: 0,         // 0 = tomar la mayor altura de zona
     mesesElevacion: null,      // H-232: sin captura = pendiente (antes 3 supuestos); 0 capturado = sin renta
     basesEquipo: 0,           // 0 = contar los equipos seleccionados
+    /* H-230: modo «valores propios» sin diámetros inventados: cada línea a mano pide sus medidas y su material. */
+    ductoAnchoMm: null, ductoAltoMm: null,
+    tubHidroD: null, tubHidroMat: "acero", tubFuegoD: null, tubFuegoMat: "acero", tubAireD: null, tubAireMat: "acero",
     rielM: 0,                 // corridas múltiples con riel tipo canal
     ductoM: 0, tubHidroM: 0, tubFuegoM: 0, tubAireM: 0,   // capturados si no se usan los motores
     /* SoporteCalc integrado (decisión del dueño, 15-sep-2026). Nivel de
@@ -8066,6 +8069,7 @@ function computeSoporte(Gc) {
      la altura de colgado en vez de un respaldo fijo de 0.50 m, y (2) alimentar
      la amplificación sísmica ASCE 7-16 §13.3.1 con una altura real en vez de
      z/h = 0 siempre (instalación tratada como si estuviera a nivel de piso). */
+  const manualPendientes = [];
   const hZonas = (typeof S !== "undefined" && Array.isArray(S.zones))
     ? S.zones.reduce((a, z) => Math.max(a, num(z.height, 0)), 0) : 0;
   const hTrab = num(Gc.alturaTrabajo, 0) > 0 ? num(Gc.alturaTrabajo) : Math.max(3, hZonas + 1.2);
@@ -8113,8 +8117,11 @@ function computeSoporte(Gc) {
         altura_montaje_m: alturaMontaje });
     });
   } else if (num(Gc.ductoM) > 0) {
-    mDucto = num(Gc.ductoM);
-    tramosSC.push({ id: nuevoId("duc"), disciplina: "hvac", tipo: "ducto_rect", descripcion: "Ducto capturado", longitud_m: mDucto, ancho_mm: 400, alto_mm: 300, altura_montaje_m: alturaMontaje });
+    /* H-230 (rev 2.9.24, soporte v7): sin ancho y alto capturados no se inventa 400×300: la línea queda pendiente. */
+    if (num(Gc.ductoAnchoMm, 0) > 0 && num(Gc.ductoAltoMm, 0) > 0) {
+      mDucto = num(Gc.ductoM);
+      tramosSC.push({ id: nuevoId("duc"), disciplina: "hvac", tipo: "ducto_rect", descripcion: `Ducto capturado a mano ${n(num(Gc.ductoAnchoMm), 0)}×${n(num(Gc.ductoAltoMm), 0)} mm`, longitud_m: mDucto, ancho_mm: num(Gc.ductoAnchoMm), alto_mm: num(Gc.ductoAltoMm), altura_montaje_m: alturaMontaje });
+    } else manualPendientes.push({ que: `Ducto capturado a mano (${n(num(Gc.ductoM), 0)} m)`, queEn: `Duct entered by hand (${n(num(Gc.ductoM), 0)} m)`, falta: "medidas (ancho y alto en mm)", faltaEn: "dimensions (width and height in mm)" });
   }
   if (mDucto > 0 && !permDuct) avisos.push({ lvl: "warn", msg: `Soportes de ducto (${n(mDucto, 0)} m) pendientes de autorizar el cruce duct>soporte: se cuentan y cotizan igual, pero el cruce no está declarado.` });
 
@@ -8172,10 +8179,18 @@ function computeSoporte(Gc) {
     if (typeof AIRE !== "undefined" && AIRE && AIRE.tramos && AIRE.tramos.length && !permAire)
       avisos.push({ lvl: "warn", msg: "Soportes de la red de aire comprimido pendientes de autorizar el cruce aire>soporte: se cuentan y cotizan igual, pero el cruce no está declarado." });
   } else {
-    agregarTuberia([{ tag: "Hidrosanitario", L: num(Gc.tubHidroM), d: 50 }], "acero", "hidrosanitario", "Hidráulica y sanitario");
-    agregarTuberia([{ tag: "Contra incendio", L: num(Gc.tubFuegoM), d: 100 }], "acero", "contra_incendio", "Contra incendio");
-    agregarTuberia([{ tag: "Aire comprimido", L: num(Gc.tubAireM), d: 32 }], "acero", "aire_comprimido", "Aire comprimido");
+    /* H-230: cada línea a mano lleva su diámetro y su material capturados; sin diámetro no se inventa (antes 50 / 100 / 32 mm de acero). */
+    const manual = (tag, tagEn, L, d, mat, disciplina, etiqueta) => {
+      if (!(num(L) > 0)) return;
+      if (num(d, 0) > 0) agregarTuberia([{ tag: `${tag} (capturado a mano, ${n(num(d), 0)} mm ${mat})`, L: num(L), d: num(d) }], mat === "cobre" ? "cobre" : mat === "plastico" ? "plastico" : "acero", disciplina, etiqueta);
+      else manualPendientes.push({ que: `${tag} capturado a mano (${n(num(L), 0)} m)`, queEn: `${tagEn} entered by hand (${n(num(L), 0)} m)`, falta: "diámetro (mm) y material", faltaEn: "diameter (mm) and material" });
+    };
+    manual("Hidrosanitario", "Plumbing", Gc.tubHidroM, Gc.tubHidroD, Gc.tubHidroMat || "acero", "hidrosanitario", "Hidráulica y sanitario");
+    manual("Contra incendio", "Fire protection", Gc.tubFuegoM, Gc.tubFuegoD, Gc.tubFuegoMat || "acero", "contra_incendio", "Contra incendio");
+    manual("Aire comprimido", "Compressed air", Gc.tubAireM, Gc.tubAireD, Gc.tubAireMat || "acero", "aire_comprimido", "Aire comprimido");
   }
+  manualPendientes.forEach((p) => avisos.push({ lvl: "warn", msg: `${p.que}: soportes pendientes de ${p.falta}. Sin ese dato no se cuenta ni se cotiza (H-230).` }));
+  if (Gc.usarMotores === false && (tramosSC.length || tramosPlastico.length)) memo.push("Modo «valores propios»: metros, medidas, diámetros y materiales capturados a mano por el usuario; no vienen de los motores (H-230).");
 
   /* ---- Corrida del motor integrado (acero, cobre y ducto) ---- */
   const R = calcularSoporteria({
@@ -8328,7 +8343,7 @@ function computeSoporte(Gc) {
 
   return { porTuberia, mDucto, mTub, nSoportes, nLong, nTrans, mArriostrable,
     hTrab, equipo, meses, mesesPendiente, nEquipos, part, total, avisos, memo, alturaColgado, colgadoCapturado, colgadoPendiente, colgadoSugerido,
-    sdsCapturado, estructuraCapturada, anclajeCapturado, anclajePendiente, anclajesPza: Object.entries(R.despiece.anclajes_pza || {}).map(([id, cnt]) => ({ id, cnt })),
+    manualPendientes, sdsCapturado, estructuraCapturada, anclajeCapturado, anclajePendiente, anclajesPza: Object.entries(R.despiece.anclajes_pza || {}).map(([id, cnt]) => ({ id, cnt })),
     sopcalc: R };   // corrida completa de SoporteCalc, por si se quiere el detalle fino
 }
 
@@ -8574,6 +8589,8 @@ function computeQuote() {
      solo se pasan al catálogo. La cuantificación es del motor, no de la
      cotización, para que el metraje y el importe no puedan divergir. */
   /* H-232: la renta de elevación sin meses capturados se declara pendiente en la cotización. */
+  if (typeof SOPORTE !== "undefined" && SOPORTE && (SOPORTE.manualPendientes || []).length && linkAllowed("soporte>quote"))
+    SOPORTE.manualPendientes.forEach((p) => pendientes.push({ mot: "soporte", desc: `Soportes: ${p.que}`, descEn: `Supports: ${p.queEn}`, motivo: `pendiente de ${p.falta}`, motivoEn: `${p.faltaEn} pending` }));
   if (typeof SOPORTE !== "undefined" && SOPORTE && SOPORTE.anclajePendiente && linkAllowed("soporte>quote"))
     (SOPORTE.anclajesPza || []).forEach((a) => porCotizar.push({ sec: "G", mot: "soporte", clave: "anclajeSop", desc: `Anclaje ${a.id} a estructura, ${a.cnt} pieza(s): predimensionado con SDS y estructura de referencia; Por cotizar hasta capturar SDS con fuente, tipo de estructura y f'c`, descEn: `${a.id} anchor to structure, ${a.cnt} piece(s): pre-sized with reference SDS and structure; to be quoted until site SDS with source, structure type and f'c are captured`, un: "PIEZA", qty: a.cnt, motivo: "datos del edificio sin capturar (H-226)" }));
   if (typeof SOPORTE !== "undefined" && SOPORTE && SOPORTE.colgadoPendiente && linkAllowed("soporte>quote"))
@@ -18042,7 +18059,7 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "5", clean: "3", equip: "1", duct: "1", vent: "3", quote: "14", valor: "1", kaizen: "1", elec: "8", hidro: "8", fuego: "3", aire: "5", civil: "3", soporte: "6" };
+const MOTOR_VER = { load: "5", clean: "3", equip: "1", duct: "1", vent: "3", quote: "14", valor: "1", kaizen: "1", elec: "8", hidro: "8", fuego: "3", aire: "5", civil: "3", soporte: "7" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
@@ -18075,7 +18092,8 @@ const MOTOR_CAMBIOS = {
     { ver: "3", rev: "2.9.24", que: "H-232: 0 meses de renta capturados se respetan (sin renta) y sin captura la renta queda pendiente con aviso (antes el 0 se volvía 1 mes y la omisión 3)" },
     { ver: "4", rev: "2.9.24", que: "H-231: con la instantánea motores>soporte aceptada las bases de equipo salen de snap.nEquip (antes el conteo en vivo perdía el compresor: 3 → 2)" },
     { ver: "5", rev: "2.9.24", que: "H-225: la altura de colgado se captura en pantalla; sin captura la varilla roscada queda pendiente (antes se tomaba la altura de trabajo: 633.6 ML en el proyecto fijo)" },
-    { ver: "6", rev: "2.9.24", que: "H-226: SDS (con fuente), tipo de estructura y f'c se capturan; sin ellos el anclaje se predimensiona con valores de referencia declarados y va Por cotizar; la memoria imprime Fp, ap y Rp con su aviso (antes SDS 1.0 / losa f'c 250 supuestos como datos)" }],
+    { ver: "6", rev: "2.9.24", que: "H-226: SDS (con fuente), tipo de estructura y f'c se capturan; sin ellos el anclaje se predimensiona con valores de referencia declarados y va Por cotizar; la memoria imprime Fp, ap y Rp con su aviso (antes SDS 1.0 / losa f'c 250 supuestos como datos)" },
+    { ver: "7", rev: "2.9.24", que: "H-230: el modo «valores propios» pide medidas del ducto, diámetro y material de cada tubería; sin ellos la línea queda pendiente (antes 400×300, 50/100/32 mm de acero inventados)" }],
 };
 const motorVer = (id) => MOTOR_VER[id] || "1";
 function cambiosMotorTexto(id, desde) { return (MOTOR_CAMBIOS[id] || []).filter((c) => +c.ver > +(desde || 1)).map((c) => `v${c.ver} (rev ${c.rev}): ${c.que}`).join("; ") || "cambio de lógica del motor"; }
@@ -20758,10 +20776,20 @@ function viewSoporte() {
       ${propuestaHtml("motores>soporte")}
       ${G.usarMotores === false ? `<div class="row">
         ${inp("Metros de ducto", "soporte.ductoM", "number", "1", "sop.d", G)}
+        ${inp("Ducto: ancho (mm) · sin medidas queda pendiente", "soporte.ductoAnchoMm", "number", "10")}
+        ${inp("Ducto: alto (mm)", "soporte.ductoAltoMm", "number", "10")}
+      </div><div class="row">
         ${inp("Metros de tubería hidráulica", "soporte.tubHidroM", "number", "1", "sop.h", G)}
+        ${inp("Hidráulica: diámetro (mm) · sin él queda pendiente", "soporte.tubHidroD", "number", "1")}
+        ${sel("Hidráulica: material", "soporte.tubHidroMat", [["acero", "Acero"], ["cobre", "Cobre"], ["plastico", "Termoplástico (CPVC / PP-R / PEAD)"]])}
       </div><div class="row">
         ${inp("Metros de red contra incendio", "soporte.tubFuegoM", "number", "1", "sop.f", G)}
+        ${inp("Incendio: diámetro (mm)", "soporte.tubFuegoD", "number", "1")}
+        ${sel("Incendio: material", "soporte.tubFuegoMat", [["acero", "Acero"], ["cobre", "Cobre"], ["plastico", "Termoplástico (CPVC)"]])}
+      </div><div class="row">
         ${inp("Metros de red de aire", "soporte.tubAireM", "number", "1", "sop.a", G)}
+        ${inp("Aire: diámetro (mm)", "soporte.tubAireD", "number", "1")}
+        ${sel("Aire: material", "soporte.tubAireMat", [["acero", "Acero"], ["cobre", "Cobre"]])}
       </div>` : ""}
       ${sel("Arriostramiento sísmico", "soporte.sismico", [[true, "Sí, se incluye"], [false, "No, se declara como exclusión"]])}
       <div class="row">
