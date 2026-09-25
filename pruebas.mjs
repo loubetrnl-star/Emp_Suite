@@ -3509,11 +3509,15 @@ t("22.5 2.2 la carga dinámica hidráulica no cuenta dos veces la altura (edific
        error. Valores recalculados con el motor ya corregido. */
     /* rev 2.9.18 · curva de Hunter del IPC E103.3(3): la fricción pasa de 4.9693 a 4.9548 m (antes → después). */
     cerca(friccion, 4.9548, 0.001, "fricción de los tramos:");
-    cerca(H.cdt, 6 + friccion + 15, 1e-9, "cdt = altura del edificio + fricción + residual:");
-    cerca(H.cdt, 25.9548, 0.001, "cdt con los valores por omisión (rev 2.9.18: antes 25.9693):");
+    /* H-194 (rev 2.9.24, hidro v5): la presión que la bomba deja en el mueble más alto es máx(residual capturada 15 m, mínima
+       de norma del mueble que más pide). Con WC de fluxómetro sifónico rige la norma: 35 psi = 24.6074 m (IPC 2015 Tabla 604.3;
+       antes 10.5 m sin fuente y la CDT llevaba el residual fijo: 6 + 4.9548 + 15 = 25.9548 m, 1.570 kW, 2.5 HP). Cifras
+       calculadas fuera de la suite (parches/casos-a-mano/hidro.calc.mjs, casos 1 y 12). */
+    cerca(H.presMinReq, 24.6074, 0.001, "presión mínima requerida: WC con fluxómetro sifónico, 35 psi × 0.703070 m/psi (IPC 2015 Tabla 604.3):");
+    cerca(H.cdt, 35.5622, 0.001, "cdt = altura del edificio 6 + fricción 4.9548 + máx(residual 15, mínima 24.6074) (H-194; antes 25.9548):");
     cerca(H.presDisp, 25 - friccion - 6, 1e-9, "presión disponible sigue descontando la altura de los tramos:");
-    cerca(H.kWbomba, 9.81 * H.Qtotal * H.cdt / 1000 / .6, 1e-9, "kW al eje con la cdt corregida:");
-    eq(H.hpBomba, 2.5, "HP nominales con la cdt corregida:");
+    cerca(H.kWbomba, 2.1511, 0.001, "kW al eje = 9.81 × 3.6996 × 35.5622 / 1000 / 0.6 (η 0.6 criterio de la casa; antes 1.570):");
+    eq(H.hpBomba, 3, "HP nominales, redondeo a 0.5 HP de la casa: ceil(2.1511 / 0.746 × 2) / 2 = 3 (antes 2.5):");
   } finally {
     S.hidro = guardado;
     G("recompute")();
@@ -4199,7 +4203,10 @@ t("L.1 2.2 la altura estática es la del edificio; si no coincide con la suma de
     G("recompute")();
     const H = G("HIDRO");
     eq(H.tramos.reduce((a, t) => a + t.alt, 0), 3, "suma de alturas de los tramos del caso:");
-    cerca(H.cdt, 8 + H.tramos.reduce((a, t) => a + t.hf, 0) + 15, 0.01, "la carga dinámica usa la altura del edificio, no la de los tramos:");
+    /* H-194 (rev 2.9.24): sin muebles capturados la mínima de norma es el menor renglón de la Tabla 604.3 del IPC 2015 (8 psi =
+       5.6246 m; antes 5.6 sin fuente) y rige el residual de la casa (15 m): la CDT sigue siendo altura + fricción + 15. */
+    cerca(H.presMinReq, 5.6246, 0.001, "sin muebles: mínima de la Tabla 604.3, 8 psi × 0.703070 m/psi (H-194):");
+    cerca(H.cdt, 8 + H.tramos.reduce((a, t) => a + t.hf, 0) + 15, 0.01, "la carga dinámica usa la altura del edificio, no la de los tramos (residual 15 > 5.62 de norma):");
     if (!H.avisos.some((a) => /altura del edificio capturada.*no coincide/.test(a.msg)))
       throw new Error("no avisa la discrepancia de alturas (5 m de diferencia, > 0.5 m)");
   } finally { S.hidro = guardado; G("recompute")(); }
@@ -5492,9 +5499,15 @@ t("S.20 un proyecto guardado con la versión anterior (formato 1, rev 2.9.13) ab
   /* rev 2.9.24 · H-120 (load v4): el DET de muros y cubierta se corrige por sitio (Tijuana +0.31 K). Antes → después:
      tons 12.904762 → 12.943837 · cfm 5790.236072 → 5815.981512 · planta 14.19523796089015 → 14.238221145934492; la cotización
      de este proyecto no cambia. Lo verifican a mano CM.load.2/3/9 (parches/casos-a-mano/load.calc.mjs). */
+  /* rev 2.9.24 · H-194 (hidro v5): la presión mínima por mueble sale de la Tabla 604.3 del IPC 2015 y la CDT de la bomba lleva
+     máx(residual capturado, mínima de norma). Este proyecto (sin tramos, altura 0, WC con fluxómetro) tenía CDT = residual 15 m
+     → 0.996 kW → 1.5 HP; ahora CDT = 24.607 m (35 psi) → 1.633 kW → 2.5 HP, y la partida «Cisterna de 0 m³ y equipo de bombeo»
+     sube 14,500 MXN (precio semilla por HP, H-196 pendiente). Antes (H-120) → después (H-194): quoteDirect y partidas
+     6678714.747352686 → 6693214.747352686 · quoteSub 10095545.21209832 → 10117463.412098318 · quoteTot 11710832.44603405 →
+     11736257.55803405. Lo verifican a mano CM.hidro.1.z–1.ac y CM.hidro.12 (parches/casos-a-mano/hidro.calc.mjs). */
   const MOVIDOS_2916 = { tons: [18.584787, 12.943837], cfm: [5114.572875, 5815.981512], sysTarget: [20.443265161623447, 14.238221145934492],
-    hidroQ: [3.924, 4.05985437], quoteDirect: [6704014.747352686, 6678714.747352686], partidas: [6704014.747352686, 6678714.747352686],
-    quoteSub: [10133788.69209832, 10095545.21209832], quoteTot: [11755194.88283405, 11710832.44603405] };
+    hidroQ: [3.924, 4.05985437], quoteDirect: [6704014.747352686, 6693214.747352686], partidas: [6704014.747352686, 6693214.747352686],
+    quoteSub: [10133788.69209832, 10117463.412098318], quoteTot: [11755194.88283405, 11736257.55803405] };
   Object.entries(MOVIDOS_2916).forEach(([k, [antes]]) => eq(esperado.resumen[k], antes, `${k}: el «antes» es el de la 2.9.13:`));
   Object.entries(esperado.resumen).forEach(([k, v]) => eq(r[k], k in MOVIDOS_2916 ? MOVIDOS_2916[k][1] : v, `${k} igual al de la versión ${esperado.generadoCon}${k in MOVIDOS_2916 ? " con la decisión 2.9.16" : ""}:`));
   eq((G("QUOTE").pendientes || []).filter((p) => p.mot === "hidro").map((p) => p.motivo).join(","), "pendiente de longitud", "la red queda pendiente de longitud:"); /* rev 2.9.23: la importación siempre está pendiente aparte */
@@ -6126,8 +6139,9 @@ t("S.35 (rev 2.9.19, revisión adversarial de 2.9.16–2.9.18) pendientes en Exc
 t("S.36 (rev 2.9.20, decisión del dueño) versión por motor en el sello: sólo se desactualiza la disciplina cuyo motor cambió; aviso al abrir con vX → vY y el cambio; nada se recalcula solo; la memoria muestra antes y después", () => {
   llenarTodoS();
   const MV = G("MOTOR_VER");
-  /* H-107: carga v3 = lógica de la rev 2.9.21 (declarada en la 2.9.24); H-120: carga v4 = corrección CLTD por sitio. H-183: eléctrico v5 = Tabla 250-122 de la NOM; H-177: v6 = art. 440 con MCA/MOP; H-179: v7 = nada se supone (pendientes); H-178: v8 = corriente de motor por la Tabla 430-250/248. */
-  eq(MV.elec, "8", "eléctrico v8 (H-178):"); eq(MV.hidro, "4", "hidro v4:"); eq(MV.load, "4", "carga v4:"); eq(MV.duct, "1", "ductos sin cambio de lógica: v1:");
+  /* H-107: carga v3 = lógica de la rev 2.9.21 (declarada en la 2.9.24); H-120: carga v4 = corrección CLTD por sitio. H-183: eléctrico v5 = Tabla 250-122 de la NOM; H-177: v6 = art. 440 con MCA/MOP; H-179: v7 = nada se supone (pendientes); H-178: v8 = corriente de motor por la Tabla 430-250/248.
+     H-194: hidro v5 = presión mínima por mueble de la Tabla 604.3 del IPC 2015 y CDT con máx(residual, mínima). */
+  eq(MV.elec, "8", "eléctrico v8 (H-178):"); eq(MV.hidro, "5", "hidro v5 (H-194):"); eq(MV.load, "4", "carga v4:"); eq(MV.duct, "1", "ductos sin cambio de lógica: v1:");
   Object.keys(MV).forEach((id) => { const c = G("MOTOR_CAMBIOS")[id] || []; if (MV[id] !== "1" && !c.some((x) => x.ver === MV[id])) throw new Error(`${id}: la versión ${MV[id]} no tiene hallazgo registrado`); });
   const s0 = JSON.stringify(S.sellos || {});
   try {
@@ -6135,9 +6149,9 @@ t("S.36 (rev 2.9.20, decisión del dueño) versión por motor en el sello: sólo
     S.sellos = { duct: { ts: 5, huella: G("huellaMotor")("duct") }, hidro: { ts: 5, huella: G("huellaMotor")("hidro") } }; G("recompute")();
     eq(G("selloDe")("duct").estado, "calculado", "ductos (motor v1, sin cambio):");
     const sh = G("selloDe")("hidro");
-    eq(sh.estado, "desactualizado", "hidro (motor v1 → v4):"); contiene(sh.texto, "v1 → v4", "texto:"); contiene(sh.texto, "Hunter", "nombra el hallazgo:");
+    eq(sh.estado, "desactualizado", "hidro (motor v1 → v5):"); contiene(sh.texto, "v1 → v5", "texto:"); contiene(sh.texto, "Hunter", "nombra el hallazgo:"); contiene(sh.texto, "604.3", "nombra H-194:");
     const m = G("motoresCambiados")();
-    eq(m.map((x) => x.id).join(","), "hidro", "lista para el aviso al abrir:"); eq(m[0].de + ">" + m[0].a, "1>4", "de → a:");
+    eq(m.map((x) => x.id).join(","), "hidro", "lista para el aviso al abrir:"); eq(m[0].de + ">" + m[0].a, "1>5", "de → a:");
     /* Un sello viejo abre sin error y conserva su ver; el saneado acepta ver/resumen/previo y descarta basura. */
     const viejo = JSON.parse(JSON.stringify(S)); viejo.sellos = { hidro: { ts: 5, huella: G("huellaMotor")("hidro"), ver: "3", resumen: { Gasto: "1 L/s" }, previo: { ver: "2", ts: 4, resumen: { Gasto: "0.9 L/s" } } }, duct: { ts: 5, huella: G("huellaMotor")("duct"), ver: "x9", resumen: "no" } };
     const sv = G("sanearEstado")(viejo).sellos;
@@ -6147,14 +6161,14 @@ t("S.36 (rev 2.9.20, decisión del dueño) versión por motor en el sello: sólo
     const Q0 = G("HIDRO").Qtotal;
     clicS(boton("hidro", "calc-motor"));
     const sn = S.sellos.hidro;
-    eq(sn.ver, "4", "sello nuevo con la versión del motor:"); eq(sn.previo.ver, "1", "previo:"); eq(sn.previo.resumen.Gasto, "3.924 L/s", "cifras de antes:");
+    eq(sn.ver, "5", "sello nuevo con la versión del motor:"); eq(sn.previo.ver, "1", "previo:"); eq(sn.previo.resumen.Gasto, "3.924 L/s", "cifras de antes:");
     contiene(sn.resumen.Gasto, G("n")(Q0, 3), "cifras de después:");
     eq(G("selloDe")("hidro").estado, "calculado", "vuelto a sellar:");
     conPdfCapturado((salida) => {
       clicS(boton("hidro", "pdf-memoria-motor"));
       const txt = textoPdf(salida()[salida().length - 1].b);
-      contiene(txt, "CAMBIO DE MOTOR v1 -> v4", "la memoria dice el cambio:"); /* el PDF parte los renglones en varios Tj: se buscan las piezas */
-      contiene(txt, "ANTES", "antes:"); contiene(txt, "3.924 L/s", "cifra de antes:"); contiene(txt, "DESPUES", "después:"); contiene(txt, "motor v1", "versión de antes:"); contiene(txt, "motor v4", "versión de después:");
+      contiene(txt, "CAMBIO DE MOTOR v1 -> v5", "la memoria dice el cambio:"); /* el PDF parte los renglones en varios Tj: se buscan las piezas */
+      contiene(txt, "ANTES", "antes:"); contiene(txt, "3.924 L/s", "cifra de antes:"); contiene(txt, "DESPUES", "después:"); contiene(txt, "motor v1", "versión de antes:"); contiene(txt, "motor v5", "versión de después:");
     });
     eq(w.eval("MEMO_CAMBIO"), null, "la bandera de la memoria se limpia:");
   } finally { S.sellos = JSON.parse(s0); G("recompute")(); }

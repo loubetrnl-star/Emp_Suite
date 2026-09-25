@@ -1,0 +1,64 @@
+IPC 2015 (2015 International Plumbing Code, edición adoptada por Connecticut en el 2018 CT State Building Code)
+Texto público leído en up.codes el 24-sep-2026 para H-194 (rev 2.9.24, motor hidro v5). Transcripción literal del
+texto en pantalla (innerText de la tabla y de las secciones), sin edición. Carácter: PRIMARIA EN LÍNEA.
+
+Fuente 604.3: https://up.codes/viewer/connecticut/ipc-2015/chapter/6/water-supply-and-distribution#604.3
+Fuente 424.3: https://up.codes/viewer/connecticut/ipc-2015/chapter/4/fixtures-faucets-and-fixture-fittings#424.3
+
+=====================================================================================================================
+604.3 Water Distribution System Design Criteria
+The water distribution system shall be designed, and pipe sizes shall be selected such that under conditions of peak
+demand, the capacities at the fixture supply pipe outlets shall be not less than shown in Table 604.3. The minimum
+flow rate and flow pressure provided to fixtures and appliances not listed in Table 604.3 shall be in accordance with
+the manufacturer's installation instructions.
+
+TABLE 604.3
+WATER DISTRIBUTION SYSTEM DESIGN CRITERIA REQUIRED CAPACITY AT FIXTURE SUPPLY PIPE OUTLETS
+
+FIXTURE SUPPLY OUTLET SERVING                                                 | FLOW RATE a (gpm) | FLOW PRESSURE (psi)
+------------------------------------------------------------------------------|-------------------|--------------------
+Bathtub, balanced-pressure, thermostatic or combination                       | 4                 | 20
+  balanced-pressure/thermostatic mixing valve                                 |                   |
+Bidet, thermostatic mixing valve                                              | 2                 | 20
+Combination fixture                                                           | 4                 | 8
+Dishwasher, residential                                                       | 2.75              | 8
+Drinking fountain                                                             | 0.75              | 8
+Laundry tray                                                                  | 4                 | 8
+Lavatory, private                                                             | 0.8               | 8
+Lavatory, private, mixing valve                                               | 0.8               | 8
+Lavatory, public                                                              | 0.4               | 8
+Shower                                                                        | 2.5               | 8
+Shower, balanced-pressure, thermostatic or combination                        | 2.5 b             | 20
+  balanced-pressure/thermostatic mixing valve                                 |                   |
+Sillcock, hose bibb                                                           | 5                 | 8
+Sink, residential                                                             | 1.75              | 8
+Sink, service                                                                 | 3                 | 8
+Urinal, valve                                                                 | 12                | 25
+Water closet, blow out, flushometer valve                                     | 25                | 45
+Water closet, flushometer tank                                                | 1.6               | 20
+Water closet, siphonic, flushometer valve                                     | 25                | 35
+Water closet, tank, close coupled                                             | 3                 | 20
+Water closet, tank, one piece                                                 | 6                 | 20
+
+For SI: 1 pound per square inch = 6.895 kPa, 1 gallon per minute = 3.785 L/m.
+a. For additional requirements for flow rates and quantities, see Section 604.4.
+b. Where the shower mixing valve manufacturer indicates a lower flow rating for the mixing valve, the lower value shall
+   be applied.
+
+=====================================================================================================================
+424.3 Individual Shower Valves
+Individual shower and tub-shower combination valves shall be balanced-pressure, thermostatic or combination
+balanced-pressure/thermostatic valves that conform to the requirements of ASSE 1016/ASME A112.1016/CSA B125.16 or
+ASME A112.18.1/CSA B125.1 and shall be installed at the point of use. Shower and tub-shower combination valves required
+by this section shall be equipped with a means to limit the maximum setting of the valve to 120°F (49°C), which shall
+be field adjusted in accordance with the manufacturer's instructions. In-line thermostatic valves shall not be utilized
+for compliance with this section.
+
+=====================================================================================================================
+Conversión usada por la suite (H-194): 1 psi = 6894.757 Pa; 1 m de columna de agua = 9806.65 Pa → 1 psi = 0.703070 m.
+Renglones que usa MUEBLES (index.html): WC con fluxómetro = siphonic, flushometer valve 35 psi (24.607 m); WC de tanque =
+tank, close coupled / one piece 20 psi (14.061 m); mingitorio con fluxómetro = urinal, valve 25 psi (17.577 m); lavabo =
+lavatory, public 8 psi; regadera = shower, balanced-pressure/thermostatic 20 psi (la válvula que exige 424.3); fregadero =
+sink, residential / service 8 psi; lavadero = laundry tray 8 psi; bebedero = drinking fountain 8 psi; toma de manguera =
+sillcock, hose bibb 8 psi (5.625 m). Tarja de laboratorio: no listada, asimilada a sink, service (criterio de la casa).
+Lavaojos / regadera de emergencia: no listada (ANSI Z358.1, H-195 BLOQUEADO).

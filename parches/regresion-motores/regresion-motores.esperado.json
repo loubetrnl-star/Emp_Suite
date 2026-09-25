@@ -112,9 +112,9 @@
   "quote": {
    "ver": "6",
    "cifras": {
-    "direct": 12335153.650167169,
-    "sub": 18645818.25759269,
-    "tot": 21629149.17880752,
+    "direct": 12342403.650167169,
+    "sub": 18656777.35759269,
+    "tot": 21641861.73480752,
     "aux": [
      [
       "Instalación mecánica, bases, izaje y arranque (35 % del equipo)",
@@ -182,9 +182,9 @@
       2664
      ],
      [
-      "Cisterna de 0 m³ y equipo de bombeo de 2 HP",
+      "Cisterna de 0 m³ y equipo de bombeo de 2.5 HP",
       1,
-      29000
+      36250
      ],
      [
       "Rociadores automáticos K80 · 1/2\" estándar (K5.6) con red de Acero negro cédula 40 (sistema húmedo) (58 rociadores)",
@@ -428,11 +428,11 @@
    }
   },
   "hidro": {
-   "ver": "4",
+   "ver": "5",
    "cifras": {
     "Qtotal": 3.699609328,
-    "cdt": 19.954799514554082,
-    "hpBomba": 2,
+    "cdt": 29.5622337556048,
+    "hpBomba": 2.5,
     "cisterna": 0,
     "tramos": [
      [

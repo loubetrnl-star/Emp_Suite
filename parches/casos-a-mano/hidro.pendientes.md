@@ -1,33 +1,34 @@
-# hidro · pendientes de la Fase 1 (rev 2.9.24, 22-sep-2026)
+# hidro · pendientes de la Fase 1 y cierre de la Fase 2 (rev 2.9.24, 22/24-sep-2026)
 
-Motor hidrosanitario (`hidro`, v4). Entregas de la Fase 1: `hidro.calc.mjs` (cálculo independiente, imprime y escribe la
-hoja), `hidro.csv` (81 filas: 55 vigentes, 26 `fase2:H-nnn`), `pruebas-motores/hidro.mjs` (17 pruebas `CM.hidro.*`),
-`parches/mutantes/hidro.json` (37 mutantes; compuerta cerrada con 0 vivos en lógica vigente). Banco: 368/368 sin base, 374/374 con base. Con `CM_FASE2=1` las 26 filas
-fase2 fallan hoy, ninguna pasa por casualidad (arnés `tmp-fase1/fase2-filas.mjs`, no commiteado).
+Motor hidrosanitario (`hidro`, v5). Entregas: `hidro.calc.mjs` (cálculo independiente, imprime y escribe la hoja),
+`hidro.csv` (91 filas: 69 vigentes, 22 `fase2:H-nnn`), `pruebas-motores/hidro.mjs` (20 pruebas `CM.hidro.*`),
+`parches/mutantes/hidro.json` (45 mutantes; ver §3). Banco al cierre de H-194: 452/452 sin base, 458/458 con base. Con
+`CM_FASE2=1` las filas fase2 fallan hoy, ninguna pasa por casualidad (arnés `tmp-fase1/fase2-filas.mjs`, no commiteado).
+
+## 0. Hallazgos cerrados en la Fase 2
+
+| Hallazgo | Estado | Qué cambió |
+|---|---|---|
+| H-194 (presión mínima por mueble sin fuente; CDT con residual fijo de 15 m) | **Cerrado** (hidro v4 → v5, 24-sep-2026) | `MUEBLES` guarda la presión en psi de la Tabla 604.3 del IPC 2015 (texto literal en `parches/normas-texto/IPC-2015_Tabla-604.3_y_424.3_upcodes.txt`) y la convierte con 0.703070 m/psi: WC con fluxómetro 35 psi = 24.607 m (antes 10.5), mingitorio 25 (antes 10.5), WC de tanque 20 (antes 5.6), regadera 20 por §424.3 (antes 8.4), lavabo/fregadero/lavadero/bebedero 8 (5.6246, antes 5.6), toma de manguera 8 (antes 10.5); tarja de laboratorio asimilada a sink, service 8 psi (criterio de la casa, declarado); lavaojos 21 m sin cambio (H-195). Sin muebles: 8 psi, el menor renglón (criterio de la casa). La CDT lleva máx(residual capturado, mínima de norma del mueble más exigente); memoria, PDF, Excel (URS) y pantalla dicen cuál rige y de dónde sale. Filas 1.z–1.ac de fase2 a vigente; nuevas 12.a–j, 13.a, 14.a–b; retiradas 1.m–1.o (consagraban el residual fijo); 10.a recalculada. Pruebas 22.5, L.1, S.20 (antes → después) y S.36 (v5) actualizadas. Aguas abajo: quote v6 regenerado (partida de cisterna y bomba 29,000 → 36,250 MXN, precio semilla de H-196). |
 
 ## 1. Pruebas que hoy protegen valores incorrectos (se marcan; se corrigen en la Fase 2 con su hallazgo)
 
-| pruebas.mjs | Prueba | Qué protege | Hallazgo |
-|---|---|---|---|
-| 3082 | 22.5 | `cerca(H.cdt, 6 + friccion + 15)`: repite la fórmula del código (tautológica) y fija el residual de 15 m | H-194 (máx(residual, 604.3 = 24.6 m)) |
-| 3083 | 22.5 | `cerca(H.cdt, 25.9548)`: consagra la CDT con residual 15 m; con IPC 604.3 sería 6 + 4.9548 + 24.6075 = 35.56 m | H-194 |
-| 3085 | 22.5 | `cerca(H.kWbomba, 9.81·Q·cdt/1000/.6)`: tautológica; η 0.6 sin fuente | H-203 |
-| 3086 | 22.5 | `eq(H.hpBomba, 2.5)`: 2.5 HP no es potencia comercial | H-203 |
-| 3770 | L.1 | `cerca(H.cdt, 8 + Σhf + 15)`: tautológica; residual 15 m en vez de la mínima de 604.3 | H-194 |
-| 3404 | 22.11 | `cerca(Σqty, 43)` da por buena la cotización con la bomba de 2 HP sobre una CDT sin presión mínima de norma y con precios semilla de cisterna/bomba (los 25 + 18 m sí son los capturados) | H-194, H-196 |
-| 3945 | N.2 | arma la cisterna con «industria 100 L» y 1 día por omisión y sólo exige `cisterna > 0`; no ve la dotación de oficina (70 contra 50) ni el piso de 0.5 día | H-202, H-197 |
-| 5632 | S.34 | comprueba Hunter sólo en renglones que la suite sí trae; faltan 51 renglones de E103.3(3) (interpolación hasta −8 %) | H-203 |
+| Prueba | Qué protege | Hallazgo |
+|---|---|---|
+| 22.5 | `cerca(H.kWbomba, 2.1511)` y `eq(H.hpBomba, 3)`: η 0.6 y redondeo a 0.5 HP sin fuente (los valores de CDT y presión mínima ya son los de la Tabla 604.3 desde H-194) | H-203 |
+| 22.11 | `cerca(Σqty, 43)` da por buena la cotización con precios semilla de cisterna/bomba (los 25 + 18 m sí son los capturados) | H-196 |
+| N.2 | arma la cisterna con «industria 100 L» y 1 día por omisión y sólo exige `cisterna > 0`; no ve la dotación de oficina (70 contra 50) ni el piso de 0.5 día | H-202, H-197 |
+| S.34 | comprueba Hunter sólo en renglones que la suite sí trae; faltan 51 renglones de E103.3(3) (interpolación hasta −8 %) | H-203 |
 
-Ninguna se tocó. El módulo `pruebas-motores/hidro.mjs` las lista en su bloque inicial.
+Resueltas por H-194 (24-sep-2026): 22.5 `cerca(H.cdt, 6 + friccion + 15)` y `cerca(H.cdt, 25.9548)` → ahora exige presMinReq
+24.6074, CDT 35.5622, 2.1511 kW y 3 HP con cifras calculadas fuera de la suite; L.1 `cerca(H.cdt, 8 + Σhf + 15)` → exige además
+presMinReq 5.6246 (sin muebles rige el residual de la casa). El módulo `pruebas-motores/hidro.mjs` lista las que quedan.
 
 ## 2. Filas fase2 (valor correcto por norma que hoy la suite NO da; se exigen sólo con `CM_FASE2=1`)
 
 | Fila | H | Esperado (fuente) | Suite hoy |
 |---|---|---|---|
-| CM.hidro.1.z | H-194 | presMinReq 24.607 m (IPC 2015 Tabla 604.3: WC fluxómetro sifónico 35 psi) | 10.5 |
-| CM.hidro.1.aa | H-194 | CDT 29.563 m = 0 + 2.3989 + 2.5571 + máx(15, 24.607) | 19.955 |
-| CM.hidro.1.ab | H-194 | 1.7883 kW al eje | 1.2070 |
-| CM.hidro.1.ac | H-194 | 2.5 HP (con el redondeo a 0.5 HP de la casa; H-203 pide potencia comercial) | 2 |
+| ~~CM.hidro.1.z–1.ac~~ | H-194 | **vigentes desde el 24-sep-2026** (presMinReq 24.607 m, CDT 29.563 m, 1.7883 kW, 2.5 HP) | = esperado |
 | CM.hidro.5.a | H-195 | Qtotal 1.2618 L/s (75.7 L/min, Z358.1 vía OSHA, **secundaria**, BLOQUEADO) con sólo 1 lavaojos/regadera | 0.6587 (6 UM en Hunter) |
 | CM.hidro.1.ad | H-196 | importe «Cisterna … y equipo de bombeo» 0 (Por cotizar) | 29,000 MXN (9,500 × 0 m³ + 14,500 × 2 HP) |
 | CM.hidro.3.d | H-197 | cisterna 0 L con 0 días capturados (respetar captura) | 3,000 L (piso 0.5 día) |
@@ -57,9 +58,16 @@ Notas de interpretación (para el integrador; no son decisiones tomadas aquí):
 - H-201/H-197: la suite usa la columna ¼ in/ft desde 2 % capturado, pero ¼ in/ft = 2.083 %; al 2 % exacto rige ⅛
   in/ft. En los casos de la hoja el resultado no cambia (se anota en cada fila).
 
-## 3. Compuerta de mutantes (`node parches/mutantes/mutantes.mjs hidro`, 22/23-sep-2026)
+## 3. Compuerta de mutantes (`node parches/mutantes/mutantes.mjs hidro`, 22/23-sep-2026; repetida al cierre de H-194, 24-sep-2026)
 
-Resultado: **37 mutantes · 0 vivos en lógica vigente · código de salida 0** (compuerta cerrada). 26 muertos (25 de
+**Al cierre de H-194 (24-sep-2026): 45 mutantes · 0 vivos en lógica vigente · código de salida 0.** Vivos sólo los fase2
+previstos: m12 (H-202), m14/m29/m30 (H-197), m24/m37 (H-199), m28 (H-203), m32 (H-195). m13 pasa a vigente (35 → 15 psi) y
+MUERE (22.5, S.20, R.1, CM.hidro.1/.10/.12); m09 y m35 reapuntados a las líneas nuevas de la CDT, MUERTOS; nuevos m38–m45
+(CDT sin mínima de norma, CDT sin residual, psi → m, mingitorio, WC de tanque, regadera, manguera, sin muebles): todos MUERTOS,
+m41–m44 sólo por CM.hidro.12, m39 sólo por L.1 y CM.hidro.14, m45 sólo por L.1 y CM.hidro.13. La tabla de abajo es la corrida
+de la Fase 1 (37 mutantes).
+
+Resultado de la Fase 1: **37 mutantes · 0 vivos en lógica vigente · código de salida 0** (compuerta cerrada). 26 muertos (25 de
 lógica vigente + m34, que no es lógica); 11 en estado fase2, de los que 9 siguen vivos (previsto) y 2 mueren igual.
 
 | id | Qué | Estado | Resultado | Lo matan |

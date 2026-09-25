@@ -65,10 +65,10 @@
   },
   {
     "id": "hidro.m09",
-    "que": "presión residual en la CDT topada a 10 m (15 → 10)",
+    "que": "residual de la casa en la CDT topado a 10 m (15 → 10); reapuntado en H-194 a la línea máx(residual, mínima)",
     "logica": true,
-    "buscar": "tramos.reduce((a, t) => a + t.hf, 0) + num(H.presResidual, 15);",
-    "reemplazar": "tramos.reduce((a, t) => a + t.hf, 0) + Math.min(10, num(H.presResidual, 15));",
+    "buscar": "const presCdt = Math.max(presResidual, presMinReq);",
+    "reemplazar": "const presCdt = Math.max(Math.min(10, presResidual), presMinReq);",
     "estado": "vigente"
   },
   {
@@ -83,8 +83,8 @@
     "id": "hidro.m11",
     "que": "unidades mueble del WC con fluxómetro 10 → 5 (E103.3(2))",
     "logica": true,
-    "buscar": "um: 10,  umPriv: 6,   ud: 8, presMin: 10.5, tipo: \"fluxometro\", cal: 0 },",
-    "reemplazar": "um: 5,  umPriv: 6,   ud: 8, presMin: 10.5, tipo: \"fluxometro\", cal: 0 },",
+    "buscar": "um: 10,  umPriv: 6,   ud: 8, psi: 35, tipo: \"fluxometro\", cal: 0 },",
+    "reemplazar": "um: 5,  umPriv: 6,   ud: 8, psi: 35, tipo: \"fluxometro\", cal: 0 },",
     "estado": "vigente"
   },
   {
@@ -97,11 +97,11 @@
   },
   {
     "id": "hidro.m13",
-    "que": "presión mínima del WC con fluxómetro 10.5 → 24.6 m (IPC 604.3: 35 psi es lo correcto; sólo lo mataría afirmar 10.5)",
+    "que": "presión mínima del WC con fluxómetro 35 → 15 psi (10.5 m, el valor anterior sin fuente; IPC 604.3 da 35)",
     "logica": true,
-    "buscar": "ud: 8, presMin: 10.5,",
-    "reemplazar": "ud: 8, presMin: 24.6,",
-    "estado": "fase2:H-194"
+    "buscar": "ud: 8, psi: 35,",
+    "reemplazar": "ud: 8, psi: 15,",
+    "estado": "vigente"
   },
   {
     "id": "hidro.m14",
@@ -219,8 +219,8 @@
     "id": "hidro.m28",
     "que": "UD del WC con fluxómetro 8 → 4 (IPC 709.1: 4 es lo correcto; sólo lo mataría afirmar 52 UD)",
     "logica": true,
-    "buscar": "ud: 8, presMin: 10.5, tipo: \"fluxometro\", cal: 0 },",
-    "reemplazar": "ud: 4, presMin: 10.5, tipo: \"fluxometro\", cal: 0 },",
+    "buscar": "ud: 8, psi: 35, tipo: \"fluxometro\", cal: 0 },",
+    "reemplazar": "ud: 4, psi: 35, tipo: \"fluxometro\", cal: 0 },",
     "estado": "fase2:H-203"
   },
   {
@@ -275,16 +275,16 @@
     "id": "hidro.m35",
     "que": "CDT sin la altura del edificio",
     "logica": true,
-    "buscar": "num(H.alturaEdificio, 6) + tramos.reduce",
-    "reemplazar": "num(H.alturaEdificio, 6) * 0 + tramos.reduce",
+    "buscar": "const cdt = num(H.alturaEdificio, 6) + hfTramos + presCdt;",
+    "reemplazar": "const cdt = num(H.alturaEdificio, 6) * 0 + hfTramos + presCdt;",
     "estado": "vigente"
   },
   {
     "id": "hidro.m36",
     "que": "presión requerida = mínimo de los muebles en vez del máximo",
     "logica": true,
-    "buscar": "Math.max(...lista.map((x) => x.presMin)) : 5.6",
-    "reemplazar": "Math.min(...lista.map((x) => x.presMin)) : 5.6",
+    "buscar": "Math.max(...lista.map((x) => x.presMin)) : 8 * PSI_MCA",
+    "reemplazar": "Math.min(...lista.map((x) => x.presMin)) : 8 * PSI_MCA",
     "estado": "vigente"
   },
   {
@@ -294,5 +294,69 @@
     "buscar": "calTot: m.cal * m[uso] * cant",
     "reemplazar": "calTot: m.cal * m[uso]",
     "estado": "fase2:H-199"
+  },
+  {
+    "id": "hidro.m38",
+    "que": "H-194: CDT sin la mínima de norma, sólo el residual de la casa (conducta anterior)",
+    "logica": true,
+    "buscar": "const presCdt = Math.max(presResidual, presMinReq);",
+    "reemplazar": "const presCdt = presResidual;",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m39",
+    "que": "H-194: CDT sin el residual de la casa, sólo la mínima de norma (con lavabos daría 5.6 m en vez de 15)",
+    "logica": true,
+    "buscar": "const presCdt = Math.max(presResidual, presMinReq);",
+    "reemplazar": "const presCdt = presMinReq;",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m40",
+    "que": "H-194: conversión psi → m de columna de agua 0.703070 → 0.7",
+    "logica": true,
+    "buscar": "const PSI_MCA = 6894.757 / 9806.65;",
+    "reemplazar": "const PSI_MCA = 0.7;",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m41",
+    "que": "H-194: mingitorio con válvula 25 → 15 psi (604.3 da 25)",
+    "logica": true,
+    "buscar": "ud: 4, psi: 25, tipo: \"fluxometro\"",
+    "reemplazar": "ud: 4, psi: 15, tipo: \"fluxometro\"",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m42",
+    "que": "H-194: WC de tanque 20 → 8 psi (604.3 da 20)",
+    "logica": true,
+    "buscar": "umPriv: 2.2, ud: 4, psi: 20,",
+    "reemplazar": "umPriv: 2.2, ud: 4, psi: 8,",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m43",
+    "que": "H-194: regadera 20 → 8 psi (renglón «Shower» sin válvula, que §424.3 no admite)",
+    "logica": true,
+    "buscar": "nombre: \"Regadera\",                    um: 4,   umPriv: 2,   ud: 2, psi: 20,",
+    "reemplazar": "nombre: \"Regadera\",                    um: 4,   umPriv: 2,   ud: 2, psi: 8,",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m44",
+    "que": "H-194: toma de manguera 8 → 15 psi (10.5 m, el valor anterior; 604.3 da 8)",
+    "logica": true,
+    "buscar": "ud: 3, psi: 8,  tipo: \"tanque\"",
+    "reemplazar": "ud: 3, psi: 15, tipo: \"tanque\"",
+    "estado": "vigente"
+  },
+  {
+    "id": "hidro.m45",
+    "que": "H-194: sin muebles capturados 5.6 m fijos (valor anterior) en vez del menor renglón de 604.3 (8 psi)",
+    "logica": true,
+    "buscar": ": 8 * PSI_MCA;",
+    "reemplazar": ": 5.6;",
+    "estado": "vigente"
   }
 ]

@@ -20,6 +20,7 @@ se marca «de memoria» o «secundaria» y el hallazgo queda BLOQUEADO hasta rec
 | ASHRAE-coeficientes-accesorios_PHVAC9.txt | Coeficientes de pérdida de accesorios (Principles of HVAC 9.ª ed., suplemento) | Primaria (ASHRAE) | https://xp20.ashrae.org/SupplementalFiles/PHVAC9/Fitting_Loss_Coefficients.pdf |
 | SMACNA-1995_cuadro-de-contratista_calibres_SECUNDARIO.txt | Cuadro de calibres de un contratista basado en SMACNA 1995 | **Secundaria** (no sustituye a SMACNA) | https://img1.wsimg.com/blobby/go/8db0b6de-19ba-4220-b577-062bfb2b2cfa/downloads/ASM%20Duct%20Standards%20OFFICIAL.pdf |
 | ASHRAE-1997_CLTD-correccion_extracto-curso-CED.txt | Fórmula de corrección CLTD (ASHRAE Fundamentals 1997 cap. 28): CLTDc = CLTD + (78 − TR) + (TM − 85), TM = Tmax − DR/2 | **Secundaria** (curso CED que reproduce ASHRAE 1997) | https://www.cedengineering.com (M06-004, A. Bhatia) |
+| IPC-2015_Tabla-604.3_y_424.3_upcodes.txt | IPC 2015 §604.3 con la Tabla 604.3 completa (gasto y presión mínimos en la salida de cada mueble) y §424.3 (válvula de regadera), transcripción literal leída el 24-sep-2026 (H-194) | **Primaria en línea** (texto público del código adoptado por Connecticut) | https://up.codes/viewer/connecticut/ipc-2015/chapter/6/water-supply-and-distribution#604.3 · https://up.codes/viewer/connecticut/ipc-2015/chapter/4/fixtures-faucets-and-fixture-fittings#424.3 |
 
 ## Fuentes en línea consultadas (no copiadas)
 - IPC 2015 y 2024 (up.codes): E103.3(2)/(3), 604.3, 704.1, 709.1, 710.1, 906.2 — texto público en línea, se cita con URL en cada commit.

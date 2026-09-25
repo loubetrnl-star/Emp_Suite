@@ -1,24 +1,18 @@
-/* pruebas-motores/hidro.mjs · Fase 1 (rev 2.9.24) · casos calculados a mano del motor hidrosanitario (`hidro`, v4).
+/* pruebas-motores/hidro.mjs · Fase 1 (rev 2.9.24) · casos calculados a mano del motor hidrosanitario (`hidro`, v5).
    Hoja: parches/casos-a-mano/hidro.csv (generada por parches/casos-a-mano/hidro.calc.mjs, cálculo independiente de la
    suite). Cada prueba arma el estado del caso, evalúa las filas de su prefijo con CM.comprobar (números con tolerancia)
    y restaura S en finally. Las filas «fase2:H-nnn» sólo se exigen con CM_FASE2=1.
 
    PRUEBAS QUE PROTEGEN VALORES INCORRECTOS (se corrigen en la Fase 2 con su hallazgo; aquí sólo se marcan):
-   - pruebas.mjs:3082 22.5 `cerca(H.cdt, 6 + friccion + 15)`: repite la fórmula del código (tautológica) y fija el residual
-     de 15 m que H-194 sustituye por máx(residual, mínima de IPC 604.3 = 24.6 m para WC con fluxómetro).
-   - pruebas.mjs:3083 22.5 `cerca(H.cdt, 25.9548)`: consagra la CDT con residual 15 m (H-194: debería ser 6 + 4.9548 + 24.6075
-     = 35.56 m).
-   - pruebas.mjs:3085 22.5 `cerca(H.kWbomba, 9.81 * H.Qtotal * H.cdt / 1000 / .6)`: tautológica; repite la fórmula y el η 0.6
-     sin fuente (H-203).
-   - pruebas.mjs:3086 22.5 `eq(H.hpBomba, 2.5)`: consagra 2.5 HP, que no es potencia comercial (H-203, redondeo a 0.5 HP).
-   - pruebas.mjs:3770 L.1 `cerca(H.cdt, 8 + Σhf + 15)`: tautológica; fija el residual 15 m en vez de la mínima de 604.3 (H-194).
-   - pruebas.mjs:3404 22.11 `cerca(Σqty, 43)`: da por buena la cotización de la red con la bomba de 2 HP calculada sobre una
-     CDT sin presión mínima de norma y con precios semilla de cisterna/bomba (H-194, H-196); los metros (25 + 18) sí son
-     los capturados.
-   - pruebas.mjs:3945 N.2: arma la cisterna con la dotación por omisión «industria 100 L» y el día de reserva por omisión y sólo
-     exige `cisterna > 0`; no detecta la dotación de oficina de 70 L (H-202: NTC-PA da 50) ni el piso de 0.5 día (H-197).
-   - pruebas.mjs:5632 S.34: comprueba la curva de Hunter sólo en renglones que la suite sí trae; la tabla sigue incompleta
-     (51 renglones de E103.3(3) faltan, interpolación hasta −8 %: H-203). */
+   - 22.5 `cerca(H.kWbomba, 2.1511)` y `eq(H.hpBomba, 3)`: η 0.6 y redondeo a 0.5 HP sin fuente (H-203; 3 HP sí es comercial,
+     pero el redondeo a medio HP no lo garantiza). Los valores de CDT y presión mínima de 22.5 y L.1 ya son los de la Tabla
+     604.3 del IPC 2015 (H-194, cerrado en la rev 2.9.24).
+   - 22.11 `cerca(Σqty, 43)`: da por buena la cotización de la red con precios semilla de cisterna/bomba (H-196); los metros
+     (25 + 18) sí son los capturados.
+   - N.2: arma la cisterna con la dotación por omisión «industria 100 L» y el día de reserva por omisión y sólo exige
+     `cisterna > 0`; no detecta la dotación de oficina de 70 L (H-202: NTC-PA da 50) ni el piso de 0.5 día (H-197).
+   - S.34: comprueba la curva de Hunter sólo en renglones que la suite sí trae; la tabla sigue incompleta (51 renglones de
+     E103.3(3) faltan, interpolación hasta −8 %: H-203). */
 export default async function ({ t, G, S, CM }) {
   const filas = CM.casos("hidro");
   const de = (pref) => filas.filter((f) => f.id === pref || f.id.startsWith(pref + "."));
@@ -83,4 +77,12 @@ export default async function ({ t, G, S, CM }) {
 
   conEstado("CM.hidro.11 (IPC 2015 Tabla 604.3) la presión requerida es la del mueble que más pide; con 8 m en la toma no alcanza",
     () => { S.hidro = { ...fixture(), presRed: 8, tramos: [], muebles: [{ id: "wc_flux", cant: 1 }, { id: "lavabo", cant: 1 }] }; }, ["CM.hidro.11"]);
+
+  /* H-194 (rev 2.9.24, hidro v5): presión mínima en la salida de cada mueble por la Tabla 604.3 del IPC 2015. */
+  conEstado("CM.hidro.12 (H-194: IPC 2015 Tabla 604.3; §424.3 fija el renglón de la regadera) presión mínima en la salida de cada mueble de la tabla MUEBLES",
+    () => { S.hidro = fixture(); }, ["CM.hidro.12"]);
+  conEstado("CM.hidro.13 (H-194: criterio de la casa sobre la Tabla 604.3) sin muebles capturados la presión requerida es el menor renglón de la tabla, 8 psi",
+    () => { S.hidro = { ...fixture(), muebles: [] }; }, ["CM.hidro.13"]);
+  conEstado("CM.hidro.14 (H-194: IPC 2015 Tabla 604.3; residual 15 m criterio de la casa) con sólo lavabos la CDT lleva el residual de la casa, que es mayor que la mínima de norma",
+    () => { S.hidro = { ...fixture(), muebles: [{ id: "lavabo", cant: 2 }] }; }, ["CM.hidro.14"]);
 }

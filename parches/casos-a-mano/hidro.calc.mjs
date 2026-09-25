@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* parches/casos-a-mano/hidro.calc.mjs · Fase 1 (rev 2.9.24) · motor hidrosanitario (`hidro`, v4)
+/* parches/casos-a-mano/hidro.calc.mjs · Fase 1 (rev 2.9.24) · motor hidrosanitario (`hidro`, v4; v5 con H-194)
 
    Cálculo INDEPENDIENTE de la suite: no carga index.html, no usa cifrasMotor ni el esperado de regresión. Transcribe
    las tablas de norma que el motor necesita, resuelve cada caso a mano e imprime los esperados. Con `--csv` escribe la
@@ -12,8 +12,11 @@
    · IPC 2015 (International Plumbing Code), texto público en up.codes — PRIMARIA EN LÍNEA, verificada el 22-sep-2026:
        Apéndice E, Table E103.3(2) «Load values assigned to fixtures» y Table E103.3(3) «Table for estimating demand»:
          https://up.codes/viewer/connecticut/ipc-2015/chapter/E/sizing-of-water-piping-system
-       Table 604.3 «Water distribution system design criteria required capacity at fixture supply pipe outlets»:
+       Table 604.3 «Water distribution system design criteria required capacity at fixture supply pipe outlets» (releída
+       renglón por renglón el 24-sep-2026 para H-194; copia en parches/normas-texto/IPC-2015_Tabla-604.3_y_424.3_upcodes.txt):
          https://up.codes/viewer/connecticut/ipc-2015/chapter/6/water-supply-and-distribution#604.3
+       §424.3 «Individual shower valves» (toda regadera individual lleva válvula balanceada/termostática; fija el renglón de
+       regadera en 604.3): https://up.codes/viewer/connecticut/ipc-2015/chapter/4/fixtures-faucets-and-fixture-fittings#424.3
        Table 709.1 (unidades de descarga), 704.1 (pendientes), Tables 710.1(1) y 710.1(2) (drenaje):
          https://up.codes/viewer/connecticut/ipc-2015/chapter/7/sanitary-drainage
        IPC 2024 publica los mismos valores en estas tablas (la suite lo declara así desde la rev 2.9.18).
@@ -28,8 +31,9 @@
    · Hazen-Williams en SI: hf/L = 10.67 · Q^1.852 / (C^1.852 · D^4.87) (Q en m³/s, D en m) — fórmula clásica; C = 140
        para cobre tipo L es el valor de la suite (criterio de la casa, index.html:9765, sin cita).
    · Criterios de la casa (index.html): velocidad máxima 2.4 m/s fría y 1.5 m/s caliente (9784), 30 % de longitud
-       equivalente por accesorios (9887), presión residual 15 m (9853), eficiencia del conjunto 0.6 y redondeo a 0.5 HP
-       (9968-9969), CDT = altura del edificio + Σhf + residual (9950), presión disponible = toma − Σ(hf + alt) (9927),
+       equivalente por accesorios (9887), presión residual 15 m (9853) como piso, eficiencia del conjunto 0.6 y redondeo a
+       0.5 HP (9968-9969), CDT = altura del edificio + Σhf + máx(residual, mínima de 604.3 del mueble que más pide) (9950;
+       H-194, antes sólo el residual), presión disponible = toma − Σ(hf + alt) (9927),
        ventilación primaria = mitad de la bajada redondeada a 5 mm y ≥ 32 mm (9936; IPC 906.2 dice la mitad y ≥ 1¼"),
        máximo dos WC en ramal/bajada de 75 mm (9801-9811; la Tabla 710.1(2) del IPC 2015 en up.codes NO trae esa nota). */
 import fs from "node:fs";
@@ -93,8 +97,18 @@ const DFU = {
   manguera: 0,   // una toma de manguera no descarga al drenaje
 };
 
-/* ------------------------------------------------------------------ IPC 2015 Table 604.3 · presión mínima en la salida del mueble (psi) */
-const PSI_604_3 = { wc_flux: 35 /* siphonic flushometer valve; blow out 45 */, wc_tanque: 20, ming_flux: 25, lavabo: 8, regadera: 8, fregadero: 8, manguera: 8, bebedero: 8 };
+/* ------------------------------------------------------------------ IPC 2015 Table 604.3 · presión mínima en la salida del mueble (flow pressure, psi)
+   Leída en up.codes el 24-sep-2026 (H-194). Renglones: Water closet, siphonic, flushometer valve 35 (blow out 45: no se usa);
+   Water closet, tank, close coupled / one piece 20; Urinal, valve 25; Lavatory, public 8; Shower 8 y Shower, balanced-pressure,
+   thermostatic or combination mixing valve 20; Sink, residential / Sink, service 8; Laundry tray 8; Drinking fountain 8;
+   Sillcock, hose bibb 8. Regadera: §424.3 exige válvula balanceada/termostática en toda regadera individual → rige 20 psi.
+   Tarja de laboratorio: no está en la tabla y 604.3 remite al fabricante; la suite la asimila a Sink, service (8 psi): criterio
+   de la casa. Lavaojos/regadera de emergencia: no está en 604.3 (ANSI Z358.1, H-195 BLOQUEADO): sin fila. */
+const PSI_604_3 = { wc_flux: 35, wc_tanque: 20, ming_flux: 25, lavabo: 8, regadera: 20, fregadero: 8, lavadero: 8, bebedero: 8, manguera: 8 };
+const NOM_604_3 = { wc_flux: "Water closet, siphonic, flushometer valve", wc_tanque: "Water closet, tank, close coupled / one piece", ming_flux: "Urinal, valve",
+  lavabo: "Lavatory, public", regadera: "Shower, balanced-pressure, thermostatic or combination mixing valve (la válvula que exige §424.3)",
+  fregadero: "Sink, residential / Sink, service", lavadero: "Laundry tray", bebedero: "Drinking fountain", manguera: "Sillcock, hose bibb" };
+const PSI_CASA = { tarja_lab: 8 };            // asimilada a Sink, service (criterio de la casa)
 
 /* ------------------------------------------------------------------ IPC 2015 · drenaje: 710.1(1) colector, 710.1(2) ramal y bajada, 704.1 pendiente */
 /* Table 710.1(1) Building drains and sewers: DFU máximas por pendiente (in/ft). Nota a: un colector con WC no baja de 3". */
@@ -219,17 +233,10 @@ fila("CM.hidro.1.k", "presión disponible en el mueble más desfavorable (toma 0
   `0 − ${hfTotal.toFixed(5)} = ${presDisp.toFixed(5)} m (negativa: no alcanza)`, CASA(9927), NCASA,
   "HIDRO.presDisp", presDisp, 0.002);
 fila("CM.hidro.1.l", "la presión no alcanza (presOk falso → 0)", E1,
-  `${presDisp.toFixed(2)} m < 10.5 m (mínima de la suite) y < 24.6 m (IPC 604.3): falso en ambos casos`, CASA(9928), NCASA,
+  `${presDisp.toFixed(2)} m < 24.6 m (IPC 604.3, WC con fluxómetro): falso`, CASA(9928), NCASA,
   "HIDRO.presOk ? 1 : 0", 0, 0);
-fila("CM.hidro.1.m", "carga dinámica total con residual de la casa (15 m)", E1,
-  `0 + ${hf1.toFixed(5)} + ${hf2.toFixed(5)} + 15 = ${cdtCasa.toFixed(4)} m`, `${CASA("9950, 9853")}; H-194 pide máx(residual, 604.3)`, NCASA,
-  "HIDRO.cdt", cdtCasa, 0.002);
-fila("CM.hidro.1.n", "potencia al eje de la bomba (η 0.6)", E1,
-  `9.81 × 3.69961 × ${cdtCasa.toFixed(4)} / 1000 / 0.6 = ${kW1.toFixed(5)} kW`, CASA(9968), NCASA,
-  "HIDRO.kWbomba", kW1, "0.05%");
-fila("CM.hidro.1.o", "HP nominales (redondeo a 0.5 HP hacia arriba)", E1,
-  `ceil(${kW1.toFixed(5)} / 0.746 × 2) / 2 = ceil(3.236)/2 = 2.0 HP`, CASA(9969), NCASA,
-  "HIDRO.hpBomba", hpBomba(kW1), 0);
+/* Las filas 1.m, 1.n y 1.o (CDT, kW y HP con el residual fijo de 15 m, sin fuente) se retiraron al cerrar H-194: las sustituyen
+   1.aa, 1.ab y 1.ac con la presión mínima de la Tabla 604.3. El residual de la casa sigue vigilado en el caso 14. */
 fila("CM.hidro.1.p", "el sistema es de fluxómetro (1) porque hay WC/mingitorio con fluxómetro", E1,
   "hay muebles con válvula de fluxómetro → columna «predominantly flush valves»", `${IPC_E} E103.3`, PRIM,
   "HIDRO.tipoSistema === \"fluxometro\" ? 1 : 0", 1, 0);
@@ -263,19 +270,19 @@ fila("CM.hidro.1.x", "unidades de descarga por IPC 709.1 (hoy la suite da 52: WC
 fila("CM.hidro.1.y", "colector con 30 UD al 2 %: 75 mm (hoy 100 mm porque la suite trae 20/27 UD para 75 mm y 52 UD)", E1,
   "al 2 % rige la columna 1/8 in/ft (1/4 in/ft = 2.083 %): 3\" admite 36 ≥ 30 UD; mínimo 3\" con WC (nota a). Requiere H-203 (30 UD) y H-201 (tabla)", "IPC 2015 Table 710.1(1) (up.codes)", PRIM,
   "HIDRO.colector.d", colectorIPC(udIPC, 2, true), 0, "fase2:H-201");
-/* fase 2 · H-194 presión mínima 604.3 */
-fila("CM.hidro.1.z", "presión mínima requerida: WC con fluxómetro sifónico 35 psi (hoy 10.5 m sin fuente)", E1,
+/* H-194 (cerrado en la rev 2.9.24, hidro v5): presión mínima de la Tabla 604.3; antes 10.5 m sin fuente y CDT con residual fijo. */
+fila("CM.hidro.1.z", "presión mínima requerida: WC con fluxómetro sifónico 35 psi (antes 10.5 m sin fuente)", E1,
   "35 psi × 0.703070 m/psi = 24.6075 m", "IPC 2015 Table 604.3 (up.codes)", PRIM,
-  "HIDRO.presMinReq", presMinIPC, 0.01, "fase2:H-194");
-fila("CM.hidro.1.aa", "CDT con máx(residual 15, mínima 604.3) (hoy 19.95 m)", E1,
+  "HIDRO.presMinReq", presMinIPC, 0.01);
+fila("CM.hidro.1.aa", "CDT con máx(residual 15, mínima 604.3) (antes 19.95 m con el residual fijo)", E1,
   `0 + ${hf1.toFixed(5)} + ${hf2.toFixed(5)} + máx(15, 24.6075) = ${cdtIPC.toFixed(4)} m`, "IPC 2015 Table 604.3; CDT " + CASA(9950), PRIM,
-  "HIDRO.cdt", cdtIPC, 0.01, "fase2:H-194");
-fila("CM.hidro.1.ab", "potencia al eje con la CDT de 604.3 (hoy 1.207 kW)", E1,
+  "HIDRO.cdt", cdtIPC, 0.01);
+fila("CM.hidro.1.ab", "potencia al eje con la CDT de 604.3 (antes 1.207 kW)", E1,
   `9.81 × 3.69961 × ${cdtIPC.toFixed(4)} / 1000 / 0.6 = ${kWipc.toFixed(5)} kW`, "IPC 2015 Table 604.3; η 0.6 " + CASA(9968), PRIM,
-  "HIDRO.kWbomba", kWipc, "0.1%", "fase2:H-194");
-fila("CM.hidro.1.ac", "HP nominales con la CDT de 604.3 (hoy 2 HP)", E1,
+  "HIDRO.kWbomba", kWipc, "0.1%");
+fila("CM.hidro.1.ac", "HP nominales con la CDT de 604.3 (antes 2 HP)", E1,
   `ceil(${kWipc.toFixed(5)} / 0.746 × 2) / 2 = 2.5 HP (2.5 HP no es comercial: H-203)`, "IPC 2015 Table 604.3; redondeo " + CASA(9969), PRIM,
-  "HIDRO.hpBomba", hpBomba(kWipc), 0, "fase2:H-194");
+  "HIDRO.hpBomba", hpBomba(kWipc), 0);
 /* fase 2 · H-196 cisterna y bomba con precio semilla */
 fila("CM.hidro.1.ad", "importe de «Cisterna de 0 m³ y equipo de bombeo de 2 HP» en la cotización (hoy 29,000 MXN = 9,500×0 + 14,500×2 sin fuente)", E1 + "; hidro>quote autorizado",
   "regla de precios 22-sep: sin fuente y fecha → «Por cotizar» (importe 0 en aux); bomba sólo con presOk falso", "PLAN-CRITICOS.md §2 Fase 2 H-196 (decisión del dueño)", "decisión del dueño",
@@ -454,20 +461,53 @@ fila("CM.hidro.9.z", "bajada con 60 UD sin WC con la columna «≤ 3 intervalos�
 
 /* =========================================================================================================== CASO 10 · CDT con altura del edificio */
 fila("CM.hidro.10.a", "CDT con altura del edificio 6 m (la altura estática que manda es la del edificio, no la suma de tramos)", "fixture; alturaEdificio 6",
-  `6 + ${hf1.toFixed(5)} + ${hf2.toFixed(5)} + 15 = ${(6 + hf1 + hf2 + 15).toFixed(4)} m`, `decisión del dueño 15-sep-2026 (index.html:9950-9960); residual 15 ${CASA(9853)}`, "decisión del dueño",
-  "HIDRO.cdt", 6 + hf1 + hf2 + RESIDUAL_CASA, 0.002);
+  `6 + ${hf1.toFixed(5)} + ${hf2.toFixed(5)} + máx(15, 24.6075) = ${(6 + hf1 + hf2 + Math.max(RESIDUAL_CASA, presMinIPC)).toFixed(4)} m (antes de H-194: + 15 = ${(6 + hf1 + hf2 + 15).toFixed(4)})`,
+  `decisión del dueño 15-sep-2026 (index.html:9950-9960); mínima IPC 2015 Table 604.3 (H-194); residual 15 ${CASA(9853)}`, "decisión del dueño",
+  "HIDRO.cdt", 6 + hf1 + hf2 + Math.max(RESIDUAL_CASA, presMinIPC), 0.002);
 
 /* =========================================================================================================== CASO 11 · presión disponible contra el mueble que gobierna */
 fila("CM.hidro.11.a", "toma de 8 m con un lavabo (5.6 m) y un WC con fluxómetro: gobierna el WC y no alcanza (presOk 0)", "presRed 8; wc_flux×1 lavabo×1; sin tramos",
-  "requerida = máx(muebles): WC fluxómetro 35 psi = 24.6 m (suite hoy 10.5) > 8 m disponibles → no alcanza en ambos casos", "IPC 2015 Table 604.3 (up.codes); regla del máximo " + CASA(9868), PRIM,
+  "requerida = máx(muebles): WC fluxómetro 35 psi = 24.6 m > 8 m disponibles → no alcanza", "IPC 2015 Table 604.3 (up.codes); regla del máximo " + CASA(9868), PRIM,
   "HIDRO.presOk ? 1 : 0", 0, 0);
+
+/* =========================================================================================================== CASO 12 · presión mínima por mueble (H-194, IPC 2015 Table 604.3) */
+const E12 = "sin estado: se lee la tabla MUEBLES directamente (muebleDe(id).presMin)";
+Object.entries(PSI_604_3).forEach(([id, psi], k) => {
+  fila(`CM.hidro.12.${"abcdefghi"[k]}`, `presión mínima en la salida del mueble «${id}» (${NOM_604_3[id]}): ${psi} psi`, E12,
+    `${psi} psi × 0.703070 m/psi = ${(psi * PSI_M).toFixed(4)} m`, `IPC 2015 Table 604.3 (up.codes, releída 24-sep-2026)${id === "regadera" ? "; §424.3 (válvula obligatoria)" : ""}`, PRIM,
+    `muebleDe(${JSON.stringify(id)}).presMin`, psi * PSI_M, 0.001);
+});
+fila("CM.hidro.12.j", "presión mínima de la tarja de laboratorio: no está en la Table 604.3, se asimila a Sink, service (8 psi)", E12,
+  "8 psi × 0.703070 m/psi = 5.6246 m", "criterio de la casa (604.3 remite al fabricante para muebles no listados)", NCASA,
+  "muebleDe(\"tarja_lab\").presMin", PSI_CASA.tarja_lab * PSI_M, 0.001);
+
+/* =========================================================================================================== CASO 13 · sin muebles capturados (H-194) */
+fila("CM.hidro.13.a", "sin muebles capturados la presión requerida es el menor renglón de la Table 604.3 (8 psi; antes 5.6 m sin fuente)", "fixture sin muebles",
+  "8 psi × 0.703070 m/psi = 5.6246 m", "criterio de la casa sobre la IPC 2015 Table 604.3 (el menor renglón de la tabla)", NCASA,
+  "HIDRO.presMinReq", 8 * PSI_M, 0.001);
+
+/* =========================================================================================================== CASO 14 · CDT cuando rige el residual de la casa (H-194)
+   Fixture con sólo lavabo×2: sin fluxómetros el sistema es de tanque, así que los tramos (72 y 20 UM) van por la columna de tanque. */
+const q72t = hunterLs(72, "tanque"), q20t = hunterLs(20, "tanque");
+const s1t = seleccionCobre(q72t, V_MAX_FRIA), s2t = seleccionCobre(q20t, V_MAX_FRIA);
+const hf1t = hazen(q72t, s1t.d, C_COBRE) * 25 * F_LEQ, hf2t = hazen(q20t, s2t.d, C_COBRE) * 18 * F_LEQ;
+const presMinLav = PSI_604_3.lavabo * PSI_M;
+const cdt14 = 0 + hf1t + hf2t + Math.max(RESIDUAL_CASA, presMinLav);
+const E14 = "fixture con muebles lavabo×2 (sistema de tanque; tramos 72 y 20 UM por la columna de tanque)";
+fila("CM.hidro.14.a", "presión requerida con sólo lavabos: Lavatory, public 8 psi", E14,
+  "8 psi × 0.703070 m/psi = 5.6246 m", "IPC 2015 Table 604.3 (up.codes)", PRIM,
+  "HIDRO.presMinReq", presMinLav, 0.001);
+fila("CM.hidro.14.b", "con sólo lavabos (5.62 m < 15 m) la CDT lleva el residual de la casa, no la mínima de norma", E14,
+  `0 + ${hf1t.toFixed(5)} (72 WSFU tanque ${(q72t).toFixed(5)} L/s en ${s1t.nom}) + ${hf2t.toFixed(5)} (20 WSFU tanque ${(q20t).toFixed(5)} L/s en ${s2t.nom}) + máx(15, 5.6246) = ${cdt14.toFixed(4)} m`,
+  `IPC 2015 Table 604.3; residual 15 ${CASA(9853)}; CDT ${CASA(9950)}`, NCASA,
+  "HIDRO.cdt", cdt14, 0.01);   // ±0.01: el ramal de 20 UM va en 1" y el DI independiente (26.035 mm, B88 vía CDA) difiere 0.005 mm del de la suite (26.04): 0.007 m en hf; la fila vigila el +15 contra +5.62/+24.6
 
 /* ------------------------------------------------------------------ salida */
 const ids = new Set();
 for (const f of filas) { if (ids.has(f.id)) throw new Error(`id repetido ${f.id}`); ids.add(f.id); }
 console.log(`hidro.calc.mjs · ${filas.length} filas (${filas.filter((f) => f.estado === "vigente").length} vigentes, ${filas.filter((f) => /^fase2/.test(f.estado)).length} fase2)\n`);
 for (const f of filas) console.log(`${f.id.padEnd(15)} ${String(f.esperado).padStart(12)}  ±${String(f.tolerancia).padEnd(6)} ${f.estado.padEnd(12)} ${f.expresion}`);
-console.log("\nIntermedios del fixture:", JSON.stringify({ q72, q20, d2: s1.d, d15: s2.d, J1, J2, hf1, hf2, hfTotal, cdtCasa, kW1, presMinIPC, cdtIPC, kWipc, umCalIPC, qCalIPC, kWcalIPC, udIPC }, null, 1));
+console.log("\nIntermedios del fixture:", JSON.stringify({ q72, q20, d2: s1.d, d15: s2.d, J1, J2, hf1, hf2, hfTotal, cdtCasa, kW1, presMinIPC, cdtIPC, kWipc, umCalIPC, qCalIPC, kWcalIPC, udIPC, q72t, q20t, hf1t, hf2t, cdt14 }, null, 1));
 
 if (process.argv.includes("--csv")) {
   const cab = ["id", "descripcion", "entradas", "formula", "fuente", "caracter", "expresion", "esperado", "tolerancia", "estado", "calculado_por"];
