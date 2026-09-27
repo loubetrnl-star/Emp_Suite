@@ -9338,6 +9338,191 @@ t("S.151 (H-271) diagrama trifilar: cada circuito baja a las fases que computeEl
   } finally { S.elec = JSON.parse(guardado); S.tab = tab0; G("recompute")(); }
 });
 
+/* ===== H-269 · Cuantificación de materiales y consideraciones de cálculo del eléctrico (pedido del dueño, 27-sep-2026) =====
+   La cuantificación sale de computeElec (R), sin precios (eso es de la cotización): metros de conductor = L del circuito ×
+   conductores que el motor cuenta (selConductor: fases, neutro en trifásico, tierra; un juego por canalización), metros de
+   canalización = L por juego, piezas de protección por capacidad. Lo que el motor no da (longitud, número de ramales, función
+   del 2.º conductor monofásico) queda «pendiente», listado aparte, y no suma (regla 6). No mueve cifras. */
+const proyectoMateriales = () => {
+  const d = G("defaultElec")();
+  S.elec = { ...d, tomarHVAC: false, Ltablero: 40, trafoKVA: 300, trafoZ: 4, cargas: [
+    { ...G("defaultCarga")("Motor de proceso"), tipo: "motor", kW: 15, V: 220, ph: 3, fp: .85, L: 30 },
+    { ...G("defaultCarga")("Tarja de laboratorio"), tipo: "proceso", kW: 2, V: 127, ph: 1, fp: .9, L: 35 },
+    { ...G("defaultCarga")("Horno de curado"), tipo: "resistiva", kW: 12, V: 220, ph: 3, fp: 1, L: 20 },
+    { ...G("defaultCarga")("Bomba sin distancia"), tipo: "proceso", kW: 5, V: 220, ph: 3, fp: .85, L: 0 }] };
+  G("recompute")();
+  const R = G("ELEC");
+  if (R.calc.length !== 4 || R.calc.some((c) => c.sinI || c.cant !== 1) || R.calc.slice(0, 3).some((c) => c.sinL || c.Lsin) || !R.calc[3].sinL
+    || Object.keys(R.calc[1].fases || {}).length !== 1 || R.Lalim !== 40 || R.sis.Vf === R.sis.V)
+    throw new Error("el caso no aísla lo que se prueba: tres circuitos con L, uno sin L, el monofásico en una sola fase, sistema con neutro");
+  return R;
+};
+const MAT_VACIO = { conductores: [], canalizaciones: [], protecciones: [], tableros: [], transformadores: [], pendientes: [] };
+const sumaEn = (o, k, v) => { o[k] = (o[k] || 0) + v; };
+const ordenado = (o) => JSON.stringify(Object.keys(o).sort().map((k) => [k, +o[k].toFixed(6)]));
+t("S.152 (H-269) cuantificación de materiales del eléctrico: los metros de conductor por calibre (L × fases, neutro y tierra que cuenta computeElec, alimentador general incluido), los de canalización por diámetro y las piezas de protección por capacidad coinciden con R; un circuito sin L queda en pendientes y no suma metros; tabla en la pestaña, sección en la memoria PDF y en el libro (ES/EN)", () => {
+  const guardado = JSON.stringify(S.elec), tab0 = S.tab;
+  try {
+    const R = proyectoMateriales(), fn = w.materialesElec;
+    const antes = JSON.stringify(R);
+    const M = typeof fn === "function" ? fn(R) : MAT_VACIO;
+    eq(JSON.stringify(R), antes, "la cuantificación no toca el resultado del motor:");
+    /* Esperado, directo de R: conductores que selConductor cuenta en el relleno de cada canalización (trifásico: 3 fases +
+       neutro de calibre de fase + tierra; monofásico: 2 + tierra), por juego en paralelo; sólo los circuitos con L. */
+    const esp = { m: {}, tubo: {}, prot: {} };
+    const circuito = (K, ph, L) => {
+      const P = K.paralelo || 1;
+      sumaEn(esp.m, `${K.awg}|${K.material}`, (ph === 3 ? 4 : 2) * P * L);
+      sumaEn(esp.m, `${K.tierra}|${K.tierraMat}`, P * L);
+      sumaEn(esp.tubo, K.tubo.d, P * L);
+    };
+    circuito(R.alim, R.sis.ph, R.Lalim);
+    R.calc.filter((c) => !c.sinL).forEach((c) => circuito(c.cond, c.ph, c.L));
+    sumaEn(esp.prot, String(R.principal), 1);
+    R.calc.forEach((c) => sumaEn(esp.prot, String(c.cond.ocpd), 1));
+    const obt = { m: {}, tubo: {}, prot: {} };
+    M.conductores.forEach((r) => sumaEn(obt.m, `${r.awg}|${r.material}`, r.cant));
+    M.canalizaciones.forEach((r) => sumaEn(obt.tubo, r.d, r.cant));
+    M.protecciones.forEach((r) => sumaEn(obt.prot, String(r.A), r.cant));
+    eq(ordenado(obt.m), ordenado(esp.m), "metros de conductor por calibre y material = L × conductores que cuenta computeElec (fases, neutro, tierra; alimentador general incluido):");
+    eq(ordenado(obt.tubo), ordenado(esp.tubo), "metros de canalización por diámetro = L por juego:");
+    eq(ordenado(obt.prot), ordenado(esp.prot), "piezas de protección por capacidad = interruptor general + una por circuito:");
+    M.conductores.concat(M.canalizaciones).forEach((r) => eq(r.un, "m", `${r.desc}: unidad`));
+    M.protecciones.concat(M.tableros, M.transformadores).forEach((r) => eq(r.un, "pza", `${r.desc}: unidad`));
+    /* Función de cada conductor: la que computeElec distingue; el 2.º conductor monofásico queda «pendiente». */
+    const [mot, tarja, horno, bomba] = R.calc;
+    const conF = (awg, re) => M.conductores.filter((r) => r.awg === awg && re.test(r.funcion));
+    if (!conF(mot.cond.awg, /^neutro/).length) throw new Error("el neutro que selConductor cuenta en el trifásico debe cuantificarse como neutro");
+    if (!conF(mot.cond.tierra, /^tierra/).length) throw new Error("la tierra de la Tabla 250-122 debe cuantificarse como tierra");
+    const seg = conF(tarja.cond.awg, /pendiente/);
+    if (seg.length !== 1) throw new Error("el 2.º conductor del monofásico (neutro o segunda fase) debe ir en un renglón con función «pendiente»: " + JSON.stringify(M.conductores.map((r) => [r.awg, r.funcion])));
+    cerca(seg[0].cant, (tarja.cond.paralelo || 1) * tarja.L, 1e-9, "sus metros sí cuentan (el conductor existe; sólo su función queda pendiente):");
+    /* Origen: cada renglón dice de qué circuito y de qué campo de computeElec sale. */
+    const fase1 = M.conductores.find((r) => r.awg === mot.cond.awg && /^fase/.test(r.funcion) && r.origen.includes("C-01"));
+    if (!fase1) throw new Error("el renglón de fases del C-01 debe decir su origen");
+    contiene(fase1.origen, "calc[0].cond.awg", "origen con el campo del calibre:"); contiene(fase1.origen, "calc[0].L", "y el de la longitud:");
+    const ag = M.conductores.find((r) => r.awg === R.alim.awg && r.origen.includes("AG"));
+    if (!ag) throw new Error("el alimentador general debe cuantificarse (AG)"); contiene(ag.origen, "Lalim", "con la distancia al tablero de computeElec:");
+    /* Sin L: pendiente con su nombre, sin metros en ningún renglón. */
+    if (!M.pendientes.some((p) => p.includes("C-04") && p.includes("Bomba sin distancia") && /longitud/.test(p))) throw new Error("el circuito sin L debe listarse en pendientes: " + M.pendientes.join(" | "));
+    if (M.conductores.concat(M.canalizaciones).some((r) => r.origen.includes("C-04"))) throw new Error("el circuito sin L no debe sumar metros");
+    /* Protecciones: polos que computeElec distingue (trifásico 3; monofásico pendiente); el general con su capacidad. */
+    const pMot = M.protecciones.find((r) => r.origen.includes("C-01")), pTar = M.protecciones.find((r) => r.origen.includes("C-02"));
+    if (!pMot || pMot.polos !== 3) throw new Error("la protección del trifásico lleva 3 polos");
+    if (!pTar || pTar.polos != null) throw new Error("los polos del monofásico (1 o 2) no los distingue computeElec: pendiente");
+    const gen = M.protecciones.find((r) => r.origen.includes("principal"));
+    if (!gen || gen.A !== R.principal || gen.polos !== 3) throw new Error("el interruptor general = principal de computeElec, 3 polos");
+    eq(M.tableros.length, 1, "un tablero general:"); contiene(M.tableros[0].desc, `${R.principal} A`, "con las barras del principal:");
+    if (!/espacios/.test(M.tableros[0].desc + M.tableros[0].origen) || !M.pendientes.some((p) => /espacios/.test(p))) throw new Error("los espacios del tablero no los calcula computeElec: pendiente declarado");
+    eq(M.transformadores.length, 1, "el transformador capturado:"); contiene(M.transformadores[0].desc, "300 kVA", "con su placa:"); contiene(M.transformadores[0].desc, "Z 4 %", "y su impedancia:");
+    [...M.conductores, ...M.canalizaciones, ...M.protecciones, ...M.tableros, ...M.transformadores].forEach((r) => sinTexto(`${r.desc} ${r.origen}`, r.desc));
+    M.pendientes.forEach((p) => sinTexto(p, "pendiente"));
+    if (/\$|MXN|USD|precio/i.test(JSON.stringify(M.conductores.concat(M.canalizaciones, M.protecciones)))) throw new Error("la cuantificación no lleva precios");
+    /* Pantalla, memoria PDF y libro (ES y EN). */
+    S.tab = "electrico"; G("render")();
+    const v = vista();
+    contiene(v, "Cuantificación de materiales", "pantalla, tarjeta:");
+    const ini = v.indexOf("Cuantificación de materiales"), finT = v.indexOf('<div class="card">', ini), tarj = v.slice(ini, finT > 0 ? finT : undefined);
+    contiene(tarj, `${R.alim.awg} ${Number(R.alim.awg) >= 250 ? "kcmil" : "AWG"}`, "pantalla, conductor del alimentador:");
+    contiene(tarj, "Bomba sin distancia", "pantalla, pendiente del circuito sin L:"); contiene(tarj, "C-01", "pantalla, origen:");
+    const pdf = txtPdfE(G("buildElecPdf")());
+    contiene(pdf, "Cuantificacion de materiales", "PDF, sección:"); contiene(pdf, "Bomba sin distancia", "PDF, pendiente:");
+    if (/undefined|NaN|\bnull\b/.test(pdf)) throw new Error("el PDF imprime «undefined», «NaN» o «null»");
+    const xEs = leerXlsx(G("buildPropuestaXlsx")({ lang: "es", mon: "MXN" })).txt, xEn = leerXlsx(G("buildPropuestaXlsx")({ lang: "en", mon: "MXN" })).txt;
+    contiene(xEs, "CUANTIFICACION DE MATERIALES", "libro ES:"); contiene(xEn, "MATERIALS TAKE-OFF", "libro EN:");
+    const fx = celdasXlsxFila(xEs, "Conductor", /MEMORIA ELECTRICA/);
+    if (!fx || !fx.c.some((c) => /calc\[\d+\]\.cond\.awg|alim\.awg/.test(c))) throw new Error("libro ES: renglón de conductor con su origen: " + (fx && fx.c.join(" | ")));
+    if (!celdasXlsxFila(xEn, "Raceway", /ELECTRICAL CALCULATION/)) throw new Error("libro EN: renglón de canalización en inglés");
+    /* Más de una unidad en un renglón: computeElec dimensiona el ramal con la corriente de UNA unidad y no dice cuántos
+       ramales son: sus metros y su protección quedan pendientes, no se multiplican ni se toman por uno. */
+    S.elec.cargas[0].cant = 2; G("recompute")();
+    const M2 = typeof fn === "function" ? fn(G("ELEC")) : MAT_VACIO;
+    if (M2.conductores.concat(M2.canalizaciones, M2.protecciones).some((r) => r.origen.includes("C-01"))) throw new Error("2 unidades en C-01: sus metros y su protección no se suponen");
+    if (!M2.pendientes.some((p) => p.includes("C-01") && /ramal/.test(p))) throw new Error("2 unidades en C-01: pendiente del número de ramales: " + M2.pendientes.join(" | "));
+    /* Sin transformador capturado no se cuantifica ninguno. */
+    S.elec.cargas[0].cant = 1; S.elec.trafoKVA = null; S.elec.trafoZ = null; G("recompute")();
+    const M3 = typeof fn === "function" ? fn(G("ELEC")) : { ...MAT_VACIO, transformadores: [{}] };
+    eq(M3.transformadores.length, 0, "sin placa capturada no hay transformador:");
+    if (!M3.pendientes.some((p) => /transformador/i.test(p))) throw new Error("sin transformador: pendiente declarado");
+  } finally { S.elec = JSON.parse(guardado); S.tab = tab0; G("recompute")(); }
+});
+
+t("S.153 (H-269) consideraciones de cálculo del eléctrico: los parámetros que gobiernan el cálculo salen con el valor que usó computeElec y de dónde salen (capturado en esta pestaña, valor inicial de la pestaña, pendiente, criterio de la casa); las normas se citan con edición, año, sección y página sólo si su texto está en parches/normas-texto (si no, BLOQUEADO); pantalla, memoria PDF y libro (ES/EN); ninguna cifra se mueve", () => {
+  const guardado = JSON.stringify(S.elec), tab0 = S.tab;
+  const vacio = { parametros: [], normas: [] };
+  try {
+    let R = proyectoMateriales();
+    const fn = w.consideracionesElec, antes = JSON.stringify(R), E0 = JSON.stringify(S.elec);
+    let C = typeof fn === "function" ? fn(R, S.elec) : vacio;
+    eq(JSON.stringify(R), antes, "las consideraciones no tocan el resultado del motor:"); eq(JSON.stringify(S.elec), E0, "ni la captura:");
+    const par = (k) => { const p = C.parametros.find((x) => x.clave === k); if (!p) throw new Error(`falta el parámetro «${k}»: ` + C.parametros.map((x) => x.clave).join(", ")); return p; };
+    /* Los que pide el dueño: tensión y fases, fp, factores de demanda, caídas admisibles, temperatura y agrupamiento,
+       distancia al tablero, kVA y Z del transformador; cada uno con valor y origen, sin huecos. */
+    ["sistema", "fpAlim", "fpCargas", "demanda", "dvRamal", "dvTotal", "tempAmb", "nCond", "Ltablero", "trafoKVA", "trafoZ", "continua", "canalizacion"].forEach((k) => {
+      const p = par(k); if (!p.param || !p.valor || !p.origen) throw new Error(`«${k}» sin nombre, valor u origen`); sinTexto(`${p.param} ${p.valor} ${p.origen}`, k);
+    });
+    contiene(par("sistema").valor, "220/127 V", "sistema con su tensión:"); contiene(par("sistema").valor, "4 hilos", "y sus hilos:");
+    contiene(par("Ltablero").valor, "40 m", "distancia capturada:"); eq(par("Ltablero").tipo, "capturado", "distancia capturada, origen:"); contiene(par("Ltablero").origen, "capturado en esta pestaña", "y lo dice:");
+    contiene(par("trafoKVA").valor, "300 kVA", "kVA capturado:"); contiene(par("trafoZ").valor, "4 %", "Z capturada:"); eq(par("trafoZ").tipo, "capturado", "Z capturada, origen:");
+    /* El valor inicial de la pestaña no se hace pasar por captura: se dice que es el de la casa. */
+    eq(par("tempAmb").tipo, "inicial", "40 °C es el valor inicial de la pestaña:"); contiene(par("tempAmb").origen, "valor inicial", "y lo dice:");
+    contiene(par("tempAmb").valor, `factor ${n(G("fTemp")(40), 2)}`, "con el factor que usó el motor:");
+    eq(par("fpAlim").tipo, "casa", "fp del alimentador sin capturar = criterio de la casa:"); contiene(par("fpAlim").valor, n(R.fpAlim, 2), "con el valor que usó el motor:");
+    contiene(par("demanda").origen, "220-44", "demanda de contactos con su artículo:"); contiene(par("demanda").origen, "430-24", "y el 25 % del motor mayor:");
+    contiene(par("demanda").valor, n(R.fdem, 2), "factor de demanda resultante del motor:");
+    /* Normas: con edición, año, sección y página sólo si su texto está en parches/normas-texto y la página trae la sección. */
+    const paginas = {};
+    const paginaDe = (archivo, p) => {
+      if (!paginas[archivo]) { const txt = fs.readFileSync(`parches/normas-texto/${archivo}`, "utf8"), o = {}; const partes = txt.split(/=====PAG (\d+)=====/); for (let i = 1; i < partes.length; i += 2) o[+partes[i]] = (o[+partes[i]] || "") + partes[i + 1]; paginas[archivo] = o; }
+      const [a, b] = String(p).split("-").map(Number); let s = ""; for (let k = a; k <= (b || a); k++) s += paginas[archivo][k] || ""; return s;
+    };
+    if (C.normas.length < 20) throw new Error(`faltan normas que usa el motor: ${C.normas.length}`);
+    ["Tabla 310-15(b)(16)", "Tabla 310-15(b)(2)(a)", "Tabla 310-15(b)(3)(a)", "220-44", "430-24", "250-122", "240-6(a)", "210-19(a)", "215-2(a)", "Tabla 5"].forEach((sec) => {
+      if (!C.normas.some((x) => (x.seccion || "").includes(sec))) throw new Error(`falta la sección ${sec}`);
+    });
+    const NORMAS = G("NORMAS_ELEC");
+    C.normas.forEach((x, i) => {
+      if (x.estado === "BLOQUEADO") { contiene(x.etiqueta, "BLOQUEADO: falta el texto de la norma", `${x.familia}:`); return; }
+      if (!x.texto || !fs.existsSync(`parches/normas-texto/${x.texto}`)) throw new Error(`${x.etiqueta}: se cita sin su texto en parches/normas-texto`);
+      [x.norma, x.edicion, String(x.anio), x.seccion, `p. ${x.pagina}`].forEach((k) => contiene(x.etiqueta, k, "etiqueta con edición, año, sección y página:"));
+      contiene(x.norma, String(x.anio), "el año va en la norma:");
+      contiene(paginaDe(x.texto, x.pagina), NORMAS[i].ancla, `${x.etiqueta}: la página citada trae la sección:`);
+      if (typeof x.aplica !== "boolean" || !x.uso) throw new Error(`${x.etiqueta}: sin uso o sin «interviene»`);
+    });
+    if (!C.normas.find((x) => x.seccion === "220-44") || C.normas.find((x) => x.seccion === "220-44").aplica) throw new Error("sin contactos, 220-44 no interviene en este proyecto");
+    if (!C.normas.find((x) => x.seccion === "430-24").aplica) throw new Error("con motor, 430-24 interviene");
+    /* Regla 4: una norma sin texto no se cita con edición ni sección. */
+    const tx0 = NORMAS[0].texto;
+    try {
+      NORMAS[0].texto = null;
+      const Cb = fn(R, S.elec), b = Cb.normas[0];
+      eq(b.estado, "BLOQUEADO", "sin texto, BLOQUEADO:"); contiene(b.etiqueta, "BLOQUEADO: falta el texto de la norma", "etiqueta:");
+      if (b.etiqueta.includes(NORMAS[0].seccion) || /p\. \d/.test(b.etiqueta) || b.etiqueta.includes("DOF")) throw new Error("una norma sin texto no se cita con edición, sección ni página: " + b.etiqueta);
+    } finally { NORMAS[0].texto = tx0; }
+    /* Pantalla, memoria PDF y libro. */
+    S.tab = "electrico"; G("render")();
+    const v = vista();
+    contiene(v, "Consideraciones de cálculo", "pantalla, tarjeta:");
+    const ini = v.indexOf("Consideraciones de cálculo"), finT = v.indexOf('<div class="card">', ini), tarj = v.slice(ini, finT > 0 ? finT : undefined);
+    ["Temperatura ambiente", "valor inicial", "NOM-001-SEDE-2012 (DOF 29-nov-2012)", "Tabla 310-15(b)(16), p. 190", "capturado en esta pestaña"].forEach((k) => contiene(tarj, k, "pantalla:"));
+    const pdf = txtPdfE(G("buildElecPdf")());
+    ["Consideraciones de calculo", "NOM-001-SEDE-2012 (DOF 29-nov-2012), Tabla 310-15(b)(16), p. 190", "valor inicial"].forEach((k) => contiene(pdf, k, "PDF:"));
+    if (/undefined|NaN|\bnull\b/.test(pdf)) throw new Error("el PDF imprime «undefined», «NaN» o «null»");
+    const xEs = leerXlsx(G("buildPropuestaXlsx")({ lang: "es", mon: "MXN" })).txt, xEn = leerXlsx(G("buildPropuestaXlsx")({ lang: "en", mon: "MXN" })).txt;
+    contiene(xEs, "CONSIDERACIONES DE CALCULO", "libro ES:"); contiene(xEn, "CALCULATION CONSIDERATIONS", "libro EN:");
+    const fT = celdasXlsxFila(xEs, "Temperatura ambiente", /MEMORIA ELECTRICA/);
+    if (!fT || !fT.c.some((c) => /valor inicial/.test(c))) throw new Error("libro ES: temperatura con su origen: " + (fT && fT.c.join(" | ")));
+    const fN = celdasXlsxFila(xEn, "NOM-001-SEDE-2012 (DOF 29-nov-2012), Table", /ELECTRICAL CALCULATION/) || celdasXlsxFila(xEn, "NOM-001-SEDE-2012 (DOF 29-nov-2012)", /ELECTRICAL CALCULATION/);
+    if (!fN || !fN.c.some((c) => /conductor ampacity|ampacity/.test(c))) throw new Error("libro EN: norma con su uso en inglés: " + (fN && fN.c.join(" | ")));
+    /* Captura distinta del valor inicial = capturado; sin distancia ni transformador = pendiente (no se supone). */
+    Object.assign(S.elec, { tempAmb: 35, fpObjetivo: .9, Ltablero: null, trafoKVA: null, trafoZ: null }); G("recompute")(); R = G("ELEC");
+    C = typeof fn === "function" ? fn(R, S.elec) : vacio;
+    eq(par("tempAmb").tipo, "capturado", "35 °C capturado:"); contiene(par("tempAmb").valor, "35 °C", "con su valor:"); contiene(par("tempAmb").valor, `factor ${n(G("fTemp")(35), 2)}`, "y el factor que usó el motor:");
+    eq(par("fpAlim").tipo, "capturado", "fp del alimentador capturado:"); contiene(par("fpAlim").valor, "0.9", "con su valor:");
+    ["Ltablero", "trafoKVA", "trafoZ"].forEach((k) => { eq(par(k).tipo, "pendiente", `${k} sin capturar:`); contiene(par(k).origen, "pendiente", `${k}:`); if (/\d/.test(par(k).valor)) throw new Error(`${k}: sin captura no lleva número: ${par(k).valor}`); });
+  } finally { S.elec = JSON.parse(guardado); S.tab = tab0; G("recompute")(); }
+});
+
 /* ===== CM · casos calculados a mano por motor (Fase 1, rev 2.9.24) =====
    Cada motor tiene su módulo en pruebas-motores/<motor>.mjs y su hoja en parches/casos-a-mano/<motor>.csv. El módulo
    recibe el arnés (t, eq, cerca, contiene, G, S, w, …) y las filas de su hoja; compara NÚMEROS con tolerancia, no textos.
