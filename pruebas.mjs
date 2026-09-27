@@ -7857,6 +7857,44 @@ t("S.102 (H-266) soportería es autónoma: sin la instantánea aceptada no cuent
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+/* ===== S.130 (H-266) la migración de soportería lee el sí/no guardado como texto (H-42) antes de decidir ===== */
+t("S.130 (H-266) un proyecto a mano con el sí/no de soportería guardado como texto («false», H-42) abre a mano: no toma una instantánea ni registra una aceptación que nadie hizo y conserva sus metros; con una instantánea vieja recupera las bases que contaba; «true» en texto o sin la clave sigue migrando a instantánea (revisión adversarial C2; decisión del dueño, 27-sep-2026)", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    const nave = { ...G("defaultZone")("Nave"), area: 400, height: 6 };
+    /* Sin alturaEstructura: guardado antes de H-266, así que la migración corre. */
+    const saneado = (sop) => G("sanearEstado")(JSON.parse(JSON.stringify({ zones: [nave], soporte: sop })));
+    let s = saneado({ usarMotores: "false", ductoM: 30, ductoAnchoMm: 400, ductoAltoMm: 300 });
+    eq(s.soporte.usarMotores, false, "el sí/no guardado como texto se respeta:");
+    eq(s.soporte.tomarInstantanea, undefined, "no se marca una instantánea que el usuario no aceptó:");
+    eq(s.soporte.tomarBases, true, "como todo proyecto a mano sin bases, toma una vez las que contaba:");
+    eq(s.soporte.ductoM, 30, "los metros capturados se conservan:");
+    /* Controles: el booleano false da lo mismo; «true» en texto, o sin la clave (contaba en vivo), toma la instantánea. */
+    s = saneado({ usarMotores: false, ductoM: 30 });
+    eq(s.soporte.tomarInstantanea, undefined, "booleano false:"); eq(s.soporte.tomarBases, true, "booleano false, bases:");
+    s = saneado({ usarMotores: "true", ductoM: 30 });
+    eq(s.soporte.usarMotores, true, "«true» en texto:"); eq(s.soporte.tomarInstantanea, true, "«true» en texto toma la instantánea:");
+    s = saneado({ ductoM: 30 });
+    eq(s.soporte.tomarInstantanea, true, "sin la clave (contaba en vivo) toma la instantánea:");
+    /* Por el camino real (importarRespaldo): los 100 m que hay en Ductos no entran; quedan los 30 m capturados, sin vínculo. */
+    const p = JSON.parse(JSON.stringify(G("defaultState")())); p.meta.name = "S.130";
+    p.zones = [nave]; p.duct.segments = [{ ...G("defaultSegment")("TR-1", 3000), length: 100 }];
+    p.soporte = { usarMotores: "false", ductoM: 30, ductoAnchoMm: 400, ductoAltoMm: 300 };
+    G("importarRespaldo")(JSON.stringify(p)); G("recompute")();
+    eq(S.soporte.usarMotores, false, "abierto con importarRespaldo sigue a mano:");
+    eq(G("SOPORTE").mDucto, 30, "cuenta los 30 m capturados, no los 100 m de Ductos:");
+    eq(S.vinculos["motores>soporte"], undefined, "no queda registrada una aceptación que nadie hizo:");
+    /* Con «false» en texto, una instantánea vieja guardada y dos equipos Carrier en la cotización: recupera sus dos bases. */
+    const fam = G("FAMILIES")[0], m = G("familyPool")(fam.id)[0];
+    if (!m || !G("CARRIER").some((x) => x.id === m.id)) throw new Error("el caso no aísla lo que se quiere probar: hace falta un equipo Carrier cotizable");
+    p.duct.segments = []; p.quote.items = [{ id: m.id, fam: fam.id, qty: 2, unit: null }];
+    p.soporte.snap = { duct: [], hidro: [], hidroMat: "acero", fuego: { nTotal: 0, Lram: 0, ramD: 100, Lmon: 0, monD: 100 }, aire: [], aireMat: "acero", nEquip: 0, ts: 1 };
+    G("importarRespaldo")(JSON.stringify(p)); G("recompute")();
+    eq(S.soporte.basesEquipo, 2, "a mano con instantánea vieja: toma las 2 bases que contaba (antes 0):");
+    eq(G("SOPORTE").nEquipos, 2, "y las cuenta:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 /* ===== S.103 (H-268) eléctrico autónomo: las cargas de otros motores entran sólo como propuesta aceptada (instantánea) ===== */
 t("S.103 (H-268) eléctrico es autónomo: con permisos y tomarHVAC, sin aceptar la propuesta, la cédula, el ventilador, el compresor, las bombas y los FFU NO entran al cuadro (se retiró el modo en vivo); aceptar concede los cruces y deja una instantánea con fecha que no se mueve sola; un proyecto guardado en vivo migra al abrir con las mismas cifras (sólo con los cruces que tenía); el sello no cambia al reabrir (decisión del dueño, 27-sep-2026)", () => {
   const guardado = JSON.stringify(S);

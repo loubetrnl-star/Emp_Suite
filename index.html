@@ -24044,8 +24044,12 @@ function sanearEstado(d) {
     const hZ = (Array.isArray(s.zones) ? s.zones : []).reduce((a, z) => Math.max(a, num(z && z.height, 0)), 0);
     s.soporte.alturaEstructura = hZ;
     if (!(num(s.soporte.alturaTrabajo, 0) > 0)) s.soporte.alturaTrabajo = Math.max(3, hZ + 1.2);
-    if (sopPrevio.usarMotores !== false && !(sopPrevio.snap && typeof sopPrevio.snap === "object")) { s.soporte.usarMotores = true; s.soporte.tomarInstantanea = true; }
-    else if (sopPrevio.usarMotores === false && !(num(sopPrevio.basesEquipo, 0) > 0)) s.soporte.tomarBases = true;
+    /* H-42: el sí/no guardado como texto («true»/«false», revisiones anteriores) se lee aquí, ANTES de decidir; el boolear de
+       más abajo corre después y ya encontraría el booleano que puso esta migración: un proyecto a mano con «false» abría
+       como instantánea aceptada con otros metros (revisión adversarial C2). Sin la clave = contaba en vivo, como antes. */
+    const umPrevio = typeof sopPrevio.usarMotores === "string" ? sopPrevio.usarMotores === "true" : sopPrevio.usarMotores;
+    if (umPrevio !== false && !(sopPrevio.snap && typeof sopPrevio.snap === "object")) { s.soporte.usarMotores = true; s.soporte.tomarInstantanea = true; }
+    else if (umPrevio === false && !(num(sopPrevio.basesEquipo, 0) > 0)) s.soporte.tomarBases = true;
   }
   if (!Array.isArray(s.aire.consumos)) s.aire.consumos = defaultAire().consumos;
   if (!s.clean || typeof s.clean !== "object" || Array.isArray(s.clean)) s.clean = { rooms: [defaultRoom()], ci: 0 };
