@@ -13913,7 +13913,8 @@ const CX_DISC = {
   estructural: { nombre: "Estructural",         acepta: "memoria estructural en PDF, planta en DXF" },
 };
 const CX_MAX_BYTES_ARCHIVO = 60 * 1024 * 1024;
-const CX_MAX_LOTES = 30;
+/* H-272b: cada archivo aplicado es un registro de origen; con 30 un ZIP de 34 cuadros dejaba 4 sin trazado (regla 8). */
+const CX_MAX_LOTES = 300;
 const CX_CFM_A_LS = 0.471947;
 let CX_LOTE = null;          // lote leído y todavía no aplicado (no viaja con el proyecto)
 
@@ -13982,11 +13983,25 @@ function cxDecodificaTexto(u8) {
   }
   return cxBytesALatin1(u8);
 }
+/* H-272b · Huella del contenido de un archivo: con ella se reconoce lo que ya entró de ese mismo archivo (volver a revisar tras
+   recargar, reasignar ida y vuelta, cargarlo otra vez) y no se repite. Misma mezcla que huellaTexto, sobre los bytes; arriba de
+   4 MB se toman el tamaño, el primer y el último medio MB: basta para distinguir archivos sin detener la carga. */
+function cxHuellaBytes(u8) {
+  if (!u8 || !u8.length) return "";
+  let h1 = 0xdeadbeef ^ u8.length, h2 = 0x41c6ce57 ^ u8.length;
+  const mezcla = (a, b) => { for (let i = a; i < b; i++) { h1 = Math.imul(h1 ^ u8[i], 2654435761); h2 = Math.imul(h2 ^ u8[i], 1597334677); } };
+  const LIM = 4 * 1024 * 1024, TROZO = 512 * 1024;
+  if (u8.length <= LIM) mezcla(0, u8.length); else { mezcla(0, TROZO); mezcla(u8.length - TROZO, u8.length); }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507); h1 ^= Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507); h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(16).padStart(14, "0");
+}
 function cxLeerArchivo(file) {
   return new Promise((listo) => {
     const R = { nombre: (file && file.name) || "archivo", tam: (file && file.size) || 0, tipo: "", avisos: [], bytes: null,
-      /* H-272: la ruta (carpeta) distingue dos archivos del mismo nombre y es la clave con la que se reconoce lo ya aplicado. */
-      ruta: String((file && (file.ruta || file.webkitRelativePath)) || (file && file.name) || "archivo") };
+      /* H-272: la ruta (carpeta) distingue dos archivos del mismo nombre; la huella del contenido y la fila de la tabla (si viene
+         de ella) son la clave con la que se reconoce lo ya aplicado (H-272b). */
+      ruta: String((file && (file.ruta || file.webkitRelativePath)) || (file && file.name) || "archivo"), huella: (file && file.huella) || "", filaId: (file && file.filaId) || null };
     if (!file) { R.avisos.push("Archivo no válido."); listo(R); return; }
     if (R.tam > CX_MAX_BYTES_ARCHIVO) { R.avisos.push(`Pesa ${(R.tam / 1048576).toFixed(0)} MB; el límite es ${CX_MAX_BYTES_ARCHIVO / 1048576} MB.`); listo(R); return; }
     let rd;
@@ -13994,6 +14009,7 @@ function cxLeerArchivo(file) {
     rd.onerror = () => { R.avisos.push("No se pudo leer el archivo."); listo(R); };
     rd.onload = () => {
       try { R.bytes = new Uint8Array(rd.result); } catch { R.avisos.push("No se pudo leer el contenido."); }
+      if (R.bytes && !R.huella) R.huella = cxHuellaBytes(R.bytes);
       listo(R);
     };
     try { rd.readAsArrayBuffer(file); } catch { R.avisos.push("No se pudo abrir el archivo."); listo(R); }
@@ -14002,7 +14018,7 @@ function cxLeerArchivo(file) {
 
 /* Convierte un archivo leído en fuentes de texto y geometría. */
 function cxInterpretar(A) {
-  const F = { nombre: A.nombre, ruta: A.ruta || A.nombre, tam: A.tam, tipo: cxTipoDe(A.nombre, A.bytes), avisos: A.avisos.slice(), lineas: [], paginaDe: [], dxf: null, dwg: null, csv: null, json: null, paginas: 0 };
+  const F = { nombre: A.nombre, ruta: A.ruta || A.nombre, huella: A.huella || "", filaId: A.filaId || null, tam: A.tam, tipo: cxTipoDe(A.nombre, A.bytes), avisos: A.avisos.slice(), lineas: [], paginaDe: [], dxf: null, dwg: null, csv: null, json: null, paginas: 0 };
   if (!A.bytes) return F;
   /* Un renglón vacío no es texto: no cuenta en "renglones leídos". */
   const pon = (l, pag) => { if (String(l).trim()) { F.lineas.push(l); F.paginaDe.push(pag); } };
@@ -14732,7 +14748,7 @@ async function cxProcesarArchivos(files, tab) {
   const A = cxAnalizarLote(fuentes);
   const lote = {
     id: "cx" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
-    ts: Date.now(), tab, fuentes: fuentes.map((F) => ({ nombre: F.nombre, ruta: F.ruta || F.nombre, tipo: F.tipo, tam: F.tam, paginas: F.paginas, lineas: F.lineas.length,
+    ts: Date.now(), tab, fuentes: fuentes.map((F) => ({ nombre: F.nombre, ruta: F.ruta || F.nombre, huella: F.huella || "", filaId: F.filaId || null, tipo: F.tipo, tam: F.tam, paginas: F.paginas, lineas: F.lineas.length,
       poligonos: F.dxf ? F.dxf.poligonos.length : 0, capas: F.dxf ? F.dxf.capas.length : (F.dwg ? F.dwg.capasProbables.length : 0), avisos: F.avisos.slice(0, 8) })),
     analisis: A, propuestas: [],
   };
@@ -14774,7 +14790,7 @@ function cxModalHtml(lote) {
         <thead><tr><th></th><th>Dato</th><th>Valor</th><th>Origen</th></tr></thead>
         <tbody>${lote.propuestas.map((p, i) => `<tr class="${p.grupo === "info" ? "cx-info" : ""}">
           <td>${p.grupo === "info" ? "" : `<input type="checkbox" data-cx-prop="${i}" ${p.marcado || p.aplicado ? "checked" : ""} ${p.aplicado ? "disabled" : ""} aria-label="${p.aplicado ? "Ya aplicado" : "Aplicar"} ${esc(p.etiqueta)}">`}</td>
-          <td>${esc(p.etiqueta)}${p.aplicado ? ' <span class="badge">aplicado al cargar</span>' : p.confianza < .8 ? ' <span class="badge warn">revisar</span>' : ""}</td>
+          <td>${esc(p.etiqueta)}${p.yaEntro ? ' <span class="badge">ya había entrado de este archivo</span>' : p.aplicado ? ' <span class="badge">aplicado al cargar</span>' : p.confianza < .8 ? ' <span class="badge warn">revisar</span>' : ""}</td>
           <td class="num">${typeof p.valor === "number" ? n(p.valor, 2) : esc(p.valor)} ${esc(p.unidad)}</td>
           <td><div class="sub">${esc(origen(p))}</div>${p.texto ? `<div class="cx-renglon">${esc(p.texto)}</div>` : ""}</td></tr>`).join("")}</tbody>
       </table></div>`
@@ -14829,7 +14845,7 @@ const CX_TAB_DE_MOTOR = { load: "carga", clean: "limpios", equip: "seleccion", d
 function cxOrigenTexto(a) { return [a.archivo, a.pagina ? `p. ${a.pagina}` : "", a.fila ? `fila ${a.fila}` : ""].filter(Boolean).join(" · "); }
 function cxComoEntro(a, l) {
   const como = a.auto === true ? "entró solo al cargar" : a.auto === false ? "aceptado por el usuario" : "carga anterior a H-272 (sin distinguir cómo entró)";
-  return `${como} · ${fechaCorta(l && l.ts)}`;
+  return `${como}${l && l.archivoRetirado ? " · archivo retirado de la tabla" : ""} · ${fechaCorta(l && l.ts)}`;
 }
 /* En la memoria de cada disciplina: qué entró desde archivos del proyecto ejecutivo a ESA disciplina. */
 function pdfOrigenArchivosDe(d, motores) {
@@ -14851,7 +14867,23 @@ function pdfOrigenArchivosDe(d, motores) {
    ventana de hallazgos no la meta dos veces; lo dudoso sigue esperando la marca. */
 function cxAplicar(lote, modo, opts) {
   if (!lote) return 0;
+  /* H-272b · Reaplicar un archivo no duplica: cada dato aplicado lleva la clave archivo (huella del contenido + nombre) + destino
+     + dato. Lo que ya entró de ese mismo archivo a esta disciplina (volver a revisar tras recargar, reasignar ida y vuelta,
+     cargarlo otra vez) se reconoce, no se repite y no pisa lo que el usuario haya editado después. En «proyecto nuevo» no hay
+     nada previo. */
+  const fuenteDe = (p) => (lote.fuentes || []).find((x) => x.nombre === p.archivo || String(p.archivo || "").startsWith(x.nombre + " · ")) || {};
+  const claveDe = (p) => `${fuenteDe(p).huella || fuenteDe(p).ruta || p.archivo || ""}|${p.archivo}|${p.destino}|${p.etiqueta}`;
+  const previos = new Map();
+  if (modo !== "nuevo") cxLotesDe(lote.tab).forEach((l) => (l.aplicados || []).forEach((a) => { if (a && a.clave && !previos.has(a.clave)) previos.set(a.clave, l.ts); }));
+  let yaEntraron = 0, tsPrevio = null;
+  lote.propuestas.forEach((p) => {
+    if (p.aplicado || !p.fn || p.grupo === "info" || !previos.has(claveDe(p))) return;
+    p.aplicado = true; p.yaEntro = true; p.marcado = false; yaEntraron++; tsPrevio = tsPrevio || previos.get(claveDe(p));
+  });
+  lote.yaEntraron = { n: yaEntraron, ts: tsPrevio };
   const marcadas = lote.propuestas.filter((p) => p.marcado && !p.aplicado && p.fn && p.grupo !== "info");
+  /* Nada nuevo que escribir: ni lote vacío ni paso de deshacer. */
+  if (!marcadas.length && modo !== "nuevo") { if (!(opts && opts.quedarse)) S.tab = lote.tab; return 0; }
   histSnap(modo === "nuevo" ? "proyecto nuevo desde archivos" : "datos cargados de archivos");
   if (modo === "nuevo") {
     /* Instancia limpia: el estado inicial, no el proyecto abierto. Se conservan
@@ -14880,7 +14912,6 @@ function cxAplicar(lote, modo, opts) {
   if (modo === "nuevo" && marcadas.some((p) => /^civil\.(areas|cuartos)$/.test(p.destino))) { S.civil.areas = []; S.civil.cuartos = []; }
   /* H-272: cada dato aplicado dice si entró solo al cargar (auto) o lo aceptó el usuario, y lleva una clave archivo+dato. */
   const auto = !!(opts && opts.auto);
-  const rutaDe = (p) => { const F = (lote.fuentes || []).find((x) => x.nombre === p.archivo || String(p.archivo || "").startsWith(x.nombre + " · ")); return (F && F.ruta) || p.archivo || ""; };
   marcadas.forEach((p) => {
     try {
       const r = p.fn(p.valor);
@@ -14895,7 +14926,7 @@ function cxAplicar(lote, modo, opts) {
       else if (r && r.areaCivil) { const a = r.areaCivil; a.id = civilNuevoId("areas"); a.origen = origen; S.civil.areas.push(a); itemId = a.id; }
       else if (r && r.cuartoCivil) { const c = r.cuartoCivil; c.id = civilNuevoId("cuartos"); c.origen = origen; S.civil.cuartos.push(c); itemId = c.id; }
       aplicados.push({ etiqueta: p.etiqueta, destino: p.destino, valor: typeof p.valor === "number" ? +p.valor.toFixed(3) : String(p.valor).slice(0, 120), unidad: p.unidad, archivo: p.archivo, pagina: p.pagina, fila: p.fila || null, texto: p.texto,
-        clave: `${rutaDe(p)}|${p.destino}|${p.etiqueta}`, auto, itemId });
+        clave: claveDe(p), auto, itemId });
       p.aplicado = true; p.marcado = false;
     } catch { /* un dato que no se pudo escribir no tumba los demás */ }
   });
@@ -14918,7 +14949,9 @@ function cxAplicar(lote, modo, opts) {
   if (consumos.length) S.aire.consumos = modo === "nuevo" ? consumos : S.aire.consumos.concat(consumos);
   S.cx.lotes.push({
     id: lote.id, ts: Date.now(), tab: lote.tab, modo,
-    archivos: lote.fuentes.map((F) => ({ nombre: F.nombre, tipo: F.tipo, tam: F.tam, paginas: F.paginas })),
+    /* H-272b: liga con la fila de la tabla y huella del contenido, para reconocer el archivo aunque cambie de fila o de nombre. */
+    filaId: (lote.fuentes[0] || {}).filaId || null, huella: (lote.fuentes[0] || {}).huella || "",
+    archivos: lote.fuentes.map((F) => ({ nombre: F.nombre, ruta: F.ruta || F.nombre, tipo: F.tipo, tam: F.tam, paginas: F.paginas })),
     aplicados, equipos, normas: lote.analisis.normas.slice(0, 30),
     avisos: lote.fuentes.flatMap((F) => F.avisos).slice(0, 12),
   });
@@ -14972,8 +15005,9 @@ document.addEventListener("click", (e) => {
   } else if ((act === "cx-nuevo" || act === "cx-aplicar") && CX_LOTE) {
     const modo = act === "cx-nuevo" ? "nuevo" : "abierto";
     const k = cxAplicar(CX_LOTE, modo);
+    const ya = CX_LOTE.yaEntraron && CX_LOTE.yaEntraron.n ? ` · ${CX_LOTE.yaEntraron.n} ya habían entrado de este archivo: no se repiten` : "";
     CX_LOTE = null; closeModal(); render(); window.scrollTo({ top: 0 });
-    toast(modo === "nuevo" ? `Proyecto nuevo creado desde archivos · ${k} dato(s) aplicados` : `${k} dato(s) aplicados al proyecto abierto`);
+    toast(modo === "nuevo" ? `Proyecto nuevo creado desde archivos · ${k} dato(s) aplicados` : `${k} dato(s) aplicados al proyecto abierto${ya}`);
   } else if (act === "cx-descartar") {
     CX_LOTE = null; closeModal();
   }
@@ -15550,7 +15584,7 @@ async function cxzAgregarArchivos(entradas, prof, pidCarga) {
       continue;
     }
     const C = cxzClasificar(nombre, ruta, bytes);
-    Object.assign(fila, { tipo: C.tipo, motor: C.motor, estado: C.estado, detalle: C.detalle, motivo: C.motivo, info: C.info });
+    Object.assign(fila, { tipo: C.tipo, motor: C.motor, estado: C.estado, detalle: C.detalle, motivo: C.motivo, info: C.info, huella: cxHuellaBytes(bytes) });
     if (ent.avisosZip && ent.avisosZip.length) { fila.estado = "error"; fila.detalle = ent.avisosZip[0]; }
     if (agregarFila(fila)) { await guardarBytesDestino(fila.id, bytes); agregados++; }
   }
@@ -15580,7 +15614,7 @@ function cxzMensajeClaro(avisos, fila) {
 function cxzArchivoDe(fila, bytes) {
   let f;
   try { f = new File([bytes], fila.nombre); } catch { f = { name: fila.nombre, size: bytes.length, bytes }; }
-  try { f.ruta = fila.ruta || fila.nombre; } catch { /* la ruta es opcional: sólo distingue archivos homónimos */ }
+  try { f.ruta = fila.ruta || fila.nombre; f.huella = fila.huella || ""; f.filaId = fila.id; } catch { /* opcionales: distinguen archivos homónimos y ligan la fila con su registro de origen */ }
   return f;
 }
 async function cxzProcesarFila(fila) {
@@ -15590,6 +15624,7 @@ async function cxzProcesarFila(fila) {
   const bytes = await cxzBytes(fila.id);
   if (!vigente()) return; // se reasignó, se quitó o cambió de proyecto mientras se leían los bytes
   if (!bytes) { fila.estado = "error"; fila.detalle = "Los bytes del archivo ya no están en este dispositivo. Vuelve a cargarlo."; return; }
+  if (!fila.huella) fila.huella = cxHuellaBytes(bytes);   // H-272b: filas de proyectos anteriores
   fila.estado = "procesando"; fila.detalle = "";
   if (S.tab === "tablero") render();
   try {
@@ -15610,10 +15645,12 @@ async function cxzProcesarFila(fila) {
     else {
       /* rev 2.9.24 (decisión del dueño): los datos claros entran solos a su disciplina al terminar de leerse; los dudosos
          esperan la marca en la ventana de hallazgos. */
-      const k = utiles.some((p) => p.marcado && p.fn) ? cxAplicar(lote, "abierto", { quedarse: true, auto: true }) : 0;
-      fila.aplicados = k;
-      const dudosos = utiles.length - k;
-      fila.estado = "listo"; fila.detalle = `${utiles.length} dato(s) propuestos · ${k} aplicados al cargar${dudosos ? ` · ${dudosos} por revisar` : ""}${claro ? " · " + claro : ""}`;
+      const k = cxAplicar(lote, "abierto", { quedarse: true, auto: true });
+      /* H-272b: lo que ya había entrado de este mismo archivo no se repite, y la fila lo dice. */
+      const ya = lote.yaEntraron && lote.yaEntraron.n ? lote.yaEntraron.n : 0;
+      fila.aplicados = k + ya;
+      const dudosos = utiles.length - k - ya;
+      fila.estado = "listo"; fila.detalle = `${utiles.length} dato(s) propuestos · ${k} aplicados al cargar${ya ? ` · ${ya} ya habían entrado de este archivo (${fechaCorta(lote.yaEntraron.ts)}): no se repiten` : ""}${dudosos ? ` · ${dudosos} por revisar` : ""}${claro ? " · " + claro : ""}`;
     }
   } catch (e) {
     if (!vigente()) return;
@@ -15655,8 +15692,17 @@ async function cxzQuitar(id) {
   const filas = cxzArchivos();
   const i = filas.findIndex((x) => x.id === id); if (i < 0) return;
   histSnap("quitar archivo cargado");
+  const f = filas[i];
   filas.splice(i, 1);
   delete CXZ_LOTES[id];
+  /* H-272b (regla 8): quitar el archivo de la tabla no retira lo que entró desde él (puede estar ya editado); su registro de origen
+     se conserva marcado «archivo retirado» y se avisa en qué disciplina quedaron esos datos, para quitarlos ahí si hace falta. */
+  const suyos = cxLotesDe().filter((l) => (l.filaId && l.filaId === id) || (f.huella && l.huella === f.huella && (l.archivos || []).some((a) => a && a.nombre === f.nombre)));
+  const nDatos = suyos.reduce((s, l) => s + (l.aplicados || []).length, 0);
+  if (nDatos) {
+    suyos.forEach((l) => { l.archivoRetirado = true; });
+    toast(`Los ${nDatos} dato(s) que entraron desde «${f.nombre}» siguen en ${[...new Set(suyos.map((l) => (CX_DISC[l.tab] || { nombre: l.tab }).nombre))].join(", ")}; quítalos ahí si hace falta. Su origen queda registrado como «archivo retirado».`, 8000);
+  }
   await cxzAlmacen.quitar(cxzClave(S.pid, id));
   projAutosave(); render();
 }

@@ -7856,6 +7856,52 @@ t("S.102 (H-266) soportería es autónoma: sin la instantánea aceptada no cuent
       eq(Number(S.civil.areaManual) || 0, 0, "el área no va al total a mano:");
       eq(w.__errs.length, 0, "errores de ventana:");
     });
+    await tA("S.121 (H-272b) reaplicar un archivo no duplica: volver a revisar tras recargar, reasignar ida y vuelta, cargar el mismo archivo otra vez y «Aplicar» en la ventana reconocen lo que ya entró de ese archivo (clave archivo+dato), no lo repiten ni pisan lo editado; la fila lo dice; quitar el archivo avisa y no borra los datos; 34 archivos dejan 34 registros de origen", async () => {
+      limpio("S.121");
+      await cargar([archivo("levantamiento.dxf", DXF_LEV, "Obra civil/levantamiento.dxf")]);
+      const f = filasT()[0];
+      eq(f.motor, "civil", "motor:"); eq(S.civil.areas.length, 2, "áreas al cargar:"); eq(S.civil.cuartos.length, 1, "cuartos al cargar:");
+      const lotes0 = G("cxLotesDe")("civil").length, aplicados0 = f.aplicados;
+      /* 1) Tras recargar la página no queda el lote de sesión: «Volver a revisar» vuelve a leer el archivo. */
+      delete G("CXZ_LOTES")[f.id];
+      await G("cxzRevisar")(f.id);
+      eq(S.civil.areas.length, 2, "volver a revisar tras recargar duplicó las áreas:"); eq(S.civil.cuartos.length, 1, "…o los cuartos:");
+      eq(G("cxLotesDe")("civil").length, lotes0, "no se agrega un registro de origen vacío:");
+      contiene(f.detalle, "ya habían entrado", "la fila dice que ya habían entrado:"); eq(f.aplicados, aplicados0, "la fila sigue contando lo que entró de este archivo:");
+      const m = w.document.getElementById("modal");
+      contiene(m.textContent, "ya había entrado de este archivo", "la ventana marca lo ya entrado:");
+      /* 2) «Aplicar» en la ventana tampoco repite. */
+      m.querySelector('[data-act="cx-aplicar"]').dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+      await new Promise((r) => setTimeout(r, 10));
+      eq(S.civil.areas.length, 2, "«Aplicar» duplicó:"); eq(G("cxLotesDe")("civil").length, lotes0, "registros de origen tras «Aplicar»:");
+      /* 3) Reasignar a otra disciplina y de vuelta: la otra recibe lo suyo, la primera no repite. */
+      G("cxzReasignar")(f.id, "fuego"); await esperaCola();
+      if (!(S.fuego.area > 0)) throw new Error("reasignado a contra incendio no recibió su área a proteger: " + f.detalle);
+      G("cxzReasignar")(f.id, "civil"); await esperaCola();
+      eq(S.civil.areas.length, 2, "reasignar ida y vuelta duplicó las áreas:"); eq(S.civil.cuartos.length, 1, "…o los cuartos:");
+      contiene(f.detalle, "ya habían entrado");
+      /* 4) Lo que el usuario editó después no se pisa: el área a proteger que entró sola se cambió a mano. */
+      S.fuego.area = 999; G("recompute")();
+      const f2 = (await (async () => { await cargar([archivo("levantamiento.dxf", DXF_LEV, "Contra incendio/levantamiento.dxf")]); return filasT()[filasT().length - 1]; })());
+      eq(f2.motor, "fuego"); eq(S.fuego.area, 999, "el mismo plano en otra carpeta pisó el área editada a mano:");
+      contiene(f2.detalle, "ya habían entrado", "la fila nueva dice que ese dato ya había entrado de este archivo:");
+      /* 5) El mismo archivo otra vez en la misma disciplina: no repite y lo dice. */
+      await cargar([archivo("levantamiento.dxf", DXF_LEV, "Obra civil/levantamiento.dxf")]);
+      const f3 = filasT()[filasT().length - 1];
+      eq(f3.motor, "civil"); eq(S.civil.areas.length, 2, "cargar el mismo archivo otra vez duplicó:"); contiene(f3.detalle, "ya habían entrado");
+      /* 6) Quitar el archivo de la tabla no borra lo que entró (puede estar editado) y lo dice. */
+      await G("cxzQuitar")(f.id);
+      eq(S.civil.areas.length, 2, "quitar el archivo borró los renglones:");
+      contiene(w.document.querySelector("#toast").textContent, "siguen en Obra civil", "el aviso dice dónde quedaron:");
+      if (!G("cxLotesDe")("civil").some((l) => l.archivoRetirado)) throw new Error("el registro de origen no quedó marcado «archivo retirado»");
+      contiene(G("cxOrigenHtml")("civil"), "archivo retirado", "«Origen de los datos» lo dice:");
+      /* 7) Trazado sin tope corto: 34 cuadros de cargas distintos son 34 registros de origen (antes 30). */
+      limpio("S.121b");
+      const cuadros = Array.from({ length: 34 }, (_, i) => archivo(`cuadro-${i + 1}.csv`, `circuito,descripcion,Potencia (kW),Tension,Fases\nC-${i + 1},Tablero ${i + 1},${(i + 1) * 0.5},220 V,3F\n`, `Electrico/cuadro-${i + 1}.csv`));
+      await cargar(cuadros);
+      eq(S.elec.cargas.length, 34, "cargas:"); eq(G("cxLotesDe")("electrico").length, 34, "registros de origen (uno por archivo):");
+      eq(w.__errs.length, 0, "errores de ventana:");
+    });
     /* [H-272: siguientes] */
   } finally { G("closeModal")(); G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 }
