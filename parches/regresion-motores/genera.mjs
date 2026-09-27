@@ -61,6 +61,10 @@ w.eval(String.raw`
   S.kaizen.items = [{ id: "k1", titulo: "Ajustar horario de FFU", estado: "hacer", owner: "", ahorro: 0, nota: "" }];
   S.tab = "tablero"; recompute();
   S.soporte.snap = snapshotSoporte(); S.soporte.usarMotores = true; recompute();
+  /* H-267: la selección de equipo es autónoma: tras calcular, el proyecto fijo acepta la propuesta de carga térmica (instantánea de
+     las zonas, como soportería). Mismas cifras que cuando la leía en vivo; el fixture guardado sigue siendo de antes (sin zonas de
+     selección) y se migra al abrirlo: R.1 comprueba que la migración da lo mismo que aceptar. */
+  aceptarZonasEquip(zonasPropuestasEquip(), Date.UTC(2026, 8, 21, 12)); registrarVinculo("load>equip", "aceptado"); recompute();
   /* H-268: el eléctrico es autónomo. El proyecto fijo nunca estuvo en modo en vivo (tomarHVAC false: sólo sus dos cargas
      capturadas), así que no hay propuesta que aceptar y sus cifras no cambian; el esperado de elec sube sólo de versión (v9). */
 `);
