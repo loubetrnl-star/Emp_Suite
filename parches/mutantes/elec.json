@@ -276,5 +276,7 @@
   { "id": "elec.m138", "que": "H-180: avisa kW estimado aunque la corriente salga del hp de placa", "logica": false, "estado": "vigente",
     "buscar": "c.kWEst && !(c.motorTabla && num(c.hp, 0) > 0)", "reemplazar": "c.kWEst" },
   { "id": "elec.m139", "que": "H-180: el PDF no marca el kW estimado con «e»", "logica": false, "estado": "vigente",
-    "buscar": "${c.kWEst ? \" e\" : c.kWOrigen !== \"capturado\" ? \" c\" : \"\"}", "reemplazar": "${c.kWOrigen !== \"capturado\" && !c.kWEst ? \" c\" : \"\"}" }
+    "buscar": "${c.kWEst ? \" e\" : c.kWOrigen !== \"capturado\" ? \" c\" : \"\"}", "reemplazar": "${c.kWOrigen !== \"capturado\" && !c.kWEst ? \" c\" : \"\"}" },
+  { "id": "elec.m142", "que": "H-270: el unifilar pierde el tramo tablero→alimentador (los circuitos quedan sueltos del bus)", "logica": true, "estado": "vigente",
+    "buscar": "tramos.push({ de: \"tablero\", a: idC, etiqueta: \"\" });", "reemplazar": "" }
 ]

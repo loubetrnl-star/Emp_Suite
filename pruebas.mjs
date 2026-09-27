@@ -8552,6 +8552,98 @@ t("GC.5 Cotización conserva la ayuda propia de sus campos, el aviso de IVA y lo
   });
 });
 
+/* ===== H-270 · Diagrama unifilar del eléctrico (pedido del dueño, 27-sep-2026) =====
+   La prueba verifica la DESCRIPCIÓN (nodos, tramos, pendientes) que sale de computeElec y que la pantalla y la memoria la
+   dibujan; no verifica píxeles. Sin captura no se inventa ningún nodo (regla 6). El diagrama no mueve cifras. */
+const n = G("n");
+const proyectoUnifilar = () => {
+  const d = G("defaultElec")();
+  S.elec = { ...d, tomarHVAC: false, Ltablero: 40, trafoKVA: 300, trafoZ: 4, cargas: [
+    { ...G("defaultCarga")("Motor de proceso"), tipo: "motor", kW: 15, V: 220, ph: 3, fp: .85, L: 30 },
+    { ...G("defaultCarga")("Tarja de laboratorio"), tipo: "proceso", kW: 2, V: 127, ph: 1, fp: .9, L: 35 },
+    { ...G("defaultCarga")("Horno de curado"), tipo: "resistiva", kW: 12, V: 220, ph: 3, fp: 1, L: 20 }] };
+  G("recompute")();
+  const R = G("ELEC");
+  if (R.calc.length !== 3 || R.calc.some((c) => c.sinI) || R.calc[1].ph !== 1 || Object.keys(R.calc[1].fases || {}).length !== 1) throw new Error("el caso no aísla lo que se prueba: tres circuitos dimensionados, el segundo monofásico en una sola fase");
+  return R;
+};
+const sinTexto = (s, ctx) => { if (/undefined|NaN|\bnull\b|—/.test(String(s))) throw new Error(`${ctx}: imprime un hueco como dato: «${s}»`); };
+t("S.150 (H-270) diagrama unifilar: la descripción sale de computeElec con un nodo «alimentador» por circuito dimensionado (calibre y protección en la etiqueta), el tramo tablero→alimentador y el SVG accesible en la pestaña y en la memoria PDF; sin captura no se inventa ningún nodo y se listan los pendientes", () => {
+  const guardado = JSON.stringify(S.elec), tab0 = S.tab;
+  try {
+    const R = proyectoUnifilar();
+    const fn = w.describirUnifilar;
+    const u = typeof fn === "function" ? fn(R) : { nodos: [], tramos: [], pendientes: [] };
+    const alims = u.nodos.filter((x) => x.tipo === "alimentador");
+    eq(alims.length, R.calc.filter((c) => !c.sinI).length, "un nodo alimentador por circuito dimensionado:");
+    R.calc.forEach((c, i) => {
+      const a = alims[i];
+      contiene(a.etiqueta, c.cond.awg, `alimentador ${i + 1}: calibre en la etiqueta:`);
+      contiene(a.etiqueta, `${c.cond.ocpd} A`, `alimentador ${i + 1}: protección en la etiqueta:`);
+      contiene(a.detalle, c.cond.tierra, `alimentador ${i + 1}: tierra en el detalle:`);
+      contiene(a.detalle, c.cond.tubo.d, `alimentador ${i + 1}: canalización en el detalle:`);
+      contiene(a.detalle, `${c.L} m`, `alimentador ${i + 1}: longitud capturada:`);
+      if (!u.tramos.some((tr) => tr.de === "tablero" && tr.a === a.id)) throw new Error(`falta el tramo tablero→${a.id}`);
+      const tr2 = u.tramos.find((tr) => tr.de === a.id); if (!tr2) throw new Error(`el alimentador ${a.id} no llega a ninguna carga`);
+      const carga = u.nodos.find((x) => x.id === tr2.a && x.tipo === "carga"); if (!carga) throw new Error(`el tramo ${a.id}→${tr2.a} no termina en una carga`);
+      contiene(carga.etiqueta, c.nombre, "la carga lleva su nombre:"); contiene(carga.detalle, `${n(c.I, 1)} A`, "y su corriente:");
+      [a.etiqueta, a.detalle, carga.etiqueta, carga.detalle].forEach((s) => sinTexto(s, `circuito ${i + 1}`));
+    });
+    const tipos = u.nodos.map((x) => x.tipo);
+    ["acometida", "transformador", "proteccion", "tablero"].forEach((tp) => { if (!tipos.includes(tp)) throw new Error(`falta el nodo «${tp}»`); });
+    const trafo = u.nodos.find((x) => x.tipo === "transformador");
+    contiene(trafo.detalle, "300 kVA", "transformador con la placa capturada:"); contiene(trafo.detalle, "Z 4 %", "y su impedancia:");
+    contiene(trafo.detalle, `${n(R.IccTrafo / 1000, 1)} kA`, "corriente de falla del motor:");
+    const gen = u.nodos.find((x) => x.tipo === "proteccion"); contiene(gen.detalle, `${R.principal} A`, "interruptor general con el principal del motor:"); contiene(gen.detalle, `${R.kAIC} kA`, "y la capacidad interruptiva:");
+    const tab = u.nodos.find((x) => x.tipo === "tablero"); contiene(tab.detalle, `${R.principal} A`, "tablero con la capacidad del principal:");
+    const alimG = u.tramos.find((tr) => tr.a === "tablero"); if (!alimG) throw new Error("falta el tramo del alimentador general hacia el tablero");
+    contiene(alimG.etiqueta, R.alim.awg, "alimentador general: calibre:"); contiene(alimG.etiqueta, "40 m", "y la distancia capturada:");
+    if (u.pendientes.some((p) => /transformador|distancia al tablero/i.test(p))) throw new Error("con transformador y distancia capturados no debe haber pendientes de ellos: " + u.pendientes.join(" | "));
+    u.nodos.forEach((x) => sinTexto(x.etiqueta + " " + x.detalle, x.id)); u.pendientes.forEach((p) => sinTexto(p, "pendiente"));
+    eq(String(u.version), String(G("MOTOR_VER").elec), "la descripción declara la versión del motor:");
+    /* Pantalla: SVG en línea, accesible, en currentColor, sin nada externo, que no desborda en celular; con pie de procedencia. */
+    S.tab = "electrico"; G("render")();
+    const v = vista();
+    if (!/<svg[^>]*\brole="img"[^>]*\baria-label="Diagrama unifilar[^"]*"/.test(v)) throw new Error("la pestaña no trae el <svg role=\"img\" aria-label=\"Diagrama unifilar…\">");
+    const ini = v.indexOf('<figure class="uf-fig"'), fin = v.indexOf("</figure>", ini);
+    if (ini < 0 || fin < 0) throw new Error("el diagrama no va en un <figure>");
+    const fig = v.slice(ini, fin);
+    contiene(fig, `<figcaption>Diagrama unifilar · procedencia: computeElec v${G("MOTOR_VER").elec}, capturado en esta pestaña`, "pie de figura con procedencia:");
+    contiene(fig, "max-width:100%", "no desborda en celular:"); contiene(fig, "height:auto", "alto proporcional:");
+    contiene(fig, "<defs><marker", "puntas de flecha con <marker>:");
+    if (/<img|https?:\/\/|<script|@import/.test(fig)) throw new Error("el diagrama carga algo de fuera");
+    if (/(stroke|fill)="#/.test(fig)) throw new Error("el diagrama lleva colores en duro; debe heredar currentColor");
+    if (!/stroke="currentColor"/.test(fig) || !/fill="currentColor"/.test(fig)) throw new Error("trazos y texto deben ir en currentColor");
+    contiene(fig, "Motor de proceso", "la carga está rotulada:"); contiene(fig, "Tablero general", "el tablero está rotulado:");
+    const fs2 = [...fig.matchAll(/font-size="([\d.]+)"/g)].map((m) => Number(m[1]));
+    if (!fs2.length || fs2.some((f) => f < 11 || f > 13)) throw new Error("texto fuera de 11–13 px: " + fs2.join(","));
+    /* Memoria PDF: el mismo diagrama, con las primitivas del PDF propio (rectángulo con contorno y círculo). */
+    const bytes = G("buildElecPdf")(), pdf = txtPdfE(bytes), crudo = Buffer.from(bytes).toString("latin1");
+    contiene(pdf, "Diagrama unifilar", "la memoria PDF trae el diagrama:"); contiene(pdf, "C-01", "con los circuitos numerados:");
+    contiene(pdf, "Motor de proceso", "y las cargas rotuladas:");
+    if (!/ re S\n/.test(crudo)) throw new Error("el PDF no dibuja rectángulos con contorno (re S)");
+    if (!/ c\n/.test(crudo)) throw new Error("el PDF no dibuja círculos (curvas c)");
+    if (/undefined|NaN|\bnull\b/.test(pdf)) throw new Error("el PDF imprime «undefined», «NaN» o «null»");
+    /* Sin captura: ningún nodo inventado, pendientes declarados. */
+    const d = G("defaultElec")();
+    S.elec = { ...d, tomarHVAC: false, cargas: [] }; G("recompute")();
+    const u0 = typeof fn === "function" ? fn(G("ELEC")) : { nodos: [{ tipo: "inventado" }], tramos: [], pendientes: [] };
+    eq(u0.nodos.length, 0, "sin cargas no se inventa ningún nodo:"); eq(u0.tramos.length, 0, "ni tramos:");
+    if (!u0.pendientes.some((p) => /sin cargas/i.test(p))) throw new Error("sin captura debe listar el pendiente: " + u0.pendientes.join(" | "));
+    S.tab = "electrico"; G("render")();
+    if (/aria-label="Diagrama unifilar/.test(vista())) throw new Error("sin cargas no debe dibujarse un unifilar");
+    /* Con cargas pero sin transformador ni distancias: el nodo no aparece y los faltantes se listan; nada supuesto. */
+    S.elec = { ...d, tomarHVAC: false, cargas: [{ ...G("defaultCarga")("Motor sin distancia"), tipo: "motor", kW: 7.5, V: 220, ph: 3, fp: .85, L: 0 }] }; G("recompute")();
+    const u1 = typeof fn === "function" ? fn(G("ELEC")) : { nodos: [{ tipo: "transformador" }], tramos: [], pendientes: [] };
+    if (u1.nodos.some((x) => x.tipo === "transformador")) throw new Error("sin placa capturada no debe aparecer el transformador");
+    ["transformador", "distancia al tablero", "Motor sin distancia"].forEach((k) => { if (!u1.pendientes.some((p) => new RegExp(k, "i").test(p))) throw new Error(`falta el pendiente «${k}»: ` + u1.pendientes.join(" | ")); });
+    const todo = JSON.stringify(u1);
+    if (/150 kVA|Z 4 %|\b30 m\b|\b25 m\b/.test(todo)) throw new Error("el diagrama imprime un valor supuesto: " + todo);
+    const a1 = u1.nodos.find((x) => x.tipo === "alimentador"); contiene(a1.detalle, "pendiente", "sin longitud el alimentador lo dice:");
+    const g1 = u1.nodos.find((x) => x.tipo === "proteccion"); contiene(g1.detalle, "kA pendiente", "sin transformador la capacidad interruptiva queda pendiente:");
+  } finally { S.elec = JSON.parse(guardado); S.tab = tab0; G("recompute")(); }
+});
+
 /* ===== CM · casos calculados a mano por motor (Fase 1, rev 2.9.24) =====
    Cada motor tiene su módulo en pruebas-motores/<motor>.mjs y su hoja en parches/casos-a-mano/<motor>.csv. El módulo
    recibe el arnés (t, eq, cerca, contiene, G, S, w, …) y las filas de su hoja; compara NÚMEROS con tolerancia, no textos.
