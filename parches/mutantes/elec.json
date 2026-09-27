@@ -284,5 +284,9 @@
   { "id": "elec.m142", "que": "H-270: el unifilar pierde el tramo tablero→alimentador (los circuitos quedan sueltos del bus)", "logica": true, "estado": "vigente",
     "buscar": "tramos.push({ de: \"tablero\", a: idC, etiqueta: \"\" });", "reemplazar": "" },
   { "id": "elec.m143", "que": "H-271: el trifilar baja un circuito trifásico a dos fases (A y B, mitad y mitad) en vez de tres", "logica": true, "estado": "vigente",
-    "buscar": "k.fases = [\"A\", \"B\", \"C\"].map((f) => fase(f, c.kVAtot / 3));", "reemplazar": "k.fases = [\"A\", \"B\"].map((f) => fase(f, c.kVAtot / 2));" }
+    "buscar": "k.fases = [\"A\", \"B\", \"C\"].map((f) => fase(f, c.kVAtot / 3));", "reemplazar": "k.fases = [\"A\", \"B\"].map((f) => fase(f, c.kVAtot / 2));" },
+  { "id": "elec.m144", "que": "H-269: la cuantificación pierde el neutro que selConductor cuenta en el trifásico (3 conductores por juego en vez de 4)", "logica": true, "estado": "vigente",
+    "buscar": "      if (conN) conductor(K.awg, K.material, K.aislamiento, \"neutro\", P * Lm, ori(1, \"awg\"));", "reemplazar": "      if (false) conductor(K.awg, K.material, K.aislamiento, \"neutro\", P * Lm, ori(1, \"awg\"));" },
+  { "id": "elec.m145", "que": "H-269: un renglón con más de una unidad se cuantifica como un solo ramal en vez de quedar pendiente", "logica": true, "estado": "vigente",
+    "buscar": "    if (k.cant > 1) {", "reemplazar": "    if (false) {" }
 ]
