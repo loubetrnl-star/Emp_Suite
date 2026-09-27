@@ -31,7 +31,9 @@ w.eval(String.raw`
   ];
   const r0 = cleanRooms()[0]; r0.name = "Cuarto limpio 1"; r0.area = 120; r0.height = 3; r0.iso = "iso7"; r0.occ = 2;
   S.duct.segments = [{ ...defaultSegment("TR-1", 6000), length: 18 }, { ...defaultSegment("TR-2", 3400), length: 12 }, { ...defaultSegment("RT-1", 5000), service: "return", length: 15 }];
-  S.vent = { ...S.vent, mode: "general", area: 400, height: 6, occ: 30 };
+  /* H-262: ventilación ya no hereda de carga térmica. El proyecto fijo captura en su pestaña los mismos valores que antes le
+     copiaba la herencia (700 m² = suma de zonas, 4.71 m de altura media, 46 personas) para que las cifras no cambien. */
+  S.vent = { ...S.vent, mode: "general", area: 700, height: 4.71, occ: 46 };
   S.elec.cargas = [{ ...defaultCarga("Compresor de proceso"), tipo: "motor", kW: 15, V: 220, ph: 3, cant: 1, L: 30, fp: .85 }, { ...defaultCarga("Alumbrado"), tipo: "alumbrado", kW: 9.5, V: 127, ph: 1, cant: 1, L: 40, fp: .95 }];
   S.elec.trafoKVA = 300;
   /* H-179 (rev 2.9.24): defaultElec() ya no trae distancia al tablero ni transformador supuestos; el proyecto fijo los captura

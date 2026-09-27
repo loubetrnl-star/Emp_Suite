@@ -37,13 +37,14 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 | 3 | 2.9.24 | H-167 («arranque en ceros», decisión del dueño 17-sep-2026): «Generar desde carga» (`chainToDuct`) trae sólo los caudales de la carga; ya no pone longitudes (principal 20 m, ramales 10 m, aire exterior 15 m) ni accesorios (tee 0.65 + salida 1.0 por ramal, entrada 0.03, los 2 codos de `defaultSegment` en el principal): 889 kg = 146,684 MXN en el caso de la auditoría. Un tramo sin longitud lleva el aviso «Pendiente de longitud» y 0 juntas, esquineros y soportes (antes 1 junta y 1 soporte mínimos con 0 m). Proyecto fijo: cifras sin cambio |
 | 4 | 2.9.24 | H-165 (decisión 7 del dueño, opción b con UMC): ducto de grasa hecho en obra según UMC 2018 §510.5.1 (texto de up.codes, Nevada Mechanical Code 2018 = UMC 2018 adoptado; extrae NFPA 96 §7.5.1.1): acero al carbón ≥ 0.060 in (1.524 mm, No. 16 MSG) o inoxidable ≥ 0.048 in (1.219 mm, No. 18 MSG); §510.5.3: soldadura externa continua hermética a líquidos. Nunca galvanizado ni aluminio (con aluminio elegido se toma acero al carbón y se avisa); si la tabla de la casa pide un calibre más pesado, rige la tabla. La referencia del dueño para NFPA 96 (0.054 / 0.043 in) es menos exigente: rige el UMC; ratificar con NFPA 96. Antes: tabla galvanizada + 2 calibres (500 L/s clase ½": cal 22, 0.853 mm) con juntas T-1/TDC. Kilos de grasa aparte (`boq.kgGrasa`) y calibre de grasa aparte en el despiece. Proyecto fijo (sin grasa): cifras sin cambio |
 
-## Ventilación (`vent`) · v3
+## Ventilación (`vent`) · v4
 
 | Versión | Rev | Hallazgo / cambio de lógica |
 |---|---|---|
 | 1 | 2.9.15 | lógica de partida |
 | 2 | 2.9.24 | H-154 + H-156: la cobertura real manda en la selección Greenheck (cfmMin ≤ objetivo ≤ cfmMax, sin la tolerancia ×0.9); la familia propia del modo sólo ordena entre los que cubren (luego el de menor caudal nominal); si nadie cubre no hay modelo (`primary` null: nada llega a propuesta, memoria integral ni eléctrico) y `closest` sólo alimenta el aviso. Proyecto fijo: 11,643 CFM → CSW-30 (7,000–18,000) en vez de GB-360 (4,000–9,000) con «ningún modelo cubre» |
 | 3 | 2.9.24 | H-155: sin medidas no hay caudal: campana sin largo o fondo y rejilla sin ancho, alto, área libre o velocidad de cara dan demanda 0 con aviso de error en el motor y la matriz (antes pisos de 0.1 ft, 5 % y 100 fpm fabricaban 30 y 258 CFM y sus partidas). `avisos` en el resultado de computeVent. Proyecto fijo: sin cambio |
+| 4 | 2.9.24 | H-262 (decisión del dueño, 27-sep-2026): ventilación calcula sólo con sus propios datos. El área, la altura y los ocupantes ya no se copian solos de carga térmica (regla 1 retirada para este motor): se capturan en la pestaña de Ventilación y, sin captura, quedan en 0 (pendientes). Un proyecto guardado conserva los valores que ya tenía copiados y deja de seguir a las zonas. Su relación con carga térmica va al revés: el ventilador seleccionado entrega el calor de su motor a una zona (H-263). Proyecto fijo: cifras sin cambio (el esperado sólo cambia de versión). |
 
 ## Cotización (`quote`) · v24
 

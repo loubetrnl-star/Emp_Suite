@@ -74,6 +74,9 @@ function proyectoDePrueba() {
       lights: 400, equip: 500, ach: .4 },
   ];
   S.zi = 0;
+  /* H-262: ventilación ya no hereda de carga térmica; el proyecto de prueba le captura sus propios datos, los mismos que antes
+     heredaba (área 500 m², altura media 5.4 m, 40 ocupantes), para que las cifras del resto del banco no cambien. */
+  Object.assign(S.vent, { area: 500, height: 5.4, occ: 40 });
   /* H-250: el banco emite espejos EN-USD; sin tipo de cambio fechado ya no se emiten, así que el proyecto de prueba lo captura. */
   S.quote.fx = 18.5; S.quote.fxFecha = "2026-09-22"; S.quote.fxFuente = "banco de pruebas";
   G("recompute")();
@@ -362,36 +365,38 @@ t("3.1 la geometría del proyecto se suma de las zonas, no se recalcula", () => 
   cerca(g.altura, 2700 / 500, 0.01, "altura media ponderada:");
   cerca(g.area * g.altura, g.volumen, 1, "área × altura debe dar el volumen:");
 });
-t("3.2 ventilación y contra incendio heredan área, altura y ocupación", () => {
+t("3.2 contra incendio hereda área y altura; ventilación ya no hereda: calcula con lo capturado en su pestaña (H-262)", () => {
   G("recompute")();
-  eq(S.vent.area, 500); eq(S.fuego.area, 500); eq(S.vent.occ, 40);
-  cerca(S.vent.height, 5.4, 0.01); eq(S.fuego.altura, 6, "H-205: contra incendio hereda la altura máxima (rociador más alto), no la media 5.4:");
+  eq(S.fuego.area, 500); eq(S.fuego.altura, 6, "H-205: contra incendio hereda la altura máxima (rociador más alto), no la media 5.4:");
+  eq(G("HEREDA")["vent.area"], undefined, "H-262: ventilación no declara herencia de área:");
+  eq(G("HEREDA")["vent.height"], undefined, "H-262: ventilación no declara herencia de altura:");
+  eq(G("HEREDA")["vent.occ"], undefined, "H-262: ventilación no declara herencia de ocupantes:");
 });
-t("3.3 si cambia la geometría, el destino la sigue sin intervención", () => {
+t("3.3 si cambia la geometría, el destino que hereda la sigue sin intervención; ventilación no se mueve (H-262)", () => {
   S.zones[1].area = 300; G("recompute")();
-  eq(S.vent.area, 700); eq(S.fuego.area, 700);
+  eq(S.fuego.area, 700); eq(S.vent.area, 500, "H-262: ventilación se queda con lo capturado:");
   S.zones[1].area = 100; G("recompute")();
-  eq(S.vent.area, 500);
+  eq(S.fuego.area, 500);
 });
 t("3.4 la herencia se declara en pantalla con su origen y su fecha", () => {
-  const h = G("herenciaHtml")("vent.area");
+  const h = G("herenciaHtml")("fuego.area");
   contiene(h, "heredada"); contiene(h, "Carga térmica");
   if (!/\d{4}/.test(h)) throw new Error("no imprime la fecha desde cuándo vale ese número");
 });
 t("3.5 el usuario puede capturar el suyo y entonces deja de seguir al origen", () => {
-  G("setPath")("vent.area", 250); G("marcarPropio")("vent.area");
+  G("setPath")("fuego.area", 250); G("marcarPropio")("fuego.area");
   G("recompute")();
-  eq(S.vent.area, 250, "respeta lo capturado:");
+  eq(S.fuego.area, 250, "respeta lo capturado:");
   S.zones[1].area = 300; G("recompute")();
-  eq(S.vent.area, 250, "el cambio de origen no lo pisa:");
-  eq(S.fuego.area, 700, "los demás campos siguen heredando:");
-  contiene(G("herenciaHtml")("vent.area"), "capturada a mano");
+  eq(S.fuego.area, 250, "el cambio de origen no lo pisa:");
+  eq(S.fuego.altura, 6, "los demás campos siguen heredando:");
+  contiene(G("herenciaHtml")("fuego.area"), "capturada a mano");
   S.zones[1].area = 100; G("recompute")();
 });
 t("3.6 se puede volver a heredar sin perder el rastro", () => {
-  const r = G("herDe")("vent.area");
+  const r = G("herDe")("fuego.area");
   r.modo = "heredado"; G("recompute")();
-  eq(S.vent.area, 500);
+  eq(S.fuego.area, 500);
 });
 
 /* ====== 4. Regla 2 · ningún resultado calculado entra solo =============== */
@@ -1055,7 +1060,7 @@ t("9.1 un proyecto viejo abre sin cambiar ni un número capturado", () => {
   };
   const s = G("sanearEstado")(JSON.parse(JSON.stringify(viejo)));
   eq(s.vent.area, 120, "el área de ventilación capturada a mano se respeta:");
-  eq(s.her["vent.area"].modo, "propio");
+  eq(s.her["vent.area"], undefined, "H-262: ventilación ya no lleva registro de herencia:");
   eq(s.her["fuego.area"].modo, "heredado", "la que sí coincidía sigue heredando:");
   eq(s.civil.usarZonas, false, "el menú de sí/no guardado como texto se corrige:");
   eq(s.soporte.sismico, false);
@@ -6542,7 +6547,7 @@ t("S.58 (H-205) contra incendio hereda la altura MÁXIMA de las zonas (rociador 
     S.fuego = { ...G("defaultFuego")(), riesgo: "ord2", Lramal: 30, Lmontante: 12 };
     G("recompute")();
     cerca(G("geoProyecto")().altura, 5.4, 0.01, "la media ponderada sigue existiendo (volumen = área × altura):");
-    cerca(S.vent.height, 5.4, 0.01, "ventilación hereda la media (renueva volumen):");
+    eq(S.vent.height, 0, "H-262: ventilación ya no hereda la altura; calcula con la suya:");
     eq(S.fuego.altura, 6, "contra incendio hereda la altura máxima (zona más alta):");
     let F = G("FUEGO");
     eq(F.estatica, 7, "estática = altura al rociador más alto + 1 m:");
@@ -7431,6 +7436,29 @@ t("S.88 (H-154) la pantalla de ventilación sin modelo se dibuja y dice «Ningú
     eq(G("VENT").demand, 0, "sin medidas no hay caudal:");
     if (/No se pudo dibujar/.test(txt)) throw new Error("la pantalla de ventilación tronó sin caudal: " + txt.slice(0, 300));
     contiene(txt, "Sin caudal: sin modelo.", "la pantalla lo dice:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+t("S.98 (H-262) ventilación calcula sólo con sus propios datos: el área, la altura y los ocupantes de Carga térmica ya no se copian solos (decisión del dueño, 27-sep-2026: cada disciplina con sus propios datos)", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.98";
+    S.zones = [{ ...G("defaultZone")("Nave"), area: 400, height: 6, occ: 30 }];
+    G("recompute")();
+    if (!(G("geoProyecto")().area > 0)) throw new Error("el caso no aísla lo que se quiere probar: carga térmica debe tener geometría");
+    eq(S.vent.area, 0, "el área de ventilación no se copia de carga térmica:");
+    eq(S.vent.height, 0, "la altura de ventilación no se copia de carga térmica:");
+    eq(S.vent.occ, 0, "los ocupantes de ventilación no se copian de carga térmica:");
+    /* Lo capturado en ventilación manda y carga térmica no lo mueve. */
+    S.vent.area = 120; S.vent.height = 4; G("recompute")();
+    S.zones[0].area = 800; G("recompute")();
+    eq(S.vent.area, 120, "carga térmica no mueve el área capturada en ventilación:");
+    eq(S.vent.height, 4, "carga térmica no mueve la altura capturada en ventilación:");
+    S.tab = "ventilacion"; G("render")();
+    const txt = w.document.getElementById("view").textContent;
+    if (/heredada de Carga térmica|se heredará de Carga térmica/.test(txt)) throw new Error("la pantalla de ventilación todavía anuncia herencia de carga térmica");
+    /* Contra incendio no es parte de este hallazgo: sigue como estaba. */
+    eq(S.fuego.area, 800, "contra incendio no cambia en este hallazgo:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 

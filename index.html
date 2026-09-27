@@ -17430,10 +17430,10 @@ function geoProyectoDe(zonas) {
 function geoProyecto() { return geoProyectoDe(S.zones); }
 
 /* Campos heredables: ruta en el estado → qué toma de la geometría. */
+/* H-262 (decisión del dueño, 27-sep-2026): cada disciplina calcula con sus propios datos. Ventilación ya no hereda área, altura
+   ni ocupantes de Carga térmica: los captura en su pestaña. La única relación entre las dos va al revés: el ventilador que se
+   SELECCIONA entrega el calor de su motor a una zona de carga térmica como misceláneos (H-263). */
 const HEREDA = {
-  "vent.area":    { destino: "vent",  etiqueta: "Área del local",  unidad: "m²", dec: 0, de: (g) => Math.max(1, Math.round(g.area)) },
-  "vent.height":  { destino: "vent",  etiqueta: "Altura",          unidad: "m",  dec: 2, de: (g) => g.altura },
-  "vent.occ":     { destino: "vent",  etiqueta: "Ocupantes",       unidad: "personas", dec: 0, de: (g) => g.personas },
   "fuego.area":   { destino: "fuego", etiqueta: "Área a proteger", unidad: "m²", dec: 0, de: (g) => Math.max(1, Math.round(g.area)) },
   "fuego.altura": { destino: "fuego", etiqueta: "Altura libre al rociador más alto (máxima de las zonas)", unidad: "m", dec: 2, de: (g) => g.alturaMax },
 };
@@ -17647,8 +17647,9 @@ const PROPUESTAS = {
     propio: () => { S.soporte.usarMotores = false; delete S.soporte.snap; },
   },
 };
-function ventAreaVigente() { const g = geoProyecto(); return herDe("vent.area").modo === "heredado" && g.hay ? HEREDA["vent.area"].de(g) : Math.max(1, num(S.vent.area, 1)); }
-function ventAlturaVigente() { const g = geoProyecto(); return herDe("vent.height").modo === "heredado" && g.hay ? HEREDA["vent.height"].de(g) : Math.max(.1, num(S.vent.height, 3)); }
+/* H-262: el volumen vigente de ventilación es sólo el capturado en su pestaña. */
+function ventAreaVigente() { return Math.max(1, num(S.vent.area, 1)); }
+function ventAlturaVigente() { return Math.max(.1, num(S.vent.height, 3)); }
 
 function vinculoDe(id) { if (!S.vinculos || typeof S.vinculos !== "object") S.vinculos = {}; return S.vinculos[id] || null; }
 function registrarVinculo(id, estado = "aceptado") {
@@ -18265,7 +18266,7 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "5", clean: "3", equip: "1", duct: "4", vent: "3", quote: "24", valor: "1", kaizen: "1", elec: "8", hidro: "8", fuego: "3", aire: "5", civil: "5", soporte: "11" };
+const MOTOR_VER = { load: "5", clean: "3", equip: "1", duct: "4", vent: "4", quote: "24", valor: "1", kaizen: "1", elec: "8", hidro: "8", fuego: "3", aire: "5", civil: "5", soporte: "11" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
@@ -18273,7 +18274,8 @@ const MOTOR_CAMBIOS = {
     { ver: "4", rev: "2.9.24", que: "H-120: el DET de muros y cubierta se corrige por la condición de diseño del sitio, (25.6 − ti) + (tm − 29.4) K con tm = to − rango/2 (corrección CLTD, ASHRAE Fundamentals 1997 cap. 28; ratificar con Carrier Tabla 20A)" },
     { ver: "5", rev: "2.9.24", que: "H-141 (decisión (a) del dueño): la diversidad del edificio se aplica una sola vez, en el objetivo de planta; las ganancias internas de cada zona van al pico sin el factor (antes ×bldDiv en la zona y otra vez en la planta: con 0.8 el objetivo quedaba ×0.713). Criterio Carrier, ratificar con texto" }],
   vent: [{ ver: "2", rev: "2.9.24", que: "H-154 + H-156: la cobertura real manda en la selección Greenheck (cfmMin ≤ objetivo ≤ cfmMax, sin tolerancia ×0.9); la familia del modo sólo ordena entre los que cubren; si nadie cubre no hay modelo (proyecto fijo: GB-360 → CSW-30 para 11,643 CFM)" },
-    { ver: "3", rev: "2.9.24", que: "H-155: sin medidas no hay caudal: campana sin largo o fondo y rejilla sin ancho, alto, área libre o velocidad dan demanda 0 con aviso (antes pisos de 0.1 ft, 5 % y 100 fpm fabricaban 30 y 258 CFM y sus partidas)" }],
+    { ver: "3", rev: "2.9.24", que: "H-155: sin medidas no hay caudal: campana sin largo o fondo y rejilla sin ancho, alto, área libre o velocidad dan demanda 0 con aviso (antes pisos de 0.1 ft, 5 % y 100 fpm fabricaban 30 y 258 CFM y sus partidas)" },
+    { ver: "4", rev: "2.9.24", que: "H-262 (decisión del dueño, 27-sep-2026): ventilación calcula sólo con sus propios datos: el área, la altura y los ocupantes ya no se copian de carga térmica (se capturan en su pestaña; un proyecto guardado conserva los valores que ya tenía copiados). La relación con carga térmica va al revés: el ventilador seleccionado entrega el calor de su motor a una zona (H-263)" }],
   duct: [{ ver: "2", rev: "2.9.24", que: "H-166: un tramo sin caudal, con medida bloqueada sin capturar o fuera de la serie, o sin ninguna medida de la serie que cumpla no lleva sección, kilos ni importe: error visible, «sin medida» en cédula y Excel, pendiente en cotización y soportería (antes 400×200 / Ø250 inventados)" }, { ver: "3", rev: "2.9.24", que: "H-167: «Generar desde carga» trae sólo caudales: sin longitudes (antes 20/10/15 m) ni accesorios (tee 0.65, salida 1.0, entrada 0.03, 2 codos); tramo sin longitud = «pendiente de longitud» sin kilos, juntas ni soportes (antes 1 y 1 mínimos)" }, { ver: "4", rev: "2.9.24", que: "H-165 (decisión 7 del dueño): ducto de grasa por UMC 2018 §510.5 (up.codes): acero al carbón 0.060 in (16 MSG) o inoxidable 0.048 in (18 MSG), soldadura externa continua, nunca galvanizado ni aluminio (antes tabla galvanizada + 2: 500 L/s clase ½\" = cal 22, 0.853 mm); ratificar con NFPA 96" }],
   clean: [{ ver: "2", rev: "2.9.16", que: "sin pisos de 1 m² ni 2.2 m; 5 Pa de ISO 14644-4 con aviso; ceros capturados respetados" },
     { ver: "3", rev: "2.9.24", que: "H-127: se respeta el signo de la presión diferencial capturada (contención en negativa, EU GMP Anexo 1 (2022) §4.14); piso de 5 Pa y fuga por rendijas sobre |ΔP|; el signo sale en memoria, PDF y Excel; aviso con los 10 Pa guía del Anexo 1" }],
@@ -19969,7 +19971,6 @@ function viewVent() {
         ${modes.map(([k, t]) => `<button data-act="vmode" data-mode="${k}" aria-pressed="${v.mode === k}">${t}</button>`).join("")}
       </div></div>
       ${fields}
-      ${["general", "mua", "industrial"].includes(v.mode) ? herenciaHtml("vent.area") + herenciaHtml("vent.height") + (v.mode === "industrial" ? "" : herenciaHtml("vent.occ")) : ""}
       <details><summary>Avanzado: pérdidas de presión</summary>
       <div class="row">${inp("Pérdida en ductos (in.w.g.)", "vent.ductLoss", "number", "0.05", "vent.ductLoss", S.vent)}${inp("Pérdida en filtros (in.w.g.)", "vent.filterLoss", "number", "0.05", "vent.filterLoss", S.vent)}</details>
       ${propuestaHtml("load>vent")}
@@ -22456,6 +22457,9 @@ function sanearEstado(d) {
     }
     if (s.her[path].modo !== "propio") s.her[path].modo = "heredado";
   });
+  /* H-262: ventilación ya no hereda; el registro de herencia de vent.area/height/occ de un proyecto anterior sobra y se retira
+     (los valores capturados en s.vent se quedan como estaban). */
+  Object.keys(s.her).forEach((k) => { if (!HEREDA[k]) delete s.her[k]; });
   /* rev 2.9.22 · sitio: DP manual sólo numérico y con fuente de texto acotada */
   if (s.site && typeof s.site === "object") {
     ["dp", "dpHR", "dpDB"].forEach((k) => { if (s.site[k] !== undefined && !Number.isFinite(+s.site[k])) delete s.site[k]; });
