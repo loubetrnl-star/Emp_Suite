@@ -5391,6 +5391,18 @@ function buildPropuestaXlsx(opt) {
   traza.forEach((r0) => { const r = en && r0.en ? { ...r0, ...r0.en } : r0;   // H-263: espejo EN de las filas que lo traen
     df.push([xT(r.destino, XS.TD), xT(r.campo, XS.TD), xT(r.valor, XS.TD),
     xT(r.origen, XS.TD), xT(`${r.fecha} · ${r.estado}`, XS.TD)]); });
+  /* H-272 (regla 8): lo que entró desde archivos del proyecto ejecutivo, con archivo, página o fila y cómo entró (solo al cargar /
+     aceptado por el usuario). Antes el libro no decía que un valor vino de un archivo. */
+  const deArchivos = cxLotesDe().flatMap((l) => (l.aplicados || []).filter((a) => a && typeof a === "object").map((a) => ({ l, a })));
+  if (deArchivos.length) {
+    df.push([]);
+    df.push([xT(L("DATOS QUE ENTRARON DESDE ARCHIVOS DEL PROYECTO EJECUTIVO", "DATA ENTERED FROM EXECUTIVE-PROJECT FILES"), XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC)]);
+    df.push([L("DISCIPLINA", "DISCIPLINE"), L("DATO", "DATUM"), L("VALOR", "VALUE"), L("ARCHIVO · PAGINA / FILA", "FILE · PAGE / ROW"), L("COMO ENTRO · FECHA", "HOW IT ENTERED · DATE")].map((x) => xT(x, XS.TH)));
+    deArchivos.slice(0, 500).forEach(({ l, a }) => df.push([xT((CX_DISC[l.tab] || { nombre: l.tab }).nombre, XS.TD), xT(a.etiqueta, XS.TD), xT(`${a.valor} ${a.unidad || ""}`.trim(), XS.TD), xT(cxOrigenTexto(a), XS.TD),
+      xT(`${a.auto === true ? L("entró solo al cargar (dato claro)", "entered on load (clear datum)") : a.auto === false ? L("aceptado por el usuario", "accepted by the user") : L("carga anterior (sin distinguir)", "earlier load (not distinguished)")}${l.archivoRetirado ? L(" · archivo retirado", " · file removed") : ""} · ${fechaCorta(l.ts)}`, XS.TD)]));
+    if (deArchivos.length > 500) df.push([xT(L(`Y ${deArchivos.length - 500} dato(s) más, registrados en el proyecto.`, `And ${deArchivos.length - 500} more, recorded in the project.`), XS.NOTA)]);
+    df.push([xT(L("Lo que el archivo no trae quedó pendiente de captura: no se supuso ningún valor (regla 6). Lo leído de un archivo no sustituye la revisión del ingeniero responsable.", "What the file does not carry was left pending capture: no value was assumed (rule 6). What is read from a file does not replace the responsible engineer's review."), XS.NOTA)]);
+  }
   df.push([]);
   df.push([xT(L("Regla de la casa: cada disciplina calcula con los datos que se le capturan; ninguna hereda de otra (27-sep-2026). Ningun resultado entra solo a otra disciplina: se ofrece como propuesta, alguien la acepta o captura la suya, y queda el origen y la fecha. Si el dato de origen cambia despues, el destino NO se recalcula solo: se marca desactualizado y el usuario decide.",
     "House rule: each discipline calculates with the data captured in it; none inherits from another (27-sep-2026). No calculated result enters another discipline on its own: it is offered as a proposal, someone accepts it or captures their own, and the source and date are recorded. If the source datum later changes, the target is NOT recalculated automatically: it is flagged out of date and the user decides."), XS.NOTA)]);
@@ -13894,13 +13906,18 @@ function cxCsvLeer(texto) {
         DXF, memoria o cédula en PDF, cuadro de cargas en CSV, DWG— y que la
         suite los lea, proponga las capturas y, si así se decide, abra con
         ellas un PROYECTO NUEVO E INDEPENDIENTE.
-   Tres reglas, las mismas de la casa:
-   · Nada entra solo a un motor. Cada dato leído se ofrece con su archivo, su
-     página y el renglón del que salió; el usuario lo marca o no.
+   Tres reglas, las mismas de la casa (al día con H-272, 27-sep-2026):
+   · Cada dato leído se ofrece con su archivo, su página o fila y el renglón
+     del que salió. Desde el tablero lo CLARO entra solo al cargar (decisión
+     del dueño, 25-sep-2026) y queda marcado «entró solo»; lo dudoso espera la
+     marca del usuario. Nada se supone: lo que el archivo no trae queda
+     pendiente (regla 6). Un levantamiento alimenta la captura propia de cada
+     disciplina; los catálogos quedan como referencia consultable.
    · El proyecto nuevo nace limpio: sale del estado inicial, no del proyecto
      abierto, y no arrastra nada de trabajos anteriores.
-   · Lo aplicado queda escrito en S.cx con su origen, para que la memoria y
-     cualquier revisión posterior sepan de dónde salió cada número.
+   · Lo aplicado queda escrito en S.cx con su origen y con cómo entró, y no se
+     repite al reprocesar el mismo archivo; la memoria, el libro y cualquier
+     revisión posterior saben de dónde salió cada número.
    ========================================================================= */
 const CX_DISC = {
   carga:       { nombre: "Carga térmica",       acepta: "planta en DXF con los cuartos, memoria en PDF con zonas y áreas" },
@@ -14879,14 +14896,23 @@ function pdfOrigenArchivos(d) {
   lotes.forEach((l) => (l.aplicados || []).filter((a) => a && typeof a === "object").forEach((a) => filas.push([
     (CX_DISC[l.tab] || { nombre: l.tab }).nombre, a.etiqueta,
     `${a.valor} ${a.unidad || ""}`.trim(),
-    [a.archivo, a.pagina ? `p. ${a.pagina}` : ""].filter(Boolean).join(" · "),
-    fechaCorta(l.ts),
+    cxOrigenTexto(a),
+    cxComoEntroPdf(a, l),
   ])));
-  if (!filas.length) return;
+  const refs = S.cx && Array.isArray(S.cx.referencias) ? S.cx.referencias.length : 0;
+  if (!filas.length && !refs) return;
   pdfHeading(d, "Trazado de origen · datos cargados de archivos del proyecto ejecutivo");
-  pdfTable(d, ["Disciplina", "Dato", "Valor", "Archivo", "Aceptado"], filas.slice(0, 300), [85, 150, 90, 150, 85]);
-  if (filas.length > 300) pdfParagraph(d, `Y ${filas.length - 300} dato(s) mas, registrados en el proyecto.`);
-  pdfParagraph(d, "Cada dato fue leido del archivo indicado y aceptado por el usuario antes de entrar al motor. Lo leido de un archivo no sustituye la revision del ingeniero responsable.");
+  if (filas.length) {
+    pdfTable(d, ["Disciplina", "Dato", "Valor", "Archivo · pagina / fila", "Como entro"], filas.slice(0, 300), [80, 130, 80, 140, 130]);
+    if (filas.length > 300) pdfParagraph(d, `Y ${filas.length - 300} dato(s) mas, registrados en el proyecto.`);
+  }
+  /* H-272 (regla 8): la verdad sobre como entro cada dato. Desde el 25-sep-2026 lo claro entra solo al cargar; lo demas lo acepta el
+     usuario en la ventana de hallazgos. Antes este parrafo afirmaba que todo lo habia aceptado el usuario antes de entrar al motor. */
+  const nAuto = lotes.reduce((s, l) => s + (l.aplicados || []).filter((a) => a && a.auto === true).length, 0);
+  const nUsuario = lotes.reduce((s, l) => s + (l.aplicados || []).filter((a) => a && a.auto === false).length, 0);
+  const nViejos = filas.length - nAuto - nUsuario;
+  if (filas.length) pdfParagraph(d, `Cada dato fue leido del archivo indicado. ${nAuto} dato(s) claros entraron solos al cargar el archivo en el tablero (decision del dueno, 25-sep-2026) y ${nUsuario} los acepto el usuario en la ventana de hallazgos${nViejos > 0 ? `; ${nViejos} vienen de cargas anteriores a esta revision, sin distinguir como entraron` : ""}. Lo que el archivo no trae quedo pendiente de captura: no se supuso ningun valor (regla 6). Lo leido de un archivo no sustituye la revision del ingeniero responsable.`);
+  if (refs) pdfParagraph(d, `Ademas, ${refs} renglon(es) de catalogos y listas de precios quedaron como referencia consultable en el tablero: no entraron a ningun motor.`);
 }
 
 /* H-272 (regla 8) · Origen de un dato aplicado, para pantalla y entregables: archivo, página (PDF) o fila (hoja), y cómo entró:
@@ -14897,12 +14923,17 @@ function cxComoEntro(a, l) {
   const como = a.auto === true ? "entró solo al cargar" : a.auto === false ? "aceptado por el usuario" : "carga anterior a H-272 (sin distinguir cómo entró)";
   return `${como}${l && l.archivoRetirado ? " · archivo retirado de la tabla" : ""} · ${fechaCorta(l && l.ts)}`;
 }
+/* La misma leyenda sin acentos para los PDF (fuente base14 WinAnsi, como el resto de los textos de los documentos). */
+function cxComoEntroPdf(a, l) {
+  const como = a.auto === true ? "entro solo al cargar" : a.auto === false ? "aceptado por el usuario" : "carga anterior (sin distinguir)";
+  return `${como}${l && l.archivoRetirado ? " · archivo retirado" : ""} · ${fechaCorta(l && l.ts)}`;
+}
 /* En la memoria de cada disciplina: qué entró desde archivos del proyecto ejecutivo a ESA disciplina. */
 function pdfOrigenArchivosDe(d, motores) {
   const tabs = (motores || []).map((m) => CX_TAB_DE_MOTOR[m]).filter(Boolean);
   const filas = [];
   cxLotesDe().filter((l) => tabs.includes(l.tab)).forEach((l) => (l.aplicados || []).filter((a) => a && typeof a === "object").forEach((a) =>
-    filas.push([a.etiqueta, `${a.valor} ${a.unidad || ""}`.trim(), cxOrigenTexto(a), cxComoEntro(a, l)])));
+    filas.push([a.etiqueta, `${a.valor} ${a.unidad || ""}`.trim(), cxOrigenTexto(a), cxComoEntroPdf(a, l)])));
   if (!filas.length) return;
   pdfHeading(d, "Datos que entraron desde archivos del proyecto ejecutivo");
   pdfTable(d, ["Dato", "Valor", "Archivo · pagina / fila", "Como entro"], filas.slice(0, 150), [160, 90, 170, 140]);
@@ -19118,7 +19149,7 @@ function viewTablero() {
     ${guiaHtml("tablero")}
 
     <div class="grp">Flujo del proyecto</div>
-    <div class="gsub">Las cuatro etapas y lo que hereda cada disciplina. Un clic en un módulo entra directo a su captura.</div>
+    <div class="gsub">Las cuatro etapas; cada disciplina calcula con lo que se le captura (ninguna hereda). Un clic en un módulo entra directo a su captura.</div>
     <div class="tdiag">${diagramaLienzoHtml()}</div>
 
     <div class="grp"><b>Tablero del proyecto</b> · estado por disciplina</div>

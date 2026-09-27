@@ -8073,6 +8073,40 @@ t("S.102 (H-266) soportería es autónoma: sin la instantánea aceptada no cuent
       eq((S.cx.referencias || []).length, 0, "quitar el archivo retira sus referencias:");
       eq(w.__errs.length, 0, "errores de ventana:");
     });
+    await tA("S.125 (H-272 · regla 8) la memoria integral, las memorias por disciplina y el libro de la propuesta (ES y EN) dicen la verdad sobre lo que entró desde archivos: cada dato con archivo, página o fila y «entró solo al cargar» / «aceptado por el usuario»; ya no afirman que todo lo aceptó el usuario antes de entrar al motor", async () => {
+      limpio("S.125");
+      /* Entra solo desde el tablero (dato claro)… */
+      await cargar([archivo("levantamiento.dxf", DXF_LEV, "Obra civil/levantamiento.dxf")]);
+      eq(S.civil.areas.length, 2, "áreas al cargar:");
+      /* …y el usuario acepta a mano desde «Punto de partida» de ventilación (altura, ocupantes y cambios de aire de una memoria en PDF). */
+      await G("cxAlElegir")([archivo("memoria.pdf", PDF_LEV).file], "ventilacion");
+      const m = w.document.getElementById("modal");
+      if (m.hidden) throw new Error("no se abrió la ventana de hallazgos");
+      m.querySelector('[data-act="cx-aplicar"]').dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+      await new Promise((r) => setTimeout(r, 10));
+      cerca(S.vent.height, 6, 1e-9, "altura aceptada:"); eq(S.vent.occ, 35, "ocupantes aceptados:");
+      const lv = ultimoLote("ventilacion");
+      if (!lv || !lv.aplicados.length || !lv.aplicados.every((a) => a.auto === false)) throw new Error("lo aceptado en la ventana debe quedar marcado como aceptado por el usuario: " + JSON.stringify(lv && lv.aplicados.map((a) => a.auto)));
+      if (!ultimoLote("civil").aplicados.every((a) => a.auto === true)) throw new Error("lo que entró solo debe quedar marcado como tal");
+      /* Memoria integral. */
+      const txt = textoPdf(G("buildMemoriaIntegralPdf")());
+      if (/aceptado por el usuario antes de entrar al motor/.test(txt)) throw new Error("la memoria integral sigue afirmando que todo lo aceptó el usuario");
+      contiene(txt, "datos cargados de archivos del proyecto ejecutivo", "trazado de origen:");
+      contiene(txt, "solo al cargar", "distingue lo que entró solo:"); contiene(txt, "aceptado por el usuario", "…de lo aceptado:");
+      contiene(txt, "levantamiento.dxf"); contiene(txt, "memoria.pdf"); contiene(txt, "p. 1", "página del PDF:");
+      contiene(txt, "supuso", "regla 6 declarada (el párrafo se parte en renglones; basta la palabra):");
+      /* Memorias por disciplina. */
+      contiene(textoPdf(G("buildVentPdf")()), "memoria.pdf", "la memoria de ventilación cita el archivo:");
+      const civilTxt = textoPdf(G("buildCivilPdf")());
+      contiene(civilTxt, "levantamiento.dxf"); contiene(civilTxt, "solo al cargar", "la memoria de civil dice cómo entró cada renglón:");
+      /* Libro de la propuesta, ES y EN (espejo). */
+      const xlEs = Buffer.from(G("buildPropuestaXlsx")({ lang: "es", mon: "MXN" })).toString("utf8");
+      contiene(xlEs, "DATOS QUE ENTRARON DESDE ARCHIVOS DEL PROYECTO EJECUTIVO", "el libro trae la sección:"); contiene(xlEs, "levantamiento.dxf"); contiene(xlEs, "memoria.pdf");
+      contiene(xlEs, "entró solo al cargar", "ES: entró solo:"); contiene(xlEs, "aceptado por el usuario", "ES: aceptado:"); contiene(xlEs, "p. 1", "ES: página:");
+      const xlEn = Buffer.from(G("buildPropuestaXlsx")({ lang: "en", mon: "MXN" })).toString("utf8");
+      contiene(xlEn, "DATA ENTERED FROM EXECUTIVE-PROJECT FILES", "EN: sección:"); contiene(xlEn, "entered on load", "EN: entró solo:"); contiene(xlEn, "accepted by the user", "EN: aceptado:");
+      eq(w.__errs.length, 0, "errores de ventana:");
+    });
     /* [H-272: siguientes] */
   } finally { G("closeModal")(); G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 }
