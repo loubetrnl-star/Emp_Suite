@@ -7478,10 +7478,15 @@ t("S.98 (H-262) ventilación calcula sólo con sus propios datos: el área, la a
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
-t("S.99 (H-263) al seleccionar el ventilador, el calor de su motor (HP del submittal × 745.7 W) entra a la zona elegida de Carga térmica como «Misceláneos»; sólo eso, y si ventilación cambia la carga no se mueve sola (decisión del dueño, 27-sep-2026)", () => {
+t("S.99 (H-263) al seleccionar el ventilador, el calor de su motor (HP de referencia del submittal × 745.7 W) entra a la zona elegida de Carga térmica como «Misceláneos»; sólo eso; se declara ESTIMADO (regla 8); es instantánea (si ventilación cambia, la carga no se mueve y la pantalla avisa); sellos, contrato, deshacer y guardado en orden (decisión del dueño, 27-sep-2026)", () => {
   const guardado = JSON.stringify(S);
   const misc = (r) => r.lines.find((l) => /^Misceláneos · Ventilación/.test(l.label));
+  const vista = () => w.document.getElementById("view").textContent;
+  const sellar = (id, ts) => { S.sellos[id] = { ts, ver: G("MOTOR_VER")[id], huella: G("huellaMotor")(id) }; };
+  const H = G("HIST"), hist0 = { pila: H.pila, ix: H.ix };
+  const huellas = () => Object.keys(G("MOTOR_VER")).map((id) => id + ":" + G("huellaMotor")(id)).join("|");
   try {
+    G("histReiniciar")();
     G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.99";
     Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.99" }; });
     S.zones = [{ ...G("defaultZone")("Nave"), area: 400, height: 6, occ: 30 }, { ...G("defaultZone")("Oficina"), area: 100, height: 3, occ: 10 }];
@@ -7493,36 +7498,87 @@ t("S.99 (H-263) al seleccionar el ventilador, el calor de su motor (HP del submi
     const hp = G("greenSheet")(G("GREEN").find((x) => x.id === e.id)).hp;
     const antes0 = G("LOADS")[0].grand, antes1 = G("LOADS")[1].grand;
     if (G("LOADS").some(misc)) throw new Error("sin seleccionar no debe haber misceláneos de ventilación");
+    /* Un proyecto guardado con la versión anterior no trae miscVent ni vent.seleccion; al abrirlo, sanearEstado los agrega en
+       null. Ninguna huella de sello debe moverse por eso (si no, abrir un proyecto sin cambios diría «la captura cambió»). */
+    const conNulos = huellas();
+    S.zones.forEach((z) => { delete z.miscVent; }); delete S.vent.seleccion;
+    eq(huellas(), conNulos, "los campos nuevos en null no mueven ninguna huella de sello:");
+    S.zones.forEach((z) => { z.miscVent = null; }); S.vent.seleccion = null;
+    /* Sellos antes de seleccionar: ventilación y carga «calculado». */
+    S.sellos = {}; sellar("vent", 5); sellar("load", 5);
+    eq(G("selloDe")("load").estado, "calculado", "el caso arranca con carga sellada:");
     /* Se selecciona desde la pantalla, eligiendo la zona. */
     S.tab = "ventilacion"; G("render")();
     const d = w.document;
     const btn = d.querySelector('[data-act="vent-seleccionar"]');
     if (!btn) throw new Error("ventilación no tiene botón para seleccionar el modelo");
+    contiene(btn.textContent, "estimado", "el botón declara que los HP son estimados:");
     const selZ = d.getElementById("vent-sel-zona");
     if (!selZ) throw new Error("con dos zonas debe pedir a qué zona entra la carga");
     selZ.value = S.zones[1].id; btn.click();
+    if (!G("HIST").pila.some((x) => x.etiqueta === "seleccionar ventilador")) throw new Error("seleccionar no dejó instantánea en el historial (deshacer)");
     const L0 = G("LOADS")[0], L1 = G("LOADS")[1];
     const lin = misc(L1);
     if (!lin) throw new Error("la zona elegida no recibió la carga del ventilador seleccionado");
-    cerca(lin.s, hp * 745.7, 1, "calor del motor = HP del submittal × 745.7 W:");
+    cerca(lin.s, hp * 745.7, 1, "calor del motor = HP de referencia × 745.7 W:");
     eq(lin.l, 0, "el calor del motor es sensible:");
     contiene(lin.label, e.model, "el renglón dice el modelo:");
+    contiene(lin.d, "ESTIMADO", "regla 8: el renglón declara que el HP es una estimación de catálogo, no dato de placa:");
+    contiene(lin.d, "745.7", "regla 8: el renglón declara la conversión:");
+    if (!L1.memo.some((m) => /Misceláneos/.test(m) && /ESTIMADO/.test(m))) throw new Error("la memoria de la zona no declara la procedencia del renglón");
     if (misc(L0)) throw new Error("la otra zona no debe recibir la carga");
     eq(Math.round(L0.grand), Math.round(antes0), "la otra zona no cambia:");
     if (!(L1.grand >= antes1 + lin.s - 1)) throw new Error(`la zona elegida debe subir al menos ${lin.s} W (antes ${antes1}, después ${L1.grand})`);
-    /* Regla 3: si ventilación cambia después, carga térmica se queda con lo seleccionado. */
-    const g1 = L1.grand;
-    S.vent.ach = 12; G("recompute")();
-    eq(Math.round(G("LOADS")[1].grand), Math.round(g1), "si cambia ventilación, la carga no se mueve sola:");
-    const e2 = G("VENT").eq.primary;
+    /* Sellos: carga cambió de entradas (desactualizado); ventilación no (la selección no es entrada de computeVent). */
+    eq(G("selloDe")("load").estado, "desactualizado", "carga térmica: la selección es una entrada nueva:");
+    eq(G("selloDe")("vent").estado, "calculado", "ventilación: seleccionar no cambia sus entradas:");
+    /* El cruce queda declarado: trazado de origen (memoria integral y libro de la propuesta, con su espejo EN) y memoria de ventilación. */
+    const fila = G("trazaHerencia")().find((r) => r.destinoId === "load" && /Misceláneos/.test(r.campo));
+    if (!fila) throw new Error("el trazado de origen no declara el ventilador que entró a carga térmica");
+    contiene(fila.campo, e.model, "la fila del trazado dice el modelo:"); contiene(fila.origen, "Ventilación", "la fila dice el origen:");
+    if (!(fila.en && /Miscellaneous/.test(fila.en.campo))) throw new Error("regla 7: la fila del trazado no trae su espejo en inglés");
+    contiene(textoPdf(G("buildVentPdf")()), "Seleccionado por el usuario", "la memoria de ventilación dice a dónde entró el calor del motor:");
+    /* La pantalla de carga muestra el renglón y la gráfica lo incluye. */
+    S.zi = 1; S.tab = "carga"; G("render")();
+    contiene(vista(), "Misceláneos · Ventilación", "la pestaña de carga lista el renglón:");
+    contiene(vista(), "Misceláneos (ventilador seleccionado)", "la gráfica «Dónde está la carga» tiene su cubeta:");
+    if (!w.document.querySelector('#view [data-act="vent-quitar"]')) throw new Error("desde Carga térmica no se puede quitar la carga del ventilador");
+    contiene(vista(), "seleccionado en Ventilación", "la tarjeta de la zona dice de dónde viene:");
+    /* Volver a sellar carga y seleccionar de nuevo el mismo modelo: nada cambia; la fecha de la instantánea no mueve el sello. */
+    sellar("load", 6);
     S.tab = "ventilacion"; G("render")();
-    if (e2 && e2.id !== e.id) contiene(d.getElementById("view").textContent, "ya no coincide", "la pantalla avisa que la selección quedó atrás:");
-    /* Quitar la selección la saca de carga térmica. */
+    d.getElementById("vent-sel-zona").value = S.zones[1].id; d.querySelector('[data-act="vent-seleccionar"]').click();
+    eq(G("selloDe")("load").estado, "calculado", "reseleccionar el mismo modelo no mueve el sello de carga:");
+    /* Regla 3: si ventilación cambia a otro modelo, carga térmica se queda con lo seleccionado y la pantalla avisa. */
+    const g1 = G("LOADS")[1].grand;
+    S.vent.ach = 7; G("recompute")();
+    const e2 = G("VENT").eq.primary;
+    if (!e2 || e2.id === e.id) throw new Error("el caso no aísla lo que se quiere probar: con 7 cambios/h debe salir otro modelo que cubra");
+    eq(Math.round(G("LOADS")[1].grand), Math.round(g1), "si cambia ventilación, la carga no se mueve sola:");
+    S.tab = "ventilacion"; G("render")();
+    contiene(vista(), "ya no coincide", "la pantalla avisa que la selección quedó atrás:");
+    /* Un proyecto guardado conserva la selección y la carga. */
+    const s2 = G("sanearEstado")(JSON.parse(JSON.stringify(S)));
+    eq(s2.vent.seleccion.modeloId, e.id, "la selección sobrevive al guardar y abrir:");
+    eq(s2.zones[1].miscVent.W, Math.round(hp * 745.7), "la carga de la zona sobrevive al guardar y abrir:");
+    /* Si la zona desaparece, la pantalla lo dice. */
+    S.zi = 0;
+    const zona1 = S.zones[1]; S.zones = [S.zones[0]]; G("recompute")(); S.tab = "ventilacion"; G("render")();
+    contiene(vista(), "ya no existe", "la pantalla avisa que la zona que recibía el calor ya no existe:");
+    S.zones = [S.zones[0], zona1]; G("recompute")();
+    /* Quitar la selección la saca de carga térmica, deja el contrato limpio y no toca el sello de ventilación. */
+    sellar("vent", 7);
+    S.tab = "ventilacion"; G("render")();
     const q = d.querySelector('[data-act="vent-quitar"]');
     if (!q) throw new Error("no hay botón para quitar la selección");
     q.click();
+    if (!G("HIST").pila.some((x) => x.etiqueta === "quitar selección de ventilador")) throw new Error("quitar no dejó instantánea en el historial (deshacer)");
     if (G("LOADS").some(misc)) throw new Error("al quitar la selección la carga debe salir de carga térmica");
-  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+    eq(S.vent.seleccion, null, "quitar deja la clave declarada (null), no la borra:");
+    eq(G("selloDe")("vent").estado, "calculado", "ventilación: quitar tampoco cambia sus entradas:");
+    const falt = G("selfCheck")().faltantes.filter((f) => /seleccion|miscVent/.test(f.ruta));
+    if (falt.length) throw new Error("contrato 16.4 tras quitar: " + falt.map((f) => f.ruta).join(", "));
+  } finally { H.pila = hist0.pila; H.ix = hist0.ix; G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
 /* ===== R. Regresión por motor (rev 2.9.22, decisión del dueño): un proyecto fijo con cifras esperadas por disciplina ===== */

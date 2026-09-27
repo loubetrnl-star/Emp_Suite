@@ -2205,6 +2205,11 @@ function buildVentPdf() {
   } else {
     pdfParagraph(d, "Sin seleccion: no hay caudal de demanda, por lo que no se presenta ningun modelo del catalogo.");
   }
+  /* H-263: la seleccion del usuario y a donde entro el calor de su motor. */
+  if (S.vent && S.vent.seleccion) {
+    const sel = S.vent.seleccion, zs = (S.zones || []).find((q) => q && q.id === sel.zonaId);
+    pdfParagraph(d, `Seleccionado por el usuario (${fechaCorta(sel.ts)}): ${sel.modelo}, ${n(num(sel.hp), 2)} HP de referencia del submittal (ESTIMADO en el punto medio del catalogo: rendimiento 0.65, +15 %, redondeo a 1/4 HP; no es dato de placa). El calor de su motor, ${n(num(sel.W), 0)} W sensibles (HP x 745.7 W), entra como miscelaneos a la zona ${zs ? zs.name : "(la zona ya no existe)"} de carga termica (H-263). Si esta ventilacion cambia, esa carga no se mueve sola: se vuelve a seleccionar.`);
+  }
 
   /* 7 · Memoria del motor (texto de norma tal como lo emite computeVent). */
   pdfHeading(d, "7. Memoria");
@@ -3446,8 +3451,11 @@ function computeLoad(z, bldDiv, forceTech, hour = P.HOUR) {
   const mv = z.miscVent && num(z.miscVent.W, 0) > 0 ? z.miscVent : null;
   const miscS = mv ? num(mv.W) : 0;
   if (mv) {
-    lines.push({ g: "internal", label: `Misceláneos · Ventilación ${mv.modelo}`, s: miscS, l: 0, d: `${num(mv.hp)} HP × 745.7 W/HP · motor del ventilador seleccionado en Ventilación (submittal Greenheck)` });
-    memo.push(`Misceláneos: ventilador ${mv.modelo} seleccionado en Ventilación, ${num(mv.hp)} HP × 745.7 W/HP = ${miscS.toFixed(0)} W sensibles (decisión del dueño, H-263).`);
+    /* Regla 8: el HP no es dato de placa. greenSheet lo ESTIMA en el punto medio del catálogo (BHP con rendimiento 0.65,
+       +15 %, redondeo a ¼ HP), como lo declara el propio submittal de la suite. Se dice en el renglón y en la memoria. */
+    const mvOrigen = `HP de referencia del submittal de ${mv.modelo}: ESTIMADO por la casa en el punto medio del catálogo (${Number.isFinite(mv.bhp) ? `${num(mv.bhp, 2)} BHP con ` : ""}rendimiento 0.65, +15 %, redondeo a ¼ HP), no dato de placa; ratificar con el submittal de fábrica`;
+    lines.push({ g: "internal", label: `Misceláneos · Ventilación ${mv.modelo}`, s: miscS, l: 0, d: `${num(mv.hp)} HP × 745.7 W/HP · motor del ventilador seleccionado en Ventilación · ${mvOrigen} · criterio de la casa (H-263)` });
+    memo.push(`Misceláneos: ventilador ${mv.modelo} seleccionado en Ventilación, ${num(mv.hp)} HP × 745.7 W/HP = ${miscS.toFixed(0)} W sensibles, íntegros y sin diversidad (criterio de la casa, decisión del dueño, H-263). ${mvOrigen}.`);
   }
 
   /* Cuarto limpio: los ventiladores de los filtros terminales trabajan las 24 h
@@ -5393,8 +5401,9 @@ function buildPropuestaXlsx(opt) {
   df.push([xT(L("TRAZADO DE ORIGEN DE LOS VALORES HEREDADOS", "TRACEABILITY OF INHERITED VALUES"), XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC)]);
   df.push([L("DISCIPLINA DESTINO", "TARGET DISCIPLINE"), L("DATO", "DATUM"), L("VALOR VIGENTE", "CURRENT VALUE"),
     L("ORIGEN", "SOURCE"), L("DESDE / ESTADO", "SINCE / STATUS")].map((x) => xT(x, XS.TH)));
-  traza.forEach((r) => df.push([xT(r.destino, XS.TD), xT(r.campo, XS.TD), xT(r.valor, XS.TD),
-    xT(r.origen, XS.TD), xT(`${r.fecha} · ${r.estado}`, XS.TD)]));
+  traza.forEach((r0) => { const r = en && r0.en ? { ...r0, ...r0.en } : r0;   // H-263: espejo EN de las filas que lo traen
+    df.push([xT(r.destino, XS.TD), xT(r.campo, XS.TD), xT(r.valor, XS.TD),
+    xT(r.origen, XS.TD), xT(`${r.fecha} · ${r.estado}`, XS.TD)]); });
   df.push([]);
   df.push([xT(L("Regla de la casa: la geometria y la ocupacion se heredan solas y no se recalculan. Ningun otro resultado entra solo a otra disciplina: se ofrece como propuesta, alguien la acepta o captura la suya, y queda el origen y la fecha. Si el dato de origen cambia despues, el destino NO se recalcula solo: se marca desactualizado y el usuario decide.",
     "House rule: geometry and occupancy are inherited automatically and never recalculated. No other calculated result enters another discipline on its own: it is offered as a proposal, someone accepts it or captures their own, and the source and date are recorded. If the source datum later changes, the target is NOT recalculated automatically: it is flagged out of date and the user decides."), XS.NOTA)]);
@@ -16380,6 +16389,7 @@ function viewCarga() {
       <div class="hint" style="margin-bottom:12px">Con área, altura y tipo de espacio basta para un estimado: <b>Autollenar</b> pone ocupantes, luces, equipos y cambios de aire típicos; <b>Envolvente automática</b> reparte muros y vidrio de una planta cuadrada. Ajusta abajo solo lo que conozcas.</div>
       <div class="row">${inp("Ocupantes", `zones.${i}.occ`, "number", "1", "zone.occ", z)}${inp("Infiltración (cambios/h)", `zones.${i}.ach`, "number", "0.05", "zone.ach", z, "infil")}</div>
       <div class="row">${inp("Iluminación (W)", `zones.${i}.lights`, "number", "10", "zone.lights", z)}${inp("Equipos (W)", `zones.${i}.equip`, "number", "10", "zone.equip", z)}</div>
+      ${miscVentHtml(z)}
       <details ${S.advOpen ? "open" : ""} data-adv="1"><summary>Avanzado: envolvente, materiales y operación</summary>
       <h4 style="font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:16px 0 8px">Muros por orientación (m²)</h4>
       ${oriInputs("walls")}
@@ -16458,6 +16468,7 @@ function viewCarga() {
           { k: "Ocupantes", v: r.lines.filter((x) => x.label === "Ocupantes").reduce((a, x) => a + x.s + x.l, 0) },
           { k: "Iluminación", v: r.lines.filter((x) => x.label === "Iluminación").reduce((a, x) => a + x.s, 0) },
           { k: "Equipos", v: r.lines.filter((x) => /Equipos/.test(x.label)).reduce((a, x) => a + x.s, 0) },
+          { k: "Misceláneos (ventilador seleccionado)", v: r.lines.filter((x) => /^Misceláneos/.test(x.label)).reduce((a, x) => a + x.s, 0) },
           { k: "Infiltración", v: r.lines.filter((x) => /^Infiltración/.test(x.label)).reduce((a, x) => a + x.s + x.l, 0) },
           { k: "Aire exterior", v: r.lines.filter((x) => /Aire exterior/.test(x.label)).reduce((a, x) => a + x.s + x.l, 0), c: CLR.orS },
           { k: "Sistema y margen", v: r.lines.filter((x) => x.g === "system").reduce((a, x) => a + x.s + x.l, 0) },
@@ -17656,8 +17667,8 @@ const PROPUESTAS = {
 function ventSeleccionable() {
   const p = VENT && VENT.eq && VENT.eq.primary; if (!p) return null;
   const e = GREEN.find((x) => x.id === p.id) || p;
-  const hp = greenSheet(e).hp;
-  return { modeloId: e.id, modelo: e.model, hp, W: Math.round(hp * 745.7) };
+  const { hp, bhp } = greenSheet(e);   // HP de referencia: ESTIMADO en el punto medio del catálogo (regla 8, se declara en carga)
+  return { modeloId: e.id, modelo: e.model, hp, bhp: +bhp.toFixed(2), hpOrigen: "estimado", W: Math.round(hp * 745.7) };
 }
 /* Selecciona el ventilador y deja el calor de su motor en UNA zona de carga térmica (la elegida); quita el de cualquier otra. */
 function seleccionarVent(zonaId) {
@@ -17672,7 +17683,7 @@ function seleccionarVent(zonaId) {
 }
 function quitarSeleccionVent() {
   (S.zones || []).forEach((q) => { if (q) q.miscVent = null; });
-  delete S.vent.seleccion;
+  S.vent.seleccion = null;
 }
 function seleccionVentHtml() {
   const sel = S.vent.seleccion, ahora = ventSeleccionable();
@@ -17680,7 +17691,7 @@ function seleccionVentHtml() {
   let h = "";
   if (sel) {
     const z = zonas.find((q) => q.id === sel.zonaId);
-    h += `<div class="her"><span class="hdot"></span>Seleccionado: <b>${esc(sel.modelo)}</b> · ${n(num(sel.hp), 2)} HP → ${n(num(sel.W), 0)} W a Carga térmica, zona <b>${esc(z ? z.name : "(ya no existe)")}</b> · ${fechaCorta(sel.ts)}
+    h += `<div class="her"><span class="hdot"></span>Seleccionado: <b>${esc(sel.modelo)}</b> · ${n(num(sel.hp), 2)} HP (estimado de catálogo) → ${n(num(sel.W), 0)} W a Carga térmica, zona <b>${esc(z ? z.name : "(ya no existe)")}</b> · ${fechaCorta(sel.ts)}
       <button class="toolbtn mini" data-act="vent-quitar">Quitar selección</button></div>`;
     if (!z) h += `<div class="warnline">La zona que recibía el calor del ventilador ya no existe: vuelve a seleccionar.</div>`;
     else if (!ahora || ahora.modeloId !== sel.modeloId || ahora.hp !== sel.hp)
@@ -17689,7 +17700,17 @@ function seleccionVentHtml() {
   if (!ahora) return h;
   if (!zonas.length) return h + `<div class="hint">Para seleccionar el ventilador captura al menos una zona en Carga térmica: el calor de su motor entra a una zona.</div>`;
   const pick = zonas.length > 1 ? `<div class="field"><label>Zona de Carga térmica que recibe el calor del motor</label><select id="vent-sel-zona">${zonas.map((z) => `<option value="${esc(z.id)}"${sel && sel.zonaId === z.id ? " selected" : ""}>${esc(z.name)}</option>`).join("")}</select></div>` : "";
-  return h + pick + `<button class="btn-ghost" data-act="vent-seleccionar">Seleccionar ${esc(ahora.modelo)} (${n(ahora.hp, 2)} HP → ${n(ahora.W, 0)} W a Carga térmica${zonas.length === 1 ? `, zona ${esc(zonas[0].name)}` : ""})</button>`;
+  return h + pick + `<button class="btn-ghost" data-act="vent-seleccionar">Seleccionar ${esc(ahora.modelo)} (${n(ahora.hp, 2)} HP estimados → ${n(ahora.W, 0)} W a Carga térmica${zonas.length === 1 ? `, zona ${esc(zonas[0].name)}` : ""})</button>
+    <div class="hint">Los HP son la referencia del submittal, estimados en el punto medio del catálogo (rendimiento 0.65, +15 %, ¼ HP); no son dato de placa. El calor del motor entra íntegro como carga sensible de la zona (criterio de la casa, H-263).</div>`;
+}
+/* H-263 · Lo que ve la zona en Carga térmica: de dónde viene el renglón de misceláneos, cuándo se tomó, si quedó atrás, y cómo quitarlo. */
+function miscVentHtml(z) {
+  const mv = z && z.miscVent; if (!mv) return "";
+  const ahora = ventSeleccionable();
+  const coincide = !!ahora && ahora.modeloId === mv.modeloId && ahora.hp === mv.hp;
+  return `<div class="her${coincide ? "" : " propio"}" style="margin-bottom:12px"><span class="hdot"></span>Misceláneos: ventilador <b>${esc(mv.modelo)}</b> seleccionado en Ventilación · ${n(num(mv.hp), 2)} HP (estimado de catálogo) → ${n(num(mv.W), 0)} W sensibles · ${fechaCorta(mv.ts)}
+    ${coincide ? "" : `<span class="hsub">La selección ya no coincide con el cálculo actual de Ventilación${ahora ? ` (ahora ${esc(ahora.modelo)}, ${n(ahora.hp, 2)} HP)` : " (sin modelo)"}: se conserva lo seleccionado; vuelve a seleccionar en Ventilación para actualizarla.</span>`}
+    <button class="toolbtn mini" data-act="vent-quitar">Quitar</button></div>`;
 }
 /* H-262: el volumen vigente de ventilación es sólo el capturado en su pestaña. */
 function ventAreaVigente() { return Math.max(1, num(S.vent.area, 1)); }
@@ -17819,6 +17840,19 @@ function trazaHerencia() {
     valor: num(S.soporte.alturaTrabajo) > 0 ? `${n(num(S.soporte.alturaTrabajo), 1)} m` : (typeof SOPORTE !== "undefined" && SOPORTE ? `${n(SOPORTE.hTrab, 1)} m` : "—"),
     origen: num(S.soporte.alturaTrabajo) > 0 ? "capturado por el usuario" : "mayor altura de zona + 1.2 m", fecha: "con cada zona",
     estado: num(S.soporte.alturaTrabajo) > 0 ? "propio" : "heredado (regla 1)", regla: 1 });
+  /* H-263: el ventilador seleccionado en Ventilación entra a una zona de carga térmica como instantánea que aceptó el usuario
+     (regla 3): se declara en el trazado de origen con su fecha y su estado. */
+  if (S.vent && S.vent.seleccion) {
+    const sel = S.vent.seleccion, z = (S.zones || []).find((q) => q && q.id === sel.zonaId), ahora = ventSeleccionable();
+    const vigente = !!z && !!ahora && ahora.modeloId === sel.modeloId && ahora.hp === sel.hp;
+    filas.push({ destinoId: "load", destino: "Carga térmica", campo: `Misceláneos · ventilador ${sel.modelo} (${n(num(sel.hp), 2)} HP estimados de catálogo) → zona ${z ? z.name : "(ya no existe)"}`,
+      valor: `${n(num(sel.W), 0)} W sensibles`, origen: "Ventilación · seleccionado por el usuario", fecha: fechaCorta(sel.ts),
+      estado: vigente ? "instantánea vigente (regla 3)" : "desactualizada: la selección ya no coincide con Ventilación", regla: 2, nivel: vigente ? "aceptado" : "desactualizado",
+      /* Regla 7: la fila llega al libro de la propuesta; su espejo en inglés va aparte (el resto del trazado es de revisiones anteriores). */
+      en: { destino: "Thermal load", campo: `Miscellaneous · fan ${sel.modelo} (${n(num(sel.hp), 2)} HP estimated from catalog) → zone ${z ? z.name : "(no longer exists)"}`,
+        valor: `${n(num(sel.W), 0)} W sensible`, origen: "Ventilation · selected by the user",
+        estado: vigente ? "current snapshot (rule 3)" : "out of date: the selection no longer matches Ventilation" } });
+  }
   Object.entries(PROPUESTAS).forEach(([id, P]) => {
     const e = estadoPropuesta(id);
     const rec = e.rec;
@@ -18287,11 +18321,14 @@ const eVinc = () => Object.fromEntries(Object.entries(S.vinculos || {}).map(([k,
 const eZonasCivil = () => S.zones.map((z) => ({ area: z.area, height: z.height, walls: z.walls }));
 const eZonasAltura = () => S.zones.map((z) => z.height);
 const ENTRADAS = {
-  load: () => ({ zones: S.zones, site: S.site, bldDiv: S.bldDiv, forceTech: S.forceTech, peakScan: S.peakScan }),
+  /* H-263: la fecha de la instantánea del ventilador (miscVent.ts) no cambia el cálculo: fuera de la huella. Una zona sin
+     ventilador (miscVent null, que sanearEstado agrega a los proyectos anteriores) pesa lo mismo que una sin el campo: así
+     un proyecto sellado con la versión anterior no sale «la captura cambió» sin haber cambiado nada. */
+  load: () => ({ zones: (S.zones || []).map((z) => !z || !("miscVent" in z) ? z : z.miscVent ? { ...z, miscVent: sinClaves(z.miscVent, ["ts"]) } : sinClaves(z, ["miscVent"])), site: S.site, bldDiv: S.bldDiv, forceTech: S.forceTech, peakScan: S.peakScan }),
   clean: () => ({ rooms: cleanRooms(), site: S.site }),
   equip: () => ({ load: ENTRADAS.load(), sysForce: S.sysForce, sel: eSel(), duct: ENTRADAS.duct() }),
   duct: () => ({ duct: S.duct, site: S.site }),
-  vent: () => ({ vent: S.vent, site: S.site }),
+  vent: () => ({ vent: sinClaves(S.vent, ["seleccion"]), site: S.site }),   /* H-263: la selección no la lee computeVent */
   hidro: () => ({ hidro: sinClaves(S.hidro, ["equipoHN"]), site: S.site }),
   fuego: () => ({ fuego: S.fuego, perms: ePerms(), site: S.site }),
   aire: () => ({ aire: S.aire, site: S.site }),
@@ -18317,7 +18354,7 @@ const MOTOR_CAMBIOS = {
     { ver: "3", rev: "2.9.21", que: "cuarto limpio con presión positiva sin infiltración; unidad de aire exterior dedicada + serpentín seco (ADP desde la latente interna); crédito sensible del aire exterior topado en deshumidificación; cambios por hora obligatorios; calor del ventilador Q·ΔP/η" },
     { ver: "4", rev: "2.9.24", que: "H-120: el DET de muros y cubierta se corrige por la condición de diseño del sitio, (25.6 − ti) + (tm − 29.4) K con tm = to − rango/2 (corrección CLTD, ASHRAE Fundamentals 1997 cap. 28; ratificar con Carrier Tabla 20A)" },
     { ver: "5", rev: "2.9.24", que: "H-141 (decisión (a) del dueño): la diversidad del edificio se aplica una sola vez, en el objetivo de planta; las ganancias internas de cada zona van al pico sin el factor (antes ×bldDiv en la zona y otra vez en la planta: con 0.8 el objetivo quedaba ×0.713). Criterio Carrier, ratificar con texto" },
-    { ver: "6", rev: "2.9.24", que: "H-263 (decisión del dueño, 27-sep-2026): el ventilador SELECCIONADO en Ventilación entra a la zona elegida como misceláneos, HP del submittal Greenheck × 745.7 W sensibles, como instantánea (si ventilación cambia después, la carga no se mueve sola; se vuelve a seleccionar). Sin selección la carga no cambia" }],
+    { ver: "6", rev: "2.9.24", que: "H-263 (decisión del dueño, 27-sep-2026): el ventilador SELECCIONADO en Ventilación entra a la zona elegida como misceláneos, HP de referencia del submittal Greenheck (ESTIMADO por la casa en el punto medio del catálogo: rendimiento 0.65, +15 %, ¼ HP; ratificar con placa) × 745.7 W sensibles, como instantánea (si ventilación cambia después, la carga no se mueve sola; se vuelve a seleccionar). Sin selección la carga no cambia" }],
   vent: [{ ver: "2", rev: "2.9.24", que: "H-154 + H-156: la cobertura real manda en la selección Greenheck (cfmMin ≤ objetivo ≤ cfmMax, sin tolerancia ×0.9); la familia del modo sólo ordena entre los que cubren; si nadie cubre no hay modelo (proyecto fijo: GB-360 → CSW-30 para 11,643 CFM)" },
     { ver: "3", rev: "2.9.24", que: "H-155: sin medidas no hay caudal: campana sin largo o fondo y rejilla sin ancho, alto, área libre o velocidad dan demanda 0 con aviso (antes pisos de 0.1 ft, 5 % y 100 fpm fabricaban 30 y 258 CFM y sus partidas)" },
     { ver: "4", rev: "2.9.24", que: "H-262 (decisión del dueño, 27-sep-2026): ventilación calcula sólo con sus propios datos: el área, la altura y los ocupantes ya no se copian de carga térmica (se capturan en su pestaña; un proyecto guardado conserva los valores que ya tenía copiados). Se retira la propuesta load>vent (aire exterior de carga térmica como reposición: con el local sin capturar fabricaba cambios/h sobre 1 m² × 0.1 m). Sin área o altura capturadas, el caudal por cambios de aire queda pendiente de captura, con aviso. La relación con carga térmica va al revés: el ventilador seleccionado entrega el calor de su motor a una zona (H-263)" }],
@@ -22018,6 +22055,7 @@ document.addEventListener("click", (e) => {
     case "prop-propio": propPropio(b.dataset.id); break;
     case "prop-conservar": propConservar(b.dataset.id); break;
     case "vent-seleccionar": {
+      histSnap("seleccionar ventilador");
       const zs = document.getElementById("vent-sel-zona");
       asegurarIdsZona();
       const zid = zs ? zs.value : (S.zones.find((z) => z && z.id) || {}).id;
@@ -22025,6 +22063,7 @@ document.addEventListener("click", (e) => {
       break;
     }
     case "vent-quitar": {
+      histSnap("quitar selección de ventilador");
       quitarSeleccionVent(); recompute(); projAutosave(); render();
       toast("Selección quitada: Carga térmica ya no lleva el calor del ventilador");
       break;
