@@ -49,7 +49,9 @@ w.eval(String.raw`
   S.civil = { ...defaultCivil(), firmeM2: 120, puertasSimples: 3, puertasLimpias: 2, demoler: true, demolMuroM2: 40,
     areas: S.zones.map((z, i) => ({ id: "a" + (i + 1), nombre: z.name, area: z.area, altura: z.height, perimetro: 0 })),
     cuartos: [{ id: "k1", nombre: "Cuarto limpio 1", area: 120, altura: 3, perimetro: 0 }] };
-  S.soporte = { ...defaultSoporte(), rielM: 60, mesesElevacion: 3 };
+  /* H-266: soportería autónoma: captura las alturas que antes tomaba de las zonas (6 m y 6 + 1.2 m) y, al final, acepta la
+     instantánea de lo que antes contaba en vivo. */
+  S.soporte = { ...defaultSoporte(), rielM: 60, mesesElevacion: 3, alturaEstructura: 6, alturaTrabajo: 7.2 };
   const fam = FAMILIES[0], m = familyPool(fam.id)[0]; if (m) S.quote.items = [{ id: m.id, fam: fam.id, qty: 2, unit: null }];
   /* Ruta de referencias con un precio de REFERENCIA DE PRUEBA AISLADO (no es una fuente real; decisión del dueño 22-sep-2026: sin IUSA, únicamente California, sólo material). 1/2" queda como proveedor local numérico. */
   const refPrueba = (p) => ({ precio: p, moneda: "USD", iva: false, porTramo: 1, origen: "referencia", alcance: "material", fuente: "REFERENCIA DE PRUEBA del fixture de regresión (no es una fuente real)", edicion: "", pagina: "", ubicacion: "San Diego, CA (fixture)", lista: "no especificado", url: "", fecha: "2026-09-22" });
@@ -58,6 +60,7 @@ w.eval(String.raw`
   Object.keys(LINKS).forEach((k) => { S.perms[k] = { ts: 1, via: "regresión" }; });
   S.kaizen.items = [{ id: "k1", titulo: "Ajustar horario de FFU", estado: "hacer", owner: "", ahorro: 0, nota: "" }];
   S.tab = "tablero"; recompute();
+  S.soporte.snap = snapshotSoporte(); S.soporte.usarMotores = true; recompute();
 `);
 const MV = G("MOTOR_VER"), REV = G("REV");
 const cifras = {}; Object.keys(MV).forEach((id) => { cifras[id] = G(`cifrasMotor(${JSON.stringify(id)})`); });

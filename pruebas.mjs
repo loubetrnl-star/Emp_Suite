@@ -55,6 +55,9 @@ function t(nombre, fn) {
 const eq = (a, b, msg) => { if (!(a === b)) throw new Error(`${msg || ""} esperado ${JSON.stringify(b)}, obtenido ${JSON.stringify(a)}`); };
 const cerca = (a, b, tol, msg) => { if (!(Math.abs(a - b) <= tol)) throw new Error(`${msg || ""} esperado ~${b}, obtenido ${a}`); };
 const contiene = (s, x, msg) => { if (String(s).indexOf(x) < 0) throw new Error(`${msg || ""} no contiene "${x}"`); };
+/* H-266: soportería cuenta los metros de los otros motores sólo con la instantánea aceptada (propuesta motores>soporte). Las
+   pruebas que arman motores y miran la soportería la aceptan después de calcular, como lo haría el usuario. */
+const aceptarSoporte = () => { G("recompute")(); S.soporte.snap = G("snapshotSoporte")(); S.soporte.usarMotores = true; G("recompute")(); };
 
 /* --------------------------------------------------- proyecto de prueba */
 function proyectoDePrueba() {
@@ -321,7 +324,9 @@ t("2.0.8 el diagrama no usa ninguna librería ni recurso externo", () => {
 t("2.0.9 el tablero conserva íntegro lo que no cabe en la portada", () => {
   S.tab = "tablero"; G("render")();
   const v = vista();
-  ["Tablero del proyecto", "Geometría y ocupación heredadas", "Con datos", "Desactualizadas"].forEach((x) => contiene(v, x));
+  ["Tablero del proyecto", "Con datos", "Desactualizadas"].forEach((x) => contiene(v, x));
+  /* H-262 a H-266: ninguna disciplina hereda: la tarjeta de geometría heredada ya no tiene qué mostrar y no se pinta. */
+  if (v.includes("Geometría y ocupación heredadas")) throw new Error("el tablero sigue pintando la tarjeta de herencia sin herencias");
   if ((v.match(/class="tfila/g) || []).length < G("DISCIPLINAS").length) throw new Error("faltan disciplinas en el tablero");
 });
 
@@ -923,7 +928,9 @@ t("6.4 imprime el trazado de origen de cada valor heredado", () => {
   contiene(txt, "Trazado de origen");
   contiene(txt, "regla 1"); contiene(txt, "regla 2");
   const tr = G("trazaHerencia")();
-  if (!tr.some((r) => r.regla === 1 && r.estado.indexOf("heredado") === 0)) throw new Error("no declara ningún valor heredado");
+  /* H-262 a H-266: ninguna disciplina hereda; el trazado lo declara (regla 1) y lista las propuestas (regla 2). */
+  if (tr.some((r) => r.regla === 1)) throw new Error("quedó un valor heredado en el trazado: " + tr.filter((r) => r.regla === 1).map((r) => r.campo).join(", "));
+  contiene(txt, "ninguna disciplina hereda", "la memoria dice que ya nadie hereda:");
   if (!tr.some((r) => r.regla === 2)) throw new Error("no declara las propuestas aceptadas");
   tr.forEach((r) => { if (!r.origen || !r.fecha) throw new Error("fila del trazado sin origen o sin fecha: " + r.campo); });
 });
@@ -3752,7 +3759,7 @@ t("22.8 2.5 la soportería hidráulica lee hidro.material: cobre y termoplástic
     };
     Object.entries(esperado).forEach(([material, x]) => {
       preparar(material);
-      eq(hidroDe().fam, x.fam, `${material} familia en vivo:`);
+      if (hidroDe()) throw new Error(`${material}: H-266: sin aceptar la instantánea la soportería no toma la hidráulica de los motores`);
       G("propAceptar")("motores>soporte");
       G("recompute")();
       eq(S.soporte.snap.hidroMat, x.fam, `${material} instantánea hidroMat:`);
@@ -4459,7 +4466,7 @@ t("N.2 balance de agua: con fuego>hidro autorizado, contrasta cisterna doméstic
    El termoplástico (CPVC/PEAD) sigue con el sistema propio de la suite: el
    motor integrado no lo cubre. */
 t("O.1 la corrida completa de SoporteCalc queda expuesta y calcula varilla y anclaje reales, no solo cuenta soportes", () => {
-  const g = { hidro: JSON.parse(JSON.stringify(S.hidro)), fuego: JSON.parse(JSON.stringify(S.fuego)), perms: JSON.parse(JSON.stringify(S.perms)) };
+  const g = { hidro: JSON.parse(JSON.stringify(S.hidro)), fuego: JSON.parse(JSON.stringify(S.fuego)), perms: JSON.parse(JSON.stringify(S.perms)), soporte: JSON.parse(JSON.stringify(S.soporte)) };
   try {
     /* Arranque en ceros: sin tramos capturados no hay nada de acero/cobre
        que SoporteCalc pueda calcular. */
@@ -4468,8 +4475,7 @@ t("O.1 la corrida completa de SoporteCalc queda expuesta y calcula varilla y anc
     S.fuego = { ...G("defaultFuego")(), area: 600, altura: 6, Lramal: 30, Lmontante: 12, presFuente: 30 };
     Object.keys(S.perms).forEach((k) => delete S.perms[k]);
     ["hidro>quote", "fuego>quote", "aire>quote", "duct>equip", "soporte>quote"].forEach((k) => { S.perms[k] = { ts: 1, via: "prueba O.1" }; });
-    S.soporte.usarMotores = true;
-    G("recompute")();
+    aceptarSoporte();   /* H-266: los tramos de los motores entran con la instantánea aceptada */
     const SOP = G("SOPORTE");
     eq(SOP.sopcalc.version, "0.1.0", "expone la corrida de SoporteCalc:");
     if (!(SOP.sopcalc.tramos.length > 0)) throw new Error("el caso no aísla lo que se quiere probar: debe haber tramos de acero/cobre calculados");
@@ -4482,7 +4488,7 @@ t("O.1 la corrida completa de SoporteCalc queda expuesta y calcula varilla y anc
     const conAnclaje = SOP.sopcalc.tramos.filter((t) => t.anclaje);
     if (!conAnclaje.length) throw new Error("ningún tramo trae anclaje calculado (estructura por omisión debe ser losa_concreto)");
     conAnclaje.forEach((t) => { if (!(t.anclaje.interaccion >= 0)) throw new Error(`${t.id}: interacción de anclaje inválida`); });
-  } finally { S.hidro = g.hidro; S.fuego = g.fuego; Object.keys(S.perms).forEach((k) => delete S.perms[k]); Object.assign(S.perms, g.perms); G("recompute")(); }
+  } finally { S.hidro = g.hidro; S.fuego = g.fuego; S.soporte = g.soporte; Object.keys(S.perms).forEach((k) => delete S.perms[k]); Object.assign(S.perms, g.perms); G("recompute")(); }
 });
 t("O.2 una carga que rebasa la varilla o el anclaje mayor del catálogo se declara con error, no se aprueba en silencio", () => {
   /* Unitario, directo al motor: no depende de armar una captura extrema en
@@ -4502,11 +4508,11 @@ t("O.2 una carga que rebasa la varilla o el anclaje mayor del catálogo se decla
   if (!(t.varilla === null)) throw new Error("no debe resolver varilla con esa carga forzada");
 });
 t("O.3 el termoplástico no calculado por SoporteCalc sigue por el sistema propio de la suite, y lo avisa", () => {
-  const g = { hidro: JSON.parse(JSON.stringify(S.hidro)) };
+  const g = { hidro: JSON.parse(JSON.stringify(S.hidro)), soporte: JSON.parse(JSON.stringify(S.soporte)) };
   try {
     S.hidro = { ...G("defaultHidro")(), material: "cpvc",
       tramos: [{ ...G("defaultTramoAgua")("AF-GENERAL"), um: 72, L: 25, alt: 3 }, { ...G("defaultTramoAgua")("AF-RAMAL BAÑOS"), um: 20, L: 18, alt: 3 }] };
-    G("recompute")();
+    aceptarSoporte();   /* H-266 */
     const SOP = G("SOPORTE");
     const grupo = (SOP.porTuberia || []).find((x) => x.etiqueta === "Hidráulica y sanitario");
     if (!grupo || grupo.fam !== "plastico") throw new Error("el caso no aísla lo que se quiere probar: debe agrupar como plástico");
@@ -4515,7 +4521,7 @@ t("O.3 el termoplástico no calculado por SoporteCalc sigue por el sistema propi
     if (!grupo.det.every((d) => d.ancla)) throw new Error("cada tramo de termoplástico trae su ancla por el camino propio (H-228)");
     if (!SOP.avisos.some((a) => /termopl.stico.*SoporteCalc solo cubre acero y cobre/.test(a.msg)))
       throw new Error("no avisa que el termoplástico se queda fuera del motor integrado");
-  } finally { S.hidro = g.hidro; G("recompute")(); }
+  } finally { S.hidro = g.hidro; S.soporte = g.soporte; G("recompute")(); }
 });
 t("O.4 el SDS capturado mueve la fuerza sísmica de los soportes (art. 13.3.1)", () => {
   const g = { soporte: JSON.parse(JSON.stringify(S.soporte)), hidro: JSON.parse(JSON.stringify(S.hidro)) };
@@ -4524,8 +4530,8 @@ t("O.4 el SDS capturado mueve la fuerza sísmica de los soportes (art. 13.3.1)",
        que traiga sismo calculado. */
     S.hidro = { ...G("defaultHidro")(), material: "acero",
       tramos: [{ ...G("defaultTramoAgua")("AF-GENERAL"), um: 72, L: 25, alt: 3 }, { ...G("defaultTramoAgua")("AF-RAMAL BAÑOS"), um: 20, L: 18, alt: 3 }] };
-    S.soporte.sismoSDS = 0.3; S.soporte.usarMotores = true;
-    G("recompute")();
+    S.soporte.sismoSDS = 0.3; S.soporte.alturaEstructura = 6;   /* H-266: altura de la estructura capturada */
+    aceptarSoporte();
     const bajo = G("SOPORTE").sopcalc.tramos.find((t) => t.sismo);
     if (!bajo) throw new Error("el caso no aísla lo que se quiere probar: debe haber al menos un tramo con sismo calculado");
     const fpBajo = bajo.sismo.Fp_kgf;
@@ -4602,18 +4608,20 @@ t("P.3 la firma de la caché de Kaizen distingue proyectos con la misma arquitec
   } finally { S.zones = g.zones; S.zi = g.zi; G("recompute")(); }
 });
 
-t("P.4 las bases de equipo en soportería leen S.quote.items directo, no la corrida de QUOTE con un ciclo de retraso", () => {
-  const g = { items: JSON.parse(JSON.stringify(S.quote.items)), basesEquipo: S.soporte.basesEquipo, usarMotores: S.soporte.usarMotores };
+t("P.4 las bases de equipo de la instantánea leen S.quote.items directo, no la corrida de QUOTE con un ciclo de retraso; sin instantánea ni captura no se cuentan (H-266)", () => {
+  const g = { items: JSON.parse(JSON.stringify(S.quote.items)), soporte: JSON.parse(JSON.stringify(S.soporte)) };
   try {
     S.quote.items = [];
-    S.soporte.basesEquipo = 0; S.soporte.usarMotores = true;
+    S.soporte.basesEquipo = 0; S.soporte.usarMotores = false; delete S.soporte.snap;
     G("recompute")();
-    const antes = G("SOPORTE").nEquipos;
     const id = G("CARRIER")[0].id;
     S.quote.items = [{ id, qty: 3, unit: null }];
     G("recompute")();
-    eq(G("SOPORTE").nEquipos, antes + 3, "un solo recompute() ya ve las 3 unidades agregadas a la cotización:");
-  } finally { S.quote.items = g.items; S.soporte.basesEquipo = g.basesEquipo; S.soporte.usarMotores = g.usarMotores; G("recompute")(); }
+    eq(G("SOPORTE").nEquipos, 0, "H-266: sin instantánea ni captura no se cuentan los equipos de la cotización:");
+    const aire = Number(G("AIRE") && G("AIRE").totalUnidades) || 0;
+    aceptarSoporte();
+    eq(G("SOPORTE").nEquipos, 3 + aire, "la instantánea ve las 3 unidades de la cotización sin esperar otra corrida:");
+  } finally { S.quote.items = g.items; S.soporte = g.soporte; G("recompute")(); }
 });
 t("P.5 la declaración de la base de precios en la licitación cita el estado real de la plaza, no siempre Baja California", () => {
   const g = { plaza: S.quote.plaza };
@@ -4713,13 +4721,13 @@ t("P.10 la receta de soportería empareja con la partida real, que usa PIEZA y n
 });
 
 t("P.11 la soportería contra incendio soporta el cabezal y el montante por separado, cada uno con su propio diámetro", () => {
-  const g = { fuego: JSON.parse(JSON.stringify(S.fuego)), perms: JSON.parse(JSON.stringify(S.perms)) };
+  const g = { fuego: JSON.parse(JSON.stringify(S.fuego)), perms: JSON.parse(JSON.stringify(S.perms)), soporte: JSON.parse(JSON.stringify(S.soporte)) };
   try {
     /* Arranque en ceros: sin Lramal/Lmontante capturados no hay metros que
        soportar, y agregarTuberia() descarta tramos de longitud 0. */
     S.fuego = { ...S.fuego, area: 600, altura: 6, Lramal: 30, Lmontante: 12, presFuente: 30 };
     S.perms["fuego>elec"] = { ts: 1, via: "prueba P.11" };
-    G("recompute")();
+    aceptarSoporte();   /* H-266 */
     const F = G("FUEGO");
     if (!(F.ram && F.mon)) throw new Error("el caso no aísla lo que se quiere probar: deben existir FUEGO.ram y FUEGO.mon");
     if (!(F.ram.d < F.mon.d)) throw new Error(`el caso no aísla lo que se quiere probar: el cabezal (${F.ram.d} mm) debe quedar más delgado que el montante (${F.mon.d} mm), que es lo que hace que el conteo separado importe`);
@@ -4731,7 +4739,7 @@ t("P.11 la soportería contra incendio soporta el cabezal y el montante por sepa
     eq(cabezal.d, F.ram.d, "el cabezal se soporta con su propio diámetro, no el del montante:");
     eq(montante.d, F.mon.d, "el montante conserva su propio diámetro:");
     if (!(cabezal.e < montante.e)) throw new Error("el cabezal, más delgado, debe pedir un espaciamiento más cerrado que el montante");
-  } finally { S.fuego = g.fuego; Object.keys(S.perms).forEach((k) => delete S.perms[k]); Object.assign(S.perms, g.perms); G("recompute")(); }
+  } finally { S.fuego = g.fuego; S.soporte = g.soporte; Object.keys(S.perms).forEach((k) => delete S.perms[k]); Object.assign(S.perms, g.perms); G("recompute")(); }
 });
 
 t("P.12 el espejo en inglés traduce los hitos de pago (título y condición de liberación), no los deja en español", () => {
@@ -4793,15 +4801,16 @@ t("Q.1 H-49 el factor de seguridad de la varilla (acero y cobre, vía SoporteCal
   } finally { S.soporte = sop0; G("recompute")(); }
 });
 
-t("Q.2 H-50 la amplificación sísmica ASCE 7-16 se alimenta con la altura real de zona, no con z=0 fijo", () => {
+t("Q.2 H-50 la amplificación sísmica ASCE 7-16 se alimenta con la altura real de la estructura, no con z=0 fijo (H-266: capturada en soportería, ya no la zona más alta)", () => {
   proyectoDePrueba();
-  const sop0 = JSON.parse(JSON.stringify(S.soporte));
+  const sop0 = JSON.parse(JSON.stringify(S.soporte)), h0 = S.zones[0].height;
   try {
-    S.soporte = G("defaultSoporte")();
+    S.soporte = { ...G("defaultSoporte")(), alturaEstructura: 6 };
     G("recompute")();
-    const hZonas = S.zones.reduce((a, z) => Math.max(a, z.height || 0), 0);
-    if (!(hZonas > 0)) throw new Error("el caso de prueba necesita al menos una zona con altura > 0");
-    eq(G("SOPORTE").sopcalc.contexto.sismo.h, hZonas, "sismo.h del contexto de SoporteCalc = altura de zona:");
+    eq(G("SOPORTE").sopcalc.contexto.sismo.h, 6, "sismo.h del contexto de SoporteCalc = altura de la estructura capturada:");
+    S.zones[0].height = 12; G("recompute")();
+    eq(G("SOPORTE").sopcalc.contexto.sismo.h, 6, "H-266: la altura de las zonas ya no la mueve:");
+    S.zones[0].height = h0; G("recompute")();
     /* Físico, con la fórmula ya existente: z=h (instalación de azotea, el caso
        que se trata como default) triplica el Fp_calculado_kgf (sin topes)
        contra z=0 (instalación a nivel de piso, el comportamiento de antes),
@@ -4809,7 +4818,7 @@ t("Q.2 H-50 la amplificación sísmica ASCE 7-16 se alimenta con la altura real 
     const conAltura = G("fuerzaSismica")({ Wp_kgf: 1000, SDS: 1, ap: 2.5, Rp: 9, z: 6, h: 6 });
     const sinAltura = G("fuerzaSismica")({ Wp_kgf: 1000, SDS: 1, ap: 2.5, Rp: 9, z: 0, h: 1 });
     cerca(conAltura.Fp_calculado_kgf / sinAltura.Fp_calculado_kgf, 3, 0.001, "razón Fp con z=h contra z=0:");
-  } finally { S.soporte = sop0; G("recompute")(); }
+  } finally { S.soporte = sop0; S.zones[0].height = h0; G("recompute")(); }
 });
 
 t("Q.3 H-56 / H-225 la altura de colgado no vuelve al respaldo fijo de 0.50 m ni se deriva de la altura de trabajo: capturada manda (más altura, más ML); sin captura la varilla queda pendiente y la altura de trabajo sólo se sugiere", () => {
@@ -4818,10 +4827,10 @@ t("Q.3 H-56 / H-225 la altura de colgado no vuelve al respaldo fijo de 0.50 m ni
     S.hidro = { ...G("defaultHidro")(), material: "acero",
       tramos: [{ ...G("defaultTramoAgua")("AF-GENERAL"), um: 72, L: 25, alt: 3 }, { ...G("defaultTramoAgua")("AF-RAMAL BAÑOS"), um: 20, L: 18, alt: 3 }] };
     const ml = () => Object.values(G("SOPORTE").sopcalc.despiece.varilla_m).reduce((a, m) => a + m, 0);
-    S.soporte = { ...G("defaultSoporte")(), alturaTrabajo: 8 }; G("recompute")();
+    S.soporte = { ...G("defaultSoporte")(), alturaTrabajo: 8 }; aceptarSoporte();   /* H-266 */
     eq(ml(), 0, "sin captura no hay ML de varilla (ni 0.5 m ni la altura de trabajo):"); contiene(G("SOPORTE").colgadoSugerido + "", "8", "la altura de trabajo se sugiere:");
-    S.soporte = { ...G("defaultSoporte")(), alturaTrabajo: 8, alturaColgadoM: 2 }; G("recompute")(); const dos = ml();
-    S.soporte = { ...G("defaultSoporte")(), alturaTrabajo: 8, alturaColgadoM: 1 }; G("recompute")(); const uno = ml();
+    S.soporte = { ...G("defaultSoporte")(), alturaTrabajo: 8, alturaColgadoM: 2 }; aceptarSoporte(); const dos = ml();
+    S.soporte = { ...G("defaultSoporte")(), alturaTrabajo: 8, alturaColgadoM: 1 }; aceptarSoporte(); const uno = ml();
     if (!(dos > uno && uno > 0)) throw new Error("con captura, más altura de colgado debe dar más ML: 2 m=" + dos + ", 1 m=" + uno);
   } finally { S.soporte = sop0; S.hidro = hidro0; G("recompute")(); }
 });
@@ -4879,22 +4888,24 @@ t("Q.6 H-57 la estratificación por altura solo multiplica la ganancia de ilumin
   } finally { S.zones = zones0; S.zi = zi0; G("recompute")(); }
 });
 
-t("Q.7 H-67 sin autorizar duct>soporte, la cantidad se sigue contando y cotizando — nunca baja a cero (H-265: obra civil ya no depende de load>civil)", () => {
-  const g = { perms: JSON.parse(JSON.stringify(S.perms)) };
+t("Q.7 H-67/H-266: la soportería ya no cuenta con permisos sueltos: sin la instantánea no toma metros de los motores; aceptarla concede duct/hidro/fuego/aire>soporte y lo aceptado no baja al retirar un permiso (H-265: obra civil ya no depende de load>civil)", () => {
+  const g = { perms: JSON.parse(JSON.stringify(S.perms)), soporte: JSON.parse(JSON.stringify(S.soporte)) };
   try {
     Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "prueba Q.7 (todo autorizado)" }; });
-    G("recompute")();
-    const mDuctoAutorizado = G("SOPORTE").mDucto, areaAutorizada = G("CIVIL").area;
-    delete S.perms["duct>soporte"]; delete S.perms["load>civil"];
-    G("recompute")();
-    eq(G("SOPORTE").mDucto, mDuctoAutorizado, "mDucto NO baja al negar el permiso (H-67, nunca a cero):");
-    eq(G("CIVIL").area, areaAutorizada, "área de obra civil NO baja al negar el permiso (H-67, nunca a cero):");
-    if (mDuctoAutorizado > 0 && !G("SOPORTE").avisos.some((a) => /pendiente/.test(a.msg) && /duct.?soporte/.test(a.msg)))
-      throw new Error("debe avisar que duct>soporte está pendiente de autorizar");
+    S.soporte.usarMotores = false; delete S.soporte.snap; S.soporte.ductoM = 0; G("recompute")();
+    eq(G("SOPORTE").mDucto, 0, "H-266: con todos los permisos pero sin instantánea no se cuentan los ductos de los motores:");
+    ["duct>soporte", "hidro>soporte", "fuego>soporte", "aire>soporte"].forEach((k) => { delete S.perms[k]; });
+    G("propAceptar")("motores>soporte");
+    ["duct>soporte", "hidro>soporte", "fuego>soporte", "aire>soporte"].forEach((k) => { if (!S.perms[k]) throw new Error("aceptar la instantánea debe conceder " + k); });
+    const mDuctoAceptado = G("SOPORTE").mDucto, areaCivil = G("CIVIL").area;
+    delete S.perms["duct>soporte"]; G("recompute")();
+    eq(G("SOPORTE").mDucto, mDuctoAceptado, "lo aceptado no baja al retirar un permiso (H-67, nunca a cero):");
+    eq(G("CIVIL").area, areaCivil, "obra civil no depende de permisos:");
+    if (G("SOPORTE").avisos.some((a) => /pendiente de autorizar/.test(a.msg))) throw new Error("H-266: la soportería ya no avisa permisos pendientes");
     /* H-265: obra civil es autónoma: no hay cruce load>civil que autorizar ni aviso de permiso pendiente. */
     eq(G("LINKS")["load>civil"], undefined, "H-265: no queda cruce load>civil:");
     if (G("CIVIL").avisos.some((a) => /load.?civil/.test(a.msg))) throw new Error("H-265: obra civil no debe hablar de un permiso load>civil");
-  } finally { S.perms = g.perms; G("recompute")(); }
+  } finally { S.perms = g.perms; S.soporte = g.soporte; G("recompute")(); }
 });
 
 t("Q.8 H-77/H-45/H-46 la instantánea de soportería guarda dimensiones, calibre y longitudes reales (no el respaldo genérico 400×200)", () => {
@@ -5118,6 +5129,8 @@ function llenarTodoS() {
   /* H-250: los espejos EN-USD del banco necesitan tipo de cambio con fecha. */
   if (!G("fxVigente")()) { S.quote.fx = 18.5; S.quote.fxFecha = "2026-09-22"; S.quote.fxFuente = "banco de pruebas"; }
   G("recompute")();
+  /* H-266: la soportería del proyecto lleno cuenta con su instantánea aceptada (ya no cuenta en vivo). */
+  if (!S.soporte.snap) aceptarSoporte();
 }
 /* Recoge los PDF que la barra manda a entregar, sin descargar nada. */
 function conPdfCapturado(fn) {
@@ -5628,7 +5641,7 @@ t("S.21 la huella de entradas es sólida: si cambia la salida de un motor, su se
   restaurar();
   /* Independencia: mover el ramal de contra incendio no toca el sello de motores que no lo leen. */
   ["load", "clean", "equip", "duct", "vent", "hidro", "aire"].forEach((id) => { if (flips["contra incendio: ramal"].includes(id)) throw new Error(`el ramal de contra incendio marcó desactualizado a ${id}`); });
-  ["fuego", "soporte"].forEach((id) => { if (!flips["contra incendio: ramal"].includes(id)) throw new Error(`el ramal de contra incendio debía marcar a ${id}`); });
+  if (!flips["contra incendio: ramal"].includes("fuego")) throw new Error("el ramal de contra incendio debía marcar a fuego");
   if (!flips["aire: caudal"].includes("aire") || flips["aire: caudal"].includes("hidro")) throw new Error("el caudal de aire debía marcar a aire y no a hidráulico");
   if (!flips["ventilación: cambios de aire"].includes("vent") || flips["ventilación: cambios de aire"].includes("duct")) throw new Error("la ventilación debía marcar a vent y no a ductos");
   /* Lo de presentación no marca nada. */
@@ -7056,7 +7069,7 @@ t("S.77 (H-228) termoplástico por subtipo, IPC 2009 T308.5 (MCP, secundaria): C
     S.hidro = { ...G("defaultHidro")(), material: "cpvc", muebles, tramos: tramos() };
     S.fuego = G("defaultFuego")(); S.aire = G("defaultAire")(); S.duct.segments = []; S.quote.items = [];
     S.soporte = { ...G("defaultSoporte")(), alturaColgadoM: 0.5, sismoSDS: 1.0, sismoFuente: "CFE MDOC-Sismo 2015, sitio Tijuana", estructuraTipo: "losa_concreto", estructuraFc: 250 };
-    G("recompute")();
+    aceptarSoporte();   /* H-266 */
     let R = G("SOPORTE"), h = hidroDe();
     if (!h || h.fam !== "plastico") throw new Error("el caso no aísla lo que se quiere probar: debe agrupar como termoplástico");
     eq(R.sopcalc.tramos.length, 0, "sólo hay tramos del camino propio (nada en SoporteCalc):");
@@ -7070,15 +7083,14 @@ t("S.77 (H-228) termoplástico por subtipo, IPC 2009 T308.5 (MCP, secundaria): C
     /* Con la instantánea motores>soporte aceptada el subtipo viaja con ella (la familia sola no alcanza). */
     G("propAceptar")("motores>soporte"); G("recompute")();
     eq(JSON.stringify(hidroDe().det.map((d) => d.e)), JSON.stringify([1.219, 1.219]), "modo gobernado: CPVC sigue a 4 ft:");
-    delete S.soporte.snap; G("recompute")();
-    /* H-226 también gobierna las anclas del termoplástico: sin SDS con fuente van «Por cotizar». */
+    /* H-226 también gobierna las anclas del termoplástico: sin SDS con fuente van «Por cotizar» (H-266: con la instantánea aceptada). */
     S.soporte.sismoSDS = null; S.soporte.sismoFuente = ""; G("recompute")();
     eq(qty(/^Anclaje/), 0, "sin SDS con fuente no se cotizan las anclas del termoplástico:"); eq(pcAncla(), 38, "van «Por cotizar» con sus piezas:");
     /* PP-R capturado a mano, 1\": 32 in. */
     S.soporte = { ...G("defaultSoporte")(), usarMotores: false, tubHidroM: 30, tubHidroD: 25, tubHidroMat: "ppr", alturaColgadoM: 0.5 }; G("recompute")(); R = G("SOPORTE"); h = hidroDe();
     eq(JSON.stringify(h.det.map((d) => d.e)), JSON.stringify([0.813]), "PP-R 25 mm a mano: 32 in (antes 0.9 como CPVC):"); eq(h.n, Math.ceil(30 / 0.813) + 1, "soportes PP-R:");
     /* PEAD: sin renglón en la tabla, el tramo queda pendiente de claro (no se cuenta ni se cotiza). */
-    S.soporte = { ...G("defaultSoporte")(), alturaColgadoM: 0.5 }; S.hidro.material = "pead"; G("recompute")(); R = G("SOPORTE"); h = hidroDe();
+    S.soporte = { ...G("defaultSoporte")(), alturaColgadoM: 0.5 }; S.hidro.material = "pead"; aceptarSoporte(); R = G("SOPORTE"); h = hidroDe();
     eq(R.nSoportes, 0, "PEAD sin claro con fuente: no se cuentan soportes (antes 38 con la tabla de CPVC):");
     if (!(h && h.det.length === 2 && h.det.every((d) => d.pendiente && d.n === 0 && d.e === null))) throw new Error("los tramos de PEAD deben quedar marcados pendientes: " + JSON.stringify(h && h.det));
     if (!R.avisos.some((a) => /PEAD/.test(a.msg) && /pendiente/.test(a.msg) && /308\.5/.test(a.msg))) throw new Error("falta el aviso de PEAD pendiente de claro con su fuente");
@@ -7243,7 +7255,7 @@ t("S.83 (H-166) ductos: un tramo sin medida posible (ninguna de la serie cumple)
     Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.83" }; });
     S.soporte = { ...(S.soporte || {}), usarMotores: true };
     S.duct.segments = segs.map(([tag, flow, extra]) => ({ ...G("defaultSegment")(tag, flow), ...extra }));
-    G("recompute")(); return G("DUCT");
+    aceptarSoporte(); return G("DUCT");   /* H-266: la soportería ve los ductos con la instantánea aceptada */
   };
   const sinSeccion = (s, que) => {
     if (!s.error) throw new Error(que + ": el tramo debe traer error visible");
@@ -7410,7 +7422,9 @@ t("S.87 (H-224, parte no bloqueada) la soportería de la red contra incendio usa
     Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.87" }; });
     S.fuego = { ...S.fuego, riesgo: "ord2", area: 700, altura: 4.71, rociador: "k80", material, Lramal: 30, Lmontante: 12, presFuente: 30, fuente: "cisterna" };
     S.soporte = { ...S.soporte, alturaColgadoM: 1, ...(soporte || {}) };
-    G("recompute")(); return G("SOPORTE");
+    /* H-266: con los motores, la soportería cuenta con la instantánea aceptada; a mano, sin ella. */
+    if (soporte && soporte.usarMotores === false) G("recompute")(); else aceptarSoporte();
+    return G("SOPORTE");
   };
   const redFuego = (SP) => (SP.porTuberia || []).find((x) => x.etiqueta === "Contra incendio");
   try {
@@ -7667,6 +7681,55 @@ t("S.101 (H-265) obra civil es autónoma: sus áreas de obra y sus cuartos clasi
     eq(S.civil.perimZonas, undefined, "los perímetros por zona pasan al renglón:"); eq(S.civil.perimCuartos, undefined, "y los del cuarto también:");
     const t1 = G("CIVIL").total; S.zones[0].area = 5000; G("recompute")();
     cerca(G("CIVIL").total, t1, 1e-6, "ya migrado, obra civil no sigue a las zonas:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+t("S.102 (H-266) soportería es autónoma: sin la instantánea aceptada no cuenta metros de otros motores (se retiró el conteo en vivo); aceptarla los cuantifica y ya no se mueven solos; alturas y bases se capturan; un proyecto anterior se migra al abrir con las mismas cifras (decisión del dueño, 27-sep-2026)", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.102";
+    Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.102" }; });
+    S.zones = [{ ...G("defaultZone")("Nave"), area: 400, height: 6, occ: 30 }, { ...G("defaultZone")("Oficina"), area: 100, height: 3, occ: 10 }];
+    S.duct.segments = [{ ...G("defaultSegment")("TR-1", 3000), length: 20 }];
+    G("recompute")();
+    if (!G("DUCT").segs.some((x) => Number(x.L) > 0)) throw new Error("el caso no aísla lo que se quiere probar: ductos debe tener un tramo con longitud");
+    let SP = G("SOPORTE");
+    eq(SP.mDucto, 0, "sin aceptar la propuesta no se cuentan los metros de ductos:");
+    eq(SP.hTrab, 0, "la altura de trabajo no sale de las zonas:"); eq(SP.hEstructura, 0, "ni la de la estructura:");
+    /* «Usar los motores» sin instantánea (un estado de revisiones anteriores o capturado directo) tampoco cuenta en vivo. */
+    S.soporte.usarMotores = true; G("recompute")(); SP = G("SOPORTE");
+    eq(SP.mDucto, 0, "con «usar los motores» pero sin instantánea tampoco se cuenta en vivo:");
+    if (!SP.avisos.some((a) => /entran sólo al aceptar su propuesta/.test(a.msg))) throw new Error("debe avisar que los metros de los motores entran sólo al aceptar la propuesta");
+    /* Aceptar la propuesta: instantánea; concede los cruces; ya cuantificado no se mueve solo. */
+    Object.keys(G("LINKS")).filter((k) => /soporte$/.test(k)).forEach((k) => { delete S.perms[k]; });
+    G("propAceptar")("motores>soporte"); SP = G("SOPORTE");
+    const m1 = SP.mDucto; if (!(m1 >= 20)) throw new Error("con la instantánea aceptada deben contarse los 20 m de ducto: " + m1);
+    ["duct>soporte", "hidro>soporte", "fuego>soporte", "aire>soporte"].forEach((k) => { if (!S.perms[k]) throw new Error("aceptar la propuesta debe conceder " + k); });
+    S.duct.segments[0].length = 50; G("recompute")();
+    eq(G("SOPORTE").mDucto, m1, "ya cuantificado no se mueve solo:");
+    eq(G("estadoPropuesta")("motores>soporte").nivel, "desactualizado", "la propuesta avisa que el origen cambió:");
+    /* Alturas y bases capturadas: mandan y las zonas no las mueven. */
+    Object.assign(S.soporte, { alturaTrabajo: 7.2, alturaEstructura: 6, basesEquipo: 2, mesesElevacion: 2 }); G("recompute")();
+    eq(G("SOPORTE").hTrab, 7.2, "altura de trabajo capturada:"); eq(G("SOPORTE").nEquipos, 2, "bases capturadas:");
+    S.zones[0].height = 12; G("recompute")();
+    eq(G("SOPORTE").hTrab, 7.2, "cambiar las zonas no mueve la altura de trabajo:"); eq(G("SOPORTE").hEstructura, 6, "ni la de la estructura:");
+    /* Sin altura de trabajo: renta pendiente, no se supone. */
+    S.soporte.alturaTrabajo = 0; G("recompute")(); SP = G("SOPORTE");
+    if (!SP.avisos.some((a) => /no hay altura de trabajo capturada/.test(a.msg))) throw new Error("sin altura de trabajo debe avisar que la renta queda pendiente");
+    if (SP.part.some((p) => /renta/.test(p.desc))) throw new Error("sin altura de trabajo no debe cotizarse renta de elevación");
+    /* Contra incendio sin longitudes de cabezal y montante: la red queda pendiente; ya no se suponen 30 + 12 m leídos en vivo. */
+    S.fuego = { ...G("defaultFuego")(), area: 500, altura: 6 }; aceptarSoporte();
+    if (!G("SOPORTE").manualPendientes.some((p) => /sin longitudes de cabezal y montante/.test(p.que))) throw new Error("la red contra incendio sin longitudes debe quedar pendiente");
+    const t2 = G("SOPORTE").total; S.fuego.Lramal = 40; S.fuego.Lmontante = 10; G("recompute")();
+    cerca(G("SOPORTE").total, t2, 1e-9, "con la instantánea aceptada, contra incendio no se cuela en vivo:");
+    /* Un proyecto anterior que contaba en vivo: al abrirlo toma la instantánea y las alturas que usaba; desde ahí no cuenta en vivo. */
+    const viejo = JSON.parse(fs.readFileSync("parches/regresion-motores/regresion-motores.emp.json", "utf8"));
+    if ("alturaEstructura" in viejo.soporte || viejo.soporte.snap) throw new Error("el caso no aísla lo que se quiere probar: el fixture debe ser de antes de H-266 y en vivo");
+    G("importarRespaldo")(JSON.stringify(viejo)); G("recompute")();
+    if (!(S.soporte.snap && typeof S.soporte.snap === "object")) throw new Error("al abrir un proyecto en vivo debe tomarse la instantánea");
+    eq(S.soporte.alturaTrabajo, 7.2, "altura de trabajo = la que usaba (zona más alta 6 m + 1.2):"); eq(S.soporte.alturaEstructura, 6, "altura de la estructura = la zona más alta:");
+    const mv = G("SOPORTE").mDucto; S.duct.segments.push({ ...G("defaultSegment")("TR-X", 3000), length: 40 }); G("recompute")();
+    eq(G("SOPORTE").mDucto, mv, "ya migrado no cuenta en vivo:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
@@ -8261,8 +8324,8 @@ t("GA.6 ventilación no tenía texto de guía repetido y sigue sin él: la vista
     S.civil = G("defaultCivil")(); S.civil.usarZonas = true;
     /* H-265: obra civil captura sus propias áreas y cuartos. */
     S.civil.areas = [{ id: "a1", nombre: "Nave", area: 400, altura: 6, perimetro: 0 }]; S.civil.cuartos = [{ id: "k1", nombre: "Cuarto", area: 60, altura: 3, perimetro: 0 }];
-    S.soporte = G("defaultSoporte")(); S.soporte.usarMotores = true;
-    G("recompute")();
+    S.soporte = G("defaultSoporte")();
+    aceptarSoporte();   /* H-266: con la instantánea aceptada */
     return g;
   };
   const gbRestaura = (g) => {

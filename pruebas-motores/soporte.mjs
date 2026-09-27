@@ -70,7 +70,8 @@ export default async function ({ t, eq, cerca, G, S, CM, REG_PROY }) {
       tramos: [{ ...G("defaultTramoAgua")("AF-GENERAL"), um: 72, L: 25, alt: 3 }, { ...G("defaultTramoAgua")("AF-RAMAL BAÑOS"), um: 20, L: 18, alt: 3 }] };
     S.fuego = G("defaultFuego")(); S.aire = G("defaultAire")(); S.duct.segments = []; S.quote.items = [];
     S.soporte = G("defaultSoporte")();
-    G("recompute")();
+    /* H-266: la soportería cuenta la red de hidro con la instantánea aceptada (ya no en vivo). */
+    G("recompute")(); S.soporte.snap = G("snapshotSoporte")(); S.soporte.usarMotores = true; G("recompute")();
     return (G("SOPORTE").porTuberia || []).find((x) => x.etiqueta === "Hidráulica y sanitario");
   };
   t("CM.soporte.7 (IPC 2009 T308.5 vía MCP · criterio de la casa peso termoplástico) hidráulica CPVC: dos tramos de 25 y 18 m (43.59 y 43.59 mm entregados por hidro; la general fuera de catálogo por H-198)", () => {
