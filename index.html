@@ -21208,7 +21208,6 @@ function viewFuego() {
         ${inp("Área a proteger (m²)", "fuego.area", "number", "10", "fuego.area", F)}
         ${inp("Altura libre al rociador más alto (m)", "fuego.altura", "number", "0.5", "fuego.altura", F)}
       </div>
-      <div class="hint" style="margin:0 0 12px">Área y altura se capturan aquí: contra incendio no las toma de Carga térmica (H-264). Sin área no hay demanda.</div>
       ${inp(`Área de diseño (m², 0 = mínima de la clase: ${R.r.areaMin})`, "fuego.areaDiseno", "number", "10", "fuego.areaDis", F, "fuego_area")}
       <div class="row">
         ${sel("Rociador", "fuego.rociador", ROCIADOR.map((r) => [r.id, r.label]))}
@@ -21437,7 +21436,7 @@ const GUIA = {
     metodo: "Unidades mueble y de descarga por tabla, gasto probable por la curva de Hunter (tanque o fluxómetro según los muebles), diámetros por velocidad máxima y pérdida por Hazen-Williams, drenaje por unidades de descarga con el límite de inodoros por diámetro, y cisterna por dotación." },
   fuego: { que: "Prediseño de rociadores por densidad-área: número de rociadores, caudal, presión, bomba y reserva.",
     cuando: "Para saber si el proyecto es viable y dimensionar toma, cisterna y bomba.",
-    ojo: "Es prediseño: se resuelve la trayectoria más desfavorable completa, que es lo que dimensiona toma, cisterna y bomba. El cálculo formal de NFPA 13 balancea nodo por nodo toda el área de diseño y se entrega con su gráfica de demanda contra abastecimiento." },
+    ojo: "Es prediseño: se resuelve la trayectoria más desfavorable completa, que es lo que dimensiona toma, cisterna y bomba. El cálculo formal de NFPA 13 balancea nodo por nodo toda el área de diseño y se entrega con su gráfica de demanda contra abastecimiento. El área a proteger y la altura al rociador más alto se capturan en esta pestaña: contra incendio es autónomo y no las toma de Carga térmica (H-264); sin área no hay demanda y sin altura la estática queda corta, con aviso." },
   valor: { que: "Compara lo calculado contra alternativas equivalentes del catálogo y contra lo que Kaizen detecta, y arma cada medida con su ahorro estimado y su justificación técnica.",
     cuando: "Antes de emitir la propuesta, para llevar a la junta de aclaraciones lo que se puede mejorar sin bajar el alcance.",
     ojo: "Aceptar una medida no cambia el cálculo: registra la decisión y deja constancia. El cambio lo haces tú en la pestaña de la disciplina, con tu firma." },

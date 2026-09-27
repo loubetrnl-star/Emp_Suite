@@ -7614,7 +7614,8 @@ t("S.100 (H-264) contra incendio es autónomo: el área a proteger y la altura a
     S.tab = "fuego"; G("render")();
     const txt = w.document.getElementById("view").textContent;
     if (/heredada de|se heredará de/i.test(txt)) throw new Error("la pantalla de contra incendio todavía anuncia herencia");
-    contiene(txt, "no las toma de Carga térmica", "la pantalla dice que se capturan aquí:");
+    /* El texto explicativo vive sólo en la guía (decisión del dueño del 19-sep-2026: sin texto de guía en la vista). */
+    contiene(G("GUIA").fuego.ojo, "no las toma de Carga térmica", "la guía dice que se capturan aquí:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
