@@ -603,14 +603,15 @@ t("S.47 (H-179, H-189) sin captura no hay distancia al tablero, transformador ni
   } finally { S.elec = JSON.parse(guardado); S.tab = tab0; G("recompute")(); }
 });
 t("S.48 (H-179, H-268) las seis cargas que proponen otros motores (cédula HVAC, extracción, compresor de aire, bomba de agua, bomba contra incendio, FFU) no traen distancia supuesta: sin L quedan pendientes de longitud", () => {
-  const R = G(`(() => { const sv = { AIRE, HIDRO, CLEAN };
+  const R = G(`(() => { const sv = { AIRE, HIDRO, FUEGO, CLEAN };
     try {
       AIRE = { ...(AIRE || {}), principal: { ...((AIRE && AIRE.principal) || {}), tipo: "tornillo", hp: 10, kW: 7.46 }, nUnidades: 1 };
       HIDRO = { ...(HIDRO || {}), kWbomba: 1.87, hpBomba: 2.5 };
+      FUEGO = { ...(FUEGO || {}), kWbomba: 3.8, hpBomba: 10 };   /* H-210: el proyecto del banco no captura cabezal ni montante; la bomba va en sombra, como en S.50 */
       CLEAN = { ...(CLEAN || {}), sum: { ...((CLEAN && CLEAN.sum) || {}), ffu: 12 } };
       /* H-268: computeElec ya no lee otros motores; la propuesta se arma con cargasOtrosMotoresElec y corre en sombra. */
       const E0 = defaultElec(); return computeElec({ ...E0, cargas: cargasOtrosMotoresElec(E0) });
-    } finally { AIRE = sv.AIRE; HIDRO = sv.HIDRO; CLEAN = sv.CLEAN; } })()`);
+    } finally { AIRE = sv.AIRE; HIDRO = sv.HIDRO; FUEGO = sv.FUEGO; CLEAN = sv.CLEAN; } })()`);
   const ids = R.calc.map((c) => c.id);
   ["vent-1", "aire-1", "hidro-1", "fuego-1", "ffu-1"].forEach((id) => { if (!ids.includes(id)) throw new Error(`falta la carga ${id}: la prueba no probaría esa rama (hay ${ids.join(", ")})`); });
   if (!ids.some((id) => id.startsWith("hvac-"))) throw new Error("falta la cédula HVAC");
@@ -717,11 +718,15 @@ t("S.50 (H-178) cargas de otros motores: el hp de catálogo o estimado no es de 
     contiene(me, "General-purpose motors (430-6(a)(1))", "libro EN, nota de motores:"); contiene(me, "PENDING", "libro EN, corriente pendiente:");
     contiene(me, "10 hp nameplate", "libro EN, origen del hp:");
   } finally { S.elec = JSON.parse(guardado); G("recompute")(); }
-  G("recompute")();
-  const bomba = G("propuestaElecFilas")().find((c) => /Bomba contra incendio/.test(c.nombre));
-  if (!bomba) throw new Error("la propuesta del banco no trae la bomba contra incendio");
-  eq(bomba.hpRef, G("FUEGO").hpBomba, "la propuesta entrega el hp de la bomba como referencia:"); eq(bomba.hpRefOrigen, "fuego", "con su origen:");
-  eq(bomba.hp, undefined, "y no como hp de placa:");
+  const fuego0 = JSON.stringify(S.fuego);
+  try {
+    S.fuego.Lramal = 30; S.fuego.Lmontante = 12;   /* H-210: sin cabezal ni montante capturados la bomba queda pendiente y no se propone */
+    G("recompute")();
+    const bomba = G("propuestaElecFilas")().find((c) => /Bomba contra incendio/.test(c.nombre));
+    if (!bomba) throw new Error("la propuesta del banco no trae la bomba contra incendio");
+    eq(bomba.hpRef, G("FUEGO").hpBomba, "la propuesta entrega el hp de la bomba como referencia:"); eq(bomba.hpRefOrigen, "fuego", "con su origen:");
+    eq(bomba.hp, undefined, "y no como hp de placa:");
+  } finally { S.fuego = JSON.parse(fuego0); G("recompute")(); }
 });
 /* H-178: un proyecto que aceptó la cédula con elec v7 guardó las cargas sin hp de referencia ni marca de aparato. */
 t("S.51 (H-178) proyecto que aceptó la cédula antes de la rev 2.9.24: los FFU abren como aparato, la propuesta sale «Desactualizada» y al volver a aceptarla trae el hp de referencia sin perder la distancia capturada", () => {
@@ -4374,7 +4379,7 @@ t("M.2 (H-268) con los cuatro cruces autorizados nada entra solo; al aceptar la 
     /* Arranque en ceros: defaultHidro() ya no trae muebles de ejemplo; sin
        ellos H.kWbomba sale 0 y el caso no aísla la bomba de agua. */
     S.hidro = { ...G("defaultHidro")(), muebles: [{ id: "wc_flux", cant: 4 }, { id: "ming_flux", cant: 2 }, { id: "lavabo", cant: 4 }, { id: "fregadero", cant: 1 }, { id: "manguera", cant: 2 }] };
-    S.fuego = { ...G("defaultFuego")(), area: 500, altura: 6 };   /* H-264: contra incendio ya no hereda área ni altura: se capturan */
+    S.fuego = { ...G("defaultFuego")(), area: 500, altura: 6, Lramal: 30, Lmontante: 12 };   /* H-264: contra incendio ya no hereda área ni altura: se capturan; H-210: sin cabezal ni montante la bomba queda pendiente */
     S.clean = { rooms: [{ ...G("defaultRoom")(), area: 60, height: 2.7, occ: 4, procW: 25 }], ci: 0 };
     S.elec.sistema = "3F4H-220"; S.elec.tomarHVAC = true;
     limpiarPermisosElecBalance();
@@ -7711,6 +7716,47 @@ t("S.100 (H-264) contra incendio es autónomo: el área a proteger y la altura a
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+t("S.105 (H-210) contra incendio sin altura al rociador más alto, cabezal o montante capturados no dimensiona la bomba: presión y potencia quedan pendientes, con error, semáforo «incompleta», pendiente en la cotización (ES/EN) y sin carga a Eléctrico; sin 6, 30 ni 12 m ocultos por omisión (regla 6)", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.105";
+    Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.105" }; });
+    S.fuego = { ...G("defaultFuego")(), riesgo: "ord2", area: 500, Lramal: 30, Lmontante: 12 };   // altura sin capturar (0)
+    G("recompute")();
+    const F = () => G("FUEGO");
+    if (!(F().qTotal > 0)) throw new Error("el caso no aísla lo que se quiere probar: con área capturada hay demanda");
+    eq(F().hpBomba, 0, "sin altura no se dimensiona la potencia de la bomba (HP):");
+    eq(F().presBomba, 0, "ni su presión:");
+    if (!F().avisos.some((a) => a.lvl === "err" && /altura/.test(a.msg))) throw new Error("sin altura el aviso es error");
+    eq((G("semaforoSuite")().find((x) => x.id === "fuego") || {}).nivel, "incompleta", "semáforo de contra incendio:");
+    if (G("QUOTE").porCotizar.some((p) => p.clave === "bombaFuego")) throw new Error("la bomba sin altura no va «Por cotizar» como dimensionada por el motor");
+    if (!G("QUOTE").pendientes.some((p) => p.mot === "fuego" && /pendiente de altura/.test(p.motivo) && /height/.test(p.motivoEn || ""))) throw new Error("la bomba debe quedar pendiente de altura en la cotización (ES/EN)");
+    if (!G("QUOTE").porCotizar.some((p) => p.clave === "cisternaFuego")) throw new Error("la reserva no depende de la altura: sigue «Por cotizar»");
+    if (G("cargasOtrosMotoresElec")(S.elec).some((f) => f.kWOrigen === "fuego")) throw new Error("sin bomba dimensionada no se ofrece su carga a Eléctrico");
+    S.tab = "fuego"; G("render")();
+    const potencia = [...w.document.querySelectorAll("#view .metric")].find((m) => /Potencia/.test(m.querySelector(".k").textContent));
+    contiene(potencia ? potencia.textContent : "", "pendiente", "la pantalla dice que la potencia está pendiente:");
+    /* Sin cabezal o sin montante tampoco: la fricción no se supone. */
+    S.fuego.altura = 6; S.fuego.Lramal = 0; G("recompute")();
+    eq(F().hpBomba, 0, "sin cabezal capturado no se dimensiona la bomba:");
+    if (!F().avisos.some((a) => a.lvl === "err" && /cabezal/.test(a.msg))) throw new Error("sin cabezal el aviso es error");
+    S.fuego.Lramal = 30; S.fuego.Lmontante = 0; G("recompute")();
+    eq(F().hpBomba, 0, "sin montante capturado tampoco:");
+    /* Sin valores por omisión ocultos: un proyecto con los campos nulos no toma 6, 30 ni 12 m. */
+    G("reemplazarEstado")({ ...JSON.parse(JSON.stringify(S)), fuego: { ...S.fuego, altura: null, Lramal: null, Lmontante: null } }); G("recompute")();
+    if (F().estatica === 7 || F().Lram === 30 || F().Lmon === 12) throw new Error(`campos nulos leídos como 6/30/12 m: estática ${F().estatica}, cabezal ${F().Lram}, montante ${F().Lmon}`);
+    if (F().memo.some((m) => /6 m capturados/.test(m))) throw new Error("una altura nula se leyó como 6 m capturados");
+    eq(F().hpBomba, 0, "con los campos nulos la bomba queda pendiente:");
+    /* Con red municipal no se afirma que alcance sin altura. */
+    S.fuego = { ...S.fuego, altura: 0, Lramal: 30, Lmontante: 12, fuente: "municipal", presFuente: 35 }; G("recompute")();
+    if (F().alcanza === true) throw new Error("sin altura no se puede afirmar que la red municipal alcanza");
+    /* Con todo capturado, la bomba vuelve (6 + 1 m de estática). */
+    S.fuego = { ...S.fuego, altura: 6, fuente: "cisterna" }; G("recompute")();
+    eq(F().estatica, 7, "con la altura capturada la estática vuelve (6 + 1):");
+    eq(F().hpBomba, 35, "potencia con todo capturado:");
+    contiene(G("QUOTE").porCotizar.find((p) => p.clave === "bombaFuego").desc, "39.1 m", "bomba con todo capturado:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
 t("S.101 (H-265) obra civil es autónoma: sus áreas de obra y sus cuartos clasificados se capturan en su pestaña; no toma las zonas de carga térmica ni los cuartos limpios; un proyecto anterior los copia una vez al abrirlo, con las mismas cifras (decisión del dueño, 27-sep-2026)", () => {
   const guardado = JSON.stringify(S);
   try {
@@ -7821,7 +7867,7 @@ t("S.103 (H-268) eléctrico es autónomo: con permisos y tomarHVAC, sin aceptar 
     S.vent = { ...S.vent, mode: "general", area: 500, height: 5.4, occ: 40 };
     S.aire = { ...G("defaultAire")(), consumos: [{ id: "c1", tipo: "pistola", nombre: "Prueba S.103", cant: 4, lmin: 0, bar: 0, uso: 0 }] };
     S.hidro = { ...G("defaultHidro")(), muebles: [{ id: "wc_flux", cant: 4 }, { id: "ming_flux", cant: 2 }, { id: "lavabo", cant: 4 }, { id: "fregadero", cant: 1 }, { id: "manguera", cant: 2 }] };
-    S.fuego = { ...G("defaultFuego")(), area: 500, altura: 6 };
+    S.fuego = { ...G("defaultFuego")(), area: 500, altura: 6, Lramal: 30, Lmontante: 12 };   /* H-210: con trayectoria capturada la bomba se dimensiona */
     S.clean = { rooms: [{ ...G("defaultRoom")(), area: 60, height: 2.7, occ: 4, procW: 25 }], ci: 0 };
     S.elec = { ...G("defaultElec")(), trafoKVA: 300, trafoZ: 4, Ltablero: 30, tomarHVAC: true,
       cargas: [{ ...G("defaultCarga")("Alumbrado S.103"), tipo: "alumbrado", kW: 9.5, V: 127, ph: 1, cant: 1, L: 40, fp: .95 }] };

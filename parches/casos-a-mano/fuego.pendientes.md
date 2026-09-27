@@ -1,4 +1,4 @@
-# Contra incendio (`fuego`, v3) · pendientes de la Fase 1 (rev 2.9.24)
+# Contra incendio (`fuego`, v5) · pendientes de la Fase 1 (rev 2.9.24)
 
 ## 0. Cierres de la Fase 2
 
@@ -7,8 +7,9 @@
 | H-205 (altura heredada = promedio ponderado; escondía el rack) | **Cerrado** (fuego v2 → v3, 25-sep-2026) | `geoProyectoDe` entrega también `alturaMax`; `HEREDA["fuego.altura"]` toma la máxima (ventilación sigue con la media, que es la que renueva volumen). Estática y presión requerida al rociador más alto; aviso de rack con la altura real; campo, guía, PDF y memoria dicen «al rociador más alto». La captura propia se respeta. Prueba S.58; 3.2 corregida (6 m); CM.fuego.1 y 2 con la máxima (6 y 13 m), filas .F1–.F4 de fase2 a vigentes; mutante m14 reapuntado (máxima → promedio) y MUERTO. Proyecto fijo: 37.815 → 39.105 m, 35 HP sin cambio. |
 | H-264 (decisión del dueño, 27-sep-2026: contra incendio autónomo) | **Cerrado** (fuego v3 → v4, 27-sep-2026) | Contra incendio ya no hereda área ni altura de carga térmica (`HEREDA` queda vacío) ni toma el área en vivo (cruce `load>fuego` y `F.tomarArea` retirados): se capturan en su pestaña. La altura al rociador más alto sigue siendo la del rociador más alto (H-205), ahora capturada; sin captura se avisa. CM.fuego.1 usa el fixture con 700 m² y 6 m capturados; CM.fuego.2 captura 2,200 m² y 13 m. Mutante `fuego.m14` (sobre `HEREDA["fuego.altura"]`) sustituido por `fuego.m33` (el área vuelve a tomarse de las zonas). |
 | H-206 (bomba a 385,000 fijos + 9,500/m³ sin fuente) | **Cerrado** (quote v8 → v9, 25-sep-2026; fuego sin cambio de cifras) | `QUOTE_SEED.bombaFuego` y `cisternaM3` retirados. Bomba «Por cotizar» (LOTE, sección D) con gpm, L/min, presión, HP; reserva «Por cotizar» (M3) con L/min × min. Con red municipal que alcanza no hay ninguna de las dos (la red que NO alcanza sigue sin partida: H-211, pendiente). Prueba S.59; CM.fuego.1.v redefinida (0 partidas LOTE con importe), F5 vigente y F5b nueva; S.20 con las cifras nuevas (−1,697,446.66 directos). Sin mutante propio: la lógica es de quote (S.59 y R.1 la vigilan). |
+| H-210 (bomba dimensionada con altura, cabezal o montante en 0) | **Cerrado** (fuego v4 → v5, 27-sep-2026) | Sin altura al rociador más alto, cabezal o montante capturados la bomba no se dimensiona: presión en la base, carga y potencia «pendiente», aviso err y semáforo «incompleta»; la cotización la lleva a pendientes (ES/EN) y no se ofrece a eléctrico; salen los 6 / 30 / 12 m y 30 mca ocultos de un campo nulo. `CM.fuego.6.F10–.F12` vigentes; salen `CM.fuego.6.m/.n/.r/.s`, que documentaban 16.3 m y 15 HP. Prueba S.105 |
 
-Hoja: `fuego.csv` (191 filas: 181 vigentes, 10 fase2) · cálculo: `fuego.calc.mjs` · módulo: `pruebas-motores/fuego.mjs` ·
+Hoja: `fuego.csv` (187 filas: 180 vigentes, 7 fase2) · cálculo: `fuego.calc.mjs` · módulo: `pruebas-motores/fuego.mjs` ·
 mutantes: `parches/mutantes/fuego.json`. Numeración de líneas: `master` en `2185dcd`.
 
 ## Pruebas que hoy protegen valores incorrectos (se marcan; se corrigen en la Fase 2 con su hallazgo)
@@ -24,7 +25,7 @@ mutantes: `parches/mutantes/fuego.json`. Numeración de líneas: `master` en `21
 Filas vigentes de la hoja que documentan a propósito el valor de hoy (para que el cambio de la Fase 2 sea deliberado y
 visible; su `descripcion` dice «hoy; cambia con H-nnn»): `CM.fuego.*.m/.n` (estática promedio, H-205), `.q/.r/.s`
 (lista de bombas y HP, H-208/H-209), `.t` (duración baja, H-207), `CM.fuego.1.v` (bomba a 385,000 fijos, H-206),
-`CM.fuego.6.n/.s` (16.3 m y 15 HP con altura y trayectoria en 0, H-210).
+~~`CM.fuego.6.n/.s`~~ (16.3 m y 15 HP con altura y trayectoria en 0: retiradas al cerrar H-210, 27-sep-2026).
 
 ## Filas fase2 (valor correcto por norma que hoy la suite NO da; se exigen sólo con `CM_FASE2=1`)
 
@@ -40,7 +41,7 @@ visible; su `descripcion` dice «hoy; cambia con H-nnn»): `CM.fuego.*.m/.n` (es
 | CM.fuego.5.F7 | H-208 | 1,500 gpm = 5,678 L/min | 5,000 L/min (tope de lista, no cubre) | ídem | primaria |
 | CM.fuego.1.F8 | H-209 | 40 HP (NEMA; 750 gpm × 124 ft / 3960 / 0.65 = 36.1 bhp) | 35 HP | NFPA 20-2019 §4.7.6; NEMA MG-1 | memoria |
 | CM.fuego.3.F9 | H-211 | bomba y cisterna «Por cotizar» (pendiente de fuego) | nada: ni partida ni pendiente | AUDITORIA H-211; CLAUDE.md regla 6 | — |
-| CM.fuego.6.F10–.F12 | H-210 | sin HP (0), aviso err y semáforo «incompleta» | 15 HP, sin aviso, semáforo «datos» | AUDITORIA H-210; CLAUDE.md regla 6 | — |
+| ~~CM.fuego.6.F10–.F12~~ | H-210 | **vigentes desde el 27-sep-2026** (sin HP, aviso err y semáforo «incompleta») | = esperado | AUDITORIA H-210; CLAUDE.md regla 6 | — |
 
 ## Mutante que sólo muere afirmando el valor incorrecto
 
