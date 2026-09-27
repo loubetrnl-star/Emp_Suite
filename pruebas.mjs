@@ -2222,6 +2222,10 @@ t("16.7 la misma área repartida en las ocho da una carga solar coherente con la
     b.remove();
   };
   const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
+  /* Banco (27-sep-2026): lo asíncrono se espera por su condición, no con un reloj fijo. El FileReader de jsdom encadena tres
+     setImmediate; si el proceso se detiene más de 80 ms entre saltos (GC, varios bancos a la vez), el reloj de la prueba ganaba:
+     18.10 veía el proyecto viejo y la importación tardía caía dentro de la espera de 18.16. Sondea cada 5 ms, tope ~10 s. */
+  const esperarA = async (cond, veces = 2000) => { for (let i = 0; i < veces && !cond(); i++) await esperar(5); };
   const tA = async (nombre, fn) => {
     try { const r = await fn(); if (r === false) { fail++; fallos.push([nombre, "devolvió falso"]); } else ok++; }
     catch (e) { fail++; fallos.push([nombre, e.message]); }
@@ -2357,7 +2361,7 @@ t("16.7 la misma área repartida en las ocho da una carga solar coherente con la
     const inp = w.document.getElementById("file-input");
     const f = new w.File([JSON.stringify({ v: 1, meta: { name: "Respaldo importado" }, zones: [{ ...G("defaultZone")("Z"), area: 55 }] })], "respaldo.emp.json");
     inp.onchange({ target: { files: [f] } });
-    await esperar(80);
+    await esperarA(() => S.meta.name === "Respaldo importado");
     eq(S.meta.name, "Respaldo importado");
     if (idAbierto && S.pid === idAbierto) throw new Error("el respaldo heredó el id del proyecto abierto y lo iba a sobrescribir");
     eq(S.otraLlave, undefined, "llave del proyecto abierto:");
@@ -2495,7 +2499,7 @@ t("16.7 la misma área repartida en las ocho da una carga solar coherente con la
       G("reemplazarEstado")(JSON.parse(JSON.stringify(G("INIT"))));
       S.pid = null; S.linaje = null; G("histReiniciar")();
       act("proj-rev", "prelleno01");
-      await esperar(30);
+      await esperarA(() => /Revisión B creada/.test(avisoTxt()) && /Se retiró del historial/.test(avisoTxt()));
       if (!registro("prelleno01")) throw new Error("se retiró la revisión de origen");
       eq(S.quote.prop.comparaCon, "prelleno01", "comparativo:");
       G("recompute")();
@@ -2573,7 +2577,7 @@ t("16.7 la misma área repartida en las ocho da una carga solar coherente con la
     const respaldo = { v: 1, ...JSON.parse(JSON.stringify(ref.data)), pid: ref.id, linaje: ref.id,
       meta: { ...ref.data.meta, name: "RESPALDO-IDENTIDAD", client: "CLIENTE-RESTAURADO" } };
     inp.onchange({ target: { files: [new w.File([JSON.stringify(respaldo)], "restaurar.emp.json")] } });
-    await esperar(80);
+    await esperarA(() => S.meta.name === "RESPALDO-IDENTIDAD");
     eq(S.meta.name, "RESPALDO-IDENTIDAD", "se abrió el respaldo:");
     if (S.pid === ref.id) throw new Error("el respaldo tomó el id de la referencia");
     contiene(avisoTxt(), "nuevo e independiente", "aviso:");
@@ -2591,8 +2595,9 @@ t("16.7 la misma área repartida en las ocho da una carga solar coherente con la
     const render0 = G("render");
     w.render = () => { throw new Error("pantalla rota"); };
     try {
+      w.document.getElementById("toast").textContent = "";   /* el aviso que se espera es el de ESTA importación */
       inp.onchange({ target: { files: [new w.File([JSON.stringify({ meta: { name: "RESPALDO-ROTO" }, zones: [{ area: 5 }] })], "roto.emp.json")] } });
-      await esperar(80);
+      await esperarA(() => avisoTxt().indexOf("Archivo no válido") >= 0);
     } finally { w.render = render0; }
     eq(S.meta.name, nombre, "el estado quedó reemplazado:");
     eq(S.pid, pid, "id:");
