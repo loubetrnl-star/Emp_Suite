@@ -1415,7 +1415,7 @@ function pdfFirmas(d, L) {
 }
 /* Bloque de trazabilidad que cierra cada documento: con qué norma se calculó,
    de qué catálogo salió el equipo y con qué revisión del motor. */
-function pdfTrazabilidad(d, motores) {
+function pdfTrazabilidad(d, motores, opciones) {
   pdfHeading(d, "Trazabilidad");
   pdfRows(d, [
     ...motores.map((m) => [`Norma · ${NORMAS[m] ? ENGINES[m] ? ENGINES[m].label : ((typeof DISCIPLINAS !== "undefined" && DISCIPLINAS.find((x) => x.id === m)) || {}).nombre || m : m}`, `${NORMAS[m] ? NORMAS[m].norma + " · " + NORMAS[m].edicion : "sin declarar"}${NORMAS[m] && NORMAS[m].extra ? " · " + NORMAS[m].extra : ""}`]),
@@ -1423,6 +1423,9 @@ function pdfTrazabilidad(d, motores) {
     ["Motor de calculo", REV_SELLO()],
     ["Emitido", new Date().toLocaleString("es-MX")],
   ]);
+  /* H-272 (regla 8): lo que entró a estas disciplinas desde archivos, con archivo, página o fila y cómo entró. La memoria
+     integral ya trae su propia tabla completa y lo pide sin esta. */
+  if (!(opciones && opciones.sinArchivos)) seguro(() => pdfOrigenArchivosDe(d, motores));
 }
 function buildSubmittalPdf(sub, kind) {
   const d = PdfDoc(`Submittal ${sub.model}`);
@@ -7299,6 +7302,7 @@ function civilListaHtml(tipo, titulo, etiquetaPer, calc) {
       ${inp("Nombre", `civil.${tipo}.${i}.nombre`, "text")}
       <div class="row">${inp("Área (m²)", `civil.${tipo}.${i}.area`, "number", "1")}${inp("Altura (m)", `civil.${tipo}.${i}.altura`, "number", "0.1")}</div>
       ${inp(`${etiquetaPer}${c && !c.capturado && c.area > 0 ? ` · sin captura: rectángulo 3:2 estimado, ${n(c.per, 1)} ml` : ""}`, `civil.${tipo}.${i}.perimetro`, "number", "0.1")}
+      ${x.origen && x.origen.archivo ? `<div class="sub cx-origen-renglon">Del archivo ${esc(cxOrigenTexto(x.origen))}${x.origen.texto ? ` · «${esc(String(x.origen.texto).slice(0, 90))}»` : ""} · ${x.origen.auto ? "entró solo al cargar" : "aceptado por el usuario"}${x.origen.ts ? " · " + esc(fechaCorta(x.origen.ts)) : ""}${!(num(x.altura) > 0) ? " · altura pendiente: el archivo no la trae" : ""}</div>` : ""}
       <button class="btn-ghost" data-act="civil-del" data-tipo="${tipo}" data-i="${i}">Quitar</button></div></div>`; }).join("")}
     ${lista.length ? "" : `<div class="hint" style="margin-bottom:10px">Sin ${tipo === "areas" ? "áreas de obra" : "cuartos clasificados"} capturados.</div>`}
     <button class="btn-ghost" data-act="civil-add" data-tipo="${tipo}">Agregar ${tipo === "areas" ? "área de obra" : "cuarto clasificado"}</button>`;
@@ -7369,6 +7373,10 @@ function computeCivil(C) {
   zonasCivil.filter((z) => z.capturado).forEach((z) => memo.push(`${z.name}: tabiquería ${n(z.per, 2)} ml capturados × altura ${n(z.h, 2)} m = ${n(z.muro, 1)} m² (H-244).`));
   /* H-265: los cruces load>civil y clean>civil se retiraron: obra civil no toma nada de otra disciplina. */
   if (sinAltura.length) avisos.push({ lvl: "warn", msg: `Obra civil: ${sinAltura.join(", ")} sin altura capturada: su muro queda en 0, pendiente de la captura (no se supone ninguna altura, H-265).` });
+  /* H-272a: un cuarto clasificado con área pero sin altura (p. ej. leído de un plano que no la rotula) tampoco se supone: no cuenta
+     como área clasificada ni su muro, y se dice en vez de callarlo (regla 6). */
+  const cuartosSinAltura = limpios.filter((c) => c.area > 0 && !(c.h > 0)).map((c) => c.name);
+  if (cuartosSinAltura.length) avisos.push({ lvl: "warn", msg: `Obra civil: ${cuartosSinAltura.join(", ")} sin altura capturada: no cuenta como área clasificada ni su muro clasificado, pendiente de la captura (no se supone ninguna altura).` });
 
   const fracLimpia = area > 0 ? Math.min(1, areaLimpia / area) : 0;
   const areaNoLimpia = Math.max(0, area - areaLimpia);
@@ -13900,7 +13908,7 @@ const CX_DISC = {
   hidro:       { nombre: "Hidrosanitario",      acepta: "memoria hidráulica en PDF, planta en DXF" },
   fuego:       { nombre: "Contra incendio",     acepta: "memoria NFPA 13 en PDF, planta en DXF" },
   aire:        { nombre: "Aire comprimido",     acepta: "memoria en PDF, lista de consumos en CSV" },
-  civil:       { nombre: "Obra civil",          acepta: "planta arquitectónica en DXF, catálogo en PDF" },
+  civil:       { nombre: "Obra civil",          acepta: "planta arquitectónica en DXF, levantamiento de locales en XLSX o CSV, memoria descriptiva en PDF" },
   soporte:     { nombre: "Soportería",          acepta: "plantas de instalaciones en DXF" },
   estructural: { nombre: "Estructural",         acepta: "memoria estructural en PDF, planta en DXF" },
 };
@@ -13976,7 +13984,9 @@ function cxDecodificaTexto(u8) {
 }
 function cxLeerArchivo(file) {
   return new Promise((listo) => {
-    const R = { nombre: (file && file.name) || "archivo", tam: (file && file.size) || 0, tipo: "", avisos: [], bytes: null };
+    const R = { nombre: (file && file.name) || "archivo", tam: (file && file.size) || 0, tipo: "", avisos: [], bytes: null,
+      /* H-272: la ruta (carpeta) distingue dos archivos del mismo nombre y es la clave con la que se reconoce lo ya aplicado. */
+      ruta: String((file && (file.ruta || file.webkitRelativePath)) || (file && file.name) || "archivo") };
     if (!file) { R.avisos.push("Archivo no válido."); listo(R); return; }
     if (R.tam > CX_MAX_BYTES_ARCHIVO) { R.avisos.push(`Pesa ${(R.tam / 1048576).toFixed(0)} MB; el límite es ${CX_MAX_BYTES_ARCHIVO / 1048576} MB.`); listo(R); return; }
     let rd;
@@ -13992,7 +14002,7 @@ function cxLeerArchivo(file) {
 
 /* Convierte un archivo leído en fuentes de texto y geometría. */
 function cxInterpretar(A) {
-  const F = { nombre: A.nombre, tam: A.tam, tipo: cxTipoDe(A.nombre, A.bytes), avisos: A.avisos.slice(), lineas: [], paginaDe: [], dxf: null, dwg: null, csv: null, json: null, paginas: 0 };
+  const F = { nombre: A.nombre, ruta: A.ruta || A.nombre, tam: A.tam, tipo: cxTipoDe(A.nombre, A.bytes), avisos: A.avisos.slice(), lineas: [], paginaDe: [], dxf: null, dwg: null, csv: null, json: null, paginas: 0 };
   if (!A.bytes) return F;
   /* Un renglón vacío no es texto: no cuenta en "renglones leídos". */
   const pon = (l, pag) => { if (String(l).trim()) { F.lineas.push(l); F.paginaDe.push(pag); } };
@@ -14035,6 +14045,7 @@ function cxInterpretar(A) {
         if (tsv.split("\n").length < 2) return;
         const r = cxCsvLeer(tsv);
         r.hoja = h.nombre;
+        r.filaEncabezado = h.filaEncabezado || 0;   // H-272: para decir la fila de la hoja de la que salió cada dato
         F.csvs.push({ nombre: h.nombre, r });
         (r.filasCrudas || r.filas).forEach((f) => pon(Object.entries(f).map(([k, v]) => `${k}: ${v}`).join(" · "), null));
         h.avisos.forEach((a) => F.avisos.push(a));
@@ -14222,6 +14233,7 @@ function cxProp(etiqueta, valor, unidad, fuente, opts) {
   return {
     etiqueta, valor, unidad: unidad || "", destino: o.destino || "",
     archivo: fuente ? fuente.archivo || "" : "", pagina: fuente ? fuente.pagina || null : null,
+    fila: fuente && fuente.fila != null ? fuente.fila : null,   // H-272: fila de la hoja (CSV/XLSX) de la que salió el dato
     texto: fuente ? String(fuente.texto || "").slice(0, 160) : "",
     confianza: o.confianza != null ? o.confianza : (fuente && fuente.confianza != null ? fuente.confianza : .8),
     marcado: o.marcado != null ? o.marcado : ((o.confianza != null ? o.confianza : (fuente && fuente.confianza) || .8) >= .8),
@@ -14334,6 +14346,70 @@ function cxZonasDelLote(A) {
     const iso = (cxAnalizarTexto([z.texto]).magnitudes.find((m) => m.clave === "iso_clase") || {}).valor || null;
     out.push({ nombre: z.nombre, m2: z.m2, altura: rango(z.altura, 2, 40) || (alturaG ? alturaG.valor : null), personas: rango(z.personas, 1, 5000), iso, bbox: null, TR: z.TR,
       fuente: { archivo: z.archivo, pagina: z.pagina, texto: z.texto, confianza: z.ambiguo ? .6 : .75 } });
+  });
+  return out;
+}
+/* H-272a (decisión del dueño, 27-sep-2026) · Cada espacio del plano con lo que el plano trae DE ÉL: nombre, m² y perímetro del
+   polígono, y la altura, las personas, la clase ISO o los cambios de aire rotulados DENTRO del propio espacio (no los de un cuarto
+   que tenga adentro ni una altura general del documento). `raiz` = no está dentro de otro espacio (área de obra); `hoja` = no
+   contiene otro espacio con nombre (zona de carga térmica). Lo que el plano no rotula queda null: pendiente, nunca supuesto. */
+function cxEspaciosDelPlano(A) {
+  const out = [];
+  const rango = (v, a, b) => (typeof v === "number" && v >= a && v <= b ? v : null);
+  (A.dxf || []).forEach(({ archivo, r }) => {
+    const util = cxPoligonosUtiles(r);
+    const corregida = !!(r.unidades && r.unidades.corregida);
+    const dentroDe = (t, p) => t.x != null && t.y != null && t.x >= p.bbox.x0 && t.x <= p.bbox.x1 && t.y >= p.bbox.y0 && t.y <= p.bbox.y1 && cxPuntoEnPoligono([t.x, t.y], p.v || []);
+    util.base.forEach((p, i) => {
+      const hijos = (util.hijos.get(p) || []).filter((h) => h.etiqueta);
+      /* Los rótulos de un cuarto que está adentro son de ese cuarto, no de éste. */
+      const textos = (r.textos || []).filter((t) => dentroDe(t, p) && !hijos.some((h) => dentroDe(t, h)));
+      const propios = p.grupoEtiqueta != null ? textos.filter((t) => t.grupo === p.grupoEtiqueta) : [];
+      const lee = (lista) => (lista.length ? cxAnalizarTexto(lista.map((t) => t.texto)) : null);
+      const aP = lee(propios), aT = lee(textos);
+      const primero = (R2, clave, a, b) => (R2 ? rango((R2.magnitudes.find((m) => m.clave === clave && !m.ambiguo) || {}).valor, a, b) : null);
+      const busca = (clave, a, b) => primero(aP, clave, a, b) ?? primero(aT, clave, a, b);
+      const etiqueta = p.etiqueta || "";
+      const nombre = (etiqueta ? etiqueta.replace(/\s*\d[\d.,]*\s*(m2|m²).*$/i, "").replace(/\s+ISO\s*\d.*$/i, "").replace(/\s+h\s*=.*$/i, "").trim() : "") || `Espacio ${i + 1}`;
+      const iso = busca("iso_clase", 1, 9);
+      out.push({ archivo, nombre, m2: p.m2, perimetro: p.perimetroM || 0, bbox: p.bbox, capa: p.capa,
+        altura: busca("altura_m", 2, 40), personas: busca("ocupantes", 1, 5000), iso, ach: busca("ach", 1, 700),
+        limpio: !!iso || /limpio|clean|gmp|clasificad/i.test(etiqueta),
+        raiz: !(util.padres.get(p) || []).length, hoja: util.hojas.includes(p), exteriores: cxCarasExteriores(p, util),
+        fuente: { archivo, pagina: null, texto: `${p.capa} · polilínea cerrada de ${n(p.m2, 1)} m²${etiqueta ? " · " + etiqueta : ""}${corregida ? " · unidades corregidas" : ""}`, confianza: corregida ? .7 : .9 } });
+    });
+  });
+  return out;
+}
+/* H-272a · Un levantamiento en tabla (hoja de Excel o CSV: la exportación de locales de un programa de planos, la extracción de
+   datos de AutoCAD): un renglón por espacio con nombre, área, altura, perímetro y clasificación. La unidad puede venir en el
+   encabezado («Área (m²)», «Altura (ft)») o en la celda («300 m2»); lo que la columna no trae queda null (pendiente). Un cuadro
+   de cargas, de consumos o de muebles no es un levantamiento de espacios y no entra aquí. */
+function cxEspaciosDeTabla(A) {
+  const out = [];
+  (A.csv || []).forEach(({ archivo, r }) => {
+    if (!r || !Array.isArray(r.columnas)) return;
+    const col = (re, no) => r.columnas.find((c) => re.test(c) && !(no && no.test(c)));
+    const cA = col(/(^|[^a-z])(area|área|superficie|m2|m²|sup\.?)([^a-z]|$)/i, /dise|densidad|clasif|nombre|name/i);
+    if (!cA || r.columnas.some((c) => /(^|[^a-z])(kw|w|kva|v|volt|tensi[oó]n|fases|l\s*\/\s*min|lpm|scfm|mueble|wc)([^a-z]|$)/i.test(c))) return;
+    const cN = col(/local|nombre|espacio|cuarto|zona|sala|room|name|descrip|concepto/i, /(^|[^a-z])(area|área|m2|m²)([^a-z]|$)/i);
+    const cH = col(/altura|height|^alto$|^h$|^h\s*\(/i), cP = col(/per[ií]metro|perimeter|(^|[^a-z])ml([^a-z]|$)/i), cC = col(/clasif|clase|iso|class|tipo/i);
+    const fA = /ft2|ft²|sq\.?\s?ft|pies/i.test(cA) ? 0.092903 : 1, fH = cH && /ft\b|pies|'/i.test(cH) ? 0.3048 : 1, fP = cP && /ft\b|pies/i.test(cP) ? 0.3048 : 1;
+    (r.filasCrudas || r.filas).forEach((cruda, i) => {
+      const f = r.filas[i] || cruda;
+      const a0 = cxCeldaNum(r, f, i, cA);
+      const nombre = cxCeldaTxt(r, f, i, cN) || `Espacio ${i + 1}`;
+      if (!(a0 > 0) || /^(total|suma|subtotal)\b/i.test(nombre)) return;
+      const m2 = a0 * (/ft2|ft²|sq\.?\s?ft/i.test(cxCeldaTxt(r, f, i, cA)) ? 0.092903 : fA);
+      const h0 = cH ? cxCeldaNum(r, f, i, cH) : null, p0 = cP ? cxCeldaNum(r, f, i, cP) : null;
+      const clas = cC ? cxCeldaTxt(r, f, i, cC) : "";
+      const reIso = /\bISO\s*(?:clase\s*)?([5-9])(?![\d-])/i;
+      const iso = (reIso.exec(clas) || reIso.exec(nombre) || [])[1];
+      const fila = (r.filaEncabezado || 0) + 2 + i;   // fila de la hoja, contando título(s) y encabezado
+      out.push({ archivo, nombre: nombre.slice(0, 60), m2: +m2.toFixed(2), altura: h0 > 0 ? +(h0 * fH).toFixed(2) : null, perimetro: p0 > 0 ? +(p0 * fP).toFixed(2) : null,
+        iso: iso ? +iso : null, limpio: !!iso || /limpio|clean|gmp|clasificad/i.test(clas + " " + nombre), fila,
+        fuente: { archivo, pagina: null, fila, texto: Object.entries(cruda).map(([k, v]) => `${k}: ${v}`).join(" · "), confianza: .9 } });
+    });
   });
   return out;
 }
@@ -14582,12 +14658,27 @@ function cxPropuestasPara(tab, A, fuentes) {
       });
     });
   } else if (tab === "civil") {
-    proponerArea("Área de obra", "civil.areaManual", (v) => { setPath("civil.areaManual", +(+v).toFixed(2)); setPath("civil.usarZonas", false); });
-    if (altura) P.push(cxProp("Altura", altura.valor, "m", altura, { destino: "civil.alturaManual", fn: set("civil.alturaManual") }));
-    let muros = 0, arch = "";
-    A.dxf.forEach(({ archivo, r }) => { const { hojas } = cxPoligonosUtiles(r); const per = hojas.reduce((a, p) => a + p.perimetroM, 0); if (per > 0) { muros += per; arch = archivo; } });
-    const h = altura ? altura.valor : null;
-    if (muros > 0 && h) P.push(cxProp("Muros (perímetro de cuartos × altura)", +(muros * h).toFixed(1), "m²", { archivo: arch, texto: `perímetro ${n(muros, 1)} m × altura ${n(h, 2)} m`, confianza: .7 }, { destino: "civil.murosManual", marcado: false, fn: set("civil.murosManual") }));
+    /* H-272a (decisión del dueño, 27-sep-2026): el archivo alimenta la CAPTURA PROPIA de obra civil (H-265). Cada espacio del
+       plano (polígono raíz: no está dentro de otro) o del levantamiento en tabla entra como renglón de «Áreas de obra» con nombre,
+       área, altura y perímetro SÓLO si el archivo los trae (lo demás queda en 0 = pendiente, regla 6; el motor ya lo avisa); los
+       clasificados (clase ISO o «limpio»), a cualquier nivel del plano, entran como «Cuartos clasificados». Ya no se escribe el
+       total a mano (areaManual, alturaManual, murosManual) ni se apaga usarZonas: lo capturado a mano sigue igual y el archivo se
+       le suma. Cada renglón queda con su archivo, su rótulo o su fila (regla 8). */
+    const valorDe = (e) => `${n(e.m2, 1)} m²${e.altura > 0 ? ` · h ${n(e.altura, 2)} m` : " · altura: pendiente"}${e.perimetro > 0 ? ` · perímetro ${n(e.perimetro, 1)} m` : " · perímetro: pendiente"}`;
+    const renglon = (e) => ({ nombre: String(e.nombre || "Espacio").slice(0, 60), area: +(+e.m2).toFixed(2), altura: e.altura > 0 ? +(+e.altura).toFixed(2) : 0, perimetro: e.perimetro > 0 ? +(+e.perimetro).toFixed(2) : 0 });
+    const proponerArea2 = (e, o) => P.push(cxProp(`Área de obra · ${e.nombre}`, valorDe(e), "", e.fuente, { grupo: "areaCivil", destino: "civil.areas", ...(o || {}), fn: () => ({ areaCivil: renglon(e) }) }));
+    const proponerCuarto = (e, o) => P.push(cxProp(`Cuarto clasificado · ${e.nombre}`, `${e.iso ? `ISO ${e.iso} · ` : ""}${valorDe(e)}`, "", e.fuente, { grupo: "cuartoCivil", destino: "civil.cuartos", ...(o || {}), fn: () => ({ cuartoCivil: renglon(e) }) }));
+    const plano = cxEspaciosDelPlano(A);
+    /* Del plano: las raíces son áreas de obra (un cuarto dentro de la nave no se cuenta además como área: su superficie ya está
+       en la de la nave); los clasificados, a cualquier nivel, son cuartos. */
+    plano.filter((e) => e.raiz).forEach((e) => proponerArea2(e));
+    plano.filter((e) => e.limpio).forEach((e) => proponerCuarto(e));
+    const tabla = cxEspaciosDeTabla(A);
+    tabla.forEach((e) => (e.limpio ? proponerCuarto(e) : proponerArea2(e)));
+    if (plano.length || tabla.length) A.avisosPropuesta.push("Obra civil: cada espacio del archivo entra como renglón propio con área, altura y perímetro sólo si vienen en el archivo; lo que falte queda pendiente (no se supone). Un cuarto clasificado que viene en tabla se toma como área limpia DENTRO de las áreas de obra; si es un área aparte, agrégalo también en «Áreas de obra».");
+    /* Sin plano ni tabla: los espacios que la memoria descriptiva nombra con su área se ofrecen sin marcar, uno por renglón. */
+    if (!plano.length && !tabla.length) A.zonasTexto.forEach((z) => proponerArea2({ nombre: z.nombre, m2: z.m2, altura: z.altura > 0 ? z.altura : null, perimetro: null,
+      fuente: { archivo: z.archivo, pagina: z.pagina, texto: z.texto, confianza: z.ambiguo ? .6 : .75 } }, { marcado: false }));
   } else if (tab === "soporte") {
     const { L, src } = cxLongitudesPorClase(A);
     const clases = [["ducto", "Ducto", "soporte.ductoM"], ["hidro", "Tubería hidrosanitaria", "soporte.tubHidroM"], ["fuego", "Tubería contra incendio", "soporte.tubFuegoM"], ["aire", "Tubería de aire comprimido", "soporte.tubAireM"]];
@@ -14641,7 +14732,7 @@ async function cxProcesarArchivos(files, tab) {
   const A = cxAnalizarLote(fuentes);
   const lote = {
     id: "cx" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
-    ts: Date.now(), tab, fuentes: fuentes.map((F) => ({ nombre: F.nombre, tipo: F.tipo, tam: F.tam, paginas: F.paginas, lineas: F.lineas.length,
+    ts: Date.now(), tab, fuentes: fuentes.map((F) => ({ nombre: F.nombre, ruta: F.ruta || F.nombre, tipo: F.tipo, tam: F.tam, paginas: F.paginas, lineas: F.lineas.length,
       poligonos: F.dxf ? F.dxf.poligonos.length : 0, capas: F.dxf ? F.dxf.capas.length : (F.dwg ? F.dwg.capasProbables.length : 0), avisos: F.avisos.slice(0, 8) })),
     analisis: A, propuestas: [],
   };
@@ -14657,7 +14748,7 @@ function cxPistaVacio(lote) {
   if (t.has("dwg")) return "Si cargaste un DWG, expórtalo a DXF y vuelve a cargarlo.";
   if (t.has("pdf")) return "Revisa que el PDF tenga texto seleccionable y no sea un escaneo.";
   if (t.has("dxf")) return "Revisa que el plano tenga polilíneas cerradas y textos en espacio modelo, y que sus unidades sean las correctas.";
-  if (t.has("csv")) return "Revisa que el CSV traiga encabezados con la unidad de cada columna (W o kW, V, fases, l/min).";
+  if (t.has("csv")) return "Revisa que el CSV traiga encabezados con la unidad de cada columna (W o kW, V, fases, l/min), o una tabla de locales con Local, Área (m²), Altura (m), Perímetro (m).";
   if (t.has("json")) return "Si es un respaldo de SuiteEmp, ábrelo con «Abrir .json».";
   return "Revisa el contenido del archivo.";
 }
@@ -14706,7 +14797,7 @@ function cxOrigenHtml(tab) {
       <button class="toolbtn" style="margin-left:auto" data-act="close">Cerrar</button></div>
     <div style="padding:14px">${lotes.map((l) => `<div class="prop aceptado" style="margin-bottom:10px">
       <div class="ptop"><span class="pdotp"></span><b>${esc((l.archivos || []).filter((a) => a && typeof a === "object").map((a) => a.nombre).join(", "))}</b><span class="badge">${fechaCorta(l.ts)}</span></div>
-      ${(l.aplicados || []).filter((a) => a && typeof a === "object").map((a) => `<div class="prow"><span class="pk">${esc(a.destino || "dato")}</span><span>${esc(a.etiqueta)}: <b>${esc(String(a.valor))} ${esc(a.unidad || "")}</b><br><span class="sub">${esc([a.archivo, a.pagina ? "p. " + a.pagina : ""].filter(Boolean).join(" · "))}${a.texto ? " · " + esc(a.texto) : ""}</span></span></div>`).join("")}
+      ${(l.aplicados || []).filter((a) => a && typeof a === "object").map((a) => `<div class="prow"><span class="pk">${esc(a.destino || "dato")}</span><span>${esc(a.etiqueta)}: <b>${esc(String(a.valor))} ${esc(a.unidad || "")}</b><br><span class="sub">${esc(cxOrigenTexto(a))}${a.texto ? " · " + esc(a.texto) : ""} · ${esc(cxComoEntro(a, l))}</span></span></div>`).join("")}
     </div>`).join("") || `<div class="sub">Todavía no se han cargado archivos en esta disciplina.</div>`}</div></div>`;
 }
 
@@ -14730,6 +14821,27 @@ function pdfOrigenArchivos(d) {
   pdfTable(d, ["Disciplina", "Dato", "Valor", "Archivo", "Aceptado"], filas.slice(0, 300), [85, 150, 90, 150, 85]);
   if (filas.length > 300) pdfParagraph(d, `Y ${filas.length - 300} dato(s) mas, registrados en el proyecto.`);
   pdfParagraph(d, "Cada dato fue leido del archivo indicado y aceptado por el usuario antes de entrar al motor. Lo leido de un archivo no sustituye la revision del ingeniero responsable.");
+}
+
+/* H-272 (regla 8) · Origen de un dato aplicado, para pantalla y entregables: archivo, página (PDF) o fila (hoja), y cómo entró:
+   solo al cargar (dato claro, decisión del dueño 25-sep-2026) o aceptado por el usuario en la ventana de hallazgos. */
+const CX_TAB_DE_MOTOR = { load: "carga", clean: "limpios", equip: "seleccion", duct: "ductos", vent: "ventilacion", elec: "electrico", hidro: "hidro", fuego: "fuego", aire: "aire", civil: "civil", soporte: "soporte" };
+function cxOrigenTexto(a) { return [a.archivo, a.pagina ? `p. ${a.pagina}` : "", a.fila ? `fila ${a.fila}` : ""].filter(Boolean).join(" · "); }
+function cxComoEntro(a, l) {
+  const como = a.auto === true ? "entró solo al cargar" : a.auto === false ? "aceptado por el usuario" : "carga anterior a H-272 (sin distinguir cómo entró)";
+  return `${como} · ${fechaCorta(l && l.ts)}`;
+}
+/* En la memoria de cada disciplina: qué entró desde archivos del proyecto ejecutivo a ESA disciplina. */
+function pdfOrigenArchivosDe(d, motores) {
+  const tabs = (motores || []).map((m) => CX_TAB_DE_MOTOR[m]).filter(Boolean);
+  const filas = [];
+  cxLotesDe().filter((l) => tabs.includes(l.tab)).forEach((l) => (l.aplicados || []).filter((a) => a && typeof a === "object").forEach((a) =>
+    filas.push([a.etiqueta, `${a.valor} ${a.unidad || ""}`.trim(), cxOrigenTexto(a), cxComoEntro(a, l)])));
+  if (!filas.length) return;
+  pdfHeading(d, "Datos que entraron desde archivos del proyecto ejecutivo");
+  pdfTable(d, ["Dato", "Valor", "Archivo · pagina / fila", "Como entro"], filas.slice(0, 150), [160, 90, 170, 140]);
+  if (filas.length > 150) pdfParagraph(d, `Y ${filas.length - 150} dato(s) mas, registrados en el proyecto.`);
+  pdfParagraph(d, "Lo leido de un archivo no sustituye la revision del ingeniero responsable. Lo que el archivo no trae queda pendiente de captura; no se supone ningun valor.");
 }
 
 /* ---------- Aplicar ---------- */
@@ -14761,16 +14873,29 @@ function cxAplicar(lote, modo, opts) {
   if (!S.cx || !Array.isArray(S.cx.lotes)) S.cx = { lotes: [] };
   const zonas = [], cuartos = [], tramos = [], cargas = [], consumos = [], equipos = [];
   const aplicados = [];
+  /* H-272a: obra civil recibe renglones de su captura propia (áreas de obra y cuartos clasificados, H-265), cada uno con su origen. */
+  if (!S.civil || typeof S.civil !== "object") S.civil = defaultCivil();
+  if (!Array.isArray(S.civil.areas)) S.civil.areas = [];
+  if (!Array.isArray(S.civil.cuartos)) S.civil.cuartos = [];
+  if (modo === "nuevo" && marcadas.some((p) => /^civil\.(areas|cuartos)$/.test(p.destino))) { S.civil.areas = []; S.civil.cuartos = []; }
+  /* H-272: cada dato aplicado dice si entró solo al cargar (auto) o lo aceptó el usuario, y lleva una clave archivo+dato. */
+  const auto = !!(opts && opts.auto);
+  const rutaDe = (p) => { const F = (lote.fuentes || []).find((x) => x.nombre === p.archivo || String(p.archivo || "").startsWith(x.nombre + " · ")); return (F && F.ruta) || p.archivo || ""; };
   marcadas.forEach((p) => {
     try {
       const r = p.fn(p.valor);
+      const origen = { archivo: p.archivo, pagina: p.pagina || null, fila: p.fila || null, texto: p.texto, ts: Date.now(), auto };
+      let itemId = null;
       if (r && r.zona) zonas.push(r.zona);
       else if (r && r.cuarto) cuartos.push(r.cuarto);
       else if (r && r.tramo) tramos.push(r.tramo);
       else if (r && r.carga) cargas.push(r.carga);
       else if (r && r.consumo) consumos.push(r.consumo);
       else if (r && r.equipo) equipos.push(r.equipo);
-      aplicados.push({ etiqueta: p.etiqueta, destino: p.destino, valor: typeof p.valor === "number" ? +p.valor.toFixed(3) : String(p.valor).slice(0, 120), unidad: p.unidad, archivo: p.archivo, pagina: p.pagina, texto: p.texto });
+      else if (r && r.areaCivil) { const a = r.areaCivil; a.id = civilNuevoId("areas"); a.origen = origen; S.civil.areas.push(a); itemId = a.id; }
+      else if (r && r.cuartoCivil) { const c = r.cuartoCivil; c.id = civilNuevoId("cuartos"); c.origen = origen; S.civil.cuartos.push(c); itemId = c.id; }
+      aplicados.push({ etiqueta: p.etiqueta, destino: p.destino, valor: typeof p.valor === "number" ? +p.valor.toFixed(3) : String(p.valor).slice(0, 120), unidad: p.unidad, archivo: p.archivo, pagina: p.pagina, fila: p.fila || null, texto: p.texto,
+        clave: `${rutaDe(p)}|${p.destino}|${p.etiqueta}`, auto, itemId });
       p.aplicado = true; p.marcado = false;
     } catch { /* un dato que no se pudo escribir no tumba los demás */ }
   });
@@ -15079,6 +15204,7 @@ function cxHojaATsv(hoja) {
     const textos = filas[i].filter((c) => typeof c === "string" && c.trim()).length;
     if (textos >= 2) { ini = i; break; }
   }
+  if (hoja && typeof hoja === "object") hoja.filaEncabezado = ini;   // H-272: índice (base 0) de la fila de encabezado en la hoja
   const limpia = (c) => String(c == null ? "" : c).replace(/[\t\r\n]+/g, " ").trim();
   return filas.slice(ini).map((f) => f.map(limpia).join("\t")).join("\n");
 }
@@ -15452,7 +15578,10 @@ function cxzMensajeClaro(avisos, fila) {
   return "";
 }
 function cxzArchivoDe(fila, bytes) {
-  try { return new File([bytes], fila.nombre); } catch { return { name: fila.nombre, size: bytes.length, bytes }; }
+  let f;
+  try { f = new File([bytes], fila.nombre); } catch { f = { name: fila.nombre, size: bytes.length, bytes }; }
+  try { f.ruta = fila.ruta || fila.nombre; } catch { /* la ruta es opcional: sólo distingue archivos homónimos */ }
+  return f;
 }
 async function cxzProcesarFila(fila) {
   if (!fila || fila.motor === "sin" || fila.motor === "referencia" || fila.estado === "norec") return;
@@ -15481,7 +15610,7 @@ async function cxzProcesarFila(fila) {
     else {
       /* rev 2.9.24 (decisión del dueño): los datos claros entran solos a su disciplina al terminar de leerse; los dudosos
          esperan la marca en la ventana de hallazgos. */
-      const k = utiles.some((p) => p.marcado && p.fn) ? cxAplicar(lote, "abierto", { quedarse: true }) : 0;
+      const k = utiles.some((p) => p.marcado && p.fn) ? cxAplicar(lote, "abierto", { quedarse: true, auto: true }) : 0;
       fila.aplicados = k;
       const dudosos = utiles.length - k;
       fila.estado = "listo"; fila.detalle = `${utiles.length} dato(s) propuestos · ${k} aplicados al cargar${dudosos ? ` · ${dudosos} por revisar` : ""}${claro ? " · " + claro : ""}`;
@@ -19576,7 +19705,7 @@ function buildMemoriaIntegralPdf() {
   pdfTitle(d, "Cierre de la memoria integral", S.meta.name || "");
   pdfHeading(d, "Capitulos integrados");
   pdfRows(d, incluidos.map((t2, i) => [`Capitulo ${i + 1}`, t2]).concat(omitidos.length ? [["No integrados (sin datos)", omitidos.join(" · ")]] : []));
-  pdfTrazabilidad(d, ["load", "clean", "equip", "vent", "duct", "elec", "hidro", "fuego"]);
+  pdfTrazabilidad(d, ["load", "clean", "equip", "vent", "duct", "elec", "hidro", "fuego"], { sinArchivos: true });
   /* H-94 (17-sep-2026): quedaba un nombre propio escrito directo en el código
      como "responsable técnico", ignorando S.meta.engineer -el campo que el
      propio texto de ayuda del formulario promete: "Aparece firmando la
@@ -21179,6 +21308,15 @@ function buildCivilPdf() {
     ["Altura media ponderada", `${n(R.alturaProm, 2)} m`, (S.civil.usarZonas ? "ponderada por area de obra" : "capturada a mano")],
     ["Media cana sanitaria", `${n(R.mlCana, 0)} ml`, "muro clasificado entre altura libre" + (S.civil.mediaCanaDoble ? ", doble" : "")],
   ], [150, 110, 226]);
+  /* H-272a (regla 8): cada renglón capturado con su origen: archivo, página o fila y cómo entró, o «capturado a mano». */
+  const origenRenglon = (x) => (x.origen && x.origen.archivo ? `${cxOrigenTexto(x.origen)} · ${x.origen.auto ? "entro solo al cargar" : "aceptado por el usuario"}` : "capturado a mano");
+  const filaDe = (tipo, x) => [tipo, x.nombre || x.id || "", n(num(x.area), 1), num(x.altura) > 0 ? n(num(x.altura), 2) : "pendiente", num(x.perimetro) > 0 ? n(num(x.perimetro), 1) : "pendiente (3:2 estimado)", origenRenglon(x)];
+  const renglones = (S.civil.usarZonas !== false ? (S.civil.areas || []) : []).filter((x) => x && typeof x === "object").map((x) => filaDe("Area de obra", x))
+    .concat((S.civil.cuartos || []).filter((x) => x && typeof x === "object").map((x) => filaDe("Cuarto clasificado", x)));
+  if (renglones.length) {
+    pdfHeading(d, "Renglones capturados y su origen");
+    pdfTable(d, ["Tipo", "Nombre", "m2", "h (m)", "Perimetro (ml)", "Origen"], renglones.slice(0, 120), [70, 110, 40, 45, 80, 215]);
+  }
   pdfHeading(d, "Catalogo de conceptos");
   pdfTable(d, ["Grupo", "Concepto", "Un", "Cantidad", "P.U.", "Importe"],
     R.part.map((p) => [p.clave, p.desc, p.un, n(p.qty, 2), n(p.unit, 2), n(p.total, 0)])
