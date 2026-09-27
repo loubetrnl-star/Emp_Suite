@@ -280,5 +280,9 @@
   { "id": "elec.m140", "que": "H-268: vuelve el modo en vivo (las cargas de otros motores entran al calcular con tomarHVAC, sin aceptar la propuesta)", "logica": true, "estado": "vigente",
     "buscar": "  (E.cargas || []).forEach((c, i) => filas.push({ ...c, id: c.id || `u-${i}`, auto: c.auto === true }));", "reemplazar": "  [...(E.tomarHVAC ? cargasOtrosMotoresElec(E) : []), ...(E.cargas || [])].forEach((c, i) => filas.push({ ...c, id: c.id || `u-${i}`, auto: c.auto === true }));" },
   { "id": "elec.m141", "que": "H-268: un proyecto guardado en vivo abre sin aceptar la propuesta (pierde las cargas que tomaba y cambia de cifras)", "logica": true, "estado": "vigente",
-    "buscar": "    if (cruces.length) s.elec.tomarPropuesta = cruces;", "reemplazar": "    if (cruces.length && false) s.elec.tomarPropuesta = cruces;" }
+    "buscar": "    if (cruces.length) s.elec.tomarPropuesta = cruces;", "reemplazar": "    if (cruces.length && false) s.elec.tomarPropuesta = cruces;" },
+  { "id": "elec.m142", "que": "H-270: el unifilar pierde el tramo tablero→alimentador (los circuitos quedan sueltos del bus)", "logica": true, "estado": "vigente",
+    "buscar": "tramos.push({ de: \"tablero\", a: idC, etiqueta: \"\" });", "reemplazar": "" },
+  { "id": "elec.m143", "que": "H-271: el trifilar baja un circuito trifásico a dos fases (A y B, mitad y mitad) en vez de tres", "logica": true, "estado": "vigente",
+    "buscar": "k.fases = [\"A\", \"B\", \"C\"].map((f) => fase(f, c.kVAtot / 3));", "reemplazar": "k.fases = [\"A\", \"B\"].map((f) => fase(f, c.kVAtot / 2));" }
 ]

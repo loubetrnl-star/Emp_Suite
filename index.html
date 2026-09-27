@@ -664,6 +664,11 @@ details[open] summary{margin-bottom:10px}
 .segbtn.on{border-color:var(--gr-8);color:var(--fg);background:rgba(255,255,255,.08)}
 .segbtn .fit{font-size:12px;opacity:.7}
 .chart{width:100%;height:auto;display:block}
+/* H-270 · Diagramas unifilar y trifilar: heredan el color del texto (currentColor); naranja sólo en lo pendiente. */
+.uf-fig{margin:0}
+.uf-fig .uf text{font-family:var(--texto)}
+.uf-fig .uf .uf-pend{color:var(--senal)}
+.uf-fig figcaption{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:6px}
 .viz{display:grid;grid-template-columns:1fr 132px;gap:14px;align-items:center;margin-top:6px}
 .viz-t{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
 .viz-side{display:flex;flex-direction:column;align-items:center;gap:8px}
@@ -1235,6 +1240,18 @@ function PdfDocBase(title) {
     line(x1, y1, x2, y2, [r, g, b] = [0.659, 0.69, 0.729], w = .6) {
       buf += `${r} ${g} ${b} RG ${w} w ${x1.toFixed(2)} ${(H - y1).toFixed(2)} m ${x2.toFixed(2)} ${(H - y2).toFixed(2)} l S\n`;
     },
+    /* H-270 · Primitivas mínimas para los diagramas de la memoria eléctrica: contorno (re S), círculo (cuatro Bézier c) y
+       patrón de guiones (d). Sólo se usan donde se llaman; no cambian ningún PDF existente. */
+    rectStroke(x, yy, w, h, [r, g, b] = [0.2, 0.2, 0.2], lw = .8) { buf += `${r} ${g} ${b} RG ${lw} w ${x.toFixed(2)} ${(H - yy - h).toFixed(2)} ${w.toFixed(2)} ${h.toFixed(2)} re S\n`; },
+    circle(cx, cy, rad, [r, g, b] = [0.2, 0.2, 0.2], lw = .8, fill = false) {
+      const k = 0.5523 * rad, X = cx, Y = H - cy, f = (v) => v.toFixed(2);
+      buf += `${r} ${g} ${b} ${fill ? "rg" : "RG"} ${lw} w ${f(X + rad)} ${f(Y)} m\n` +
+        `${f(X + rad)} ${f(Y + k)} ${f(X + k)} ${f(Y + rad)} ${f(X)} ${f(Y + rad)} c\n` +
+        `${f(X - k)} ${f(Y + rad)} ${f(X - rad)} ${f(Y + k)} ${f(X - rad)} ${f(Y)} c\n` +
+        `${f(X - rad)} ${f(Y - k)} ${f(X - k)} ${f(Y - rad)} ${f(X)} ${f(Y - rad)} c\n` +
+        `${f(X + k)} ${f(Y - rad)} ${f(X + rad)} ${f(Y - k)} ${f(X + rad)} ${f(Y)} c\n${fill ? "f" : "S"}\n`;
+    },
+    dash(patron) { buf += patron ? `[${patron}] 0 d\n` : "[] 0 d\n"; },
     newPage() { if (buf) pages.push(buf); buf = ""; pageNo++; y = M; header(); },
     space(need) { if (y + need > H - 56) api.newPage(); },
     end() { if (buf) pages.push(buf); return build(); },
@@ -1762,6 +1779,7 @@ function buildElecPdf() {
     R.calc.map((c) => [c.nombre.slice(0, 34), c.kWsin ? "pend." : `${n(c.kWtot, 2)}${c.kWEst ? " e" : c.kWOrigen !== "capturado" ? " c" : ""}`, `${n(c.fp, 2)}${c.fpOrigen === "casa" ? "*" : ""}`, `${c.V}/${c.ph}`, ...(c.sinI ? ["pend.", "pend.", "pend.", "pend.", "pend."] : [n(c.I, 1), c.cond.awg, String(c.cond.ocpd), c.cond.tierra, c.cond.tubo.d]), c.sinL ? "pend." : `${n(c.L, 0)}${c.Lsin ? "*" : ""}`, c.cond.dv == null ? "pend." : n(c.cond.dv, 2)]),
     [118, 42, 28, 36, 34, 36, 34, 38, 40, 36, 40]);
   pdfParagraph(d, "kW: e = ESTIMADO por el motor de origen, c = de catalogo de la casa, sin marca = capturado. fp: * = el del tipo de carga o el supuesto del motor de origen, criterio de la casa (no capturado). La procedencia de cada carga va en la memoria (seccion 6).");
+  pdfDiagramasElec(d, R);
   pdfHeading(d, "4. Demanda y balanceo");
   pdfRows(d, [
     ...R.demTipo.map((t) => [`Demanda ${t.label}`, `${n(t.kVA, 2)} kVA conectados -> ${n(t.dem, 2)} kVA de demanda`]),
@@ -21236,6 +21254,388 @@ function sheetWrap(title, sub, body) {
 
 
 /* ---------- Tab: Eléctrico (NOM-001-SEDE) ---------- */
+/* =========================================================================
+   H-270 / H-271 · Diagramas unifilar y trifilar del eléctrico (pedido del dueño, 27-sep-2026)
+   Tres capas puras, sin DOM ni estado global (sólo leen MOTOR_VER.elec para declararlo en el pie):
+   1) describirUnifilar(R, en) / describirTrifilar(R, en): DESCRIPCIÓN semántica que sale de R = computeElec(E). Nada se
+      inventa: lo que R no trae no aparece y se lista en «pendientes» (regla 6); cada rótulo dice de dónde sale: capturado,
+      calculado (con su tabla o artículo) o criterio de la casa (regla 8); todo texto pasa por L(es, en) (regla 7).
+   2) geometriaUnifilar(desc) / geometriaTrifilar(desc): bloques de primitivas planas (linea, rect, circ, texto) en unidades
+      de un viewBox de 600 de ancho, rejilla de 2; un bloque por renglón de circuito (unifilar, en escalera: crece hacia
+      abajo y cabe en un celular) o por banda de cuatro circuitos (trifilar), para que la memoria PDF pagine sin cortar un
+      símbolo. Símbolos normalizados sencillos: transformador dos círculos, interruptor trazo inclinado, tablero rectángulo,
+      motor círculo con M, otras cargas rectángulo con su abreviatura.
+   3) svgDiagrama(geo, …) para la pantalla (trazos y texto en currentColor, viewBox, <marker>) y pdfDiagrama(d, geo) para la
+      memoria, con las primitivas de PdfDocBase (rectStroke, circle y dash, añadidas en H-270 sin tocar las existentes).
+   Los diagramas NO mueven cifras: MOTOR_VER.elec no cambia. Pruebas S.150 y S.151.
+   ========================================================================= */
+const UF_ANCHO = 600;
+const ufUnidad = (a) => (/^\d+$/.test(String(a)) && Number(a) >= 250 ? "kcmil" : "AWG");
+const ufNum = (i) => `C-${String(i + 1).padStart(2, "0")}`;
+const ufSistema = (R) => { const s = (R && R.sis) || {}; return `${s.ph}F ${s.V}${s.Vf != null && s.Vf !== s.V ? "/" + s.Vf : ""} V`; };
+const ufMaterial = (m, en) => (m === "aluminio" ? (en ? "aluminum" : "aluminio") : (en ? "copper" : "cobre"));
+const ufAisl = (k) => AISLAMIENTOS[aislamientoDe(k)].nombre;
+/* Recorta un rótulo al ancho disponible (métrica Helvetica de textWidth, la misma que el PDF) y lo termina en «…». */
+function ufRecortar(s, size, maxW) {
+  s = String(s ?? "");
+  if (!maxW || textWidth(s, size) <= maxW) return s;
+  let out = s;
+  while (out.length > 1 && textWidth(out + "…", size) > maxW) out = out.slice(0, -1).replace(/[\s·]+$/, "");
+  return out + "…";
+}
+/* Parte un rótulo largo por sus separadores « · » en hasta `max` renglones que quepan en maxW; el último se recorta. */
+function ufPartir(s, size, maxW, max = 2) {
+  const partes = String(s ?? "").split(" · "), lineas = [];
+  let cur = "";
+  partes.forEach((p) => {
+    const test = cur ? `${cur} · ${p}` : p;
+    if (!cur || textWidth(test, size) <= maxW) cur = test;
+    else { lineas.push(cur); cur = p; }
+  });
+  if (cur) lineas.push(cur);
+  if (lineas.length > max) { const resto = lineas.slice(max - 1).join(" · "); lineas.length = max - 1; lineas.push(resto); }
+  return lineas.map((l) => ufRecortar(l, size, maxW));
+}
+
+/* ---------- 1) Descripción ---------- */
+function describirUnifilar(R, en = false) {
+  const L = (es, ingles) => (en ? ingles : es);
+  const nodos = [], tramos = [], pendientes = [];
+  const out = { version: MOTOR_VER.elec, titulo: L("Diagrama unifilar", "Single-line diagram"), nodos, tramos, pendientes };
+  const calc = (R && R.calc) || [];
+  if (!calc.length) {
+    pendientes.push(L("Sin cargas capturadas: no hay circuitos que dibujar (nada se supone).", "No loads captured: there are no circuits to draw (nothing is assumed)."));
+    return out;
+  }
+  const sis = ufSistema(R), mat = ufMaterial(R.mat, en), cap = L("capturado", "captured"), calcT = L("calculado", "calculated"), pend = L("pendiente", "pending");
+  const sc = R.sinConf || {};
+  /* Valor por omisión de una revisión anterior (sanearEstado, H-179): se imprime «sin confirmar», nunca como captura. */
+  const capO = (k) => (sc[k] ? L("sin confirmar", "unconfirmed") : cap), placaO = (k) => (sc[k] ? L("sin confirmar", "unconfirmed") : L("placa capturada", "nameplate captured"));
+  const nDim = calc.filter((c) => !c.sinI).length;
+  /* Acometida: el sistema de tensión es captura de esta pestaña; el lado primario no se captura aquí, y se dice. */
+  nodos.push({ id: "acometida", tipo: "acometida", etiqueta: L("Acometida", "Service entrance"), sub: `${sis} (${cap})`,
+    detalle: L(`Sistema ${sis} (${cap}) · tensión primaria, tipo de acometida y medición: ${pend}`, `System ${sis} (${cap}) · primary voltage, service type and metering: ${pend}`) });
+  pendientes.push(L("Acometida: tensión primaria, tipo de acometida y medición no se capturan en esta pestaña.", "Service entrance: primary voltage, service type and metering are not captured on this tab."));
+  let previo = "acometida";
+  /* Transformador: sólo con placa capturada (kVA o Z). Sin nada capturado el nodo no existe. */
+  const kVA = R.trafoKVA, Z = R.trafoZ;
+  if (kVA != null || Z != null) {
+    const partes = [
+      kVA != null ? `${n(kVA, 0)} kVA (${placaO("trafoKVA")})` : L("kVA de placa pendiente", "nameplate kVA pending"),
+      Z != null ? `Z ${n(Z, 1)} % (${placaO("trafoZ")})` : L("Z de placa pendiente", "nameplate Z pending"),
+      R.IccTrafo != null ? L(`Icc estimada ${n(R.IccTrafo / 1000, 1)} kA (${calcT}: kVA/(1.732·V·Z), cota superior)`, `estimated Isc ${n(R.IccTrafo / 1000, 1)} kA (${calcT}: kVA/(1.732·V·Z), upper bound)`) : L(`Icc ${pend}`, `Isc ${pend}`)];
+    nodos.push({ id: "trafo", tipo: "transformador", etiqueta: L("Transformador", "Transformer"),
+      sub: `${kVA != null ? `${n(kVA, 0)} kVA` : `kVA ${pend}`} · ${Z != null ? `Z ${n(Z, 1)} %` : `Z ${pend}`}${R.IccTrafo != null ? ` · Icc ${n(R.IccTrafo / 1000, 1)} kA` : ""}`, detalle: partes.join(" · ") });
+    tramos.push({ de: previo, a: "trafo", etiqueta: "" }); previo = "trafo";
+  }
+  if (kVA == null || Z == null) {
+    const falta = kVA == null && Z == null ? L("kVA y Z de placa", "nameplate kVA and Z") : kVA == null ? L("kVA de placa", "nameplate kVA") : L("Z de placa", "nameplate Z");
+    pendientes.push(L(`Transformador de la acometida: ${falta} sin capturar; la corriente de falla y la capacidad interruptiva quedan pendientes (no se supone un transformador).`,
+      `Service transformer: ${falta} not captured; fault current and interrupting rating remain pending (no transformer is assumed).`));
+  }
+  /* Interruptor general: el principal del motor (art. 430-63 con motores) y la capacidad interruptiva que sale de la Icc. */
+  const polosG = R.sis && R.sis.ph === 3 ? 3 : 2;
+  const kaic = R.kAIC != null ? L(`interruptivo ≥ ${R.kAIC} kA (${calcT} de la Icc estimada)`, `interrupting ≥ ${R.kAIC} kA (${calcT} from the estimated Isc)`)
+    : L("kA pendiente (falta el transformador)", "kA pending (transformer missing)");
+  nodos.push({ id: "general", tipo: "proteccion", etiqueta: L(`Interruptor general ${R.principal} A`, `Main breaker ${R.principal} A`),
+    sub: `${R.principal} A · ${polosG}P · ${R.kAIC != null ? `≥ ${R.kAIC} kA` : `kA ${pend}`}`,
+    detalle: L(`${R.principal} A · ${polosG} polos (${calcT}: protección del alimentador general; con motores, art. 430-63) · ${kaic}`,
+      `${R.principal} A · ${polosG} poles (${calcT}: main feeder protection; with motors, art. 430-63) · ${kaic}`) });
+  tramos.push({ de: previo, a: "general", etiqueta: "" });
+  /* Alimentador general: el tramo del interruptor general al tablero, rotulado como la memoria. */
+  const A = R.alim || {};
+  const Ltab = R.Lalim != null ? `${n(R.Lalim, 0)} m (${capO("Ltablero")})` : L("longitud pendiente", "length pending");
+  const alimTxt = `${A.paralelo > 1 ? `${A.paralelo} × ` : ""}${A.awg} ${ufUnidad(A.awg)} ${mat} ${ufAisl(A.aislamiento)} · T ${A.tierra} ${ufUnidad(A.tierra)} · ${A.tubo.d}${A.paralelo > 1 ? ` × ${A.paralelo}` : ""} · ${Ltab}${A.dv != null ? ` · e ${n(A.dv, 2)} %` : ` · e ${pend}`}`;
+  nodos.push({ id: "tablero", tipo: "tablero", etiqueta: L("Tablero general", "Main panel"), sub: `${R.principal} A · ${nDim} ${L("circuitos", "circuits")} · ${sis}`,
+    detalle: L(`Barras ${R.principal} A (capacidad del interruptor principal, ${calcT}) · ${sis} · ${calc.length} circuito(s), ${nDim} dimensionado(s)`,
+      `Bus ${R.principal} A (main breaker rating, ${calcT}) · ${sis} · ${calc.length} circuit(s), ${nDim} sized`) });
+  tramos.push({ de: "general", a: "tablero", etiqueta: alimTxt, detalle: L(`Alimentador general: ${A.nota} · ${Ltab}${A.dv != null ? ` · caída ${n(A.dv, 2)} %` : ""}`, `Main feeder: ${A.notaEn} · ${Ltab}${A.dv != null ? ` · drop ${n(A.dv, 2)} %` : ""}`) });
+  if (R.Lalim == null) pendientes.push(L("Distancia al tablero sin capturar: la caída del alimentador general queda pendiente (no se supone).", "Panel distance not captured: the main feeder voltage drop remains pending (not assumed)."));
+  /* Un renglón por circuito: alimentador (protección + conductor + canalización) → carga. */
+  calc.forEach((c, i) => {
+    const num = ufNum(i), idC = `c-${String(i + 1).padStart(2, "0")}`, idK = `carga-${String(i + 1).padStart(2, "0")}`;
+    const nombre = `${c.nombre}${c.cant > 1 ? ` ×${c.cant}` : ""}`;
+    const kWtxt = c.kWsin ? L("kW pendiente", "kW pending") : `${n(c.kWtot, 2)} kW (${c.kWOrigen === "capturado" ? cap : kWOrigenTexto(c, en)})`;
+    const kWcorto = c.kWsin ? L("kW pendiente", "kW pending") : `${n(c.kWtot, 2)} kW${c.kWEst ? " e" : c.kWOrigen !== "capturado" ? " c" : ""}`;
+    if (c.sinI) {
+      nodos.push({ id: idK, tipo: "carga", etiqueta: nombre, sub: L(`${num} · ramal pendiente`, `${num} · branch pending`), pendiente: true,
+        detalle: L(`${num} · ${c.label} · ${kWtxt} · ${c.V} V ${c.ph}F · corriente pendiente: ramal sin dimensionar (captura el hp de placa o el kW)`,
+          `${num} · ${c.label} · ${kWtxt} · ${c.V} V ${c.ph}F · current pending: branch not sized (enter the nameplate hp or the kW)`) });
+      tramos.push({ de: "tablero", a: idK, etiqueta: L("ramal pendiente", "branch pending"), pendiente: true });
+      pendientes.push(L(`${num} ${c.nombre}: sin corriente de tabla ni kW, el ramal no está dimensionado.`, `${num} ${c.nombre}: no table current and no kW, the branch is not sized.`));
+      return;
+    }
+    const K = c.cond, aisl = ufAisl(K.aislamiento), polos = c.ph === 3 ? "3P" : "1F";
+    const Ltxt = c.L != null ? `${n(c.L, 0)} m (${c.Lsin ? L("sin confirmar", "unconfirmed") : cap})` : L("longitud pendiente", "length pending");
+    const dvTxt = K.dv != null ? `e ${n(K.dv, 2)} %` : L("e pendiente", "VD pending");
+    const protOrigen = c.art440 ? L("hasta el MOP de placa, 440-22", "up to the nameplate MOP, 440-22") : c.tipo === "motor" ? L("Tabla 430-52, hasta 250 % de la corriente", "Table 430-52, up to 250 % of the current") : L("240-6(a) sobre la corriente de diseño; tope 240-4(d)", "240-6(a) above the design current; 240-4(d) cap");
+    const origenI = c.motorTabla && c.motorTabla.I > 0 ? `${L("Tabla", "Table")} ${c.motorTabla.tabla}, ${origenMotorTexto(c, en)}` : c.art440 ? L("MCA de placa, art. 440", "nameplate MCA, art. 440") : formulaKw(c.ph);
+    nodos.push({ id: idC, tipo: "alimentador",
+      etiqueta: `${num} · ${K.ocpd} A ${polos}${K.fusible ? L(" fusible", " fuse") : ""} · ${K.paralelo > 1 ? `${K.paralelo} × ` : ""}${K.awg} ${ufUnidad(K.awg)}`,
+      sub: `${mat} ${aisl} · T ${K.tierra} ${ufUnidad(K.tierra)} · ${K.tubo.d} · ${Ltxt} · ${dvTxt}`,
+      detalle: L(`${num} · protección ${K.ocpd} A${K.fusible ? " (fusible)" : ""} (${calcT}: ${protOrigen}) · conductor ${K.paralelo > 1 ? `${K.paralelo} × ` : ""}${K.awg} ${ufUnidad(K.awg)} ${mat} ${aisl} (${calcT}: ampacidad Tabla 310-15(b)(16) a 75 °C; rige ${K.rige}) · tierra ${K.tierra} ${ufUnidad(K.tierra)} ${K.tierraMat} (Tabla 250-122) · canalización ${K.tubo.d} (Cap. 10, Tabla 5) · ${Ltxt} · ${dvTxt}`,
+        `${num} · protection ${K.ocpd} A${K.fusible ? " (fuse)" : ""} (${calcT}: ${protOrigen}) · conductor ${K.paralelo > 1 ? `${K.paralelo} × ` : ""}${K.awg} ${ufUnidad(K.awg)} ${mat} ${aisl} (${calcT}: ampacity Table 310-15(b)(16) at 75 °C; governs ${K.rige}) · ground ${K.tierra} ${ufUnidad(K.tierra)} ${K.tierraMat} (Table 250-122) · raceway ${K.tubo.d} (Ch. 10, Table 5) · ${Ltxt} · ${dvTxt}`) });
+    nodos.push({ id: idK, tipo: "carga", etiqueta: nombre, motor: c.tipo === "motor", tipoCarga: c.tipo,
+      sub: `${kWcorto} · ${c.V} V ${c.ph}F · ${n(c.I, 1)} A${c.ph === 1 && c.fase ? ` · ${L("fase", "phase")} ${c.fase}` : ""}`,
+      detalle: L(`${c.label} · ${kWtxt} · ${c.V} V ${c.ph}F · ${n(c.I, 1)} A (${calcT}: ${origenI}) · fp ${n(c.fp, 2)} (${fpOrigenTexto(c, en)})${c.ph === 1 && c.fase ? ` · fase ${c.fase} (balanceo ${calcT})` : ""}${c.auto ? " · desde otro motor" : ""}`,
+        `${c.label} · ${kWtxt} · ${c.V} V ${c.ph}F · ${n(c.I, 1)} A (${calcT}: ${origenI}) · pf ${n(c.fp, 2)} (${fpOrigenTexto(c, en)})${c.ph === 1 && c.fase ? ` · phase ${c.fase} (${calcT} balancing)` : ""}${c.auto ? " · from another module" : ""}`) });
+    tramos.push({ de: "tablero", a: idC, etiqueta: "" });
+    tramos.push({ de: idC, a: idK, etiqueta: `${Ltxt} · ${dvTxt}` });
+    if (c.sinL) pendientes.push(L(`${num} ${c.nombre}: longitud pendiente; la caída de tensión no se supone.`, `${num} ${c.nombre}: length pending; the voltage drop is not assumed.`));
+  });
+  return out;
+}
+
+function describirTrifilar(R, en = false) {
+  const L = (es, ingles) => (en ? ingles : es);
+  const circuitos = [], pendientes = [];
+  const calc = (R && R.calc) || [], sis = (R && R.sis) || {};
+  /* El sistema declara neutro cuando su tensión a neutro difiere de la de línea (3F4H, 1F3H); el 3F3H no lo tiene. */
+  const conN = sis.Vf != null && sis.Vf !== sis.V;
+  const barras = ["A", "B", "C", ...(conN ? ["N"] : []), "T"];
+  const out = { version: MOTOR_VER.elec, titulo: L("Diagrama trifilar", "Three-line diagram"), sistema: ufSistema(R), barras, conN, circuitos, balance: null, pendientes };
+  if (!calc.length) {
+    pendientes.push(L("Sin cargas capturadas: no hay derivaciones que dibujar (nada se supone).", "No loads captured: there are no branches to draw (nothing is assumed)."));
+    return out;
+  }
+  const calcT = L("calculado", "calculated"), pend = L("pendiente", "pending");
+  const F = R.fases || {};
+  out.balance = { A: F.A, B: F.B, C: F.C, desbalance: R.desbalance, alto: R.desbalance > 5,
+    texto: L(`Balance por fase (${calcT}): A ${n(F.A, 2)} · B ${n(F.B, 2)} · C ${n(F.C, 2)} kVA · desbalance ${n(R.desbalance, 1)} %`, `Phase balance (${calcT}): A ${n(F.A, 2)} · B ${n(F.B, 2)} · C ${n(F.C, 2)} kVA · unbalance ${n(R.desbalance, 1)} %`) };
+  calc.forEach((c, i) => {
+    const num = ufNum(i);
+    const k = { id: `c-${String(i + 1).padStart(2, "0")}`, num, etiqueta: `${num} · ${c.nombre}${c.cant > 1 ? ` ×${c.cant}` : ""}`, ph: c.ph, sinI: !!c.sinI, fases: [], neutro: null, segundo: null, tierra: null, proteccion: "", sub: "", conductores: "", pendientes: [] };
+    circuitos.push(k);
+    if (c.sinI) {
+      k.sub = L("ramal pendiente: sin corriente", "branch pending: no current"); k.pendientes.push(k.sub);
+      pendientes.push(L(`${num} ${c.nombre}: sin corriente de tabla ni kW, el ramal no está dimensionado.`, `${num} ${c.nombre}: no table current and no kW, the branch is not sized.`));
+      return;
+    }
+    const K = c.cond, u = ufUnidad(K.awg), par = K.paralelo > 1 ? `${K.paralelo} × ` : "";
+    const fase = (f, kVA) => ({ fase: f, awg: K.awg, unidad: u, cantidad: K.paralelo || 1, kVA, etiqueta: `${f} · ${par}${K.awg} ${u} · ${n(kVA, 2)} kVA` });
+    if (c.ph === 3) {
+      /* Trifásica: un tercio a cada fase, como balancea computeElec. */
+      k.fases = ["A", "B", "C"].map((f) => fase(f, c.kVAtot / 3));
+      k.neutro = { awg: K.awg, unidad: u, cantidad: K.paralelo || 1, nota: L("mismo calibre que la fase: así lo cuenta computeElec en el relleno de la canalización (corriente de neutro no calculada)", "same size as the phase: that is how computeElec counts it in the raceway fill (neutral current not calculated)") };
+      if (!conN) {
+        k.pendientes.push(L("neutro contado en la canalización, pero el sistema no tiene neutro", "neutral counted in the raceway, but the system has no neutral"));
+        pendientes.push(L(`${num} ${c.nombre}: computeElec cuenta un neutro del calibre de fase en la canalización, pero el sistema ${ufSistema(R)} no tiene neutro: pendiente de revisión.`, `${num} ${c.nombre}: computeElec counts a phase-size neutral in the raceway, but the ${ufSistema(R)} system has no neutral: review pending.`));
+      }
+    } else {
+      /* Monofásica: baja a la(s) fase(s) que le asignó el balanceo, con el kVA que cayó en cada una. */
+      const ks = Object.keys(c.fases || {}).sort();
+      k.fases = ks.map((f) => fase(f, c.fases[f]));
+      if (ks.length > 1) {
+        k.pendientes.push(L(`repartida en ${ks.length} fases por el balanceo; un solo ramal dimensionado`, `split across ${ks.length} phases by the balancing; a single sized branch`));
+        pendientes.push(L(`${num} ${c.nombre}: el balanceo la reparte en ${ks.length} fases (${ks.join("/")}) pero se dimensiona como un solo ramal: los circuitos derivados reales quedan pendientes.`, `${num} ${c.nombre}: balancing splits it across ${ks.length} phases (${ks.join("/")}) but it is sized as a single branch: the actual branch circuits remain pending.`));
+      }
+      /* El segundo conductor (neutro o segunda fase) existe en el conteo de selConductor, pero el motor no dice cuál es. */
+      k.segundo = { awg: K.awg, unidad: u, cantidad: 1, destino: pend, nota: L("2.º conductor del circuito monofásico: computeElec no distingue si es neutro o segunda fase", "2nd conductor of the single-phase circuit: computeElec does not tell whether it is neutral or a second phase") };
+      pendientes.push(L(`${num} ${c.nombre}: el 2.º conductor (neutro o segunda fase) no lo distingue computeElec: pendiente.`, `${num} ${c.nombre}: the 2nd conductor (neutral or second phase) is not identified by computeElec: pending.`));
+    }
+    k.tierra = { awg: K.tierra, unidad: ufUnidad(K.tierra), mat: K.tierraMat, cantidad: 1, nota: L("Tabla 250-122 (NOM-001-SEDE-2012), por la protección", "Table 250-122 (NOM-001-SEDE-2012), by the protection") };
+    k.proteccion = `${K.ocpd} A ${c.ph === 3 ? "3P" : "1F"}`;
+    k.sub = `${K.ocpd} A · ${n(c.I, 1)} A · ${par}${K.awg} ${u}`;
+    k.conductores = `${k.fases.length}×${par}${K.awg} ${u}${k.neutro ? ` + N ${K.awg}` : k.segundo ? " + N/F?" : ""} · T ${K.tierra} ${ufUnidad(K.tierra)}`;
+  });
+  if (sis.ph === 1) pendientes.push(L(`Sistema monofásico ${ufSistema(R)} (L1, L2, N): computeElec balancea en tres fases A/B/C; el trifilar lo dibuja así, pendiente de decisión del motor.`, `Single-phase ${ufSistema(R)} system (L1, L2, N): computeElec balances across three phases A/B/C; the diagram draws it that way, pending an engine decision.`));
+  return out;
+}
+
+/* ---------- 2) Geometría (bloques de primitivas) ---------- */
+function geometriaUnifilar(u) {
+  const W = UF_ANCHO, xb = 86, xt = xb + 22, bloques = [];
+  const nodo = (id) => u.nodos.find((x) => x.id === id);
+  const bloque = (h) => { const b = { h, el: [] }; bloques.push(b); return b; };
+  const T = (b, x, y, s, o = {}) => b.el.push({ t: "texto", x, y, s, size: o.size || 12, ancla: o.ancla || "ini", peso: !!o.peso, tit: o.tit, maxW: o.maxW, pend: !!o.pend });
+  const Ln = (b, x1, y1, x2, y2, o = {}) => b.el.push({ t: "linea", x1, y1, x2, y2, grueso: o.grueso, dash: o.dash, flecha: !!o.flecha, pend: !!o.pend });
+  if (!u.nodos.length) return { w: W, bloques };
+  /* Cabecera: acometida → (transformador) → interruptor general → alimentador general → tablero. */
+  const cab = bloque(0);
+  let y = 6;
+  const aco = nodo("acometida");
+  Ln(cab, xb, y, xb, y + 34, { flecha: true }); T(cab, xt, y + 16, aco.etiqueta, { size: 13, peso: true, tit: aco.detalle }); T(cab, xt, y + 30, aco.sub, { size: 11, maxW: W - xt - 8 }); y += 36;
+  const tr = nodo("trafo");
+  if (tr) {
+    Ln(cab, xb, y, xb, y + 8); cab.el.push({ t: "circ", cx: xb, cy: y + 19, r: 11 }); cab.el.push({ t: "circ", cx: xb, cy: y + 37, r: 11 }); Ln(cab, xb, y + 48, xb, y + 58);
+    T(cab, xt, y + 22, tr.etiqueta, { size: 13, peso: true, tit: tr.detalle }); T(cab, xt, y + 38, tr.sub, { size: 11, maxW: W - xt - 8 }); y += 58;
+  }
+  const gen = nodo("general");
+  Ln(cab, xb, y, xb, y + 10); Ln(cab, xb, y + 30, xb + 14, y + 10); cab.el.push({ t: "circ", cx: xb, cy: y + 10, r: 2, relleno: true }); Ln(cab, xb, y + 30, xb, y + 40);
+  T(cab, xt, y + 18, gen.etiqueta, { size: 13, peso: true, tit: gen.detalle }); T(cab, xt, y + 33, gen.sub, { size: 11, maxW: W - xt - 8, pend: gen.sub.includes("pendiente") || gen.sub.includes("pending") }); y += 40;
+  const alim = u.tramos.find((t) => t.a === "tablero");
+  const lineasAlim = ufPartir(alim.etiqueta, 11, W - xt - 8, 2);
+  Ln(cab, xb, y, xb, y + 14 + lineasAlim.length * 14, { flecha: true });
+  lineasAlim.forEach((l, i) => T(cab, xt, y + 16 + i * 14, l, { size: 11, tit: alim.detalle })); y += 16 + lineasAlim.length * 14;
+  const tab = nodo("tablero");
+  cab.el.push({ t: "rect", x: xb - 16, y, w: 32, h: 26 }); Ln(cab, xb, y + 26, xb, y + 40, { grueso: 3 });
+  T(cab, xt + 2, y + 13, tab.etiqueta, { size: 13, peso: true, tit: tab.detalle }); T(cab, xt + 2, y + 27, tab.sub, { size: 11, maxW: W - xt - 10 }); y += 40;
+  cab.h = y;
+  /* Un renglón por circuito: bus → interruptor (trazo inclinado) → conductor → símbolo de carga → rótulos. */
+  const ABREV = { alumbrado: "ALU", contactos: "CON", proceso: "PRO", resistiva: "RES", ups: "UPS" };
+  const xL = xb + 250;
+  u.tramos.filter((t) => t.de === "tablero").forEach((t) => {
+    const a = nodo(t.a), esCarga = a.tipo === "carga", carga = esCarga ? a : nodo((u.tramos.find((t2) => t2.de === a.id) || {}).a);
+    const b = bloque(62), yc = 22;
+    Ln(b, xb, 0, xb, 62, { grueso: 3 });
+    if (esCarga) {
+      /* Ramal sin dimensionar: trazo punteado hasta la carga y rótulo «pendiente»; sin interruptor ni conductor inventados. */
+      Ln(b, xb, yc, xL - 16, yc, { dash: "4 4", pend: true });
+      b.el.push({ t: "rect", x: xL - 13, y: yc - 11, w: 26, h: 22, pend: true });
+      T(b, xb + 56, yc - 7, a.sub, { size: 12, pend: true, tit: a.detalle, maxW: xL - 16 - (xb + 56) });
+      T(b, xL + 22, yc - 7, a.etiqueta, { size: 12, peso: true, tit: a.detalle, maxW: W - (xL + 22) - 6 });
+      return;
+    }
+    Ln(b, xb, yc, xb + 34, yc); Ln(b, xb + 34, yc, xb + 48, yc - 12); Ln(b, xb + 52, yc, xL - 16, yc, { flecha: true });
+    b.el.push({ t: "circ", cx: xb + 34, cy: yc, r: 2, relleno: true });
+    if (carga && carga.motor) { b.el.push({ t: "circ", cx: xL, cy: yc, r: 13 }); T(b, xL, yc + 4, "M", { size: 12, ancla: "med", peso: true }); }
+    else { b.el.push({ t: "rect", x: xL - 13, y: yc - 11, w: 26, h: 22 }); T(b, xL, yc + 4, ABREV[carga && carga.tipoCarga] || "CAR", { size: 11, ancla: "med" }); }
+    T(b, xb + 56, yc - 7, a.etiqueta, { size: 12, tit: a.detalle, maxW: xL - 16 - (xb + 56) });
+    T(b, xb + 56, yc + 27, a.sub, { size: 11, tit: a.detalle, maxW: W - (xb + 56) - 8, pend: /pendiente|pending/.test(a.sub) });
+    if (carga) { T(b, xL + 22, yc - 7, carga.etiqueta, { size: 12, peso: true, tit: carga.detalle, maxW: W - (xL + 22) - 6 }); T(b, xL + 22, yc + 8, carga.sub, { size: 11, tit: carga.detalle, maxW: W - (xL + 22) - 6 }); }
+  });
+  /* Pie: remate del bus y leyenda de símbolos. */
+  const pie = bloque(44);
+  Ln(pie, xb, 0, xb, 8, { grueso: 3 }); Ln(pie, xb - 8, 8, xb + 8, 8, { grueso: 3 });
+  ufPartir("M motor · ALU alumbrado · CON contactos · PRO proceso · RES resistiva · UPS cómputo · CAR otra carga · trazo inclinado: interruptor · e: caída de tensión · e / c junto al kW: estimado / de catálogo", 11, W - xt - 8, 2).forEach((l, i) => T(pie, xt, 22 + i * 14, l, { size: 11 }));
+  return { w: W, bloques };
+}
+
+function geometriaTrifilar(tf) {
+  const W = UF_ANCHO, bloques = [], porBanda = 3, colW = 172, x0 = 68;
+  const bloque = (h) => { const b = { h, el: [] }; bloques.push(b); return b; };
+  const T = (b, x, y, s, o = {}) => b.el.push({ t: "texto", x, y, s, size: o.size || 12, ancla: o.ancla || "ini", peso: !!o.peso, tit: o.tit, maxW: o.maxW, pend: !!o.pend });
+  const Ln = (b, x1, y1, x2, y2, o = {}) => b.el.push({ t: "linea", x1, y1, x2, y2, grueso: o.grueso, dash: o.dash, flecha: !!o.flecha, pend: !!o.pend });
+  if (!tf.circuitos.length) return { w: W, bloques };
+  const yB = { A: 28, B: 46, C: 64 }, yN = 82, yT = tf.conN ? 100 : 82, yInt = 126, yCaja = 178;
+  const rot = { A: "L1 (A)", B: "L2 (B)", C: "L3 (C)", N: "N", T: "T" };
+  for (let b0 = 0; b0 < tf.circuitos.length; b0 += porBanda) {
+    const banda = tf.circuitos.slice(b0, b0 + porBanda), b = bloque(244);
+    /* Barras: A, B, C gruesas; N a guiones; T a guion y punto. */
+    tf.barras.forEach((k) => {
+      const yy = k === "N" ? yN : k === "T" ? yT : yB[k];
+      Ln(b, 52, yy, W - 8, yy, k === "N" ? { dash: "6 4", grueso: 1.6 } : k === "T" ? { dash: "2 3", grueso: 1.6 } : { grueso: 2.4 });
+      T(b, 8, yy + 4, rot[k], { size: 11 });
+    });
+    if (b0 > 0) T(b, W - 8, 16, "(continúa)", { size: 11, ancla: "fin" });
+    banda.forEach((k, j) => {
+      const xc = x0 + j * colW;
+      let xd = xc + 14;
+      const baja = (yDesde, o = {}) => {
+        if (yDesde != null) b.el.push({ t: "circ", cx: xd, cy: yDesde, r: 2.5, relleno: true, pend: o.pend });
+        if (o.interruptor) { Ln(b, xd, yDesde, xd, yInt - 2, o); Ln(b, xd, yInt + 12, xd + 9, yInt - 2, o); Ln(b, xd, yInt + 12, xd, yCaja - 2, { ...o, flecha: true }); }
+        else Ln(b, xd, yDesde != null ? yDesde : yInt + 24, xd, yCaja - 2, { ...o, flecha: yDesde != null });
+        xd += 16;
+      };
+      if (k.sinI) {
+        b.el.push({ t: "rect", x: xc + 4, y: yCaja, w: colW - 14, h: 40, pend: true });
+        T(b, xc + 9, yCaja + 15, k.etiqueta, { size: 12, peso: true, maxW: colW - 24, tit: k.etiqueta });
+        T(b, xc + 9, yCaja + 30, k.sub, { size: 11, maxW: colW - 24, pend: true });
+        return;
+      }
+      k.fases.forEach((f) => baja(yB[f.fase], { interruptor: true }));
+      if (k.neutro && tf.conN) baja(yN, { dash: "6 4" });
+      else if (k.neutro) { T(b, xd - 4, yInt + 20, "N?", { size: 11, pend: true, tit: k.pendientes.join(" · ") }); baja(null, { dash: "6 4", pend: true }); }
+      if (k.segundo) { T(b, xd - 6, yInt + 20, "N/F?", { size: 11, pend: true, tit: k.segundo.nota }); baja(null, { dash: "6 4", pend: true }); }
+      baja(yT, { dash: "2 3" });
+      b.el.push({ t: "rect", x: xc + 4, y: yCaja, w: colW - 14, h: 40 });
+      T(b, xc + 9, yCaja + 15, k.etiqueta, { size: 12, peso: true, maxW: colW - 24, tit: k.etiqueta });
+      T(b, xc + 9, yCaja + 30, k.sub, { size: 11, maxW: colW - 24, tit: k.sub });
+      T(b, xc + 9, yCaja + 54, k.conductores, { size: 11, maxW: colW - 14, tit: [k.conductores, ...(k.pendientes || [])].join(" · "), pend: k.pendientes.length > 0 });
+    });
+  }
+  const pie = bloque(26);
+  T(pie, 8, 16, tf.balance.texto, { size: 11, maxW: W - 16, pend: tf.balance.alto });
+  return { w: W, bloques };
+}
+
+/* ---------- 3) Renderizadores: SVG en línea (pantalla) y primitivas del PDF (memoria) ---------- */
+function svgDiagrama(geo, aria, sufijo) {
+  const W = geo.w, H = geo.bloques.reduce((a, b) => a + b.h, 0), f = (v) => Math.round(v * 10) / 10, partes = [];
+  let y0 = 0;
+  geo.bloques.forEach((b) => {
+    b.el.forEach((e) => {
+      const cls = e.pend ? ' class="uf-pend"' : "";
+      if (e.t === "linea") partes.push(`<line x1="${f(e.x1)}" y1="${f(e.y1 + y0)}" x2="${f(e.x2)}" y2="${f(e.y2 + y0)}"${e.grueso ? ` stroke-width="${e.grueso}"` : ""}${e.dash ? ` stroke-dasharray="${e.dash}"` : ""}${e.flecha ? ` marker-end="url(#uf-fl-${sufijo})"` : ""}${cls}/>`);
+      else if (e.t === "rect") partes.push(`<rect x="${f(e.x)}" y="${f(e.y + y0)}" width="${f(e.w)}" height="${f(e.h)}" rx="2"${cls}/>`);
+      else if (e.t === "circ") partes.push(`<circle cx="${f(e.cx)}" cy="${f(e.cy + y0)}" r="${f(e.r)}"${e.relleno ? ' fill="currentColor"' : ""}${cls}/>`);
+      else if (e.t === "texto") partes.push(`<text x="${f(e.x)}" y="${f(e.y + y0)}" font-size="${e.size}" fill="currentColor" stroke="none"${e.ancla === "med" ? ' text-anchor="middle"' : e.ancla === "fin" ? ' text-anchor="end"' : ""}${e.peso ? ' font-weight="600"' : ""}${cls}>${e.tit ? `<title>${esc(e.tit)}</title>` : ""}${esc(ufRecortar(e.s, e.size, e.maxW))}</text>`);
+    });
+    y0 += b.h;
+  });
+  return `<svg class="uf" role="img" aria-label="${esc(aria)}" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" style="max-width:100%;height:auto;display:block" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><defs><marker id="uf-fl-${sufijo}" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0.5L7.5 4L0 7.5z" fill="currentColor" stroke="none"/></marker></defs>${partes.join("")}</svg>`;
+}
+function svgUnifilar(u) {
+  const nC = u.nodos.filter((x) => x.tipo === "alimentador").length;
+  return svgDiagrama(geometriaUnifilar(u), `Diagrama unifilar: acometida${u.nodos.some((x) => x.tipo === "transformador") ? ", transformador" : ""}, interruptor general, tablero general y ${nC} circuito(s) dimensionado(s); ${u.pendientes.length} pendiente(s)`, "u");
+}
+function svgTrifilar(tf) {
+  return svgDiagrama(geometriaTrifilar(tf), `Diagrama trifilar: barras ${tf.barras.join(", ")} del sistema ${tf.sistema} con ${tf.circuitos.length} derivación(es); ${tf.pendientes.length} pendiente(s)`, "t");
+}
+function pdfDiagrama(d, geo) {
+  const s = (d.W - 2 * d.M) / geo.w, tinta = [0.2, 0.2, 0.2];
+  geo.bloques.forEach((b) => {
+    const h = b.h * s;
+    d.space(h);
+    const X = (x) => d.M + x * s, Y = (y) => d.y + y * s;
+    b.el.forEach((e) => {
+      const col = e.pend ? PDF_SENAL : tinta;
+      if (e.t === "linea") {
+        if (e.dash) d.dash(e.dash);
+        d.line(X(e.x1), Y(e.y1), X(e.x2), Y(e.y2), col, Math.max(.5, (e.grueso || 1.4) * s * .8));
+        if (e.dash) d.dash(null);
+        if (e.flecha) {
+          const ang = Math.atan2(e.y2 - e.y1, e.x2 - e.x1), k = 5;
+          [ang + Math.PI - .45, ang + Math.PI + .45].forEach((a) => d.line(X(e.x2), Y(e.y2), X(e.x2) + k * Math.cos(a), Y(e.y2) + k * Math.sin(a), col, .8));
+        }
+      } else if (e.t === "rect") d.rectStroke(X(e.x), Y(e.y), e.w * s, e.h * s, col, .8);
+      else if (e.t === "circ") d.circle(X(e.cx), Y(e.cy), e.r * s, col, .8, !!e.relleno);
+      else if (e.t === "texto") {
+        const size = e.size * s * .82, txt = pdfEnc(ufRecortar(e.s, e.size, e.maxW)), w = textWidth(txt, size, e.peso);
+        d.text(txt, e.ancla === "med" ? X(e.x) - w / 2 : e.ancla === "fin" ? X(e.x) - w : X(e.x), Y(e.y), { size, bold: e.peso, color: col });
+      }
+    });
+    d.y += h;
+  });
+  d.y += 6;
+}
+
+/* ---------- Dónde se cuelgan: tarjeta de la pestaña y capítulo de la memoria ---------- */
+function tarjetaDiagramasElec(R) {
+  const u = describirUnifilar(R), tf = describirTrifilar(R), ver = MOTOR_VER.elec;
+  const pie = (t) => `${t} · procedencia: computeElec v${ver}, capturado en esta pestaña`;
+  const pend = (p) => (p.length ? `<div class="sub" style="margin-top:6px"><b>Pendientes</b> (no se suponen): ${p.map(esc).join(" · ")}</div>` : "");
+  const uni = u.nodos.length ? `<figure class="uf-fig">${svgUnifilar(u)}<figcaption>${esc(pie("Diagrama unifilar"))}</figcaption></figure>${pend(u.pendientes)}`
+    : `<div class="sub">Diagrama unifilar: pendiente · ${esc(u.pendientes.join(" · "))}</div>`;
+  const tri = tf.circuitos.length ? `<figure class="uf-fig">${svgTrifilar(tf)}<figcaption>${esc(pie("Diagrama trifilar"))}</figcaption></figure>${pend(tf.pendientes)}`
+    : `<div class="sub">Diagrama trifilar: pendiente · ${esc(tf.pendientes.join(" · "))}</div>`;
+  return `<div class="card"><h3>Diagramas<span class="tag">unifilar · trifilar</span></h3><div class="body">
+        <div class="viz-t">Unifilar</div>${uni}
+        <div class="viz-t" style="margin-top:18px">Trifilar</div>${tri}
+        <div class="sub" style="margin-top:8px">Preselección NOM-001-SEDE: no sustituye el estudio de corto circuito ni la coordinación de protecciones. Los diagramas no mueven cifras: son la lectura del cuadro de cargas.</div>
+      </div></div>`;
+}
+function pdfDiagramasElec(d, R) {
+  const u = describirUnifilar(R), tf = describirTrifilar(R), ver = MOTOR_VER.elec, gris = [0.294, 0.333, 0.388];
+  const proc = (t) => `${t}: procedencia computeElec v${ver}, capturado en esta pestana. Preseleccion NOM-001-SEDE; no sustituye el estudio de corto circuito ni la coordinacion de protecciones. Cada rotulo dice de donde sale su valor: capturado, calculado (tabla o articulo) o criterio de la casa.`;
+  pdfHeading(d, "3b. Diagrama unifilar");
+  if (!u.nodos.length) pdfParagraph(d, `Diagrama unifilar pendiente: ${u.pendientes.join(" · ")}`, { color: PDF_SENAL });
+  else {
+    pdfDiagrama(d, geometriaUnifilar(u));
+    pdfParagraph(d, proc("Diagrama unifilar"), { color: gris });
+    pdfRows(d, [...u.nodos.map((x) => [x.etiqueta, x.detalle]), ...u.tramos.filter((t) => t.detalle).map((t) => ["Alimentador general", t.detalle])]);
+    if (u.pendientes.length) pdfParagraph(d, `Pendientes del unifilar (no se suponen): ${u.pendientes.join(" · ")}`, { color: PDF_SENAL });
+  }
+  pdfHeading(d, "3c. Diagrama trifilar");
+  if (!tf.circuitos.length) pdfParagraph(d, `Diagrama trifilar pendiente: ${tf.pendientes.join(" · ")}`, { color: PDF_SENAL });
+  else {
+    pdfDiagrama(d, geometriaTrifilar(tf));
+    pdfParagraph(d, proc("Diagrama trifilar"), { color: gris });
+    pdfRows(d, tf.circuitos.map((k) => [k.etiqueta, k.sinI ? k.sub : `${k.fases.map((f) => f.etiqueta).join(" · ")}${k.neutro ? ` · N ${k.neutro.awg} ${k.neutro.unidad} (${k.neutro.nota})` : ""}${k.segundo ? ` · 2.º conductor ${k.segundo.awg} ${k.segundo.unidad}: ${k.segundo.destino} (${k.segundo.nota})` : ""} · T ${k.tierra.awg} ${k.tierra.unidad} ${k.tierra.mat} (${k.tierra.nota}) · proteccion ${k.proteccion}`]));
+    if (tf.pendientes.length) pdfParagraph(d, `Pendientes del trifilar (no se suponen): ${tf.pendientes.join(" · ")}`, { color: PDF_SENAL });
+  }
+}
+
 function viewElec() {
   const E = S.elec, R = ELEC;
   const M = (v, d = 1) => n(v, d);
@@ -21285,6 +21685,7 @@ function viewElec() {
           <tbody>${R.calc.map(fila).join("") || `<tr><td colspan="10" class="sub">Sin cargas. Agrega una, o acepta la propuesta de cargas de los demás motores (entran como instantánea, con origen y fecha).</td></tr>`}</tbody>
         </table></div>
       </div>
+      ${tarjetaDiagramasElec(R)}
       <div class="card"><h3>Demanda y alimentador general</h3><div class="body">
         <div class="metrics">
           <div class="metric"><div class="k">Carga conectada</div><div class="v">${M(R.kVAconectada, 1)} <small>kVA</small></div></div>

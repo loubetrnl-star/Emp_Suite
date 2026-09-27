@@ -9066,6 +9066,161 @@ t("GC.5 Cotización conserva la ayuda propia de sus campos, el aviso de IVA y lo
   });
 });
 
+/* ===== H-270 / H-271 · Diagramas unifilar y trifilar del eléctrico (pedido del dueño, 27-sep-2026) =====
+   La prueba verifica la DESCRIPCIÓN (nodos, tramos, pendientes) que sale de computeElec y que la pantalla y la memoria la
+   dibujan; no verifica píxeles. Sin captura no se inventa ningún nodo (regla 6). Los diagramas no mueven cifras. */
+const n = G("n");
+const proyectoUnifilar = () => {
+  const d = G("defaultElec")();
+  S.elec = { ...d, tomarHVAC: false, Ltablero: 40, trafoKVA: 300, trafoZ: 4, cargas: [
+    { ...G("defaultCarga")("Motor de proceso"), tipo: "motor", kW: 15, V: 220, ph: 3, fp: .85, L: 30 },
+    { ...G("defaultCarga")("Tarja de laboratorio"), tipo: "proceso", kW: 2, V: 127, ph: 1, fp: .9, L: 35 },
+    { ...G("defaultCarga")("Horno de curado"), tipo: "resistiva", kW: 12, V: 220, ph: 3, fp: 1, L: 20 }] };
+  G("recompute")();
+  const R = G("ELEC");
+  if (R.calc.length !== 3 || R.calc.some((c) => c.sinI) || R.calc[1].ph !== 1 || Object.keys(R.calc[1].fases || {}).length !== 1) throw new Error("el caso no aísla lo que se prueba: tres circuitos dimensionados, el segundo monofásico en una sola fase");
+  return R;
+};
+const sinTexto = (s, ctx) => { if (/undefined|NaN|\bnull\b|—/.test(String(s))) throw new Error(`${ctx}: imprime un hueco como dato: «${s}»`); };
+t("S.150 (H-270) diagrama unifilar: la descripción sale de computeElec con un nodo «alimentador» por circuito dimensionado (calibre y protección en la etiqueta), el tramo tablero→alimentador y el SVG accesible en la pestaña y en la memoria PDF; sin captura no se inventa ningún nodo y se listan los pendientes", () => {
+  const guardado = JSON.stringify(S.elec), tab0 = S.tab;
+  try {
+    const R = proyectoUnifilar();
+    const fn = w.describirUnifilar;
+    const u = typeof fn === "function" ? fn(R) : { nodos: [], tramos: [], pendientes: [] };
+    const alims = u.nodos.filter((x) => x.tipo === "alimentador");
+    eq(alims.length, R.calc.filter((c) => !c.sinI).length, "un nodo alimentador por circuito dimensionado:");
+    R.calc.forEach((c, i) => {
+      const a = alims[i];
+      contiene(a.etiqueta, c.cond.awg, `alimentador ${i + 1}: calibre en la etiqueta:`);
+      contiene(a.etiqueta, `${c.cond.ocpd} A`, `alimentador ${i + 1}: protección en la etiqueta:`);
+      contiene(a.detalle, c.cond.tierra, `alimentador ${i + 1}: tierra en el detalle:`);
+      contiene(a.detalle, c.cond.tubo.d, `alimentador ${i + 1}: canalización en el detalle:`);
+      contiene(a.detalle, `${c.L} m`, `alimentador ${i + 1}: longitud capturada:`);
+      if (!u.tramos.some((tr) => tr.de === "tablero" && tr.a === a.id)) throw new Error(`falta el tramo tablero→${a.id}`);
+      const tr2 = u.tramos.find((tr) => tr.de === a.id); if (!tr2) throw new Error(`el alimentador ${a.id} no llega a ninguna carga`);
+      const carga = u.nodos.find((x) => x.id === tr2.a && x.tipo === "carga"); if (!carga) throw new Error(`el tramo ${a.id}→${tr2.a} no termina en una carga`);
+      contiene(carga.etiqueta, c.nombre, "la carga lleva su nombre:"); contiene(carga.detalle, `${n(c.I, 1)} A`, "y su corriente:");
+      [a.etiqueta, a.detalle, carga.etiqueta, carga.detalle].forEach((s) => sinTexto(s, `circuito ${i + 1}`));
+    });
+    const tipos = u.nodos.map((x) => x.tipo);
+    ["acometida", "transformador", "proteccion", "tablero"].forEach((tp) => { if (!tipos.includes(tp)) throw new Error(`falta el nodo «${tp}»`); });
+    const trafo = u.nodos.find((x) => x.tipo === "transformador");
+    contiene(trafo.detalle, "300 kVA", "transformador con la placa capturada:"); contiene(trafo.detalle, "Z 4 %", "y su impedancia:");
+    contiene(trafo.detalle, `${n(R.IccTrafo / 1000, 1)} kA`, "corriente de falla del motor:");
+    const gen = u.nodos.find((x) => x.tipo === "proteccion"); contiene(gen.detalle, `${R.principal} A`, "interruptor general con el principal del motor:"); contiene(gen.detalle, `${R.kAIC} kA`, "y la capacidad interruptiva:");
+    const tab = u.nodos.find((x) => x.tipo === "tablero"); contiene(tab.detalle, `${R.principal} A`, "tablero con la capacidad del principal:");
+    const alimG = u.tramos.find((tr) => tr.a === "tablero"); if (!alimG) throw new Error("falta el tramo del alimentador general hacia el tablero");
+    contiene(alimG.etiqueta, R.alim.awg, "alimentador general: calibre:"); contiene(alimG.etiqueta, "40 m", "y la distancia capturada:");
+    if (u.pendientes.some((p) => /transformador|distancia al tablero/i.test(p))) throw new Error("con transformador y distancia capturados no debe haber pendientes de ellos: " + u.pendientes.join(" | "));
+    u.nodos.forEach((x) => sinTexto(x.etiqueta + " " + x.detalle, x.id)); u.pendientes.forEach((p) => sinTexto(p, "pendiente"));
+    eq(String(u.version), String(G("MOTOR_VER").elec), "la descripción declara la versión del motor:");
+    /* Pantalla: SVG en línea, accesible, en currentColor, sin nada externo, que no desborda en celular; con pie de procedencia. */
+    S.tab = "electrico"; G("render")();
+    const v = vista();
+    if (!/<svg[^>]*\brole="img"[^>]*\baria-label="Diagrama unifilar[^"]*"/.test(v)) throw new Error("la pestaña no trae el <svg role=\"img\" aria-label=\"Diagrama unifilar…\">");
+    const ini = v.indexOf('<figure class="uf-fig"'), fin = v.indexOf("</figure>", ini);
+    if (ini < 0 || fin < 0) throw new Error("el diagrama no va en un <figure>");
+    const fig = v.slice(ini, fin);
+    contiene(fig, `<figcaption>Diagrama unifilar · procedencia: computeElec v${G("MOTOR_VER").elec}, capturado en esta pestaña`, "pie de figura con procedencia:");
+    contiene(fig, "max-width:100%", "no desborda en celular:"); contiene(fig, "height:auto", "alto proporcional:");
+    contiene(fig, "<defs><marker", "puntas de flecha con <marker>:");
+    if (/<img|https?:\/\/|<script|@import/.test(fig)) throw new Error("el diagrama carga algo de fuera");
+    if (/(stroke|fill)="#/.test(fig)) throw new Error("el diagrama lleva colores en duro; debe heredar currentColor");
+    if (!/stroke="currentColor"/.test(fig) || !/fill="currentColor"/.test(fig)) throw new Error("trazos y texto deben ir en currentColor");
+    contiene(fig, "Motor de proceso", "la carga está rotulada:"); contiene(fig, "Tablero general", "el tablero está rotulado:");
+    const fs2 = [...fig.matchAll(/font-size="([\d.]+)"/g)].map((m) => Number(m[1]));
+    if (!fs2.length || fs2.some((f) => f < 11 || f > 13)) throw new Error("texto fuera de 11–13 px: " + fs2.join(","));
+    /* Memoria PDF: el mismo diagrama, con las primitivas del PDF propio (rectángulo con contorno y círculo). */
+    const bytes = G("buildElecPdf")(), pdf = txtPdfE(bytes), crudo = Buffer.from(bytes).toString("latin1");
+    contiene(pdf, "Diagrama unifilar", "la memoria PDF trae el diagrama:"); contiene(pdf, "C-01", "con los circuitos numerados:");
+    contiene(pdf, "Motor de proceso", "y las cargas rotuladas:");
+    if (!/ re S\n/.test(crudo)) throw new Error("el PDF no dibuja rectángulos con contorno (re S)");
+    if (!/ c\n/.test(crudo)) throw new Error("el PDF no dibuja círculos (curvas c)");
+    if (/undefined|NaN|\bnull\b/.test(pdf)) throw new Error("el PDF imprime «undefined», «NaN» o «null»");
+    /* Sin captura: ningún nodo inventado, pendientes declarados. */
+    const d = G("defaultElec")();
+    S.elec = { ...d, tomarHVAC: false, cargas: [] }; G("recompute")();
+    const u0 = typeof fn === "function" ? fn(G("ELEC")) : { nodos: [{ tipo: "inventado" }], tramos: [], pendientes: [] };
+    eq(u0.nodos.length, 0, "sin cargas no se inventa ningún nodo:"); eq(u0.tramos.length, 0, "ni tramos:");
+    if (!u0.pendientes.some((p) => /sin cargas/i.test(p))) throw new Error("sin captura debe listar el pendiente: " + u0.pendientes.join(" | "));
+    S.tab = "electrico"; G("render")();
+    if (/aria-label="Diagrama unifilar/.test(vista())) throw new Error("sin cargas no debe dibujarse un unifilar");
+    /* Con cargas pero sin transformador ni distancias: el nodo no aparece y los faltantes se listan; nada supuesto. */
+    S.elec = { ...d, tomarHVAC: false, cargas: [{ ...G("defaultCarga")("Motor sin distancia"), tipo: "motor", kW: 7.5, V: 220, ph: 3, fp: .85, L: 0 }] }; G("recompute")();
+    const u1 = typeof fn === "function" ? fn(G("ELEC")) : { nodos: [{ tipo: "transformador" }], tramos: [], pendientes: [] };
+    if (u1.nodos.some((x) => x.tipo === "transformador")) throw new Error("sin placa capturada no debe aparecer el transformador");
+    ["transformador", "distancia al tablero", "Motor sin distancia"].forEach((k) => { if (!u1.pendientes.some((p) => new RegExp(k, "i").test(p))) throw new Error(`falta el pendiente «${k}»: ` + u1.pendientes.join(" | ")); });
+    const todo = JSON.stringify(u1);
+    if (/150 kVA|Z 4 %|\b30 m\b|\b25 m\b/.test(todo)) throw new Error("el diagrama imprime un valor supuesto: " + todo);
+    const a1 = u1.nodos.find((x) => x.tipo === "alimentador"); contiene(a1.detalle, "pendiente", "sin longitud el alimentador lo dice:");
+    const g1 = u1.nodos.find((x) => x.tipo === "proteccion"); contiene(g1.detalle, "kA pendiente", "sin transformador la capacidad interruptiva queda pendiente:");
+  } finally { S.elec = JSON.parse(guardado); S.tab = tab0; G("recompute")(); }
+});
+
+t("S.151 (H-271) diagrama trifilar: cada circuito baja a las fases que computeElec le asignó (tres en trifásico, una en monofásico) con el calibre del motor, el neutro y la tierra tal como los cuenta, y lo que el motor no distingue (2.º conductor monofásico, neutro en sistema sin neutro) queda «pendiente» declarado; el SVG está en la pestaña y el diagrama en la memoria PDF", () => {
+  const guardado = JSON.stringify(S.elec), tab0 = S.tab, ver = G("MOTOR_VER").elec;
+  try {
+    const R = proyectoUnifilar();
+    const fn = w.describirTrifilar;
+    const tf = typeof fn === "function" ? fn(R) : { circuitos: [], pendientes: [], barras: [] };
+    eq(tf.circuitos.length, R.calc.length, "una columna por circuito:");
+    eq(String(tf.version), String(ver), "la descripción declara la versión del motor:");
+    R.calc.forEach((c, i) => {
+      const k = tf.circuitos[i];
+      eq(k.fases.length, c.ph === 3 ? 3 : 1, `${k.num}: fases según computeElec (${c.ph}F):`);
+      if (c.ph === 3) eq(k.fases.map((f) => f.fase).join(""), "ABC", `${k.num}: trifásico en A, B y C:`);
+      else eq(k.fases[0].fase, c.fase, `${k.num}: monofásico en la fase que le asignó el balanceo:`);
+      k.fases.forEach((f) => {
+        eq(f.awg, c.cond.awg, `${k.num} fase ${f.fase}: calibre = el del motor:`);
+        cerca(f.kVA, c.ph === 3 ? c.kVAtot / 3 : c.fases[f.fase], 1e-9, `${k.num} fase ${f.fase}: kVA = el del balanceo:`);
+        contiene(f.etiqueta, c.cond.awg, `${k.num} fase ${f.fase}: la etiqueta trae el calibre:`);
+      });
+      eq(k.tierra.awg, c.cond.tierra, `${k.num}: tierra = la Tabla 250-122 del motor:`); contiene(k.tierra.nota, "250-122", "y lo dice:");
+      contiene(k.etiqueta, c.nombre, `${k.num}: la columna lleva el nombre de la carga:`);
+      if (c.ph === 3) { if (!k.neutro || k.neutro.awg !== c.cond.awg) throw new Error(`${k.num}: el neutro que cuenta computeElec (calibre de fase) debe aparecer`); if (k.segundo) throw new Error(`${k.num}: un trifásico no tiene «2.º conductor»`); }
+      else {
+        if (k.neutro) throw new Error(`${k.num}: computeElec no cuenta neutro en monofásico; no se supone`);
+        if (!k.segundo || !/pendiente/.test(k.segundo.destino)) throw new Error(`${k.num}: el 2.º conductor debe quedar «pendiente» (el motor no distingue neutro o segunda fase)`);
+        if (!tf.pendientes.some((p) => p.includes(k.num) && /neutro o segunda fase/.test(p))) throw new Error(`${k.num}: falta el pendiente del 2.º conductor: ` + tf.pendientes.join(" | "));
+      }
+    });
+    ["A", "B", "C"].forEach((f) => cerca(tf.circuitos.flatMap((k) => k.fases).filter((x) => x.fase === f).reduce((a, x) => a + x.kVA, 0), R.fases[f], 1e-9, `suma de bajadas en la fase ${f} = balanceo del motor:`));
+    eq(tf.barras.join(","), "A,B,C,N,T", "3F4H-220: barras A, B, C, neutro y tierra:");
+    contiene(tf.balance.texto, `${n(R.desbalance, 1)} %`, "el balance rotula el desbalance del motor:");
+    tf.circuitos.forEach((k) => sinTexto([k.etiqueta, k.sub, k.conductores, ...k.fases.map((f) => f.etiqueta), ...k.pendientes].join(" "), k.num)); tf.pendientes.forEach((p) => sinTexto(p, "pendiente"));
+    /* Pantalla: junto al unifilar, mismas convenciones. */
+    S.tab = "electrico"; G("render")();
+    const v = vista();
+    if (!/<svg[^>]*\brole="img"[^>]*\baria-label="Diagrama trifilar[^"]*"/.test(v)) throw new Error("la pestaña no trae el <svg role=\"img\" aria-label=\"Diagrama trifilar…\">");
+    const at = v.indexOf('aria-label="Diagrama trifilar'), ini = v.lastIndexOf('<figure class="uf-fig"', at), fin = v.indexOf("</figure>", at);
+    if (ini < 0 || fin < 0) throw new Error("el trifilar no va en un <figure>");
+    const fig = v.slice(ini, fin);
+    contiene(fig, `<figcaption>Diagrama trifilar · procedencia: computeElec v${ver}, capturado en esta pestaña`, "pie de figura con procedencia:");
+    [">L1 (A)<", ">L2 (B)<", ">L3 (C)<", ">N<", ">T<"].forEach((b) => contiene(fig, b, "barra rotulada:"));
+    contiene(fig, "C-02", "columna numerada:"); contiene(fig, "Tarja de laboratorio", "carga rotulada:");
+    contiene(fig, "max-width:100%", "no desborda en celular:"); contiene(fig, "<defs><marker", "puntas de flecha con <marker>:");
+    if (/(stroke|fill)="#/.test(fig) || /<img|https?:\/\/|<script/.test(fig)) throw new Error("colores en duro o recursos externos en el trifilar");
+    const fs2 = [...fig.matchAll(/font-size="([\d.]+)"/g)].map((m) => Number(m[1]));
+    if (!fs2.length || fs2.some((f) => f < 11 || f > 13)) throw new Error("texto fuera de 11–13 px: " + fs2.join(","));
+    if (v.indexOf('aria-label="Diagrama unifilar') < 0 || v.indexOf('aria-label="Diagrama unifilar') > at) throw new Error("el trifilar va junto al unifilar, después de él");
+    /* Memoria PDF */
+    const pdf = txtPdfE(G("buildElecPdf")());
+    contiene(pdf, "Diagrama trifilar", "la memoria trae el trifilar:"); contiene(pdf, "L1 (A)", "con sus barras:"); contiene(pdf, "neutro o segunda fase", "y el pendiente del 2.º conductor:");
+    /* Sin cargas: nada dibujado, pendiente declarado. */
+    const d = G("defaultElec")();
+    S.elec = { ...d, tomarHVAC: false, cargas: [] }; G("recompute")();
+    const t0 = typeof fn === "function" ? fn(G("ELEC")) : { circuitos: [{}], pendientes: [] };
+    eq(t0.circuitos.length, 0, "sin cargas no hay columnas:"); if (!t0.pendientes.some((p) => /sin cargas/i.test(p))) throw new Error("sin captura debe listar el pendiente");
+    S.tab = "electrico"; G("render")(); if (/aria-label="Diagrama trifilar/.test(vista())) throw new Error("sin cargas no debe dibujarse un trifilar");
+    /* Sistema 3F3H-440 (sin neutro): no hay barra N; el neutro que computeElec cuenta en la canalización queda declarado como pendiente, no dibujado como si existiera. */
+    S.elec = { ...d, tomarHVAC: false, sistema: "3F3H-440", cargas: [{ ...G("defaultCarga")("Motor a 440"), tipo: "motor", kW: 15, V: 440, ph: 3, fp: .85, L: 20 }] }; G("recompute")();
+    const t3 = typeof fn === "function" ? fn(G("ELEC")) : { circuitos: [], pendientes: [], barras: ["N"] };
+    if (t3.barras.includes("N")) throw new Error("3F3H-440 no tiene neutro: no debe haber barra N");
+    if (!t3.pendientes.some((p) => /no tiene neutro/i.test(p))) throw new Error("debe declarar que el neutro contado por computeElec no existe en el sistema: " + t3.pendientes.join(" | "));
+  } finally { S.elec = JSON.parse(guardado); S.tab = tab0; G("recompute")(); }
+});
+
 /* ===== CM · casos calculados a mano por motor (Fase 1, rev 2.9.24) =====
    Cada motor tiene su módulo en pruebas-motores/<motor>.mjs y su hoja en parches/casos-a-mano/<motor>.csv. El módulo
    recibe el arnés (t, eq, cerca, contiene, G, S, w, …) y las filas de su hoja; compara NÚMEROS con tolerancia, no textos.
