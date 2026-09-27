@@ -276,5 +276,9 @@
   { "id": "elec.m138", "que": "H-180: avisa kW estimado aunque la corriente salga del hp de placa", "logica": false, "estado": "vigente",
     "buscar": "c.kWEst && !(c.motorTabla && num(c.hp, 0) > 0)", "reemplazar": "c.kWEst" },
   { "id": "elec.m139", "que": "H-180: el PDF no marca el kW estimado con «e»", "logica": false, "estado": "vigente",
-    "buscar": "${c.kWEst ? \" e\" : c.kWOrigen !== \"capturado\" ? \" c\" : \"\"}", "reemplazar": "${c.kWOrigen !== \"capturado\" && !c.kWEst ? \" c\" : \"\"}" }
+    "buscar": "${c.kWEst ? \" e\" : c.kWOrigen !== \"capturado\" ? \" c\" : \"\"}", "reemplazar": "${c.kWOrigen !== \"capturado\" && !c.kWEst ? \" c\" : \"\"}" },
+  { "id": "elec.m140", "que": "H-268: vuelve el modo en vivo (las cargas de otros motores entran al calcular con tomarHVAC, sin aceptar la propuesta)", "logica": true, "estado": "vigente",
+    "buscar": "  (E.cargas || []).forEach((c, i) => filas.push({ ...c, id: c.id || `u-${i}`, auto: c.auto === true }));", "reemplazar": "  [...(E.tomarHVAC ? cargasOtrosMotoresElec(E) : []), ...(E.cargas || [])].forEach((c, i) => filas.push({ ...c, id: c.id || `u-${i}`, auto: c.auto === true }));" },
+  { "id": "elec.m141", "que": "H-268: un proyecto guardado en vivo abre sin aceptar la propuesta (pierde las cargas que tomaba y cambia de cifras)", "logica": true, "estado": "vigente",
+    "buscar": "    if (cruces.length) s.elec.tomarPropuesta = cruces;", "reemplazar": "    if (cruces.length && false) s.elec.tomarPropuesta = cruces;" }
 ]

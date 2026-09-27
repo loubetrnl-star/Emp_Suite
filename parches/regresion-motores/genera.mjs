@@ -61,6 +61,8 @@ w.eval(String.raw`
   S.kaizen.items = [{ id: "k1", titulo: "Ajustar horario de FFU", estado: "hacer", owner: "", ahorro: 0, nota: "" }];
   S.tab = "tablero"; recompute();
   S.soporte.snap = snapshotSoporte(); S.soporte.usarMotores = true; recompute();
+  /* H-268: el eléctrico es autónomo. El proyecto fijo nunca estuvo en modo en vivo (tomarHVAC false: sólo sus dos cargas
+     capturadas), así que no hay propuesta que aceptar y sus cifras no cambian; el esperado de elec sube sólo de versión (v9). */
 `);
 const MV = G("MOTOR_VER"), REV = G("REV");
 const cifras = {}; Object.keys(MV).forEach((id) => { cifras[id] = G(`cifrasMotor(${JSON.stringify(id)})`); });

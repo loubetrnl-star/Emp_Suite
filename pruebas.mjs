@@ -437,11 +437,18 @@ t("4.4 el usuario puede declarar que captura lo suyo, y también queda escrito",
     eq(G("PROPUESTAS")["load>vent"], undefined, "H-262: no queda propuesta carga térmica → ventilación:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
-t("4.5 la cédula de equipos no entra al cuadro de cargas sin aceptarla", () => {
+t("4.5 (H-268) la cédula de equipos no entra al cuadro de cargas sin aceptarla: ni con los cruces autorizados ni con el tomarHVAC de revisiones anteriores (se retiró el modo en vivo)", () => {
   eq(S.elec.tomarHVAC, false, "el modo automático viene apagado:");
   const auto = (G("ELEC").calc || []).filter((c) => c.auto);
   eq(auto.length, 0, "cargas que entraron solas:");
   eq(G("estadoPropuesta")("cedula>elec").nivel, "pendiente");
+  /* H-268: el modo en vivo se retiró: con los cruces autorizados y tomarHVAC tampoco entra nada sin aceptar la propuesta. */
+  const perms0 = JSON.parse(JSON.stringify(S.perms)), n0 = G("ELEC").calc.length;
+  try {
+    G("CRUCES_ELEC").forEach((k) => { S.perms[k] = { ts: 1, via: "prueba 4.5" }; }); S.elec.tomarHVAC = true; G("recompute")();
+    eq(G("ELEC").calc.length, n0, "con tomarHVAC y los cruces autorizados nada entra sin aceptar la propuesta:");
+    eq(G("estadoPropuesta")("cedula>elec").nivel, "pendiente", "la propuesta sigue por decidir, no «vivo»:");
+  } finally { S.elec.tomarHVAC = false; Object.keys(S.perms).forEach((k) => delete S.perms[k]); Object.assign(S.perms, perms0); G("recompute")(); }
 });
 t("4.6 aceptada, cada carga queda como carga propia del cuadro con su origen", () => {
   G("propAceptar")("cedula>elec");
@@ -583,20 +590,21 @@ t("S.47 (H-179, H-189) sin captura no hay distancia al tablero, transformador ni
     if (/Caída del alimentadorpendiente|Falla estimadapendiente/.test(h2)) throw new Error("pantalla con captura completa sigue en pendiente");
   } finally { S.elec = JSON.parse(guardado); S.tab = tab0; G("recompute")(); }
 });
-t("S.48 (H-179) las seis cargas que entran de otros motores (cédula HVAC, extracción, compresor de aire, bomba de agua, bomba contra incendio, FFU) no traen distancia supuesta: sin L quedan pendientes de longitud", () => {
+t("S.48 (H-179, H-268) las seis cargas que proponen otros motores (cédula HVAC, extracción, compresor de aire, bomba de agua, bomba contra incendio, FFU) no traen distancia supuesta: sin L quedan pendientes de longitud", () => {
   const R = G(`(() => { const sv = { AIRE, HIDRO, CLEAN };
     try {
       AIRE = { ...(AIRE || {}), principal: { ...((AIRE && AIRE.principal) || {}), tipo: "tornillo", hp: 10, kW: 7.46 }, nUnidades: 1 };
       HIDRO = { ...(HIDRO || {}), kWbomba: 1.87, hpBomba: 2.5 };
       CLEAN = { ...(CLEAN || {}), sum: { ...((CLEAN && CLEAN.sum) || {}), ffu: 12 } };
-      return conPermisoTemporal(CRUCES_ELEC, () => computeElec({ ...defaultElec(), tomarHVAC: true, cargas: [] }));
+      /* H-268: computeElec ya no lee otros motores; la propuesta se arma con cargasOtrosMotoresElec y corre en sombra. */
+      const E0 = defaultElec(); return computeElec({ ...E0, cargas: cargasOtrosMotoresElec(E0) });
     } finally { AIRE = sv.AIRE; HIDRO = sv.HIDRO; CLEAN = sv.CLEAN; } })()`);
   const ids = R.calc.map((c) => c.id);
   ["vent-1", "aire-1", "hidro-1", "fuego-1", "ffu-1"].forEach((id) => { if (!ids.includes(id)) throw new Error(`falta la carga ${id}: la prueba no probaría esa rama (hay ${ids.join(", ")})`); });
   if (!ids.some((id) => id.startsWith("hvac-"))) throw new Error("falta la cédula HVAC");
   R.calc.forEach((c) => { eq(c.L, null, `${c.id}, L:`); eq(c.cond.dv, null, `${c.id}, caída:`); });
   const a = R.avisos.find((x) => x.lvl === "err" && /sin longitud capturada/.test(x.msg));
-  if (!a || !/acepta la propuesta «Cargas eléctricas de los demás motores»/.test(a.msg)) throw new Error("el aviso de las cargas en vivo debe decir cómo capturar su distancia");
+  if (!a || !/acepta la propuesta «Cargas eléctricas de los demás motores»/.test(a.msg)) throw new Error("el aviso de las cargas propuestas debe decir cómo capturar su distancia");
   G("recompute")();
   const f = G("propuestaElecFilas")();
   f.forEach((c) => { if (c.L != null && c.L !== 0) throw new Error(`${c.nombre}: la propuesta la entrega con L = ${c.L} m que nadie capturó`); });
@@ -640,7 +648,8 @@ t("S.50 (H-178) cargas de otros motores: el hp de catálogo o estimado no es de 
       HIDRO = { ...(HIDRO || {}), kWbomba: 2.3, hpBomba: 2.5 };
       FUEGO = { ...(FUEGO || {}), kWbomba: 3.8, hpBomba: 10 };
       CLEAN = { ...(CLEAN || {}), sum: { ...((CLEAN && CLEAN.sum) || {}), ffu: 12 } };
-      return conPermisoTemporal(CRUCES_ELEC, () => computeElec({ ...defaultElec(), tomarHVAC: true, cargas: [] }));
+      /* H-268: computeElec ya no lee otros motores; la propuesta se arma con cargasOtrosMotoresElec y corre en sombra. */
+      const E0 = defaultElec(); return computeElec({ ...E0, cargas: cargasOtrosMotoresElec(E0) });
     } finally { AIRE = sv.AIRE; HIDRO = sv.HIDRO; FUEGO = sv.FUEGO; CLEAN = sv.CLEAN; } })()`);
   const f = (id) => { const c = R.calc.find((x) => x.id === id); if (!c) throw new Error(`falta la carga ${id}`); return c; };
   const aire = f("aire-1");
@@ -733,7 +742,7 @@ t("S.51 (H-178) proyecto que aceptó la cédula antes de la rev 2.9.24: los FFU 
    estimadas, catálogo de la casa) sale con su procedencia; el fp de cada carga se captura y se imprime con su origen (capturado o
    criterio de la casa por tipo); el fp del alimentador (antes 0.95 oculto) se ve, se captura y se imprime. No mueve números. */
 const fpOrigenTxt = (c) => G("fpOrigenTexto")(c, false);
-t("S.52 (H-180) kW estimados y de catálogo con su procedencia; fp por carga editable e impreso con su origen (vacío = el de la casa; fuera de 0.5–1 no se usa); fp del alimentador visible, editable e impreso; filas en vivo; proyecto viejo (aun renombrado) sin mover números", () => {
+t("S.52 (H-180) kW estimados y de catálogo con su procedencia; fp por carga editable e impreso con su origen (vacío = el de la casa; fuera de 0.5–1 no se usa); fp del alimentador visible, editable e impreso; filas propuestas por otros motores (H-268); proyecto viejo (aun renombrado) sin mover números", () => {
   const guardado = JSON.stringify(S), tab0 = S.tab;
   try {
     const dm = (nombre, x) => ({ ...G("defaultCarga")(nombre), V: 220, ph: 3, cant: 1, L: 20, ...x });
@@ -775,12 +784,13 @@ t("S.52 (H-180) kW estimados y de catálogo con su procedencia; fp por carga edi
     eq(R.fpAlim, 0.9, "la caída del alimentador usa el fp capturado:"); eq(R.fpAlimOrigen, "capturado", "y lo declara:");
     pdf = txtPdfE(G("buildElecPdf")()); if (!/alimentador 0\.90? \(capturado\)/.test(pdf)) throw new Error("el PDF no imprime el fp del alimentador capturado");
     contiene(libro(), "Captured, for the feeder voltage drop", "libro EN, fp del alimentador capturado:");
-    /* Filas en vivo (tomarHVAC, modo anterior): procedencia por fila, fp de la casa. */
+    /* Filas que proponen los otros motores (H-268: corrida en sombra de la propuesta; el modo en vivo se retiró): procedencia por
+       fila, fp de la casa. */
     G("reemplazarEstado")(JSON.parse(fs.readFileSync("parches/regresion-motores/regresion-motores.emp.json", "utf8"))); G("recompute")();
-    const RV = G(`conPermisoTemporal(CRUCES_ELEC, () => computeElec({ ...S.elec, tomarHVAC: true, cargas: [] }))`);
+    const RV = G(`computeElec({ ...S.elec, cargas: cargasOtrosMotoresElec(S.elec) })`);
     const esperado = { hvac: "hvac", vent: "vent", aire: "aire", hidro: "hidro", fuego: "fuego", ffu: "ffu" };
     const vivas = RV.calc.filter((c) => c.auto);
-    if (vivas.length < 6) throw new Error(`el proyecto de regresión trae ${vivas.length} filas en vivo`);
+    if (vivas.length < 6) throw new Error(`el proyecto de regresión propone ${vivas.length} filas`);
     vivas.forEach((c) => { eq(c.kWOrigen, esperado[c.id.split("-")[0]], `${c.id}, procedencia del kW:`); eq(c.fpOrigen, "casa", `${c.id}, fp:`); });
     vivas.forEach((c) => eq(c.kWEst, ["hvac", "vent", "hidro", "fuego"].includes(c.id.split("-")[0]), c.id + ", estimado (equipo HVAC, extractor y bombas):"));
     /* La cédula aceptada: kW de familia estimado, compresor y FFU de catálogo de la casa. */
@@ -4300,13 +4310,16 @@ t("L.2 2.5 / H-229 tablas de espaciamiento: cobre al mínimo de MSS SP-58-2018 e
 
 /* ===== M. Balance global: compresor, bombas y FFU al cuadro eléctrico ====
    Decisión del dueño (15-sep-2026): compresor de aire, bomba de agua, bomba
-   contra incendio y FFU de cuartos limpios ya llegan al motor eléctrico, cada
-   uno con su propio permiso (aire>elec, hidro>elec, fuego>elec, clean>elec),
-   igual que ya llegaban el equipo HVAC y el ventilador. */
+   contra incendio y FFU de cuartos limpios llegan al motor eléctrico, cada
+   uno con su propio cruce (aire>elec, hidro>elec, fuego>elec, clean>elec),
+   igual que el equipo HVAC y el ventilador.
+   H-268 (decisión del dueño, 27-sep-2026): llegan SÓLO al aceptar la propuesta
+   «cedula>elec» (instantánea con origen y fecha, que concede los cruces); el
+   modo en vivo (tomarHVAC con permisos) se retiró y ya no mete nada al calcular. */
 function limpiarPermisosElecBalance() {
   ["aire>elec", "hidro>elec", "fuego>elec", "clean>elec", "equip>elec", "vent>elec"].forEach((k) => delete S.perms[k]);
 }
-t("M.1 sin ningún permiso nuevo autorizado, compresor, bombas y FFU no llegan al cuadro eléctrico", () => {
+t("M.1 (H-268) sin aceptar la propuesta, compresor, bombas y FFU no llegan al cuadro eléctrico: ni sin permisos ni con los cuatro autorizados (se retiró el modo en vivo)", () => {
   const g = { aire: JSON.parse(JSON.stringify(S.aire)), hidro: JSON.parse(JSON.stringify(S.hidro)), fuego: JSON.parse(JSON.stringify(S.fuego)), clean: JSON.parse(JSON.stringify(S.clean)), elec: JSON.parse(JSON.stringify(S.elec)), perms: JSON.parse(JSON.stringify(S.perms)) };
   try {
     S.aire = G("defaultAire")(); S.hidro = G("defaultHidro")(); S.fuego = G("defaultFuego")();
@@ -4314,12 +4327,15 @@ t("M.1 sin ningún permiso nuevo autorizado, compresor, bombas y FFU no llegan a
     S.elec.tomarHVAC = true;
     limpiarPermisosElecBalance();
     G("recompute")();
-    const E = G("ELEC");
-    if (E.calc.some((c) => /^(aire|hidro|fuego|ffu)-/.test(c.id))) throw new Error("una carga sin permiso llegó al cuadro eléctrico");
+    const sinNada = (E, caso) => { if (E.calc.some((c) => c.auto || /^(aire|hidro|fuego|ffu)-/.test(c.id))) throw new Error(`una carga de otro motor llegó al cuadro eléctrico sin aceptar la propuesta (${caso})`); };
+    sinNada(G("ELEC"), "sin permisos");
+    ["aire>elec", "hidro>elec", "fuego>elec", "clean>elec"].forEach((k) => { S.perms[k] = { ts: 1, via: "prueba M.1" }; });
+    G("recompute")();
+    sinNada(G("ELEC"), "con los cuatro permisos y tomarHVAC");
   } finally { S.aire = g.aire; S.hidro = g.hidro; S.fuego = g.fuego; S.clean = g.clean; S.elec = g.elec; Object.keys(S.perms).forEach((k) => delete S.perms[k]); Object.assign(S.perms, g.perms); G("recompute")(); }
 });
-t("M.2 con los cuatro permisos autorizados, las cuatro cargas llegan con la tensión del sistema (o 127 V para FFU)", () => {
-  const g = { aire: JSON.parse(JSON.stringify(S.aire)), hidro: JSON.parse(JSON.stringify(S.hidro)), fuego: JSON.parse(JSON.stringify(S.fuego)), clean: JSON.parse(JSON.stringify(S.clean)), elec: JSON.parse(JSON.stringify(S.elec)), perms: JSON.parse(JSON.stringify(S.perms)) };
+t("M.2 (H-268) con los cuatro cruces autorizados nada entra solo; al aceptar la propuesta las cuatro cargas llegan como instantánea con la tensión del sistema (o 127 V para FFU) y los permisos ya no mueven el cuadro", () => {
+  const g = { aire: JSON.parse(JSON.stringify(S.aire)), hidro: JSON.parse(JSON.stringify(S.hidro)), fuego: JSON.parse(JSON.stringify(S.fuego)), clean: JSON.parse(JSON.stringify(S.clean)), elec: JSON.parse(JSON.stringify(S.elec)), perms: JSON.parse(JSON.stringify(S.perms)), vinculos: JSON.parse(JSON.stringify(S.vinculos || {})) };
   try {
     S.aire = { ...G("defaultAire")(), consumos: [{ id: "c1", tipo: "pistola", nombre: "Prueba M.2", cant: 4, lmin: 0, bar: 0, uso: 0 }] };
     /* Arranque en ceros: defaultHidro() ya no trae muebles de ejemplo; sin
@@ -4331,28 +4347,35 @@ t("M.2 con los cuatro permisos autorizados, las cuatro cargas llegan con la tens
     limpiarPermisosElecBalance();
     ["aire>elec", "hidro>elec", "fuego>elec", "clean>elec"].forEach((k) => { S.perms[k] = { ts: 1, via: "prueba M.2" }; });
     G("recompute")();
-    const E = G("ELEC"), A = G("AIRE"), H = G("HIDRO"), F = G("FUEGO"), C = G("CLEAN");
+    const A = G("AIRE"), H = G("HIDRO"), F = G("FUEGO"), C = G("CLEAN");
     if (!(A.principal && A.principal.kW > 0)) throw new Error("el caso no aísla lo que se quiere probar: el compresor por omisión debe tener kW > 0");
     if (!(H.kWbomba > 0)) throw new Error("el caso no aísla lo que se quiere probar: la bomba de agua por omisión debe tener kW > 0");
     if (!(F.kWbomba > 0)) throw new Error("el caso no aísla lo que se quiere probar: la bomba contra incendio por omisión debe tener kW > 0");
     if (!(C.sum.ffu > 0)) throw new Error("el caso no aísla lo que se quiere probar: el cuarto limpio por omisión debe tener FFU > 0");
-    const aire1 = E.calc.find((c) => c.id === "aire-1"), hidro1 = E.calc.find((c) => c.id === "hidro-1"),
-      fuego1 = E.calc.find((c) => c.id === "fuego-1"), ffu1 = E.calc.find((c) => c.id === "ffu-1");
-    if (!aire1) throw new Error("el compresor no llegó al cuadro con aire>elec autorizado");
-    if (!hidro1) throw new Error("la bomba de agua no llegó al cuadro con hidro>elec autorizado");
-    if (!fuego1) throw new Error("la bomba contra incendio no llegó al cuadro con fuego>elec autorizado");
-    if (!ffu1) throw new Error("los FFU no llegaron al cuadro con clean>elec autorizado");
+    /* H-268: con los cruces autorizados y tomarHVAC, sin aceptar la propuesta, nada entra. */
+    if (G("ELEC").calc.some((c) => c.auto || c.origen === "cedula")) throw new Error("una carga de otro motor entró al cuadro sin aceptar la propuesta");
+    G("propAceptar")("cedula>elec");
+    const E = G("ELEC"), de = (o) => E.calc.find((c) => c.origen === "cedula" && c.kWOrigen === o);
+    const aire1 = de("aire"), hidro1 = de("hidro"), fuego1 = de("fuego"), ffu1 = de("ffu");
+    if (!aire1) throw new Error("el compresor no llegó al cuadro al aceptar la propuesta");
+    if (!hidro1) throw new Error("la bomba de agua no llegó al cuadro al aceptar la propuesta");
+    if (!fuego1) throw new Error("la bomba contra incendio no llegó al cuadro al aceptar la propuesta");
+    if (!ffu1) throw new Error("los FFU no llegaron al cuadro al aceptar la propuesta");
+    [aire1, hidro1, fuego1, ffu1].forEach((c) => { if (!(c.ts > 0)) throw new Error(`${c.nombre}: la instantánea debe llevar fecha`); });
     cerca(aire1.kW, A.principal.kW, 1e-9, "kW del compresor = el del catálogo, sin inventar otro dato:");
     eq(aire1.V, 220, "compresor a la tensión del sistema:"); eq(aire1.ph, 3, "compresor trifásico:"); eq(aire1.tipo, "motor");
     cerca(hidro1.kW, +H.kWbomba.toFixed(2), 1e-9, "kW de la bomba de agua:");
     cerca(fuego1.kW, +F.kWbomba.toFixed(2), 1e-9, "kW de la bomba contra incendio:");
     cerca(ffu1.kW, +(C.sum.ffu * G("FFU").watts / 1000).toFixed(2), 1e-9, "kW de los FFU = conteo × 120 W:");
     eq(ffu1.V, 127, "FFU a 127 V monofásico:"); eq(ffu1.ph, 1);
-    /* Cada uno mueve la demanda del tablero: quitar el permiso baja kVAdemanda. */
+    /* Cada una pesa en la demanda del tablero: quitar la carga aceptada del compresor baja kVAdemanda. Quitar el permiso ya no
+       mueve nada (H-268, regla 3: la instantánea es captura propia con origen). */
     const kVAconTodo = E.kVAdemanda;
     delete S.perms["aire>elec"]; G("recompute")();
-    if (!(G("ELEC").kVAdemanda < kVAconTodo)) throw new Error("quitar aire>elec no bajó la demanda del tablero");
-  } finally { S.aire = g.aire; S.hidro = g.hidro; S.fuego = g.fuego; S.clean = g.clean; S.elec = g.elec; Object.keys(S.perms).forEach((k) => delete S.perms[k]); Object.assign(S.perms, g.perms); G("recompute")(); }
+    cerca(G("ELEC").kVAdemanda, kVAconTodo, 1e-9, "quitar el permiso no mueve la instantánea aceptada (H-268):");
+    S.elec.cargas = S.elec.cargas.filter((c) => c.kWOrigen !== "aire"); G("recompute")();
+    if (!(G("ELEC").kVAdemanda < kVAconTodo)) throw new Error("quitar la carga del compresor no bajó la demanda del tablero");
+  } finally { S.aire = g.aire; S.hidro = g.hidro; S.fuego = g.fuego; S.clean = g.clean; S.elec = g.elec; Object.keys(S.perms).forEach((k) => delete S.perms[k]); Object.assign(S.perms, g.perms); Object.keys(S.vinculos || {}).forEach((k) => delete S.vinculos[k]); Object.assign(S.vinculos, g.vinculos); G("recompute")(); }
 });
 t("M.3 aceptar la propuesta combinada escribe las cuatro cargas nuevas con origen «cedula», y el alimentador ya las refleja", () => {
   const g = { aire: JSON.parse(JSON.stringify(S.aire)), hidro: JSON.parse(JSON.stringify(S.hidro)), fuego: JSON.parse(JSON.stringify(S.fuego)), clean: JSON.parse(JSON.stringify(S.clean)), elec: JSON.parse(JSON.stringify(S.elec)), perms: JSON.parse(JSON.stringify(S.perms)), vinculos: JSON.parse(JSON.stringify(S.vinculos || {})) };
@@ -4373,30 +4396,35 @@ t("M.3 aceptar la propuesta combinada escribe las cuatro cargas nuevas con orige
     if (!(E.kVAdemanda > 0)) throw new Error("la demanda del tablero debe reflejar las cargas recién aceptadas");
   } finally { S.aire = g.aire; S.hidro = g.hidro; S.fuego = g.fuego; S.clean = g.clean; S.elec = g.elec; Object.keys(S.perms).forEach((k) => delete S.perms[k]); Object.assign(S.perms, g.perms); Object.keys(S.vinculos || {}).forEach((k) => delete S.vinculos[k]); Object.assign(S.vinculos, g.vinculos); G("recompute")(); }
 });
-t("M.4 (reordenamiento) un cambio en el compresor se refleja en el MISMO ciclo de recompute, no en el siguiente", () => {
-  /* Antes de esta rev, ELEC corría antes que AIRE/HIDRO/FUEGO en recompute():
-     un cambio en el compresor solo se veía en el cuadro eléctrico un
-     recompute() después. Esta prueba reproduce exactamente ese escenario. */
-  const g = { aire: JSON.parse(JSON.stringify(S.aire)), elec: JSON.parse(JSON.stringify(S.elec)), perms: JSON.parse(JSON.stringify(S.perms)) };
+t("M.4 (reordenamiento, H-268) un cambio en el compresor se refleja en la PROPUESTA en el MISMO ciclo de recompute, no en el siguiente; la instantánea aceptada no se mueve sola", () => {
+  /* Antes de la rev 2.9.5, ELEC corría antes que AIRE/HIDRO/FUEGO en recompute(): un cambio en el compresor solo se veía un
+     recompute() después. H-268: el compresor ya no entra al cuadro al calcular, pero la propuesta se arma en el mismo ciclo con
+     el compresor de ESE ciclo; lo aceptado es instantánea y no se mueve (regla 3). */
+  const g = { aire: JSON.parse(JSON.stringify(S.aire)), elec: JSON.parse(JSON.stringify(S.elec)), perms: JSON.parse(JSON.stringify(S.perms)), vinculos: JSON.parse(JSON.stringify(S.vinculos || {})) };
   try {
     S.aire = { ...G("defaultAire")(), consumos: [{ id: "c1", tipo: "actuador", nombre: "Chico", cant: 1, lmin: 0, bar: 0, uso: 0 }] };
-    S.elec.tomarHVAC = true;
+    S.elec.tomarHVAC = true;   /* el modo de revisiones anteriores ya no mete nada */
     limpiarPermisosElecBalance();
     S.perms["aire>elec"] = { ts: 1, via: "prueba M.4" };
     G("recompute")();
     const kWchico = G("AIRE").principal.kW;
-    const kWtabChico = G("ELEC").calc.find((c) => c.id === "aire-1").kW;
-    eq(kWtabChico, kWchico, "con el compresor chico, el cuadro ya trae su kW en el primer recompute:");
+    const propChico = G("propuestaElecFilas")().find((c) => c.kWOrigen === "aire");
+    if (!propChico) throw new Error("la propuesta no trae el compresor");
+    eq(propChico.kW, kWchico, "con el compresor chico, la propuesta ya trae su kW en el primer recompute:");
+    if (G("ELEC").calc.some((c) => c.kWOrigen === "aire")) throw new Error("H-268: el compresor no debe entrar al cuadro sin aceptar la propuesta");
+    G("propAceptar")("cedula>elec");
+    eq(G("ELEC").calc.find((c) => c.kWOrigen === "aire").kW, kWchico, "aceptada, el cuadro trae el kW del compresor chico:");
     S.aire = { ...G("defaultAire")(), consumos: [
       { id: "c1", tipo: "actuador", nombre: "Grande 1", cant: 400, lmin: 0, bar: 0, uso: 0 },
       { id: "c2", tipo: "pistola", nombre: "Grande 2", cant: 200, lmin: 0, bar: 0, uso: 0 },
     ] };
     G("recompute")();
     const kWgrande = G("AIRE").principal.kW;
-    const kWtabGrande = G("ELEC").calc.find((c) => c.id === "aire-1").kW;
     if (!(kWgrande > kWchico)) throw new Error("el caso no aísla lo que se quiere probar: el segundo compresor debe ser más grande");
-    eq(kWtabGrande, kWgrande, "un solo recompute() basta: el cuadro ya trae el kW del compresor grande, no el del chico:");
-  } finally { S.aire = g.aire; S.elec = g.elec; Object.keys(S.perms).forEach((k) => delete S.perms[k]); Object.assign(S.perms, g.perms); G("recompute")(); }
+    eq(G("propuestaElecFilas")().find((c) => c.kWOrigen === "aire").kW, kWgrande, "un solo recompute() basta: la propuesta ya trae el kW del compresor grande, no el del chico:");
+    eq(G("ELEC").calc.find((c) => c.kWOrigen === "aire").kW, kWchico, "la instantánea aceptada no se mueve sola (regla 3):");
+    eq(G("estadoPropuesta")("cedula>elec").nivel, "desactualizado", "y la propuesta avisa que el origen cambió:");
+  } finally { S.aire = g.aire; S.elec = g.elec; Object.keys(S.perms).forEach((k) => delete S.perms[k]); Object.assign(S.perms, g.perms); Object.keys(S.vinculos || {}).forEach((k) => delete S.vinculos[k]); Object.assign(S.vinculos, g.vinculos); G("recompute")(); }
 });
 
 /* ===== N. Balance global: cierres de coherencia (aire y agua) ===========
@@ -4854,20 +4882,25 @@ t("Q.4 H-47(b) una línea sola cuya carga excede el colgante sencillo escala sol
   if (pesado.errores.some((e) => /fuera del catálogo/.test(e))) throw new Error("no debería quedar error de varilla fuera de catálogo tras escalar a trapecio");
 });
 
-t("Q.5 H-51 el cuadro eléctrico carga TODAS las unidades de aire comprimido en servicio, no solo la principal", () => {
-  const aire0 = JSON.parse(JSON.stringify(S.aire)), elec0 = JSON.parse(JSON.stringify(S.elec)), g = { perms: JSON.parse(JSON.stringify(S.perms)) };
+t("Q.5 H-51 (H-268) el cuadro eléctrico carga TODAS las unidades de aire comprimido en servicio, no solo la principal, al aceptar la propuesta", () => {
+  const aire0 = JSON.parse(JSON.stringify(S.aire)), elec0 = JSON.parse(JSON.stringify(S.elec)), g = { perms: JSON.parse(JSON.stringify(S.perms)), vinculos: JSON.parse(JSON.stringify(S.vinculos || {})) };
   try {
     S.aire = { ...G("defaultAire")(), consumos: [{ id: "q5", tipo: "generico", nombre: "Carga de prueba", cant: 1, lmin: 40000, bar: 6, uso: 1 }] };
-    S.elec = { ...G("defaultElec")(), tomarHVAC: true };
+    S.elec = { ...G("defaultElec")() };
     S.perms["aire>elec"] = { ts: 1, via: "prueba Q.5" };
     G("recompute")();
     const A = G("AIRE");
     if (!(A.nUnidades > 1)) throw new Error(`el caso necesita más de un compresor en servicio, nUnidades=${A.nUnidades}`);
-    const fila = G("ELEC").calc.find((c) => c.id === "aire-1");
-    if (!fila) throw new Error("no se encontró la fila aire-1 en el cuadro eléctrico");
-    eq(fila.cant, A.nUnidades, "cant de la fila aire-1 = unidades en servicio:");
+    /* H-268: el compresor entra al cuadro sólo al aceptar la propuesta (instantánea), con todas sus unidades en servicio. */
+    const prop = G("propuestaElecFilas")().find((c) => c.kWOrigen === "aire");
+    if (!prop) throw new Error("la propuesta no trae el compresor");
+    eq(prop.cant, A.nUnidades, "cant del compresor propuesto = unidades en servicio:");
+    G("propAceptar")("cedula>elec");
+    const fila = G("ELEC").calc.find((c) => c.origen === "cedula" && c.kWOrigen === "aire");
+    if (!fila) throw new Error("no se encontró la carga del compresor en el cuadro eléctrico tras aceptar la propuesta");
+    eq(fila.cant, A.nUnidades, "cant de la carga del compresor = unidades en servicio:");
     cerca(fila.kWtot, A.principal.kW * A.nUnidades, 0.001, "kW total del compresor = kW de una unidad × unidades en servicio:");
-  } finally { S.aire = aire0; S.elec = elec0; S.perms = g.perms; G("recompute")(); }
+  } finally { S.aire = aire0; S.elec = elec0; S.perms = g.perms; S.vinculos = g.vinculos; G("recompute")(); }
 });
 
 t("Q.6 H-57 la estratificación por altura solo multiplica la ganancia de iluminación, no cubierta ni equipo", () => {
@@ -5911,13 +5944,16 @@ t("S.24 propuestas entre disciplinas: un proyecto vacío no ofrece «Propuestas 
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
-t("S.25 la huella incluye lo que el eléctrico lee de ventilación y cuartos limpios, y lo que la selección lee de ductos", () => {
+t("S.25 (H-268) la huella del eléctrico es sólo su captura: no cambia con ventilación ni cuartos limpios (entran sólo como propuesta aceptada) y sí con sus propias cargas; la de la selección sí incluye lo que lee de ductos", () => {
   llenarTodoS();
   const nombres = () => ["elec", "equip"].map((id) => G("huellaMotor")(id));
   const h0 = nombres();
-  S.vent.ach += 2; G("recompute")(); const h1 = nombres(); if (h1[0] === h0[0]) throw new Error("la huella de eléctrico no cambia con ventilación");
-  S.vent.ach -= 2; G("cleanRooms")()[0].area += 10; G("recompute")(); const h2 = nombres(); if (h2[0] === h0[0]) throw new Error("la huella de eléctrico no cambia con cuartos limpios");
-  G("cleanRooms")()[0].area -= 10; S.duct.segments[0].length += 5; G("recompute")(); const h3 = nombres(); if (h3[1] === h0[1]) throw new Error("la huella de la selección no cambia con ductos");
+  /* H-268: el eléctrico es autónomo: lo que ventilación y cuartos limpios calculan ya no entra a su huella; llega sólo como propuesta
+     aceptada, que vive en S.elec.cargas (antes de H-268 la huella los incluía porque el motor los leía en vivo). */
+  S.vent.ach += 2; G("recompute")(); const h1 = nombres(); if (h1[0] !== h0[0]) throw new Error("la huella de eléctrico no debe cambiar con ventilación (H-268)");
+  S.vent.ach -= 2; G("cleanRooms")()[0].area += 10; G("recompute")(); const h2 = nombres(); if (h2[0] !== h0[0]) throw new Error("la huella de eléctrico no debe cambiar con cuartos limpios (H-268)");
+  G("cleanRooms")()[0].area -= 10; S.elec.cargas[0].kW += 1; G("recompute")(); const h2b = nombres(); if (h2b[0] === h0[0]) throw new Error("la huella de eléctrico debe cambiar con sus propias cargas");
+  S.elec.cargas[0].kW -= 1; S.duct.segments[0].length += 5; G("recompute")(); const h3 = nombres(); if (h3[1] === h0[1]) throw new Error("la huella de la selección no cambia con ductos");
   S.duct.segments[0].length -= 5; G("recompute")();
   /* El texto del pie no promete Calcular cuando está apagado. */
   const zs = S.zones;
@@ -6197,10 +6233,10 @@ t("S.35 (rev 2.9.19, revisión adversarial de 2.9.16–2.9.18) pendientes en Exc
     const lic = Buffer.from(licitacionFormal()).toString("latin1");
     contiene(lic, "PARTIDAS PENDIENTES, NO COTIZADAS", "licitación:");
     S.quote.modo = "privada";
-    /* Compresor sin demanda: no entra al cuadro eléctrico. */
-    S.elec.tomarHVAC = true; S.aire = G("defaultAire")(); G("recompute")();
+    /* Compresor sin demanda: no llega a la propuesta del eléctrico (H-268: al cuadro sólo entra lo que se acepta). */
+    S.aire = G("defaultAire")(); G("recompute")();
     eq(G("AIRE").nUnidades, 0, "aire sin demanda:");
-    eq((G("ELEC").calc || []).some((c) => c.id === "aire-1"), false, "sin fila de compresor en el eléctrico:");
+    eq(G("propuestaElecFilas")().some((c) => c.kWOrigen === "aire"), false, "sin compresor en la propuesta del eléctrico:");
     /* Contra incendio sin área con fuente municipal: ningún error falso. */
     S.zones[0].area = 0; /* el área de incendio se hereda de las zonas (regla 1): sin zonas con área, sin área */
     S.fuego = { ...G("defaultFuego")(), fuente: "municipal" }; G("recompute")();
@@ -6225,8 +6261,9 @@ t("S.36 (rev 2.9.20, decisión del dueño) versión por motor en el sello: sólo
   const MV = G("MOTOR_VER");
   /* H-107: carga v3 = lógica de la rev 2.9.21 (declarada en la 2.9.24); H-120: carga v4 = corrección CLTD por sitio. H-183: eléctrico v5 = Tabla 250-122 de la NOM; H-177: v6 = art. 440 con MCA/MOP; H-179: v7 = nada se supone (pendientes); H-178: v8 = corriente de motor por la Tabla 430-250/248.
      H-194: hidro v5 = presión mínima por mueble de la Tabla 604.3 del IPC 2015 y CDT con máx(residual, mínima); H-195: v6 = equipo de emergencia fuera de Hunter; H-197: v7 = sin pisos sin norma (días, ΔT, pendiente 704.1); H-198: v8 = CPVC sólo hasta 2" CTS, fuera de catálogo y PEAD sin SDR como error.
-     H-263: carga v6 = calor del motor del ventilador seleccionado en Ventilación como misceláneos de la zona elegida; H-262: ventilación v4 = ya no hereda de carga térmica. */
-  eq(MV.elec, "8", "eléctrico v8 (H-178):"); eq(MV.hidro, "8", "hidro v8 (H-198):"); eq(MV.load, "6", "carga v6 (H-263):"); eq(MV.duct, "4", "ductos v4 (H-165):"); eq(MV.equip, "1", "selección sin cambio de lógica: v1:");
+     H-263: carga v6 = calor del motor del ventilador seleccionado en Ventilación como misceláneos de la zona elegida; H-262: ventilación v4 = ya no hereda de carga térmica;
+     H-268: eléctrico v9 = autónomo (las cargas de otros motores sólo como propuesta aceptada). */
+  eq(MV.elec, "9", "eléctrico v9 (H-268):"); eq(MV.hidro, "8", "hidro v8 (H-198):"); eq(MV.load, "6", "carga v6 (H-263):"); eq(MV.duct, "4", "ductos v4 (H-165):"); eq(MV.equip, "1", "selección sin cambio de lógica: v1:");
   Object.keys(MV).forEach((id) => { const c = G("MOTOR_CAMBIOS")[id] || []; if (MV[id] !== "1" && !c.some((x) => x.ver === MV[id])) throw new Error(`${id}: la versión ${MV[id]} no tiene hallazgo registrado`); });
   const s0 = JSON.stringify(S.sellos || {});
   try {
@@ -7730,6 +7767,105 @@ t("S.102 (H-266) soportería es autónoma: sin la instantánea aceptada no cuent
     eq(S.soporte.alturaTrabajo, 7.2, "altura de trabajo = la que usaba (zona más alta 6 m + 1.2):"); eq(S.soporte.alturaEstructura, 6, "altura de la estructura = la zona más alta:");
     const mv = G("SOPORTE").mDucto; S.duct.segments.push({ ...G("defaultSegment")("TR-X", 3000), length: 40 }); G("recompute")();
     eq(G("SOPORTE").mDucto, mv, "ya migrado no cuenta en vivo:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+/* ===== S.103 (H-268) eléctrico autónomo: las cargas de otros motores entran sólo como propuesta aceptada (instantánea) ===== */
+t("S.103 (H-268) eléctrico es autónomo: con permisos y tomarHVAC, sin aceptar la propuesta, la cédula, el ventilador, el compresor, las bombas y los FFU NO entran al cuadro (se retiró el modo en vivo); aceptar concede los cruces y deja una instantánea con fecha que no se mueve sola; un proyecto guardado en vivo migra al abrir con las mismas cifras (sólo con los cruces que tenía); el sello no cambia al reabrir (decisión del dueño, 27-sep-2026)", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.103";
+    Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.103" }; });
+    S.zones = [{ ...G("defaultZone")("Nave"), area: 400, height: 6, occ: 30, lights: 8000, equip: 12000 }, { ...G("defaultZone")("Oficina"), area: 100, height: 3, occ: 10, lights: 1500, equip: 2000 }];
+    S.vent = { ...S.vent, mode: "general", area: 500, height: 5.4, occ: 40 };
+    S.aire = { ...G("defaultAire")(), consumos: [{ id: "c1", tipo: "pistola", nombre: "Prueba S.103", cant: 4, lmin: 0, bar: 0, uso: 0 }] };
+    S.hidro = { ...G("defaultHidro")(), muebles: [{ id: "wc_flux", cant: 4 }, { id: "ming_flux", cant: 2 }, { id: "lavabo", cant: 4 }, { id: "fregadero", cant: 1 }, { id: "manguera", cant: 2 }] };
+    S.fuego = { ...G("defaultFuego")(), area: 500, altura: 6 };
+    S.clean = { rooms: [{ ...G("defaultRoom")(), area: 60, height: 2.7, occ: 4, procW: 25 }], ci: 0 };
+    S.elec = { ...G("defaultElec")(), trafoKVA: 300, trafoZ: 4, Ltablero: 30, tomarHVAC: true,
+      cargas: [{ ...G("defaultCarga")("Alumbrado S.103"), tipo: "alumbrado", kW: 9.5, V: 127, ph: 1, cant: 1, L: 40, fp: .95 }] };
+    G("recompute")();
+    const fuentes = { cedula: !!(G("SYS") && G("SYS").chosen), compresor: !!(G("AIRE").principal && G("AIRE").principal.kW > 0 && G("AIRE").nUnidades > 0), bombaAgua: G("HIDRO").kWbomba > 0, bombaIncendio: G("FUEGO").kWbomba > 0, ffu: G("CLEAN").sum.ffu > 0 };
+    Object.entries(fuentes).forEach(([k, v]) => { if (!v) throw new Error(`el caso no aísla lo que se quiere probar: ${k} debe tener algo que proponer`); });
+    const prop = G("propuestaElecFilas")();
+    if (!(prop.length >= 5)) throw new Error("la propuesta debe traer la cédula, el compresor, las bombas y los FFU: " + prop.length);
+    /* 1) Con todos los cruces autorizados y tomarHVAC (el modo en vivo de revisiones anteriores), sin aceptar: sólo lo capturado. */
+    let R = G("ELEC");
+    eq(R.calc.length, 1, "sin aceptar la propuesta sólo cuenta la carga capturada (nada entra en vivo):");
+    if (R.calc.some((c) => c.auto)) throw new Error("una carga entró en vivo desde otro motor");
+    eq(G("PROPUESTAS")["cedula>elec"].enVivo(), false, "ya no existe el modo en vivo:");
+    eq(G("estadoPropuesta")("cedula>elec").nivel, "pendiente", "la propuesta está por decidir, no «vivo»:");
+    const demSolo = R.kVAdemanda;
+    /* 2) Aceptar: concede los seis cruces y deja las cargas como instantánea con origen y fecha. */
+    G("CRUCES_ELEC").forEach((k) => { delete S.perms[k]; });
+    G("propAceptar")("cedula>elec"); R = G("ELEC");
+    G("CRUCES_ELEC").forEach((k) => { if (!S.perms[k]) throw new Error("aceptar la propuesta debe conceder " + k); });
+    const ced = S.elec.cargas.filter((c) => c.origen === "cedula");
+    eq(ced.length, prop.length, "las cargas propuestas quedan en el cuadro con origen «cedula»:");
+    ced.forEach((c) => { if (!(c.ts > 0)) throw new Error(`${c.nombre}: sin fecha de aceptación`); });
+    ["hvac", "aire", "hidro", "fuego", "ffu"].forEach((o) => { if (!ced.some((c) => c.kWOrigen === o)) throw new Error(`falta la carga de origen ${o} en la instantánea`); });
+    if (!(R.kVAdemanda > demSolo)) throw new Error("aceptadas, la demanda del tablero debe subir");
+    eq(R.calc.length, 1 + ced.length, "el cuadro trae la capturada más las aceptadas:");
+    eq(G("estadoPropuesta")("cedula>elec").nivel, "aceptado", "aceptada y vigente:");
+    /* 3) Regla 3: el origen cambia, el cuadro no se mueve, la propuesta avisa; y la propuesta sí refleja el cambio en el mismo ciclo. */
+    const dem1 = R.kVAdemanda, comp1 = ced.find((c) => c.kWOrigen === "aire").kW;
+    S.aire.consumos = [{ id: "c1", tipo: "actuador", nombre: "Grande 1", cant: 400, lmin: 0, bar: 0, uso: 0 }, { id: "c2", tipo: "pistola", nombre: "Grande 2", cant: 200, lmin: 0, bar: 0, uso: 0 }]; G("recompute")();
+    if (!(G("AIRE").principal.kW > comp1)) throw new Error("el caso no aísla lo que se quiere probar: el compresor nuevo debe ser mayor");
+    cerca(G("ELEC").kVAdemanda, dem1, 1e-9, "ya aceptada, la instantánea no se mueve sola aunque el compresor cambie:");
+    eq(S.elec.cargas.find((c) => c.kWOrigen === "aire").kW, comp1, "el kW aceptado se conserva:");
+    eq(G("estadoPropuesta")("cedula>elec").nivel, "desactualizado", "la propuesta avisa que el origen cambió:");
+    cerca(G("propuestaElecFilas")().find((c) => c.kWOrigen === "aire").kW, G("AIRE").principal.kW, 1e-9, "la propuesta trae el compresor nuevo en el mismo recompute:");
+    /* 4) Los permisos ya no mueven el cuadro: las aceptadas son captura propia con origen; los parámetros propios mandan. */
+    G("CRUCES_ELEC").forEach((k) => { delete S.perms[k]; }); G("recompute")();
+    cerca(G("ELEC").kVAdemanda, dem1, 1e-9, "quitar los cruces no saca las cargas ya aceptadas:");
+    S.elec.tempAmb = 50; G("recompute")();
+    if (!(G("ELEC").alim.awg !== R.alim.awg || G("ELEC").calc.some((c, i) => c.cond.awg !== R.calc[i].cond.awg))) throw new Error("la temperatura ambiente capturada en la pestaña debe mandar en el calibre");
+    S.elec.tempAmb = 40; G("recompute")();
+    /* 5) Textos: pantalla, guía y memoria dicen de dónde salen las cargas; nada habla del modo en vivo. */
+    const v = G("viewElec")();
+    if (/en vivo/i.test(v)) throw new Error("la pantalla sigue hablando del modo en vivo");
+    contiene(G("GUIA").electrico.ojo, "autónomo", "la guía lo declara:");
+    if (!G("ELEC").memo.some((m) => /Origen de las cargas \(H-268\)/.test(m) && /aceptada\(s\) de otros motores/.test(m))) throw new Error("la memoria no dice de dónde salen las cargas");
+    if (/EN VIVO/.test(G("PROPUESTAS")["cedula>elec"].actual())) throw new Error("la propuesta sigue hablando del modo en vivo");
+    /* 6) Proyecto guardado en vivo (tomarHVAC con los cruces autorizados): abre con las MISMAS cifras que hoy da aceptar la propuesta, como instantánea con fecha, y desde ahí no cuenta en vivo. */
+    const fixture = JSON.parse(fs.readFileSync("parches/regresion-motores/regresion-motores.emp.json", "utf8"));
+    if (fixture.elec.tomarHVAC || "h268" in fixture.elec) throw new Error("el caso no aísla lo que se quiere probar: el fixture debe ser de antes de H-268 y sin modo en vivo");
+    G("importarRespaldo")(JSON.stringify(fixture)); G("recompute")();
+    const antes = G("ELEC").kVAdemanda;
+    G("propAceptar")("cedula>elec");
+    const esperado = JSON.stringify(G("cifrasMotor")("elec")), nCed = S.elec.cargas.filter((c) => c.origen === "cedula").length;
+    if (!(nCed >= 6)) throw new Error("el fixture debe proponer las seis fuentes (cédula, extractor, compresor, bombas, FFU): " + nCed);
+    const vivo = JSON.parse(JSON.stringify(fixture)); vivo.elec.tomarHVAC = true;
+    G("importarRespaldo")(JSON.stringify(vivo)); G("recompute")();
+    eq(S.elec.tomarHVAC, false, "el modo en vivo queda apagado al abrir:");
+    eq(S.elec.cargas.filter((c) => c.origen === "cedula").length, nCed, "las cargas que tomaba en vivo quedan como instantánea:");
+    if (!S.elec.cargas.filter((c) => c.origen === "cedula").every((c) => c.ts > 0)) throw new Error("la instantánea migrada debe llevar fecha");
+    eq(JSON.stringify(G("cifrasMotor")("elec")), esperado, "abre con las mismas cifras que tenía en vivo:");
+    if (!(G("ELEC").kVAdemanda > antes)) throw new Error("el caso no aísla lo que se quiere probar: las cargas en vivo deben pesar en la demanda");
+    eq((G("vinculoDe")("cedula>elec") || {}).estado, "aceptado", "queda registrada como propuesta aceptada:");
+    eq(G("estadoPropuesta")("cedula>elec").nivel, "aceptado", "vigente:");
+    const demMig = G("ELEC").kVAdemanda;
+    S.aire.consumos.push({ id: "cx", tipo: "actuador", nombre: "Más", cant: 400, lmin: 0, bar: 0, uso: 0 }); G("recompute")();
+    cerca(G("ELEC").kVAdemanda, demMig, 1e-9, "ya migrado no cuenta en vivo:");
+    /* 6b) En vivo con un solo cruce autorizado: sólo migra ese; no se conceden cruces nuevos; hoy los demás motores proponen más y el usuario decide. */
+    const parcial = JSON.parse(JSON.stringify(fixture)); parcial.elec.tomarHVAC = true;
+    ["vent>elec", "aire>elec", "hidro>elec", "fuego>elec", "clean>elec"].forEach((k) => { delete parcial.perms[k]; });
+    G("importarRespaldo")(JSON.stringify(parcial)); G("recompute")();
+    const cedP = S.elec.cargas.filter((c) => c.origen === "cedula");
+    if (!cedP.length || !cedP.every((c) => c.kWOrigen === "hvac")) throw new Error("con sólo equip>elec autorizado debía migrar únicamente la cédula HVAC: " + cedP.map((c) => c.kWOrigen).join(","));
+    if (S.perms["aire>elec"]) throw new Error("la migración no debe conceder cruces que no estaban autorizados");
+    eq(G("estadoPropuesta")("cedula>elec").nivel, "desactualizado", "hoy los demás motores proponen más: el usuario decide:");
+    /* 6c) tomarHVAC sin ningún cruce autorizado: no había nada en vivo, nada se acepta. */
+    const nada = JSON.parse(JSON.stringify(fixture)); nada.elec.tomarHVAC = true; G("CRUCES_ELEC").forEach((k) => { delete nada.perms[k]; });
+    G("importarRespaldo")(JSON.stringify(nada)); G("recompute")();
+    eq(S.elec.cargas.filter((c) => c.origen === "cedula").length, 0, "sin cruces autorizados no había nada en vivo: nada se acepta:");
+    eq(G("vinculoDe")("cedula>elec"), null, "y no se registra vínculo:");
+    eq(S.elec.tomarHVAC, false, "el modo en vivo queda apagado:");
+    /* 7) Sello: guardar y reabrir un proyecto ya migrado no dice «la captura cambió». */
+    G("importarRespaldo")(JSON.stringify(vivo)); G("recompute")();
+    S.sellos = S.sellos || {}; S.sellos.elec = { ts: 1700000000000, huella: G("huellaMotor")("elec"), ver: G("MOTOR_VER").elec };
+    G("importarRespaldo")(JSON.stringify({ v: G("FORMATO_GUARDADO"), ...JSON.parse(JSON.stringify(S)) })); G("recompute")();
+    eq(G("selloDe")("elec").estado, "calculado", "reabrir el proyecto no cambia la huella del eléctrico:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
