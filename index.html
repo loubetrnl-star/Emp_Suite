@@ -664,7 +664,7 @@ details[open] summary{margin-bottom:10px}
 .segbtn.on{border-color:var(--gr-8);color:var(--fg);background:rgba(255,255,255,.08)}
 .segbtn .fit{font-size:12px;opacity:.7}
 .chart{width:100%;height:auto;display:block}
-/* H-270 · Diagrama unifilar: hereda el color del texto (currentColor); naranja sólo en lo pendiente. */
+/* H-270 · Diagramas unifilar y trifilar: heredan el color del texto (currentColor); naranja sólo en lo pendiente. */
 .uf-fig{margin:0}
 .uf-fig .uf text{font-family:var(--texto)}
 .uf-fig .uf .uf-pend{color:var(--senal)}
@@ -20792,19 +20792,19 @@ function sheetWrap(title, sub, body) {
 
 /* ---------- Tab: Eléctrico (NOM-001-SEDE) ---------- */
 /* =========================================================================
-   H-270 · Diagrama unifilar del eléctrico (pedido del dueño, 27-sep-2026)
+   H-270 / H-271 · Diagramas unifilar y trifilar del eléctrico (pedido del dueño, 27-sep-2026)
    Tres capas puras, sin DOM ni estado global (sólo leen MOTOR_VER.elec para declararlo en el pie):
-   1) describirUnifilar(R, en): DESCRIPCIÓN semántica que sale de R = computeElec(E). Nada se
+   1) describirUnifilar(R, en) / describirTrifilar(R, en): DESCRIPCIÓN semántica que sale de R = computeElec(E). Nada se
       inventa: lo que R no trae no aparece y se lista en «pendientes» (regla 6); cada rótulo dice de dónde sale: capturado,
       calculado (con su tabla o artículo) o criterio de la casa (regla 8); todo texto pasa por L(es, en) (regla 7).
-   2) geometriaUnifilar(desc): bloques de primitivas planas (linea, rect, circ, texto) en unidades
+   2) geometriaUnifilar(desc) / geometriaTrifilar(desc): bloques de primitivas planas (linea, rect, circ, texto) en unidades
       de un viewBox de 600 de ancho, rejilla de 2; un bloque por renglón de circuito (unifilar, en escalera: crece hacia
-      abajo y cabe en un celular), para que la memoria PDF pagine sin cortar un
+      abajo y cabe en un celular) o por banda de cuatro circuitos (trifilar), para que la memoria PDF pagine sin cortar un
       símbolo. Símbolos normalizados sencillos: transformador dos círculos, interruptor trazo inclinado, tablero rectángulo,
       motor círculo con M, otras cargas rectángulo con su abreviatura.
    3) svgDiagrama(geo, …) para la pantalla (trazos y texto en currentColor, viewBox, <marker>) y pdfDiagrama(d, geo) para la
       memoria, con las primitivas de PdfDocBase (rectStroke, circle y dash, añadidas en H-270 sin tocar las existentes).
-   El diagrama NO mueve cifras: MOTOR_VER.elec no cambia. Prueba S.150.
+   Los diagramas NO mueven cifras: MOTOR_VER.elec no cambia. Pruebas S.150 y S.151.
    ========================================================================= */
 const UF_ANCHO = 600;
 const ufUnidad = (a) => (/^\d+$/.test(String(a)) && Number(a) >= 250 ? "kcmil" : "AWG");
@@ -20923,6 +20923,62 @@ function describirUnifilar(R, en = false) {
   return out;
 }
 
+function describirTrifilar(R, en = false) {
+  const L = (es, ingles) => (en ? ingles : es);
+  const circuitos = [], pendientes = [];
+  const calc = (R && R.calc) || [], sis = (R && R.sis) || {};
+  /* El sistema declara neutro cuando su tensión a neutro difiere de la de línea (3F4H, 1F3H); el 3F3H no lo tiene. */
+  const conN = sis.Vf != null && sis.Vf !== sis.V;
+  const barras = ["A", "B", "C", ...(conN ? ["N"] : []), "T"];
+  const out = { version: MOTOR_VER.elec, titulo: L("Diagrama trifilar", "Three-line diagram"), sistema: ufSistema(R), barras, conN, circuitos, balance: null, pendientes };
+  if (!calc.length) {
+    pendientes.push(L("Sin cargas capturadas: no hay derivaciones que dibujar (nada se supone).", "No loads captured: there are no branches to draw (nothing is assumed)."));
+    return out;
+  }
+  const calcT = L("calculado", "calculated"), pend = L("pendiente", "pending");
+  const F = R.fases || {};
+  out.balance = { A: F.A, B: F.B, C: F.C, desbalance: R.desbalance, alto: R.desbalance > 5,
+    texto: L(`Balance por fase (${calcT}): A ${n(F.A, 2)} · B ${n(F.B, 2)} · C ${n(F.C, 2)} kVA · desbalance ${n(R.desbalance, 1)} %`, `Phase balance (${calcT}): A ${n(F.A, 2)} · B ${n(F.B, 2)} · C ${n(F.C, 2)} kVA · unbalance ${n(R.desbalance, 1)} %`) };
+  calc.forEach((c, i) => {
+    const num = ufNum(i);
+    const k = { id: `c-${String(i + 1).padStart(2, "0")}`, num, etiqueta: `${num} · ${c.nombre}${c.cant > 1 ? ` ×${c.cant}` : ""}`, ph: c.ph, sinI: !!c.sinI, fases: [], neutro: null, segundo: null, tierra: null, proteccion: "", sub: "", conductores: "", pendientes: [] };
+    circuitos.push(k);
+    if (c.sinI) {
+      k.sub = L("ramal pendiente: sin corriente", "branch pending: no current"); k.pendientes.push(k.sub);
+      pendientes.push(L(`${num} ${c.nombre}: sin corriente de tabla ni kW, el ramal no está dimensionado.`, `${num} ${c.nombre}: no table current and no kW, the branch is not sized.`));
+      return;
+    }
+    const K = c.cond, u = ufUnidad(K.awg), par = K.paralelo > 1 ? `${K.paralelo} × ` : "";
+    const fase = (f, kVA) => ({ fase: f, awg: K.awg, unidad: u, cantidad: K.paralelo || 1, kVA, etiqueta: `${f} · ${par}${K.awg} ${u} · ${n(kVA, 2)} kVA` });
+    if (c.ph === 3) {
+      /* Trifásica: un tercio a cada fase, como balancea computeElec. */
+      k.fases = ["A", "B", "C"].map((f) => fase(f, c.kVAtot / 3));
+      k.neutro = { awg: K.awg, unidad: u, cantidad: K.paralelo || 1, nota: L("mismo calibre que la fase: así lo cuenta computeElec en el relleno de la canalización (corriente de neutro no calculada)", "same size as the phase: that is how computeElec counts it in the raceway fill (neutral current not calculated)") };
+      if (!conN) {
+        k.pendientes.push(L("neutro contado en la canalización, pero el sistema no tiene neutro", "neutral counted in the raceway, but the system has no neutral"));
+        pendientes.push(L(`${num} ${c.nombre}: computeElec cuenta un neutro del calibre de fase en la canalización, pero el sistema ${ufSistema(R)} no tiene neutro: pendiente de revisión.`, `${num} ${c.nombre}: computeElec counts a phase-size neutral in the raceway, but the ${ufSistema(R)} system has no neutral: review pending.`));
+      }
+    } else {
+      /* Monofásica: baja a la(s) fase(s) que le asignó el balanceo, con el kVA que cayó en cada una. */
+      const ks = Object.keys(c.fases || {}).sort();
+      k.fases = ks.map((f) => fase(f, c.fases[f]));
+      if (ks.length > 1) {
+        k.pendientes.push(L(`repartida en ${ks.length} fases por el balanceo; un solo ramal dimensionado`, `split across ${ks.length} phases by the balancing; a single sized branch`));
+        pendientes.push(L(`${num} ${c.nombre}: el balanceo la reparte en ${ks.length} fases (${ks.join("/")}) pero se dimensiona como un solo ramal: los circuitos derivados reales quedan pendientes.`, `${num} ${c.nombre}: balancing splits it across ${ks.length} phases (${ks.join("/")}) but it is sized as a single branch: the actual branch circuits remain pending.`));
+      }
+      /* El segundo conductor (neutro o segunda fase) existe en el conteo de selConductor, pero el motor no dice cuál es. */
+      k.segundo = { awg: K.awg, unidad: u, cantidad: 1, destino: pend, nota: L("2.º conductor del circuito monofásico: computeElec no distingue si es neutro o segunda fase", "2nd conductor of the single-phase circuit: computeElec does not tell whether it is neutral or a second phase") };
+      pendientes.push(L(`${num} ${c.nombre}: el 2.º conductor (neutro o segunda fase) no lo distingue computeElec: pendiente.`, `${num} ${c.nombre}: the 2nd conductor (neutral or second phase) is not identified by computeElec: pending.`));
+    }
+    k.tierra = { awg: K.tierra, unidad: ufUnidad(K.tierra), mat: K.tierraMat, cantidad: 1, nota: L("Tabla 250-122 (NOM-001-SEDE-2012), por la protección", "Table 250-122 (NOM-001-SEDE-2012), by the protection") };
+    k.proteccion = `${K.ocpd} A ${c.ph === 3 ? "3P" : "1F"}`;
+    k.sub = `${K.ocpd} A · ${n(c.I, 1)} A · ${par}${K.awg} ${u}`;
+    k.conductores = `${k.fases.length}×${par}${K.awg} ${u}${k.neutro ? ` + N ${K.awg}` : k.segundo ? " + N/F?" : ""} · T ${K.tierra} ${ufUnidad(K.tierra)}`;
+  });
+  if (sis.ph === 1) pendientes.push(L(`Sistema monofásico ${ufSistema(R)} (L1, L2, N): computeElec balancea en tres fases A/B/C; el trifilar lo dibuja así, pendiente de decisión del motor.`, `Single-phase ${ufSistema(R)} system (L1, L2, N): computeElec balances across three phases A/B/C; the diagram draws it that way, pending an engine decision.`));
+  return out;
+}
+
 /* ---------- 2) Geometría (bloques de primitivas) ---------- */
 function geometriaUnifilar(u) {
   const W = UF_ANCHO, xb = 86, xt = xb + 22, bloques = [];
@@ -20982,6 +21038,54 @@ function geometriaUnifilar(u) {
   return { w: W, bloques };
 }
 
+function geometriaTrifilar(tf) {
+  const W = UF_ANCHO, bloques = [], porBanda = 3, colW = 172, x0 = 68;
+  const bloque = (h) => { const b = { h, el: [] }; bloques.push(b); return b; };
+  const T = (b, x, y, s, o = {}) => b.el.push({ t: "texto", x, y, s, size: o.size || 12, ancla: o.ancla || "ini", peso: !!o.peso, tit: o.tit, maxW: o.maxW, pend: !!o.pend });
+  const Ln = (b, x1, y1, x2, y2, o = {}) => b.el.push({ t: "linea", x1, y1, x2, y2, grueso: o.grueso, dash: o.dash, flecha: !!o.flecha, pend: !!o.pend });
+  if (!tf.circuitos.length) return { w: W, bloques };
+  const yB = { A: 28, B: 46, C: 64 }, yN = 82, yT = tf.conN ? 100 : 82, yInt = 126, yCaja = 178;
+  const rot = { A: "L1 (A)", B: "L2 (B)", C: "L3 (C)", N: "N", T: "T" };
+  for (let b0 = 0; b0 < tf.circuitos.length; b0 += porBanda) {
+    const banda = tf.circuitos.slice(b0, b0 + porBanda), b = bloque(244);
+    /* Barras: A, B, C gruesas; N a guiones; T a guion y punto. */
+    tf.barras.forEach((k) => {
+      const yy = k === "N" ? yN : k === "T" ? yT : yB[k];
+      Ln(b, 52, yy, W - 8, yy, k === "N" ? { dash: "6 4", grueso: 1.6 } : k === "T" ? { dash: "2 3", grueso: 1.6 } : { grueso: 2.4 });
+      T(b, 8, yy + 4, rot[k], { size: 11 });
+    });
+    if (b0 > 0) T(b, W - 8, 16, "(continúa)", { size: 11, ancla: "fin" });
+    banda.forEach((k, j) => {
+      const xc = x0 + j * colW;
+      let xd = xc + 14;
+      const baja = (yDesde, o = {}) => {
+        if (yDesde != null) b.el.push({ t: "circ", cx: xd, cy: yDesde, r: 2.5, relleno: true, pend: o.pend });
+        if (o.interruptor) { Ln(b, xd, yDesde, xd, yInt - 2, o); Ln(b, xd, yInt + 12, xd + 9, yInt - 2, o); Ln(b, xd, yInt + 12, xd, yCaja - 2, { ...o, flecha: true }); }
+        else Ln(b, xd, yDesde != null ? yDesde : yInt + 24, xd, yCaja - 2, { ...o, flecha: yDesde != null });
+        xd += 16;
+      };
+      if (k.sinI) {
+        b.el.push({ t: "rect", x: xc + 4, y: yCaja, w: colW - 14, h: 40, pend: true });
+        T(b, xc + 9, yCaja + 15, k.etiqueta, { size: 12, peso: true, maxW: colW - 24, tit: k.etiqueta });
+        T(b, xc + 9, yCaja + 30, k.sub, { size: 11, maxW: colW - 24, pend: true });
+        return;
+      }
+      k.fases.forEach((f) => baja(yB[f.fase], { interruptor: true }));
+      if (k.neutro && tf.conN) baja(yN, { dash: "6 4" });
+      else if (k.neutro) { T(b, xd - 4, yInt + 20, "N?", { size: 11, pend: true, tit: k.pendientes.join(" · ") }); baja(null, { dash: "6 4", pend: true }); }
+      if (k.segundo) { T(b, xd - 6, yInt + 20, "N/F?", { size: 11, pend: true, tit: k.segundo.nota }); baja(null, { dash: "6 4", pend: true }); }
+      baja(yT, { dash: "2 3" });
+      b.el.push({ t: "rect", x: xc + 4, y: yCaja, w: colW - 14, h: 40 });
+      T(b, xc + 9, yCaja + 15, k.etiqueta, { size: 12, peso: true, maxW: colW - 24, tit: k.etiqueta });
+      T(b, xc + 9, yCaja + 30, k.sub, { size: 11, maxW: colW - 24, tit: k.sub });
+      T(b, xc + 9, yCaja + 54, k.conductores, { size: 11, maxW: colW - 14, tit: [k.conductores, ...(k.pendientes || [])].join(" · "), pend: k.pendientes.length > 0 });
+    });
+  }
+  const pie = bloque(26);
+  T(pie, 8, 16, tf.balance.texto, { size: 11, maxW: W - 16, pend: tf.balance.alto });
+  return { w: W, bloques };
+}
+
 /* ---------- 3) Renderizadores: SVG en línea (pantalla) y primitivas del PDF (memoria) ---------- */
 function svgDiagrama(geo, aria, sufijo) {
   const W = geo.w, H = geo.bloques.reduce((a, b) => a + b.h, 0), f = (v) => Math.round(v * 10) / 10, partes = [];
@@ -21001,6 +21105,9 @@ function svgDiagrama(geo, aria, sufijo) {
 function svgUnifilar(u) {
   const nC = u.nodos.filter((x) => x.tipo === "alimentador").length;
   return svgDiagrama(geometriaUnifilar(u), `Diagrama unifilar: acometida${u.nodos.some((x) => x.tipo === "transformador") ? ", transformador" : ""}, interruptor general, tablero general y ${nC} circuito(s) dimensionado(s); ${u.pendientes.length} pendiente(s)`, "u");
+}
+function svgTrifilar(tf) {
+  return svgDiagrama(geometriaTrifilar(tf), `Diagrama trifilar: barras ${tf.barras.join(", ")} del sistema ${tf.sistema} con ${tf.circuitos.length} derivación(es); ${tf.pendientes.length} pendiente(s)`, "t");
 }
 function pdfDiagrama(d, geo) {
   const s = (d.W - 2 * d.M) / geo.w, tinta = [0.2, 0.2, 0.2];
@@ -21032,18 +21139,21 @@ function pdfDiagrama(d, geo) {
 
 /* ---------- Dónde se cuelgan: tarjeta de la pestaña y capítulo de la memoria ---------- */
 function tarjetaDiagramasElec(R) {
-  const u = describirUnifilar(R), ver = MOTOR_VER.elec;
+  const u = describirUnifilar(R), tf = describirTrifilar(R), ver = MOTOR_VER.elec;
   const pie = (t) => `${t} · procedencia: computeElec v${ver}, capturado en esta pestaña`;
   const pend = (p) => (p.length ? `<div class="sub" style="margin-top:6px"><b>Pendientes</b> (no se suponen): ${p.map(esc).join(" · ")}</div>` : "");
   const uni = u.nodos.length ? `<figure class="uf-fig">${svgUnifilar(u)}<figcaption>${esc(pie("Diagrama unifilar"))}</figcaption></figure>${pend(u.pendientes)}`
     : `<div class="sub">Diagrama unifilar: pendiente · ${esc(u.pendientes.join(" · "))}</div>`;
-  return `<div class="card"><h3>Diagrama<span class="tag">unifilar</span></h3><div class="body">
+  const tri = tf.circuitos.length ? `<figure class="uf-fig">${svgTrifilar(tf)}<figcaption>${esc(pie("Diagrama trifilar"))}</figcaption></figure>${pend(tf.pendientes)}`
+    : `<div class="sub">Diagrama trifilar: pendiente · ${esc(tf.pendientes.join(" · "))}</div>`;
+  return `<div class="card"><h3>Diagramas<span class="tag">unifilar · trifilar</span></h3><div class="body">
         <div class="viz-t">Unifilar</div>${uni}
-        <div class="sub" style="margin-top:8px">Preselección NOM-001-SEDE: no sustituye el estudio de corto circuito ni la coordinación de protecciones. El diagrama no mueve cifras: es la lectura del cuadro de cargas.</div>
+        <div class="viz-t" style="margin-top:18px">Trifilar</div>${tri}
+        <div class="sub" style="margin-top:8px">Preselección NOM-001-SEDE: no sustituye el estudio de corto circuito ni la coordinación de protecciones. Los diagramas no mueven cifras: son la lectura del cuadro de cargas.</div>
       </div></div>`;
 }
 function pdfDiagramasElec(d, R) {
-  const u = describirUnifilar(R), ver = MOTOR_VER.elec, gris = [0.294, 0.333, 0.388];
+  const u = describirUnifilar(R), tf = describirTrifilar(R), ver = MOTOR_VER.elec, gris = [0.294, 0.333, 0.388];
   const proc = (t) => `${t}: procedencia computeElec v${ver}, capturado en esta pestana. Preseleccion NOM-001-SEDE; no sustituye el estudio de corto circuito ni la coordinacion de protecciones. Cada rotulo dice de donde sale su valor: capturado, calculado (tabla o articulo) o criterio de la casa.`;
   pdfHeading(d, "3b. Diagrama unifilar");
   if (!u.nodos.length) pdfParagraph(d, `Diagrama unifilar pendiente: ${u.pendientes.join(" · ")}`, { color: PDF_SENAL });
@@ -21052,6 +21162,14 @@ function pdfDiagramasElec(d, R) {
     pdfParagraph(d, proc("Diagrama unifilar"), { color: gris });
     pdfRows(d, [...u.nodos.map((x) => [x.etiqueta, x.detalle]), ...u.tramos.filter((t) => t.detalle).map((t) => ["Alimentador general", t.detalle])]);
     if (u.pendientes.length) pdfParagraph(d, `Pendientes del unifilar (no se suponen): ${u.pendientes.join(" · ")}`, { color: PDF_SENAL });
+  }
+  pdfHeading(d, "3c. Diagrama trifilar");
+  if (!tf.circuitos.length) pdfParagraph(d, `Diagrama trifilar pendiente: ${tf.pendientes.join(" · ")}`, { color: PDF_SENAL });
+  else {
+    pdfDiagrama(d, geometriaTrifilar(tf));
+    pdfParagraph(d, proc("Diagrama trifilar"), { color: gris });
+    pdfRows(d, tf.circuitos.map((k) => [k.etiqueta, k.sinI ? k.sub : `${k.fases.map((f) => f.etiqueta).join(" · ")}${k.neutro ? ` · N ${k.neutro.awg} ${k.neutro.unidad} (${k.neutro.nota})` : ""}${k.segundo ? ` · 2.º conductor ${k.segundo.awg} ${k.segundo.unidad}: ${k.segundo.destino} (${k.segundo.nota})` : ""} · T ${k.tierra.awg} ${k.tierra.unidad} ${k.tierra.mat} (${k.tierra.nota}) · proteccion ${k.proteccion}`]));
+    if (tf.pendientes.length) pdfParagraph(d, `Pendientes del trifilar (no se suponen): ${tf.pendientes.join(" · ")}`, { color: PDF_SENAL });
   }
 }
 

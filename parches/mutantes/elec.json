@@ -278,5 +278,7 @@
   { "id": "elec.m139", "que": "H-180: el PDF no marca el kW estimado con «e»", "logica": false, "estado": "vigente",
     "buscar": "${c.kWEst ? \" e\" : c.kWOrigen !== \"capturado\" ? \" c\" : \"\"}", "reemplazar": "${c.kWOrigen !== \"capturado\" && !c.kWEst ? \" c\" : \"\"}" },
   { "id": "elec.m142", "que": "H-270: el unifilar pierde el tramo tablero→alimentador (los circuitos quedan sueltos del bus)", "logica": true, "estado": "vigente",
-    "buscar": "tramos.push({ de: \"tablero\", a: idC, etiqueta: \"\" });", "reemplazar": "" }
+    "buscar": "tramos.push({ de: \"tablero\", a: idC, etiqueta: \"\" });", "reemplazar": "" },
+  { "id": "elec.m143", "que": "H-271: el trifilar baja un circuito trifásico a dos fases (A y B, mitad y mitad) en vez de tres", "logica": true, "estado": "vigente",
+    "buscar": "k.fases = [\"A\", \"B\", \"C\"].map((f) => fase(f, c.kVAtot / 3));", "reemplazar": "k.fases = [\"A\", \"B\"].map((f) => fase(f, c.kVAtot / 2));" }
 ]
