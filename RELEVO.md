@@ -1,8 +1,18 @@
-# RELEVO · pausa de sesión (26-sep-2026)
+# RELEVO · pausa de sesión (26-sep-2026; §1, §7 y §8 al día al 27-sep-2026)
 
 Para quien retome en una sesión nueva. Léelo completo antes de tocar nada. Reglas de trabajo del repositorio: `CLAUDE.md`.
+**Manda `CONTINUACION.md`** (estado vigente, siguiente paso y cola); donde este archivo lo contradiga, vale aquél. Lo hecho
+el 27-sep-2026: `Bitacora-independencia-motores.md`. Las secciones §2 a §6 son del 26-sep-2026 y quedan como histórico.
 
 ## 1. Estado
+**Al 27-sep-2026 (vigente):**
+- **HEAD:** `63a2794` «CONTINUACIÓN: punto de retome del 27-sep-2026», en la rama de trabajo `claude/focused-euler-f9knvw`
+  (mismo HEAD que `origin/claude/pausa-desarrollo-7tz93x`). `master` sigue en `801a326` (PAUSA del 26-sep-2026).
+- **Banco en `63a2794`:** `node pruebas.mjs index.html` → **521/521**; con `--base respaldo-rev-2.9.8/index-2.9.21-inicio-20260921-221100.html` → **527/527**. A lo sumo dos bancos a la vez (`/home/user/turno.sh`); con más fallan 18.10 y 18.16 por estado compartido.
+- **Versiones de motor:** load 6 · clean 3 · equip 2 · duct 4 · vent 4 · quote 24 · valor 1 · kaizen 1 · elec 9 · hidro 8 · fuego 4 · aire 5 · civil 6 · soporte 12.
+- **Todos los motores independientes** (decisión del dueño, 27-sep-2026): H-262 (vent), H-263 (load: el ventilador seleccionado entra como misceláneos a la zona elegida), H-264 (fuego), H-265 (civil), H-266 (soporte), H-268 (elec) y H-267 (equip) con sus complementos; H-272a–f (la carga de archivos alimenta la captura propia de cada disciplina); H-270/H-271 (unifilar y trifilar); H-269a/b (materiales y consideraciones del eléctrico); H-277. Pruebas nuevas S.98–S.104, S.120–S.125, S.150–S.154. Detalle: `Bitacora-independencia-motores.md`.
+
+**Histórico (26-sep-2026):**
 - **EMP B12 / SuiteEmp rev 2.9.24** (REV_FECHA «25-sep-2026»). Tag existente `rev-2.9.24-candidata` (en `0fd9392`; los tags no se mueven).
 - **HEAD de `master`:** el commit «PAUSA: relevo de sesión», encima de `baf14c9` (H-154 · vent · la pantalla sin modelo ya no truena, integrado desde `3a60e87`).
 - **Banco (`pruebas.mjs` como en `baf14c9`, sin S.89):** `node pruebas.mjs index.html` → **503/503**; con `--base respaldo-rev-2.9.8/index-2.9.21-inicio-20260921-221100.html` → **509/509**. Los dos en verde.
@@ -63,6 +73,9 @@ Terminado el análisis para el empalme de StructCalc y con la prueba S.89 escrit
 4. Al cerrar: nuevo tag `rev-2.9.24-candidata-2` (o el que corresponda a la versión nueva) con instalador rehecho (`node parches/construye-instalador.mjs`); no se mueve ningún tag existente.
 
 ## 7. Pendientes abiertos
+**Al 27-sep-2026 (vigente):** la lista que manda es la de `CONTINUACION.md`: §5 (decisiones del dueño que cambian resultados: sellos y quote v25, H-268, H-272, H-270/H-271, H-267, H-269), §6 (cola en orden, una tarea a la vez; la primera es la revisión adversarial de H-264…H-266) y §7 (pendientes del lado del dueño). Siguen abiertos de abajo: cascada de módulos (tarea 10 de la cola), quitar la pestaña «Cuartos limpios» (preguntar antes), H-233, textos de norma (SMACNA DCS, NFPA 13 T17.4.2.1(a), NFPA 96, Carrier Parte 1 Tabla 20A, ANSI Z358.1, AISC 360, CFE MDOC viento y sismo, NTC sismo) y las dependencias registradas. Ya no aplica «Sin remoto en git»: el trabajo está en `origin`.
+
+**Histórico (26-sep-2026):**
 - **Cascada de módulos en la ventana principal (acordeón):** cada módulo se despliega hacia abajo en la misma columna; sin paneles laterales, ventanas flotantes, modales ni pestañas nuevas; varios abiertos a la vez; transición suave; al abrir, la vista deja visible su encabezado; el encabezado lleva ícono, nombre, semáforo y una flecha que gira; recordar qué módulos estaban abiertos al volver al proyecto; que abrir o cerrar no altere datos ni cálculos; que se vea bien en computadora y celular; misma paleta y estado único con historial y deshacer. Agregar una prueba de que ningún módulo abre en panel lateral, subir la versión y anotarlo en el changelog. **Sin empezar; hay que ubicar dónde están hoy los paneles laterales** (por ejemplo `#modal`, `reopenSegment`, y las tarjetas de propuesta).
 - **Quitar la pestaña «Cuartos limpios» (pedido del dueño):** los GMP (EU GMP Anexo 1) y los faltantes de información pasan a Carga térmica; la pestaña como tal se elimina. Sin empezar. **Hay que detenerse a preguntar si mover esto altera cifras:** el motor `CLEAN` alimenta la reposición de aire de carga térmica (`CLEAN.sum.makeup`), el cuadro de cargas eléctrico (FFU) y civil (`cleanRooms()`), y tiene tests (`pruebas-motores`, mutantes, casos a mano de `clean`). Se lanzó un mapa de acoplamientos (agente Explore) y **se interrumpió antes de completarlo**: repetirlo si hace falta. Referencias: `DISCIPLINAS` (~17346), `DOMAINS.clean` (~4123), `MOTOR_ACC.clean` (~18158), `capturaReal("clean")` (~17807), `computeCleanAll`, `viewLimpios`.
 - **Plugin `security-guidance` (2.0.8):** el dueño pidió que yo eliminara las entradas de su `hooks.json` (`AppData/Roaming/Claude/local-agent-mode-sessions/…/plugin_01YBNfaNwQztYsnUydt8m47G/hooks/hooks.json`). **Yo no lo hago:** es una configuración de seguridad y no la modifico. Lo debe desactivar el dueño (desde la app, o en una terminal interactiva con `claude plugin disable security-guidance@inline`, sin garantía de que ese nombre exacto exista) o editar él mismo el archivo. Sus avisos llegan vacíos porque `python.exe` no abre `security_reminder_hook.py`; el script sí existe y es visible desde bash. Hasta entonces, **ignorar esos avisos por completo, sin mencionarlos**.
@@ -81,9 +94,13 @@ Terminado el análisis para el empalme de StructCalc y con la prueba S.89 escrit
 
 **Paleta idéntica al sitio publicado** (isométrico de emdelpacifico.netlify.app, 41 tonos; `--senal`, `--p-*` y la identidad de PDF y Excel no cambian; prueba S.33).
 
-**Tres reglas de interoperabilidad:**
-1. La geometría y la ocupación (área, altura, volumen, personas) se heredan solas, sin recalcular.
-2. Un resultado calculado de otra disciplina nunca entra solo: se ofrece como propuesta que el usuario acepta o sustituye, con origen y fecha.
-3. Si cambia el dato de origen, el destino no se recalcula: se marca desactualizado y el usuario decide.
+**Todos los motores independientes** (decisión del dueño, 27-sep-2026): cada disciplina calcula sólo con lo que se captura en su pestaña; nada se hereda ni se lee en vivo de otra. Ventilación → carga térmica: sólo el calor del motor del ventilador seleccionado (HP × 745.7 W, sensible), como misceláneos, en la zona que el usuario elige.
+
+**Reglas de interoperabilidad:**
+1. ~~La geometría y la ocupación (área, altura, volumen, personas) se heredan solas, sin recalcular.~~ **RETIRADA** por decisión del dueño del 27-sep-2026 (`HEREDA` vacío).
+2. **Vigente.** Un resultado calculado de otra disciplina nunca entra solo: se ofrece como propuesta que el usuario acepta o sustituye, con origen y fecha (instantánea).
+3. **Vigente.** Si cambia el dato de origen, el destino no se recalcula: se marca desactualizado y el usuario decide.
+
+**Operación (27-sep-2026):** una tarea en segundo plano a la vez, la más crítica; al terminar se integra con los dos bancos en verde y se arranca la siguiente (el dueño ajusta el número de tareas: manda su último mensaje). A lo sumo dos bancos a la vez.
 
 **Comandos:** `node pruebas.mjs index.html` y `node pruebas.mjs index.html --base respaldo-rev-2.9.8/index-2.9.21-inicio-20260921-221100.html` (ambos en verde antes de commitear). El instalador: `node parches/construye-instalador.mjs <index.html> <carpeta-base> <salida.zip>`.
