@@ -6200,8 +6200,9 @@ t("S.36 (rev 2.9.20, decisión del dueño) versión por motor en el sello: sólo
   llenarTodoS();
   const MV = G("MOTOR_VER");
   /* H-107: carga v3 = lógica de la rev 2.9.21 (declarada en la 2.9.24); H-120: carga v4 = corrección CLTD por sitio. H-183: eléctrico v5 = Tabla 250-122 de la NOM; H-177: v6 = art. 440 con MCA/MOP; H-179: v7 = nada se supone (pendientes); H-178: v8 = corriente de motor por la Tabla 430-250/248.
-     H-194: hidro v5 = presión mínima por mueble de la Tabla 604.3 del IPC 2015 y CDT con máx(residual, mínima); H-195: v6 = equipo de emergencia fuera de Hunter; H-197: v7 = sin pisos sin norma (días, ΔT, pendiente 704.1); H-198: v8 = CPVC sólo hasta 2" CTS, fuera de catálogo y PEAD sin SDR como error. */
-  eq(MV.elec, "8", "eléctrico v8 (H-178):"); eq(MV.hidro, "8", "hidro v8 (H-198):"); eq(MV.load, "5", "carga v5 (H-141):"); eq(MV.duct, "4", "ductos v4 (H-165):"); eq(MV.equip, "1", "selección sin cambio de lógica: v1:");
+     H-194: hidro v5 = presión mínima por mueble de la Tabla 604.3 del IPC 2015 y CDT con máx(residual, mínima); H-195: v6 = equipo de emergencia fuera de Hunter; H-197: v7 = sin pisos sin norma (días, ΔT, pendiente 704.1); H-198: v8 = CPVC sólo hasta 2" CTS, fuera de catálogo y PEAD sin SDR como error.
+     H-263: carga v6 = calor del motor del ventilador seleccionado en Ventilación como misceláneos de la zona elegida; H-262: ventilación v4 = ya no hereda de carga térmica. */
+  eq(MV.elec, "8", "eléctrico v8 (H-178):"); eq(MV.hidro, "8", "hidro v8 (H-198):"); eq(MV.load, "6", "carga v6 (H-263):"); eq(MV.duct, "4", "ductos v4 (H-165):"); eq(MV.equip, "1", "selección sin cambio de lógica: v1:");
   Object.keys(MV).forEach((id) => { const c = G("MOTOR_CAMBIOS")[id] || []; if (MV[id] !== "1" && !c.some((x) => x.ver === MV[id])) throw new Error(`${id}: la versión ${MV[id]} no tiene hallazgo registrado`); });
   const s0 = JSON.stringify(S.sellos || {});
   try {
@@ -7459,6 +7460,53 @@ t("S.98 (H-262) ventilación calcula sólo con sus propios datos: el área, la a
     if (/heredada de Carga térmica|se heredará de Carga térmica/.test(txt)) throw new Error("la pantalla de ventilación todavía anuncia herencia de carga térmica");
     /* Contra incendio no es parte de este hallazgo: sigue como estaba. */
     eq(S.fuego.area, 800, "contra incendio no cambia en este hallazgo:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+t("S.99 (H-263) al seleccionar el ventilador, el calor de su motor (HP del submittal × 745.7 W) entra a la zona elegida de Carga térmica como «Misceláneos»; sólo eso, y si ventilación cambia la carga no se mueve sola (decisión del dueño, 27-sep-2026)", () => {
+  const guardado = JSON.stringify(S);
+  const misc = (r) => r.lines.find((l) => /^Misceláneos · Ventilación/.test(l.label));
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.99";
+    Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.99" }; });
+    S.zones = [{ ...G("defaultZone")("Nave"), area: 400, height: 6, occ: 30 }, { ...G("defaultZone")("Oficina"), area: 100, height: 3, occ: 10 }];
+    G("asegurarIdsZona")();
+    Object.assign(S.vent, { mode: "general", spaceType: "office", area: 400, height: 6, occ: 0, ach: 6 });
+    G("recompute")();
+    const e = G("VENT").eq.primary;
+    if (!e) throw new Error("el caso no aísla lo que se quiere probar: ventilación debe tener modelo");
+    const hp = G("greenSheet")(G("GREEN").find((x) => x.id === e.id)).hp;
+    const antes0 = G("LOADS")[0].grand, antes1 = G("LOADS")[1].grand;
+    if (G("LOADS").some(misc)) throw new Error("sin seleccionar no debe haber misceláneos de ventilación");
+    /* Se selecciona desde la pantalla, eligiendo la zona. */
+    S.tab = "ventilacion"; G("render")();
+    const d = w.document;
+    const btn = d.querySelector('[data-act="vent-seleccionar"]');
+    if (!btn) throw new Error("ventilación no tiene botón para seleccionar el modelo");
+    const selZ = d.getElementById("vent-sel-zona");
+    if (!selZ) throw new Error("con dos zonas debe pedir a qué zona entra la carga");
+    selZ.value = S.zones[1].id; btn.click();
+    const L0 = G("LOADS")[0], L1 = G("LOADS")[1];
+    const lin = misc(L1);
+    if (!lin) throw new Error("la zona elegida no recibió la carga del ventilador seleccionado");
+    cerca(lin.s, hp * 745.7, 1, "calor del motor = HP del submittal × 745.7 W:");
+    eq(lin.l, 0, "el calor del motor es sensible:");
+    contiene(lin.label, e.model, "el renglón dice el modelo:");
+    if (misc(L0)) throw new Error("la otra zona no debe recibir la carga");
+    eq(Math.round(L0.grand), Math.round(antes0), "la otra zona no cambia:");
+    if (!(L1.grand >= antes1 + lin.s - 1)) throw new Error(`la zona elegida debe subir al menos ${lin.s} W (antes ${antes1}, después ${L1.grand})`);
+    /* Regla 3: si ventilación cambia después, carga térmica se queda con lo seleccionado. */
+    const g1 = L1.grand;
+    S.vent.ach = 12; G("recompute")();
+    eq(Math.round(G("LOADS")[1].grand), Math.round(g1), "si cambia ventilación, la carga no se mueve sola:");
+    const e2 = G("VENT").eq.primary;
+    S.tab = "ventilacion"; G("render")();
+    if (e2 && e2.id !== e.id) contiene(d.getElementById("view").textContent, "ya no coincide", "la pantalla avisa que la selección quedó atrás:");
+    /* Quitar la selección la saca de carga térmica. */
+    const q = d.querySelector('[data-act="vent-quitar"]');
+    if (!q) throw new Error("no hay botón para quitar la selección");
+    q.click();
+    if (G("LOADS").some(misc)) throw new Error("al quitar la selección la carga debe salir de carga térmica");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 

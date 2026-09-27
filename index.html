@@ -3440,6 +3440,16 @@ function computeLoad(z, bldDiv, forceTech, hour = P.HOUR) {
   const eqS = Math.max(0, num(z.equip)) * stor.equip * div.equip * bd;
   lines.push({ g: "internal", label: "Equipos / fuerza", s: eqS, l: 0, d: `${Math.max(0, num(z.equip)).toFixed(0)} W · alm ${stor.equip.toFixed(2)} · div ${div.equip}` });
 
+  /* H-263 (decisión del dueño, 27-sep-2026): el ventilador SELECCIONADO en Ventilación entrega a la zona que se eligió el calor
+     de su motor, HP del submittal Greenheck × 745.7 W, como carga sensible de misceláneos. Sólo eso. Es una instantánea tomada al
+     seleccionar: si ventilación cambia después, esta carga no se mueve sola (regla 3); se vuelve a seleccionar. */
+  const mv = z.miscVent && num(z.miscVent.W, 0) > 0 ? z.miscVent : null;
+  const miscS = mv ? num(mv.W) : 0;
+  if (mv) {
+    lines.push({ g: "internal", label: `Misceláneos · Ventilación ${mv.modelo}`, s: miscS, l: 0, d: `${num(mv.hp)} HP × 745.7 W/HP · motor del ventilador seleccionado en Ventilación (submittal Greenheck)` });
+    memo.push(`Misceláneos: ventilador ${mv.modelo} seleccionado en Ventilación, ${num(mv.hp)} HP × 745.7 W/HP = ${miscS.toFixed(0)} W sensibles (decisión del dueño, H-263).`);
+  }
+
   /* Cuarto limpio: los ventiladores de los filtros terminales trabajan las 24 h
      y su calor entra íntegro al cuarto. El número de módulos se deduce del caudal
      que exige la clase ISO, que se conoce antes de resolver la carga. */
@@ -3471,7 +3481,7 @@ function computeLoad(z, bldDiv, forceTech, hour = P.HOUR) {
   const inf = vol * ach, infS = airS(inf, dT), infL = airL(inf, dW);
   lines.push({ g: "air", label: presPos ? "Infiltración 0 (cuarto limpio a presión positiva)" : `Infiltración ${ach.toFixed(2)} cambios/h`, s: infS, l: infL, d: presPos ? "sale aire, no entra: la presurización va en el aire exterior" : `${inf.toFixed(0)} m³/h · qs = 0,34·qv·ΔT · ql = 0,83·qv·ΔW` });
 
-  const rawS = wallS + roofS + gT + gS + partS + floorS + occS + lightS + eqS + ffuS + infS;
+  const rawS = wallS + roofS + gT + gS + partS + floorS + occS + lightS + eqS + miscS + ffuS + infS;
   const rawL = occL + infL;
   const fan = rawS * HAP.fan, duct = rawS * HAP.duct;
   lines.push({ g: "system", label: "Calor de ventilador", s: fan, l: 0, d: `${(HAP.fan * 100).toFixed(1)} % del sensible de espacio` });
@@ -3610,6 +3620,7 @@ function defaultZone(name = "Zona 1") {
     serpentin: "auto", adpMargen: 2, // rev 2.9.21 · auto = aire exterior dedicado en cuarto limpio, todo el suministro en las demás
     presion: "positiva", // rev 2.9.21 · cuarto limpio: positiva (sin infiltración) o negativa (con infiltración)
     hrControl: "no", // rev 2.9.20 · "si" = HR especificada: dos casos de diseño (un cuarto limpio siempre los lleva)
+    miscVent: null, // H-263 · calor del motor del ventilador seleccionado en Ventilación (instantánea); null = no recibe
   };
 }
 
@@ -11231,7 +11242,7 @@ function defaultState() { return {
      capturó — se van a 0. faceVel/ductLoss/filterLoss SÍ son criterio de
      diseño (velocidad objetivo, coeficientes de pérdida), no medición de
      este proyecto: se quedan igual que las normas de casa. */
-  vent: { name: "Extracción general", mode: "general", spaceType: "office", area: 0, height: 0, ach: 6, occ: 0, hoodL: 0, hoodW: 0, hoodType: "wall", duty: "medium", processCFM: 0, freeArea: 0, faceVel: 400, louverW: 0, louverH: 0, ductLoss: .5, filterLoss: .25 },
+  vent: { name: "Extracción general", mode: "general", spaceType: "office", area: 0, height: 0, ach: 6, occ: 0, hoodL: 0, hoodW: 0, hoodType: "wall", duty: "medium", processCFM: 0, freeArea: 0, faceVel: 400, louverW: 0, louverH: 0, ductLoss: .5, filterLoss: .25, seleccion: null },
   duct: {
     meta: { material: "galvanized", pc: "2", eps: .09, rho: 1.2, mu: 1.8e-5,
       /* Largo comercial del espiroducto y hoja de lámina con los que se compra.
@@ -17647,6 +17658,45 @@ const PROPUESTAS = {
     propio: () => { S.soporte.usarMotores = false; delete S.soporte.snap; },
   },
 };
+/* H-263 · El ventilador que se ofrece para seleccionar: el modelo que cubre el caudal, con los HP de su submittal. */
+function ventSeleccionable() {
+  const p = VENT && VENT.eq && VENT.eq.primary; if (!p) return null;
+  const e = GREEN.find((x) => x.id === p.id) || p;
+  const hp = greenSheet(e).hp;
+  return { modeloId: e.id, modelo: e.model, hp, W: Math.round(hp * 745.7) };
+}
+/* Selecciona el ventilador y deja el calor de su motor en UNA zona de carga térmica (la elegida); quita el de cualquier otra. */
+function seleccionarVent(zonaId) {
+  asegurarIdsZona();
+  const s = ventSeleccionable(), z = (S.zones || []).find((q) => q && q.id === zonaId);
+  if (!s || !z) return false;
+  const ts = Date.now();
+  S.zones.forEach((q) => { if (q) q.miscVent = null; });
+  z.miscVent = { ...s, ts };
+  S.vent.seleccion = { ...s, zonaId, ts };
+  return true;
+}
+function quitarSeleccionVent() {
+  (S.zones || []).forEach((q) => { if (q) q.miscVent = null; });
+  delete S.vent.seleccion;
+}
+function seleccionVentHtml() {
+  const sel = S.vent.seleccion, ahora = ventSeleccionable();
+  const zonas = (S.zones || []).filter((z) => z && z.id);
+  let h = "";
+  if (sel) {
+    const z = zonas.find((q) => q.id === sel.zonaId);
+    h += `<div class="her"><span class="hdot"></span>Seleccionado: <b>${esc(sel.modelo)}</b> · ${n(num(sel.hp), 2)} HP → ${n(num(sel.W), 0)} W a Carga térmica, zona <b>${esc(z ? z.name : "(ya no existe)")}</b> · ${fechaCorta(sel.ts)}
+      <button class="toolbtn mini" data-act="vent-quitar">Quitar selección</button></div>`;
+    if (!z) h += `<div class="warnline">La zona que recibía el calor del ventilador ya no existe: vuelve a seleccionar.</div>`;
+    else if (!ahora || ahora.modeloId !== sel.modeloId || ahora.hp !== sel.hp)
+      h += `<div class="warnline">La selección ya no coincide con el cálculo actual (${ahora ? `ahora ${esc(ahora.modelo)}, ${n(ahora.hp, 2)} HP` : "sin modelo"}): Carga térmica sigue con lo seleccionado; vuelve a seleccionar para actualizarla.</div>`;
+  }
+  if (!ahora) return h;
+  if (!zonas.length) return h + `<div class="hint">Para seleccionar el ventilador captura al menos una zona en Carga térmica: el calor de su motor entra a una zona.</div>`;
+  const pick = zonas.length > 1 ? `<div class="field"><label>Zona de Carga térmica que recibe el calor del motor</label><select id="vent-sel-zona">${zonas.map((z) => `<option value="${esc(z.id)}"${sel && sel.zonaId === z.id ? " selected" : ""}>${esc(z.name)}</option>`).join("")}</select></div>` : "";
+  return h + pick + `<button class="btn-ghost" data-act="vent-seleccionar">Seleccionar ${esc(ahora.modelo)} (${n(ahora.hp, 2)} HP → ${n(ahora.W, 0)} W a Carga térmica${zonas.length === 1 ? `, zona ${esc(zonas[0].name)}` : ""})</button>`;
+}
 /* H-262: el volumen vigente de ventilación es sólo el capturado en su pestaña. */
 function ventAreaVigente() { return Math.max(1, num(S.vent.area, 1)); }
 function ventAlturaVigente() { return Math.max(.1, num(S.vent.height, 3)); }
@@ -18266,13 +18316,14 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "5", clean: "3", equip: "1", duct: "4", vent: "4", quote: "24", valor: "1", kaizen: "1", elec: "8", hidro: "8", fuego: "3", aire: "5", civil: "5", soporte: "11" };
+const MOTOR_VER = { load: "6", clean: "3", equip: "1", duct: "4", vent: "4", quote: "24", valor: "1", kaizen: "1", elec: "8", hidro: "8", fuego: "3", aire: "5", civil: "5", soporte: "11" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
     { ver: "3", rev: "2.9.21", que: "cuarto limpio con presión positiva sin infiltración; unidad de aire exterior dedicada + serpentín seco (ADP desde la latente interna); crédito sensible del aire exterior topado en deshumidificación; cambios por hora obligatorios; calor del ventilador Q·ΔP/η" },
     { ver: "4", rev: "2.9.24", que: "H-120: el DET de muros y cubierta se corrige por la condición de diseño del sitio, (25.6 − ti) + (tm − 29.4) K con tm = to − rango/2 (corrección CLTD, ASHRAE Fundamentals 1997 cap. 28; ratificar con Carrier Tabla 20A)" },
-    { ver: "5", rev: "2.9.24", que: "H-141 (decisión (a) del dueño): la diversidad del edificio se aplica una sola vez, en el objetivo de planta; las ganancias internas de cada zona van al pico sin el factor (antes ×bldDiv en la zona y otra vez en la planta: con 0.8 el objetivo quedaba ×0.713). Criterio Carrier, ratificar con texto" }],
+    { ver: "5", rev: "2.9.24", que: "H-141 (decisión (a) del dueño): la diversidad del edificio se aplica una sola vez, en el objetivo de planta; las ganancias internas de cada zona van al pico sin el factor (antes ×bldDiv en la zona y otra vez en la planta: con 0.8 el objetivo quedaba ×0.713). Criterio Carrier, ratificar con texto" },
+    { ver: "6", rev: "2.9.24", que: "H-263 (decisión del dueño, 27-sep-2026): el ventilador SELECCIONADO en Ventilación entra a la zona elegida como misceláneos, HP del submittal Greenheck × 745.7 W sensibles, como instantánea (si ventilación cambia después, la carga no se mueve sola; se vuelve a seleccionar). Sin selección la carga no cambia" }],
   vent: [{ ver: "2", rev: "2.9.24", que: "H-154 + H-156: la cobertura real manda en la selección Greenheck (cfmMin ≤ objetivo ≤ cfmMax, sin tolerancia ×0.9); la familia del modo sólo ordena entre los que cubren; si nadie cubre no hay modelo (proyecto fijo: GB-360 → CSW-30 para 11,643 CFM)" },
     { ver: "3", rev: "2.9.24", que: "H-155: sin medidas no hay caudal: campana sin largo o fondo y rejilla sin ancho, alto, área libre o velocidad dan demanda 0 con aviso (antes pisos de 0.1 ft, 5 % y 100 fpm fabricaban 30 y 258 CFM y sus partidas)" },
     { ver: "4", rev: "2.9.24", que: "H-262 (decisión del dueño, 27-sep-2026): ventilación calcula sólo con sus propios datos: el área, la altura y los ocupantes ya no se copian de carga térmica (se capturan en su pestaña; un proyecto guardado conserva los valores que ya tenía copiados). La relación con carga térmica va al revés: el ventilador seleccionado entrega el calor de su motor a una zona (H-263)" }],
@@ -19974,6 +20025,7 @@ function viewVent() {
       <details><summary>Avanzado: pérdidas de presión</summary>
       <div class="row">${inp("Pérdida en ductos (in.w.g.)", "vent.ductLoss", "number", "0.05", "vent.ductLoss", S.vent)}${inp("Pérdida en filtros (in.w.g.)", "vent.filterLoss", "number", "0.05", "vent.filterLoss", S.vent)}</details>
       ${propuestaHtml("load>vent")}
+      ${(asegurarIdsZona(), seleccionVentHtml())}
       ${VENT.eq && VENT.eq.primary ? `<button class="btn-primary" data-act="pdf-sub" data-kind="green" data-id="${VENT.eq.primary.id}">Submittal del ventilador en PDF</button>` : `<div class="hint">${VENT.demand > 0 ? "Ningún modelo del catálogo cubre el caudal: no se propone modelo ni submittal (H-154)." : "Sin caudal: sin modelo."}</div>`}
     </div></div>
     <div class="grid" style="gap:14px">
@@ -21973,6 +22025,18 @@ document.addEventListener("click", (e) => {
     case "q-pdf-espejo": emitirPropuestaPdfEspejo(); break;
     case "prop-propio": propPropio(b.dataset.id); break;
     case "prop-conservar": propConservar(b.dataset.id); break;
+    case "vent-seleccionar": {
+      const zs = document.getElementById("vent-sel-zona");
+      asegurarIdsZona();
+      const zid = zs ? zs.value : (S.zones.find((z) => z && z.id) || {}).id;
+      if (seleccionarVent(zid)) { recompute(); projAutosave(); render(); toast("Ventilador seleccionado: el calor de su motor entra a Carga térmica como misceláneos"); }
+      break;
+    }
+    case "vent-quitar": {
+      quitarSeleccionVent(); recompute(); projAutosave(); render();
+      toast("Selección quitada: Carga térmica ya no lleva el calor del ventilador");
+      break;
+    }
     case "her-volver": {
       const r = herDe(b.dataset.path);
       r.modo = "heredado"; r.ts = Date.now(); r.origen = "load";
@@ -22394,6 +22458,7 @@ function sanearEstado(d) {
   s.quote.prop = { ...defaultPropuesta(), ...(s.quote.prop && typeof s.quote.prop === 'object' ? s.quote.prop : {}) };
   if (!Array.isArray(s.quote.prop.hitos)) s.quote.prop.hitos = defaultPropuesta().hitos;
   if (!s.vent || typeof s.vent !== "object") s.vent = base.vent;
+  if (s.vent.seleccion === undefined) s.vent.seleccion = null; // H-263 · proyectos anteriores: sin ventilador seleccionado
   if (!s.meta || typeof s.meta !== "object") s.meta = base.meta;
   ["name", "client", "location", "engineer", "date"].forEach((k) => { if (typeof s.meta[k] !== "string") s.meta[k] = (typeof base.meta[k] === "string" ? base.meta[k] : ""); });
   if (!s.site || typeof s.site !== "object") s.site = base.site;
