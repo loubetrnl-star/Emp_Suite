@@ -1777,6 +1777,7 @@ function buildElecPdf() {
     ["Motores", "Corriente a plena carga de la Tabla 430-250 (trifasicos) o 430-248 (monofasicos), no de kW/fp (art. 430-6(a)(1)): hp de placa o, sin el, el renglon inmediato superior al kW capturado; un hp de catalogo o estimado por otro modulo (no de placa) solo puede subir ese renglon. Su kVA sale de esa corriente. Fuera de la tabla: corriente ESTIMADA con kW/fp, o PENDIENTE sin kW. 125 % del motor mayor mas el resto al 100 % (art. 430-24); proteccion al 250 % de esa corriente, a la capacidad normalizada inmediata superior (art. 430-52)"],
     ["Equipo con motocompresor", "Con MCA y MOP: conductor por la MCA de placa (440-4(b), 440-35) y proteccion hasta el MOP, al valor normalizado de 240-6(a) que no lo excede (440-22); sin la Tabla 430-52. MCA y MOP estimados por la suite se marcan como tales en la memoria y no bajan el conductor del 125 %"],
   ]);
+  pdfConsideracionesElec(d, R, E);
   pdfHeading(d, "3. Cuadro de cargas");
   pdfTable(d, ["Carga", "kW", "fp", "V/F", "A", "Cal.", "Prot.", "Tierra", "Tubo", "L m", "e %"],
     R.calc.map((c) => [c.nombre.slice(0, 34), c.kWsin ? "pend." : `${n(c.kWtot, 2)}${c.kWEst ? " e" : c.kWOrigen !== "capturado" ? " c" : ""}`, `${n(c.fp, 2)}${c.fpOrigen === "casa" ? "*" : ""}`, `${c.V}/${c.ph}`, ...(c.sinI ? ["pend.", "pend.", "pend.", "pend.", "pend."] : [n(c.I, 1), c.cond.awg, String(c.cond.ocpd), c.cond.tierra, c.cond.tubo.d]), c.sinL ? "pend." : `${n(c.L, 0)}${c.Lsin ? "*" : ""}`, c.cond.dv == null ? "pend." : n(c.cond.dv, 2)]),
@@ -5699,6 +5700,20 @@ function buildPropuestaXlsx(opt) {
       MT.pendientes.forEach((p) => ef.push([xT(`${L("Pendiente", "Pending")}: ${p}`, XS.NOTA)]));
       ef.push([xT(L(`Procedencia: computeElec v${MT.version}, capturado en la pestana Electrico. Metros = L del circuito × conductores que el motor cuenta en cada canalizacion (fases, neutro en trifasico, tierra de la Tabla 250-122), por juego en paralelo; canalizacion = L por juego; protecciones, tableros y transformador por pieza. Sin precios: los pone la cotizacion.`,
         `Source: computeElec v${MT.version}, captured on the Electrical tab. Meters = circuit L × conductors the module counts in each raceway (phases, neutral in three-phase, Table 250-122 ground), per parallel set; raceway = L per set; protection, panelboards and transformer per piece. No prices: the quote sets them.`), XS.NOTA)]);
+      ef.push([]);
+    }
+    /* H-269b: consideraciones de cálculo (parámetros con valor y origen; normas con edición, año, sección y página sólo con su
+       texto en parches/normas-texto, si no BLOQUEADO). No mueven cifras. */
+    {
+      const CO = consideracionesElec(ELEC, S.elec, en), vac = () => xV(XS.TD);
+      ef.push([xT(L("CONSIDERACIONES DE CALCULO", "CALCULATION CONSIDERATIONS"), XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC)]);
+      ef.push([L("PARAMETRO", "PARAMETER"), L("VALOR", "VALUE"), "", "", "", "", "", "", "", "", "", L("DE DONDE SALE", "SOURCE")].map((x) => xT(x, XS.TH)));
+      CO.parametros.forEach((q) => ef.push([xT(q.param, XS.TD), xT(q.valor, XS.TD), vac(), vac(), vac(), vac(), vac(), vac(), vac(), vac(), vac(), xT(q.origen, XS.TD)]));
+      ef.push([]);
+      ef.push([L("NORMA, EDICION, SECCION Y PAGINA", "STANDARD, EDITION, SECTION AND PAGE"), L("USO EN EL CALCULO", "USE IN THE CALCULATION"), "", "", "", "", "", "", "", "", "", L("EN ESTE PROYECTO", "IN THIS PROJECT")].map((x) => xT(x, XS.TH)));
+      CO.normas.forEach((x) => ef.push([xT(x.etiqueta, XS.TD), xT(x.uso, XS.TD), vac(), vac(), vac(), vac(), vac(), vac(), vac(), vac(), vac(), xT(x.aplica ? L("interviene", "applies") : L("no interviene", "does not apply"), XS.TD)]));
+      ef.push([xT(L(`Procedencia: computeElec v${CO.version}. Se cita edicion, año, seccion y pagina sólo con el texto de la norma en parches/normas-texto (NOM-001-SEDE-2012, DOF 29-nov-2012); una norma sin texto sale «BLOQUEADO: falta el texto de la norma». Estas consideraciones no mueven ninguna cifra.`,
+        `Source: computeElec v${CO.version}. Edition, year, section and page are cited only with the standard's text in parches/normas-texto (NOM-001-SEDE-2012, DOF 29-nov-2012); a standard without text shows «BLOCKED: the text of the standard is missing». These considerations move no figure.`), XS.NOTA)]);
       ef.push([]);
     }
     ef.push([xT(L("Esta memoria no sustituye el dictamen de una unidad de verificacion ni un estudio de arco electrico: es el calculo que se le entrega a quien lo emite.",
@@ -22068,6 +22083,186 @@ function pdfMaterialesElec(d, R) {
   if (M.pendientes.length) pdfParagraph(d, `Pendientes de la cuantificacion (no se suman ni se suponen): ${M.pendientes.join(" · ")}`, { color: PDF_SENAL });
 }
 
+/* =========================================================================
+   H-269b · Consideraciones de cálculo del eléctrico (pedido del dueño, 27-sep-2026)
+   consideracionesElec(R, E, en): función pura que NO mueve cifras. Lista (1) los parámetros que gobiernan el cálculo, con el
+   valor que usó computeElec y de dónde sale: capturado en esta pestaña; valor inicial de la pestaña (criterio de la casa de
+   defaultElec) cuando el campo trae ese valor; pendiente; sin confirmar (valor por omisión de una revisión anterior); o
+   criterio de la casa declarado en el código. Y (2) las normas que el motor usa (NORMAS_ELEC): con edición, año, sección y
+   página SÓLO si su texto está en parches/normas-texto (campo `texto`, con el `ancla` literal que la prueba busca en esa
+   página); sin texto, «BLOQUEADO: falta el texto de la norma» y no se cita edición ni sección (regla 4). Todas las secciones
+   de la NOM-001-SEDE-2012 que usa el motor están en el texto del DOF (parches/normas-texto/NOM-001-SEDE-2012_DOF_texto.txt).
+   Prueba S.153.
+   ========================================================================= */
+const NOM001_2012 = { familia: "NOM-001-SEDE", norma: "NOM-001-SEDE-2012", edicion: "DOF 29-nov-2012", anio: 2012, texto: "NOM-001-SEDE-2012_DOF_texto.txt" };
+const hayCargasElec = (R) => !!(R && R.calc && R.calc.length);
+const cualquierCircuitoElec = (R, f) => hayCargasElec(R) && [R.alim, ...R.calc.map((c) => c.cond)].some((K) => K && f(K));
+const NORMAS_ELEC = [
+  { ...NOM001_2012, seccion: "Tabla 310-15(b)(16)", pagina: "190", ancla: "Tabla 310-15(b)(16) Ampacidades permisibles",
+    uso: ["ampacidad de los conductores, columna de 75 °C", "conductor ampacity, 75 °C column"], aplica: hayCargasElec },
+  { ...NOM001_2012, seccion: "110-14(c)", pagina: "31", ancla: "c) Limitaciones por temperatura",
+    uso: ["la temperatura de la terminal manda: por eso la columna de 75 °C", "terminal temperature governs: hence the 75 °C column"], aplica: hayCargasElec },
+  { ...NOM001_2012, seccion: "Tabla 310-15(b)(2)(a)", pagina: "186", ancla: "Tabla 310-15(b)(2)(a).- Factores de Corrección",
+    uso: ["factor por temperatura ambiente", "ambient temperature correction factor"], aplica: hayCargasElec },
+  { ...NOM001_2012, seccion: "Tabla 310-15(b)(3)(a)", pagina: "187", ancla: "Tabla 310-15(b)(3)(a). Factores de ajuste",
+    uso: ["factor por más de tres portadores en la canalización", "adjustment factor for more than three current-carrying conductors"], aplica: hayCargasElec },
+  { ...NOM001_2012, seccion: "210-19(a)(1)", pagina: "52", ancla: "210-19. Conductores. Ampacidad y tamaño mínimos.",
+    uso: ["circuito derivado: carga continua al 125 %", "branch circuit: continuous load at 125 %"], aplica: (R) => hayCargasElec(R) && R.calc.some((c) => (TIPO_CARGA[c.tipo] || {}).continua) },
+  { ...NOM001_2012, seccion: "210-19(a), Nota 4", pagina: "52", ancla: "NOTA 4: Los conductores de circuitos derivados",
+    uso: ["caída de tensión del circuito derivado: recomendación de la nota, aplicada como criterio duro de la casa", "branch voltage drop: recommendation in the note, applied as a hard house criterion"], aplica: hayCargasElec },
+  { ...NOM001_2012, seccion: "215-2(a)(1)", pagina: "61", ancla: "215-2. Capacidad y tamaños mínimos del conductor.",
+    uso: ["alimentador: 125 % de las cargas continuas que no son motor", "feeder: 125 % of continuous non-motor loads"], aplica: hayCargasElec },
+  { ...NOM001_2012, seccion: "215-2(a), Nota 2", pagina: "62", ancla: "NOTA 2: Los conductores de los alimentadores",
+    uso: ["caída acumulada hasta la salida más lejana: recomendación de la nota, criterio duro de la casa", "cumulative drop to the farthest outlet: recommendation in the note, hard house criterion"], aplica: hayCargasElec },
+  { ...NOM001_2012, seccion: "220-44", pagina: "69", ancla: "220-44. Cargas para contactos en inmuebles que no sean de vivienda.",
+    uso: ["demanda de contactos: primeros 10 kVA al 100 %, el resto al 50 %", "receptacle demand: first 10 kVA at 100 %, remainder at 50 %"], aplica: (R) => hayCargasElec(R) && R.calc.some((c) => c.tipo === "contactos") },
+  { ...NOM001_2012, seccion: "430-6(a)(1)", pagina: "405", ancla: "430-6. Determinación de la ampacidad",
+    uso: ["motores de uso general: corriente de la tabla, no de kW/fp", "general-purpose motors: table current, not kW/pf"], aplica: (R) => hayCargasElec(R) && R.calc.some((c) => c.motorTabla) },
+  { ...NOM001_2012, seccion: "Tabla 430-248", pagina: "441", ancla: "Tabla 430-248 Corriente a plena carga de motores monofásicos",
+    uso: ["corriente a plena carga de motores monofásicos", "full-load current of single-phase motors"], aplica: (R) => hayCargasElec(R) && R.calc.some((c) => c.motorTabla && c.motorTabla.tabla === "430-248") },
+  { ...NOM001_2012, seccion: "Tabla 430-250", pagina: "442", ancla: "Tabla 430-250 Corriente a plena carga de motores trifásicos",
+    uso: ["corriente a plena carga de motores trifásicos", "full-load current of three-phase motors"], aplica: (R) => hayCargasElec(R) && R.calc.some((c) => c.motorTabla && c.motorTabla.tabla === "430-250") },
+  { ...NOM001_2012, seccion: "430-24", pagina: "415", ancla: "430-24. Varios motores o motores y otras cargas.",
+    uso: ["25 % adicional del motor mayor en la demanda y el alimentador", "additional 25 % of the largest motor in demand and feeder"], aplica: (R) => hayCargasElec(R) && R.calc.some((c) => c.tipo === "motor") },
+  { ...NOM001_2012, seccion: "430-52 y Tabla 430-52", pagina: "421-422", ancla: "430-52. Capacidad nominal o ajuste para circuitos de un solo motor.",
+    uso: ["protección del ramal de motor hasta 250 % de su corriente (interruptor de tiempo inverso)", "motor branch protection up to 250 % of its current (inverse-time breaker)"], aplica: (R) => hayCargasElec(R) && R.calc.some((c) => c.tipo === "motor" && !c.art440) },
+  { ...NOM001_2012, seccion: "430-63", pagina: "426", ancla: "430-63. Capacidad o ajuste - Cargas de motor y otras cargas.",
+    uso: ["interruptor principal con motores en el alimentador", "main breaker with motors on the feeder"], aplica: (R) => hayCargasElec(R) && R.calc.some((c) => c.tipo === "motor") },
+  { ...NOM001_2012, seccion: "440-4(b)", pagina: "445", ancla: "440-4. Placa de datos de motocompresores",
+    uso: ["motocompresor: MCA y MOP de placa", "motor-compressor: nameplate MCA and MOP"], aplica: (R) => hayCargasElec(R) && R.calc.some((c) => c.art440) },
+  { ...NOM001_2012, seccion: "440-22(a)", pagina: "449", ancla: "440-22. Aplicación y selección",
+    uso: ["motocompresor: protección hasta el MOP", "motor-compressor: protection up to the MOP"], aplica: (R) => hayCargasElec(R) && R.calc.some((c) => c.art440) },
+  { ...NOM001_2012, seccion: "440-32", pagina: "450", ancla: "440-32. Un solo motocompresor.",
+    uso: ["motocompresor: conductor por la MCA", "motor-compressor: conductor sized to the MCA"], aplica: (R) => hayCargasElec(R) && R.calc.some((c) => c.art440) },
+  { ...NOM001_2012, seccion: "440-35", pagina: "450", ancla: "440-35. Equipos con varios motores y cargas combinadas.",
+    uso: ["equipo con varios motores y carga combinada: conductor por la MCA", "multimotor and combination-load equipment: conductor sized to the MCA"], aplica: (R) => hayCargasElec(R) && R.calc.some((c) => c.art440) },
+  { ...NOM001_2012, seccion: "240-6(a)", pagina: "104", ancla: "240-6. Capacidades estandarizadas de fusibles e interruptores automáticos.",
+    uso: ["capacidades normalizadas de las protecciones", "standard ratings of overcurrent devices"], aplica: hayCargasElec },
+  { ...NOM001_2012, seccion: "240-4(d)", pagina: "102", ancla: "d) Conductores pequeños.",
+    uso: ["tope de la protección de los conductores 14, 12 y 10 AWG", "protection cap for 14, 12 and 10 AWG conductors"], aplica: (R) => cualquierCircuitoElec(R, (K) => K.topeAplicado) },
+  { ...NOM001_2012, seccion: "250-122 y Tabla 250-122", pagina: "150-151", ancla: "250-122. Tamaño de los conductores de puesta a tierra de equipos",
+    uso: ["conductor de puesta a tierra de equipos por la capacidad de la protección", "equipment grounding conductor by the protection rating"], aplica: hayCargasElec },
+  { ...NOM001_2012, seccion: "250-122(f)", pagina: "150", ancla: "f) Conductores en paralelo.",
+    uso: ["una tierra en cada canalización con conductores en paralelo", "one ground in each raceway with parallel conductors"], aplica: (R) => cualquierCircuitoElec(R, (K) => K.paralelo > 1) },
+  { ...NOM001_2012, seccion: "310-10(h)", pagina: "183", ancla: "h) Conductores en paralelo.",
+    uso: ["conductores en paralelo desde 1/0, uno por canalización", "parallel conductors from 1/0 up, one set per raceway"], aplica: (R) => cualquierCircuitoElec(R, (K) => K.paralelo > 1) },
+  { ...NOM001_2012, seccion: "Capítulo 10, Tabla 1", pagina: "1001", ancla: "TABLA 1.- Porcentaje de la sección transversal",
+    uso: ["relleno de la canalización: 53 % con un conductor, 31 % con dos, 40 % con tres o más", "raceway fill: 53 % one conductor, 31 % two, 40 % three or more"], aplica: hayCargasElec },
+  { ...NOM001_2012, seccion: "Capítulo 10, Tabla 4 (Artículo 358, EMT)", pagina: "1002", ancla: "TABLA 4. Dimensiones y porcentaje disponible",
+    uso: ["áreas del tubo conduit metálico ligero (EMT)", "electrical metallic tubing (EMT) areas"], aplica: hayCargasElec },
+  { ...NOM001_2012, seccion: "Capítulo 10, Tabla 5", pagina: "1006", ancla: "TABLA 5. Dimensiones de los conductores aislados",
+    uso: ["áreas de los conductores con su aislamiento para el relleno", "insulated conductor areas for the fill"], aplica: hayCargasElec },
+  { ...NOM001_2012, seccion: "Capítulo 10, Tabla 9", pagina: "1011", ancla: "Tabla 9. Resistencia y reactancia en corriente alterna",
+    uso: ["resistencia en corriente alterna a 75 °C para la caída de tensión", "AC resistance at 75 °C for the voltage drop"], aplica: hayCargasElec },
+];
+/* Etiqueta de una norma: con edición, año, sección y página sólo si su texto está en parches/normas-texto (regla 4). */
+const seccionNormaEn = (s) => String(s).replace("Capítulo 10, Tabla", "Chapter 10, Table").replace(/^Tabla /, "Table ").replace(" y Tabla ", " and Table ")
+  .replace(", Nota ", ", Note ").replace("(Artículo 358, EMT)", "(Article 358, EMT)");
+function etiquetaNormaElec(x, en = false) {
+  if (!x.texto) return `${x.familia}: ${en ? "BLOCKED: the text of the standard is missing" : "BLOQUEADO: falta el texto de la norma"}`;
+  return `${x.norma} (${x.edicion}), ${en ? seccionNormaEn(x.seccion) : x.seccion}, p. ${x.pagina}`;
+}
+const TIPO_CARGA_EN = { motor: "Motor / HVAC equipment", alumbrado: "Lighting", contactos: "General-purpose receptacles", proceso: "Process / machinery", resistiva: "Resistive (heating, cooking)", ups: "Computing / UPS / cleanroom" };
+function consideracionesElec(R, E, en = false) {
+  const L = (es, ingles) => (en ? ingles : es);
+  const d = defaultElec(), E0 = E || {}, sc = (R && R.sinConf) || {}, calc = (R && R.calc) || [], sis = (R && R.sis) || sistemaDe(E0.sistema);
+  const out = { version: MOTOR_VER.elec, titulo: L("Consideraciones de cálculo", "Calculation considerations"), parametros: [], normas: [] };
+  const O = {
+    capturado: L("capturado en esta pestaña", "captured on this tab"),
+    inicial: L("valor inicial de la pestaña (criterio de la casa, defaultElec); se confirma o se cambia aquí", "tab initial value (house criterion, defaultElec); confirm or change it here"),
+    pendiente: L("pendiente: sin capturar (no se supone)", "pending: not captured (not assumed)"),
+    sinConfirmar: L("sin confirmar: valor por omisión de una revisión anterior", "unconfirmed: default value from an earlier revision"),
+  };
+  const P = (clave, param, valor, tipo, origen) => out.parametros.push({ clave, param, valor, tipo, origen });
+  /* Selector o número de la pestaña: capturado si difiere del valor inicial de defaultElec; si es igual, se dice que es ése. */
+  const deCampo = (k) => (E0[k] == null || E0[k] === "" ? "vacio" : String(E0[k]) === String(d[k]) ? "inicial" : "capturado");
+  const hilos = Number((String(E0.sistema || d.sistema).match(/(\d)H/) || [0, sis.ph === 3 ? 4 : 3])[1]);
+  const ft = fTemp(E0.tempAmb), fg = fGrupo(E0.nCond);
+  let t = deCampo("sistema");
+  P("sistema", L("Sistema de distribución (tensión, fases e hilos)", "Distribution system (voltage, phases and wires)"),
+    `${sis.ph === 3 ? L("3 fases", "3 phases") : L("1 fase", "1 phase")} · ${hilos} ${L("hilos", "wires")} · ${sis.V}${sis.Vf != null && sis.Vf !== sis.V ? `/${sis.Vf}` : ""} V`, t, O[t === "vacio" ? "inicial" : t]);
+  t = deCampo("material");
+  P("material", L("Material del conductor", "Conductor material"), ufMaterial(R && R.mat, en), t, O[t === "vacio" ? "inicial" : t]);
+  t = deCampo("aislamiento");
+  P("aislamiento", L("Tipo de conductor (aislamiento)", "Conductor type (insulation)"), ufAisl(E0.aislamiento), t, O[t === "vacio" ? "inicial" : t]);
+  P("ampacidad", L("Columna de ampacidad", "Ampacity column"), "75 °C", "casa",
+    L("criterio de la casa declarado en el código con 110-14(c): manda la terminal del equipo comercial (columna de 75 °C de la Tabla 310-15(b)(16))", "house criterion declared in the code with 110-14(c): the commercial equipment terminal governs (75 °C column of Table 310-15(b)(16))"));
+  t = deCampo("tempAmb");
+  P("tempAmb", L("Temperatura ambiente", "Ambient temperature"), `${n(num(E0.tempAmb, 30), 1)} °C · ${L("factor", "factor")} ${n(ft, 2)}`, t === "vacio" ? "casa" : t,
+    t === "vacio" ? L("campo vacío: se usa 30 °C, factor 1 (criterio del código)", "empty field: 30 °C is used, factor 1 (code criterion)") : `${O[t]} · ${L("factor de la Tabla 310-15(b)(2)(a)", "factor from Table 310-15(b)(2)(a)")}`);
+  t = deCampo("nCond");
+  P("nCond", L("Portadores de corriente por canalización (agrupamiento)", "Current-carrying conductors per raceway (grouping)"), `${n(Math.max(1, num(E0.nCond, 3)), 0)} · ${L("factor", "factor")} ${n(fg, 2)}`, t === "vacio" ? "casa" : t,
+    t === "vacio" ? L("campo vacío: se usan 3 portadores, factor 1 (criterio del código)", "empty field: 3 conductors are used, factor 1 (code criterion)") : `${O[t]} · ${L("factor de la Tabla 310-15(b)(3)(a)", "factor from Table 310-15(b)(3)(a)")}`);
+  t = deCampo("dvRamal");
+  P("dvRamal", L("Caída de tensión admisible en el circuito derivado", "Allowable branch-circuit voltage drop"), `${n(num(E0.dvRamal, 3), 1)} %`, t === "vacio" ? "casa" : t,
+    `${t === "vacio" ? L("campo vacío: 3 %, criterio de la casa", "empty field: 3 %, house criterion") : O[t]} · ${L("recomendación de 210-19(a) Nota 4, aplicada como criterio duro de la casa", "recommendation of 210-19(a) Note 4, applied as a hard house criterion")}`);
+  t = deCampo("dvTotal");
+  P("dvTotal", L("Caída de tensión admisible acumulada", "Allowable cumulative voltage drop"), `${n(num(E0.dvTotal, 5), 1)} %`, t === "vacio" ? "casa" : t,
+    `${t === "vacio" ? L("campo vacío: 5 %, criterio de la casa", "empty field: 5 %, house criterion") : O[t]} · ${L("recomendación de 215-2(a) Nota 2, criterio duro de la casa", "recommendation of 215-2(a) Note 2, hard house criterion")}`);
+  const fpCap = R && R.fpAlimOrigen === "capturado";
+  P("fpAlim", L("Factor de potencia del alimentador (caída de tensión)", "Feeder power factor (voltage drop)"), n(R ? R.fpAlim : .95, 2), fpCap ? "capturado" : "casa",
+    fpCap ? O.capturado : L("criterio de la casa: 0.95 (sin capturar, o capturado fuera de 0.5 a 1)", "house criterion: 0.95 (not captured, or captured outside 0.5 to 1)"));
+  const nFpCap = calc.filter((c) => c.fpOrigen === "capturado").length;
+  P("fpCargas", L("Factor de potencia de cada carga", "Power factor of each load"),
+    calc.length ? L(`${nFpCap} capturado(s) · ${calc.length - nFpCap} de criterio de la casa`, `${nFpCap} captured · ${calc.length - nFpCap} house criterion`) : L("sin cargas", "no loads"), nFpCap === calc.length && calc.length ? "capturado" : "casa",
+    L(`capturado por carga; sin él, el del motor de origen o el del tipo, criterio de la casa (${Object.values(TIPO_CARGA).map((x) => `${x.label} ${n(x.fp, 2)}`).join(", ")})`,
+      `captured per load; otherwise the source module's or the load type's, house criterion (${Object.entries(TIPO_CARGA).map(([k, x]) => `${TIPO_CARGA_EN[k] || x.label} ${n(x.fp, 2)}`).join(", ")})`));
+  P("demanda", L("Factores de demanda", "Demand factors"),
+    L(`contactos: 10 kVA al 100 % y el resto al 50 %; demás tipos al 100 %; + 25 % del motor mayor (${n(R ? R.extraMotor : 0, 2)} kVA) · factor resultante ${n(R ? R.fdem : 0, 2)}`,
+      `receptacles: 10 kVA at 100 % and the rest at 50 %; other types at 100 %; + 25 % of the largest motor (${n(R ? R.extraMotor : 0, 2)} kVA) · resulting factor ${n(R ? R.fdem : 0, 2)}`), "norma",
+    L("norma: 220-44 (contactos) y 430-24 (motor mayor); 100 % en los demás tipos: criterio de la casa declarado en el código (demandaDe)", "code: 220-44 (receptacles) and 430-24 (largest motor); 100 % for the other types: house criterion declared in the code (demandaDe)"));
+  const continuas = Object.entries(TIPO_CARGA).filter(([, x]) => x.continua).map(([k, x]) => (en ? TIPO_CARGA_EN[k] || x.label : x.label));
+  P("continua", L("Carga continua al 125 %", "Continuous load at 125 %"), continuas.join(", "), "casa",
+    L("norma: 210-19(a)(1) y 215-2(a)(1) para el 125 %; qué tipo de carga es continua: criterio de la casa (TIPO_CARGA)", "code: 210-19(a)(1) and 215-2(a)(1) for the 125 %; which load type is continuous: house criterion (TIPO_CARGA)"));
+  /* Dato de placa o distancia: pendiente sin captura; sin confirmar si es un valor por omisión viejo (sanearEstado, H-179). */
+  const deDato = (k, v) => (v == null ? ["pendiente", O.pendiente] : sc[k] ? ["sinConfirmar", O.sinConfirmar] : ["capturado", O.capturado]);
+  let [tt, oo] = deDato("Ltablero", R ? R.Lalim : null);
+  P("Ltablero", L("Distancia al tablero (alimentador general)", "Distance to the panel (main feeder)"), R && R.Lalim != null ? `${n(R.Lalim, 1)} m` : L("pendiente", "pending"), tt, oo);
+  [tt, oo] = deDato("trafoKVA", R ? R.trafoKVA : null);
+  P("trafoKVA", L("Transformador de la acometida: capacidad", "Service transformer: rating"), R && R.trafoKVA != null ? `${n(R.trafoKVA, 0)} kVA` : L("pendiente", "pending"), tt, oo);
+  [tt, oo] = deDato("trafoZ", R ? R.trafoZ : null);
+  P("trafoZ", L("Transformador de la acometida: impedancia Z", "Service transformer: impedance Z"), R && R.trafoZ != null ? `${n(R.trafoZ, 1)} %` : L("pendiente", "pending"), tt, oo);
+  const nL = calc.filter((c) => !c.sinL && !c.Lsin).length, nSinL = calc.filter((c) => c.sinL).length, nLsin = calc.filter((c) => c.Lsin).length;
+  P("Lcargas", L("Distancia de cada circuito al tablero", "Distance of each circuit to the panel"),
+    calc.length ? L(`${nL} capturada(s) · ${nSinL} pendiente(s)${nLsin ? ` · ${nLsin} sin confirmar` : ""}`, `${nL} captured · ${nSinL} pending${nLsin ? ` · ${nLsin} unconfirmed` : ""}`) : L("sin cargas", "no loads"),
+    nSinL || nLsin ? "pendiente" : "capturado", L("capturado por carga en esta pestaña; sin longitud la caída de tensión y los metros quedan pendientes (no se supone)", "captured per load on this tab; without a length the voltage drop and the meters remain pending (not assumed)"));
+  P("tensionCargas", L("Tensión y fases de cada carga", "Voltage and phases of each load"),
+    calc.length ? [...new Set(calc.map((c) => `${c.V} V ${c.ph}F`))].join(" · ") : L("sin cargas", "no loads"), "capturado",
+    L("capturado por carga; las aceptadas de otro motor traen la tensión de su propuesta (instantánea con origen y fecha)", "captured per load; loads accepted from another module bring the voltage of their proposal (snapshot with source and date)"));
+  P("canalizacion", L("Canalización", "Raceway"), L("tubo conduit metálico ligero (EMT)", "electrical metallic tubing (EMT)"), "casa",
+    L("criterio de la casa declarado en el código (áreas de la Tabla 4 del Capítulo 10, renglón del Artículo 358)", "house criterion declared in the code (Chapter 10 Table 4 areas, Article 358 row)"));
+  P("reactancia", L("Reactancia de los conductores (caída de tensión)", "Conductor reactance (voltage drop)"), "0.19 ohm/km", "casa",
+    L("criterio de la casa declarado en el código (X_KM, canalización de acero)", "house criterion declared in the code (X_KM, steel raceway)"));
+  P("kAIC", L("Capacidad interruptiva sugerida", "Suggested interrupting rating"), R && R.kAIC != null ? `≥ ${R.kAIC} kA` : L("pendiente (falta el transformador)", "pending (transformer missing)"), R && R.kAIC != null ? "casa" : "pendiente",
+    L("criterio de la casa: primer valor comercial del escalón de computeElec arriba de la Icc estimada = kVA / (1.732·V·Z), cota superior; no es estudio de corto circuito", "house criterion: first commercial value of the computeElec ladder above the estimated Isc = kVA / (1.732·V·Z), an upper bound; not a short-circuit study"));
+  out.normas = NORMAS_ELEC.map((x) => ({ familia: x.familia, norma: x.texto ? x.norma : null, edicion: x.texto ? x.edicion : null, anio: x.texto ? x.anio : null,
+    seccion: x.texto ? x.seccion : null, pagina: x.texto ? x.pagina : null, texto: x.texto || null, estado: x.texto ? "texto" : "BLOQUEADO",
+    etiqueta: etiquetaNormaElec(x, en), uso: x.uso[en ? 1 : 0], aplica: !!x.aplica(R) }));
+  return out;
+}
+function tarjetaConsideracionesElec(R, E) {
+  const C = consideracionesElec(R, E);
+  return `<div class="card"><h3>Consideraciones de cálculo<span class="tag">${C.parametros.length} parámetros · ${C.normas.length} secciones de norma</span></h3><div class="body">
+        <div class="tw"><table>
+          <thead><tr><th>Parámetro</th><th>Valor</th><th>De dónde sale</th></tr></thead>
+          <tbody>${C.parametros.map((p) => `<tr><td>${esc(p.param)}</td><td>${esc(p.valor)}</td><td class="sub"${p.tipo === "pendiente" || p.tipo === "sinConfirmar" ? ' style="color:var(--warn)"' : ""}>${esc(p.origen)}</td></tr>`).join("")}</tbody>
+        </table></div>
+        <details style="margin-top:14px"><summary>Normas que usa el motor · ${C.normas.filter((x) => x.aplica).length} de ${C.normas.length} secciones intervienen en este proyecto${C.normas.some((x) => x.estado === "BLOQUEADO") ? " · hay normas BLOQUEADAS" : ""}</summary>
+        <div class="tw"><table>
+          <thead><tr><th>Norma, edición, sección y página</th><th>Uso en el cálculo</th><th>En este proyecto</th></tr></thead>
+          <tbody>${C.normas.map((x) => `<tr><td${x.estado === "BLOQUEADO" ? ' style="color:var(--warn)"' : ""}>${esc(x.etiqueta)}</td><td>${esc(x.uso)}</td><td class="sub">${x.aplica ? "interviene" : "no interviene"}</td></tr>`).join("")}</tbody>
+        </table></div></details>
+        <div class="sub" style="margin-top:8px">Procedencia: computeElec v${C.version}. Las secciones se citan con edición, año y página porque su texto está en parches/normas-texto (NOM-001-SEDE-2012, DOF 29-nov-2012); una norma sin texto sale «BLOQUEADO: falta el texto de la norma». Estas consideraciones no mueven ninguna cifra.</div>
+      </div></div>`;
+}
+function pdfConsideracionesElec(d, R, E) {
+  const C = consideracionesElec(R, E), gris = [0.294, 0.333, 0.388];
+  pdfHeading(d, "2b. Consideraciones de calculo");
+  pdfTable(d, ["Parametro", "Valor", "De donde sale"], C.parametros.map((p) => [p.param, p.valor, p.origen]), [150, 120, 250]);
+  pdfTable(d, ["Norma, edicion, seccion y pagina", "Uso en el calculo", "En este proyecto"], C.normas.map((x) => [x.etiqueta, x.uso, x.aplica ? "interviene" : "no interviene"]), [190, 250, 80]);
+  pdfParagraph(d, `Procedencia: computeElec v${C.version}. Las secciones se citan con edicion, año y pagina porque su texto esta en parches/normas-texto (NOM-001-SEDE-2012, DOF 29-nov-2012); una norma sin texto sale «BLOQUEADO: falta el texto de la norma». Estas consideraciones no mueven ninguna cifra.`, { color: gris });
+}
+
 function viewElec() {
   const E = S.elec, R = ELEC;
   const M = (v, d = 1) => n(v, d);
@@ -22135,6 +22330,7 @@ function viewElec() {
         ${chartBreakdown(R.demTipo.map((d) => ({ k: d.label, v: d.dem })), (v) => `${n(v, 1)} kVA`)}
       </div></div>
       ${tarjetaMaterialesElec(R)}
+      ${tarjetaConsideracionesElec(R, E)}
       <div class="card"><h3>Memoria de cálculo</h3><div class="body">
         <div class="memo">${R.memo.map((x) => "· " + esc(x)).join("\n")}</div>
       </div></div>
