@@ -79,6 +79,8 @@ function proyectoDePrueba() {
   Object.assign(S.vent, { area: 500, height: 5.4, occ: 40 });
   /* H-264: contra incendio tampoco hereda; captura lo que antes heredaba (500 m², altura máxima 6 m). */
   Object.assign(S.fuego, { area: 500, altura: 6 });
+  /* H-265: obra civil tampoco toma las zonas: captura las mismas áreas de obra que antes leía de ellas. */
+  S.civil.areas = S.zones.map((z, i) => ({ id: "a" + (i + 1), nombre: z.name, area: z.area, altura: z.height, perimetro: 0 }));
   /* H-250: el banco emite espejos EN-USD; sin tipo de cambio fechado ya no se emiten, así que el proyecto de prueba lo captura. */
   S.quote.fx = 18.5; S.quote.fxFecha = "2026-09-22"; S.quote.fxFuente = "banco de pruebas";
   G("recompute")();
@@ -276,19 +278,17 @@ t("2.0.5 las flechas son las herencias declaradas, no adorno", () => {
     if (ar.regla === 1 && ar.path !== "civil.zonas" && !G("HEREDA")[ar.path]) throw new Error(`la arista ${ar.de}→${ar.a} dice heredar ${ar.path} y no está declarado`);
     if (!ar.que) throw new Error(`la arista ${ar.de}→${ar.a} no dice qué hereda`);
   });
-  if (!A.some((ar) => ar.regla === 1)) throw new Error("ninguna arista de regla 1");
+  if (A.some((ar) => ar.regla === 1)) throw new Error("H-264/H-265: quedó una flecha de herencia (regla 1); ninguna disciplina hereda");
   if (!A.some((ar) => ar.regla === 2)) throw new Error("ninguna arista de regla 2");
 });
-t("2.0.6 la flecha se pinta vigente cuando el dato heredado está al día", () => {
-  /* rev 2.9.2 · La herencia que se mira aquí es una que CRUZA hacia fuera del
-     módulo. H-264: contra incendio ya no hereda (su flecha salió del plano); se
-     mira la de HVAC → obra civil, la que queda de regla 1. */
+t("2.0.6 cada flecha se pinta con el estado de lo que declara (H-264, H-265: ya no hay herencias; las propuestas se pintan con su estado)", () => {
   S.tab = "inicio"; G("render")();
-  if (G("ARISTAS").some((x) => x.a === "fuego" && x.regla === 1)) throw new Error("H-264: quedó una flecha de herencia hacia contra incendio");
-  const ar = G("ARISTAS").find((x) => x.de === "hvac" && x.a === "civil" && x.regla === 1);
-  if (!ar) throw new Error("no existe la flecha de herencia de HVAC a obra civil");
-  eq(G("estadoArista")(ar), "vigente");
-  contiene(vista(), "dar-vigente");
+  if (G("ARISTAS").some((x) => x.regla === 1)) throw new Error("quedó una flecha de herencia");
+  const ar = G("ARISTAS").find((x) => x.de === "hvac" && x.a === "elec" && x.regla === 2);
+  if (!ar) throw new Error("no existe la flecha de propuesta de HVAC a eléctrico");
+  const e = G("estadoArista")(ar);
+  if (!["vigente", "desactualizada", "propia", "pendiente", "inerte"].includes(e)) throw new Error("estado de flecha desconocido: " + e);
+  contiene(vista(), "dar-" + e);
 });
 t("2.0.7 y el nodo HVAC se desactualiza cuando cambió el dato de origen", () => {
   /* La propuesta de carga térmica a ductos quedó DENTRO del módulo: ya no se
@@ -1459,7 +1459,7 @@ t("13.6 las flechas que salían de las cinco ahora salen del nodo HVAC", () => {
   const A = G("ARISTAS");
   const de = (a, b) => A.filter((x) => x.de === a && x.a === b).length;
   eq(de("hvac", "fuego"), 0, "hacia contra incendio (H-264: ya no hereda; es autónomo):");
-  eq(de("hvac", "civil"), 2, "hacia obra civil (área/altura y envolvente clasificada):");
+  eq(de("hvac", "civil"), 0, "hacia obra civil (H-265: ya no hereda; es autónoma):");
   eq(de("hvac", "elec"), 3, "hacia eléctrico (cédula de equipos, ventilador y FFU de cuartos limpios):");
   eq(de("hvac", "soporte"), 1, "hacia soportería:");
   eq(de("proyecto", "hvac"), 1, "y el proyecto sigue alimentándolo:");
@@ -1469,8 +1469,6 @@ t("13.6 las flechas que salían de las cinco ahora salen del nodo HVAC", () => {
   });
   /* Cada una conserva su significado, no se fusionaron en una sola. */
   A.filter((x) => x.de === "hvac").forEach((x) => { if (!x.que) throw new Error("una flecha del módulo perdió su texto"); });
-  const civiles = A.filter((x) => x.de === "hvac" && x.a === "civil").map((x) => x.que);
-  if (civiles[0] === civiles[1]) throw new Error("las dos flechas a obra civil dicen lo mismo");
 });
 t("13.7 las demás disciplinas siguen siendo nodos independientes", () => {
   const N = G("NODOS").map((nd) => nd.id);
@@ -4881,7 +4879,7 @@ t("Q.6 H-57 la estratificación por altura solo multiplica la ganancia de ilumin
   } finally { S.zones = zones0; S.zi = zi0; G("recompute")(); }
 });
 
-t("Q.7 H-67 sin autorizar duct>soporte/load>civil, la cantidad se sigue contando y cotizando — nunca baja a cero", () => {
+t("Q.7 H-67 sin autorizar duct>soporte, la cantidad se sigue contando y cotizando — nunca baja a cero (H-265: obra civil ya no depende de load>civil)", () => {
   const g = { perms: JSON.parse(JSON.stringify(S.perms)) };
   try {
     Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "prueba Q.7 (todo autorizado)" }; });
@@ -4893,8 +4891,9 @@ t("Q.7 H-67 sin autorizar duct>soporte/load>civil, la cantidad se sigue contando
     eq(G("CIVIL").area, areaAutorizada, "área de obra civil NO baja al negar el permiso (H-67, nunca a cero):");
     if (mDuctoAutorizado > 0 && !G("SOPORTE").avisos.some((a) => /pendiente/.test(a.msg) && /duct.?soporte/.test(a.msg)))
       throw new Error("debe avisar que duct>soporte está pendiente de autorizar");
-    if (areaAutorizada > 0 && !G("CIVIL").avisos.some((a) => /pendiente/.test(a.msg) && /load.?civil/.test(a.msg)))
-      throw new Error("debe avisar que load>civil está pendiente de autorizar");
+    /* H-265: obra civil es autónoma: no hay cruce load>civil que autorizar ni aviso de permiso pendiente. */
+    eq(G("LINKS")["load>civil"], undefined, "H-265: no queda cruce load>civil:");
+    if (G("CIVIL").avisos.some((a) => /load.?civil/.test(a.msg))) throw new Error("H-265: obra civil no debe hablar de un permiso load>civil");
   } finally { S.perms = g.perms; G("recompute")(); }
 });
 
@@ -5114,6 +5113,8 @@ function llenarTodoS() {
   if (!S.duct.segments.some((c) => c.tag === "TR-S")) S.duct.segments.push({ ...G("defaultSegment")("TR-S", 2500), length: 20 });
   const ms = G("MUEBLES"); S.hidro.muebles = [{ id: ms[0].id, cant: 6 }, { id: ms[1].id, cant: 6 }];
   const r0 = G("cleanRooms")()[0]; r0.area = 60; r0.height = 3; r0.occ = 4;
+  /* H-265: el cuarto clasificado de obra civil se captura en civil (antes lo tomaba del cuarto limpio). */
+  if (!(S.civil.cuartos || []).some((c) => c.id === "kS")) S.civil.cuartos = [...(S.civil.cuartos || []), { id: "kS", nombre: r0.name || "Cuarto", area: 60, altura: 3, perimetro: 0 }];
   /* H-250: los espejos EN-USD del banco necesitan tipo de cambio con fecha. */
   if (!G("fxVigente")()) { S.quote.fx = 18.5; S.quote.fxFecha = "2026-09-22"; S.quote.fxFuente = "banco de pruebas"; }
   G("recompute")();
@@ -5377,7 +5378,7 @@ t("S.13 en un proyecto sin captura, Calcular y Memoria se apagan también en los
   try {
     S.zones = [G("defaultZone")("Vacía")];
     G("cleanRooms")().forEach((r) => { r.area = 0; r.height = 0; r.occ = 0; });
-    S.fuego.area = 0; S.civil.usarZonas = true;
+    S.fuego.area = 0; S.civil.usarZonas = true; S.civil.areas = []; S.civil.cuartos = [];   /* H-265: sin captura propia de civil */
     G("recompute")();
     ["limpios", "seleccion", "valor", "fuego", "civil"].forEach((tab) => {
       ["calc-motor", "pdf-memoria-motor"].forEach((act) => eq(apagado(boton(tab, act)), true, `${tab}/${act} sin captura:`));
@@ -5469,7 +5470,7 @@ t("S.18 semáforo: un proyecto vacío muestra «Sin datos» en TODAS las discipl
     const r = G("cleanRooms")()[0]; r.area = 60; r.height = 3; G("recompute")();
     n = niveles();
     const con = (id, msg) => { if (n[id] === "vacia") throw new Error(msg || `${id} debía tener datos`); };
-    con("clean"); con("civil", "civil hereda la geometría del cuarto:");
+    con("clean"); eq(n.civil, "vacia", "H-265: obra civil no se prende con el cuarto limpio (es autónoma):");
     ["load", "equip", "duct", "vent", "elec", "hidro", "aire"].forEach((id) => eq(n[id], "vacia", `${id} sigue vacío:`));
     /* Una zona con área: carga y equipo se prenden. H-262/H-264: ventilación y contra incendio ya no heredan: siguen vacíos. */
     S.zones[0].area = 200; S.zones[0].height = 4; G("recompute")();
@@ -5478,6 +5479,8 @@ t("S.18 semáforo: un proyecto vacío muestra «Sin datos» en TODAS las discipl
     eq(n.fuego, "vacia", "H-264: contra incendio no se prende con la zona de carga térmica:");
     S.fuego.area = 200; G("recompute")(); n = niveles();
     if (n.fuego === "vacia") throw new Error("contra incendio con área capturada sigue en «Sin datos»");
+    S.civil.areas = [{ id: "a1", nombre: "Nave", area: 200, altura: 4, perimetro: 0 }]; G("recompute")(); n = niveles();
+    if (n.civil === "vacia") throw new Error("obra civil con un área capturada sigue en «Sin datos»");
     /* Los motores que dependen de la captura de los demás tampoco se prenden solos. */
     G("reemplazarEstado")(G("defaultState")()); S.meta.name = "Proyecto vacío de prueba";
     Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "prueba S.18" }; }); G("recompute")();
@@ -7109,9 +7112,9 @@ t("S.78 (H-243) media caña y muro clasificado por cuarto limpio con su área y 
     cerca(G("CIVIL").mlCana, antes, 1e-9, "subir la nave a 10 m no mueve la media caña del cuarto limpio:");
     /* Perímetro capturado: manda y deja de ser estimado. */
     S.tab = "civil"; G("render")();
-    const clave = G("claveCuartoCivil")(G("CLEAN").list[0].name);
-    if (!w.document.querySelector('#view [data-path="civil.perimCuartos.' + clave + '"]')) throw new Error("falta el campo de perímetro por cuarto limpio");
-    S.civil.perimCuartos = { [clave]: 46 }; G("recompute")(); R = G("CIVIL");
+    /* H-265: el perímetro vive en el renglón del cuarto clasificado de la lista de civil. */
+    if (!w.document.querySelector('#view [data-path="civil.cuartos.0.perimetro"]')) throw new Error("falta el campo de perímetro por cuarto clasificado");
+    S.civil.cuartos[0].perimetro = 46; G("recompute")(); R = G("CIVIL");
     cerca(R.mlCana, 92, 1e-9, "con perímetro capturado 46 ml: 92 ml de media caña:"); cerca(R.muroLimpio, 138, 1e-9, "46 × 3 = 138 m²:");
     if (/estimado/.test(parte(/^Media caña/).desc)) throw new Error("con perímetro capturado la partida ya no es estimada");
     if (!R.memo.some((m) => /capturado/.test(m) && /Cuarto limpio 1/.test(m))) throw new Error("la memoria no dice de dónde sale el perímetro del cuarto");
@@ -7135,14 +7138,14 @@ t("S.79 (H-244, decisión 5 del dueño) la tabiquería no son los muros de carga
     cerca(G("CIVIL").total, antes, 1e-6, "un muro exterior capturado para carga térmica no mueve la obra civil:");
     /* Perímetro de tabiquería capturado por zona: manda. */
     S.tab = "civil"; G("render")();
-    const id = S.zones[0].id;
-    if (!w.document.querySelector('#view [data-path="civil.perimZonas.' + id + '"]')) throw new Error("falta el campo de perímetro de tabiquería por zona");
-    S.civil.perimZonas = { [S.zones[0].id]: 100, [S.zones[1].id]: 50, [S.zones[2].id]: 44, [S.zones[3].id]: 36 }; G("recompute")(); R = G("CIVIL");
+    /* H-265: el perímetro de tabiquería vive en el renglón del área de obra de la lista de civil. */
+    if (!w.document.querySelector('#view [data-path="civil.areas.0.perimetro"]')) throw new Error("falta el campo de perímetro de tabiquería por área");
+    [100, 50, 44, 36].forEach((p, i) => { S.civil.areas[i].perimetro = p; }); G("recompute")(); R = G("CIVIL");
     cerca(R.muroM2, 100 * 6 + 50 * 3 + 44 * 3 + 36 * 3, 1e-9, "con perímetros capturados: Σ perímetro × altura:");
     eq(R.estimado, false, "todo capturado, nada estimado:");
     if (/estimado/.test(noLimpio().desc)) throw new Error("con perímetros capturados la partida ya no dice estimado");
     /* Más perímetro capturado nunca baja el muro. */
-    const m1 = R.muroM2; S.civil.perimZonas[S.zones[1].id] = 60; G("recompute")();
+    const m1 = R.muroM2; S.civil.areas[1].perimetro = 60; G("recompute")();
     if (!(G("CIVIL").muroM2 > m1)) throw new Error("más perímetro capturado debe dar más muro");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
@@ -7612,6 +7615,57 @@ t("S.100 (H-264) contra incendio es autónomo: el área a proteger y la altura a
     const txt = w.document.getElementById("view").textContent;
     if (/heredada de|se heredará de/i.test(txt)) throw new Error("la pantalla de contra incendio todavía anuncia herencia");
     contiene(txt, "no las toma de Carga térmica", "la pantalla dice que se capturan aquí:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+t("S.101 (H-265) obra civil es autónoma: sus áreas de obra y sus cuartos clasificados se capturan en su pestaña; no toma las zonas de carga térmica ni los cuartos limpios; un proyecto anterior los copia una vez al abrirlo, con las mismas cifras (decisión del dueño, 27-sep-2026)", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.101";
+    Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.101" }; });
+    S.zones = [{ ...G("defaultZone")("Nave"), area: 400, height: 6 }, { ...G("defaultZone")("Oficina"), area: 100, height: 3 }];
+    const r0 = G("cleanRooms")()[0]; r0.area = 60; r0.height = 3;
+    G("recompute")();
+    if (!(G("geoProyecto")().area > 0 && G("CLEAN").sum.area > 0)) throw new Error("el caso no aísla lo que se quiere probar: debe haber zonas y cuarto limpio");
+    let R = G("CIVIL");
+    eq(R.area, 0, "civil no toma el área de las zonas de carga térmica:");
+    eq(R.areaLimpia, 0, "ni el área de los cuartos limpios:");
+    eq(G("LINKS")["load>civil"], undefined, "no queda cruce load>civil:"); eq(G("LINKS")["clean>civil"], undefined, "no queda cruce clean>civil:");
+    if (G("ARISTAS").some((a) => a.a === "civil" && a.regla === 1)) throw new Error("el diagrama sigue dibujando una herencia hacia obra civil");
+    if (!R.avisos.some((a) => /captura las áreas de obra/.test(a.msg))) throw new Error("sin áreas capturadas debe avisar que faltan");
+    /* Captura propia: áreas y cuartos de civil. */
+    S.civil.areas = [{ id: "a1", nombre: "Nave", area: 400, altura: 6, perimetro: 100 }, { id: "a2", nombre: "Oficina", area: 100, altura: 3, perimetro: 0 }];
+    S.civil.cuartos = [{ id: "k1", nombre: "Cuarto A", area: 60, altura: 3, perimetro: 32 }];
+    G("recompute")(); R = G("CIVIL");
+    eq(R.area, 500, "área = suma de las áreas de obra capturadas:"); eq(R.areaLimpia, 60, "área clasificada = cuartos capturados:");
+    cerca(R.muroM2, 100 * 6 + 2 * 2.5 * Math.sqrt(100 / 1.5) * 3, 1e-6, "tabiquería: capturada × altura + rectángulo 3:2 estimado:");
+    eq(R.estimado, true, "la oficina sin perímetro queda estimada:");
+    cerca(R.muroLimpio, 32 * 3, 1e-9, "muro clasificado = perímetro × altura del cuarto:"); cerca(R.mlCana, 64, 1e-9, "media caña doble:");
+    /* Las zonas y los cuartos limpios ya no la mueven. */
+    const t0 = R.total; S.zones[0].area = 900; S.zones[0].height = 9; r0.area = 200; G("recompute")();
+    cerca(G("CIVIL").total, t0, 1e-6, "cambiar zonas o cuartos limpios no mueve la obra civil:");
+    /* Sin altura capturada no se suponen 2.8 m: muro en 0 y aviso. */
+    S.civil.areas[1].altura = 0; G("recompute")();
+    cerca(G("CIVIL").muroM2, 100 * 6, 1e-6, "la oficina sin altura no aporta muro:");
+    if (!G("CIVIL").avisos.some((a) => /sin altura capturada/.test(a.msg))) throw new Error("un área sin altura debe avisar que su muro queda pendiente");
+    S.civil.areas[1].altura = 3; G("recompute")();
+    /* Pantalla: la captura vive en la pestaña. */
+    S.tab = "civil"; G("render")();
+    const d = w.document, txt = d.getElementById("view").textContent;
+    if (/Heredado/.test(txt)) throw new Error("la pantalla de civil todavía dice «Heredado»");
+    ["civil.areas.0.area", "civil.areas.0.altura", "civil.areas.1.perimetro", "civil.cuartos.0.perimetro"].forEach((p) => { if (!d.querySelector(`#view [data-path="${p}"]`)) throw new Error("falta el campo " + p); });
+    const add = d.querySelector('#view [data-act="civil-add"][data-tipo="areas"]'); if (!add) throw new Error("no hay botón para agregar un área de obra");
+    add.click(); eq(S.civil.areas.length, 3, "agregar desde la pantalla:");
+    if (new Set(S.civil.areas.map((a) => a.id)).size !== 3) throw new Error("los ids de las áreas deben ser únicos");
+    /* Un proyecto anterior (sin áreas propias de civil) abre con sus áreas y su cuarto copiados de zonas y cuartos limpios. */
+    const viejo = JSON.parse(fs.readFileSync("parches/regresion-motores/regresion-motores.emp.json", "utf8"));
+    if (Array.isArray(viejo.civil.areas)) throw new Error("el caso no aísla lo que se quiere probar: el fixture debe ser de antes de H-265");
+    G("importarRespaldo")(JSON.stringify(viejo)); G("recompute")();
+    eq(S.civil.areas.map((a) => a.nombre).join(","), "Producción,Oficinas,Limpio ISO 7,Laboratorio HR", "áreas copiadas de las zonas:");
+    eq(S.civil.cuartos.map((c) => c.nombre + ":" + c.area + "×" + c.altura).join(","), "Cuarto limpio 1:120×3", "cuarto copiado del cuarto limpio:");
+    eq(S.civil.perimZonas, undefined, "los perímetros por zona pasan al renglón:"); eq(S.civil.perimCuartos, undefined, "y los del cuarto también:");
+    const t1 = G("CIVIL").total; S.zones[0].area = 5000; G("recompute")();
+    cerca(G("CIVIL").total, t1, 1e-6, "ya migrado, obra civil no sigue a las zonas:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
@@ -8170,11 +8224,12 @@ t("GA.6 ventilación no tenía texto de guía repetido y sigue sin él: la vista
        "el pico es la suma de nominales; la demanda de diseño es la mayor entre el consumo medio y el pico con simultaneidad"],
     ],
     civil: [
-      ["Se copian zona por zona, no se recalculan", "ojo", "se copian zona por zona, y si cambias un área allá esta sección se mueve sola"], /* rev 2.9.17 · texto corregido (G4-08) */
-      ["la geometría del proyecto no las toca", "ojo", "la geometría del proyecto no las toca"],
-      ["Cantidades capturadas a mano en esta pestaña", "ojo", "capturarlas a mano en esta pestaña"],
-      /* H-244: la tabiquería ya no se hereda de la geometría (los muros de carga térmica no son tabiquería): se captura por zona. */
-      ["Área, altura y desarrollo de muro heredados de la geometría del proyecto", "ojo", "área y altura se copian zona por zona"],
+      /* H-265: obra civil ya no toma las zonas; la guía dice que es autónoma y cómo se captura (el texto vive sólo en la guía). */
+      ["Se copian zona por zona, no se recalculan", "ojo", "no toma las zonas de Carga térmica ni los Cuartos limpios"],
+      ["la geometría del proyecto no las toca", "ojo", "Obra civil es autónoma"],
+      ["Cantidades capturadas a mano en esta pestaña", "ojo", "Con los totales capturados a mano"],
+      /* H-244: la tabiquería no son los muros de carga térmica: se captura por área (H-265: en la lista de civil). */
+      ["Área, altura y desarrollo de muro heredados de la geometría del proyecto", "ojo", "Cada área de obra se captura aquí"],
     ],
     soporte: [
       ["Baja California es zona sísmica", "ojo", "Baja California, zona sísmica"],
@@ -8203,6 +8258,8 @@ t("GA.6 ventilación no tenía texto de guía repetido y sigue sin él: la vista
     S.aire = { ...G("defaultAire")(), material: "aluminio", Lprincipal: 120, Lramales: 90,
       consumos: [{ id: "gba", tipo: "generico", nombre: "Prueba GB", cant: 12, lmin: 0, bar: 7.7, uso: 1 }] };
     S.civil = G("defaultCivil")(); S.civil.usarZonas = true;
+    /* H-265: obra civil captura sus propias áreas y cuartos. */
+    S.civil.areas = [{ id: "a1", nombre: "Nave", area: 400, altura: 6, perimetro: 0 }]; S.civil.cuartos = [{ id: "k1", nombre: "Cuarto", area: 60, altura: 3, perimetro: 0 }];
     S.soporte = G("defaultSoporte")(); S.soporte.usarMotores = true;
     G("recompute")();
     return g;
@@ -8287,18 +8344,15 @@ t("GA.6 ventilación no tenía texto de guía repetido y sigue sin él: la vista
       /* aire: la instrucción de uso de las columnas (ayuda del propio campo) */
       S.tab = "aire"; G("render")();
       contiene(gbTexto(false), "Deja L/min y uso en cero para tomar el valor de referencia del tipo.", "aire: uso de las columnas:");
-      /* civil: el banner de herencia se queda con las cifras del proyecto y la memoria con su nota */
+      /* civil (H-265): ya no hay banner de herencia; la pantalla dice que es autónoma y la memoria de dónde salen las cantidades */
       S.tab = "civil"; G("render")();
-      const geo = G("geoProyecto")();
-      const her = w.document.querySelector("#view .her");
-      if (!her) throw new Error("civil: con las cantidades tomadas de las zonas debe haber banner de herencia");
-      contiene(her.textContent, "Heredado", "civil: banner:");
-      contiene(her.textContent, `${S.zones.length} zona(s), ${G("n")(geo.area, 0)} m²`, "civil: cifras del proyecto en el banner:");
-      contiene(gbTexto(false), "Las cantidades salen de la geometría de las zonas", "civil: memoria (rev 2.9.17, G4-09):");
-      /* civil a mano: el menú lo dice y ya no hay banner que repita */
+      eq(w.document.querySelectorAll("#view .her").length, 0, "civil: sin banner de herencia (H-265):");
+      contiene(gbTexto(false), "Obra civil es autónoma", "civil: la pantalla lo dice:");
+      contiene(gbTexto(false), "Las cantidades salen de las áreas de obra", "civil: memoria (rev 2.9.17, G4-09; H-265):");
+      /* civil a mano: el menú lo dice */
       S.civil.usarZonas = false; G("recompute")(); G("render")();
-      eq(w.document.querySelectorAll("#view .her").length, 0, "civil a mano: sin banner (el menú de arriba ya dice «Capturadas a mano aquí»):");
-      contiene(gbTexto(false), "Capturadas a mano aquí", "civil a mano: menú:");
+      eq(w.document.querySelectorAll("#view .her").length, 0, "civil a mano: sin banner:");
+      contiene(gbTexto(false), "Totales capturados a mano", "civil a mano: menú:");
       /* soporte: la opción sí, no explica; el motor avisa cuando se declara exclusión */
       S.tab = "soporte"; S.soporte.sismico = false; G("recompute")(); G("render")();
       contiene(gbTexto(false), "Arriostramiento sísmico DESACTIVADO", "soporte: aviso del motor cuando se declara exclusión:");

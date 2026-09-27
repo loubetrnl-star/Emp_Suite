@@ -4369,18 +4369,7 @@ const LINKS = {
     why: "Misma razón que duct>soporte, para la red de aire comprimido.",
     cost: "Si lo niegas, esos soportes se siguen contando y cotizando, marcados pendientes de autorizar.",
   },
-  "load>civil": {
-    from: "load", to: "civil",
-    what: "Área, altura y muros por orientación de cada zona.",
-    why: "La obra civil cuantifica sobre la geometría que ya capturó la carga térmica, no la vuelve a pedir.",
-    cost: "Si lo niegas, la cuantificación SÍ se sigue calculando con la geometría de zona —nunca en cero—, marcada pendiente de autorizar; captúrala a mano si prefieres que no dependa de carga térmica.",
-  },
-  "clean>civil": {
-    from: "clean", to: "civil",
-    what: "Área de los cuartos limpios, para separar muro/plafón/piso clasificado del resto.",
-    why: "Sin esto no hay forma de saber qué proporción de la obra civil es de cuarto limpio.",
-    cost: "Si lo niegas, esa proporción se sigue calculando —nunca en cero—, marcada pendiente de autorizar.",
-  },
+  /* H-265: los cruces load>civil y clean>civil se retiraron: obra civil captura sus áreas y sus cuartos clasificados. */
 };
 
 /* Solo el núcleo térmico comparte libremente. Dos motores autónomos son
@@ -7286,7 +7275,7 @@ const PU_CIVIL = {
 
 function defaultCivil() {
   return {
-    usarZonas: true,          // toma áreas y muros de las zonas capturadas
+    usarZonas: true,          // H-265: true = por las áreas capturadas en esta pestaña (lista); false = totales a mano
     areaManual: 0, alturaManual: 0, murosManual: 0,
     muro: "panel_mgo", plafon: "panel_mgo", piso: "epoxi_esd",
     muroNoLimpio: "tablaroca", pisoNoLimpio: "pulido",
@@ -7294,38 +7283,81 @@ function defaultCivil() {
     firmeM2: 0, azulejoM2: 0, pinturaM2: 0,
     puertasLimpias: 0, puertasSimples: 0, visores: 0, passbox: 0,
     mediaCanaDoble: true,     // piso y plafón
-    perimCuartos: {},         // H-243: perímetro capturado por cuarto limpio (ml), clave claveCuartoCivil(nombre)
-    perimZonas: {},           // H-244: perímetro de tabiquería capturado por zona (ml), clave el id estable de la zona
+    /* H-265 (decisión del dueño, 27-sep-2026): obra civil es autónoma. Captura sus propias áreas de obra y sus cuartos
+       clasificados; ya no lee las zonas de carga térmica ni los cuartos limpios. perimetro = ml de tabiquería (áreas, H-244) o
+       de muro clasificado (cuartos, H-243); 0 = sin captura: rectángulo 3:2 marcado «estimado» en la partida. */
+    areas: [],                // [{ id, nombre, area (m²), altura (m), perimetro (ml) }]
+    cuartos: [],              // [{ id, nombre, area (m²), altura (m), perimetro (ml) }] · área clasificada dentro de las áreas
   };
+}
+/* H-265: lista editable de áreas de obra o de cuartos clasificados de obra civil (captura propia de la pestaña). */
+function civilListaHtml(tipo, titulo, etiquetaPer, calc) {
+  const lista = Array.isArray(S.civil[tipo]) ? S.civil[tipo] : [];
+  const deCalc = (id) => (calc || []).find((x) => x.clave === id);
+  return `<h4 style="font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:16px 0 8px">${esc(titulo)}</h4>
+    ${lista.map((x, i) => { const c = deCalc(x.id); return `<div class="card" style="margin-bottom:10px"><div class="body">
+      ${inp("Nombre", `civil.${tipo}.${i}.nombre`, "text")}
+      <div class="row">${inp("Área (m²)", `civil.${tipo}.${i}.area`, "number", "1")}${inp("Altura (m)", `civil.${tipo}.${i}.altura`, "number", "0.1")}</div>
+      ${inp(`${etiquetaPer}${c && !c.capturado && c.area > 0 ? ` · sin captura: rectángulo 3:2 estimado, ${n(c.per, 1)} ml` : ""}`, `civil.${tipo}.${i}.perimetro`, "number", "0.1")}
+      <button class="btn-ghost" data-act="civil-del" data-tipo="${tipo}" data-i="${i}">Quitar</button></div></div>`; }).join("")}
+    ${lista.length ? "" : `<div class="hint" style="margin-bottom:10px">Sin ${tipo === "areas" ? "áreas de obra" : "cuartos clasificados"} capturados.</div>`}
+    <button class="btn-ghost" data-act="civil-add" data-tipo="${tipo}">Agregar ${tipo === "areas" ? "área de obra" : "cuarto clasificado"}</button>`;
+}
+/* H-265: id estable (contador, no reloj) para un renglón nuevo de la lista de civil. */
+function civilNuevoId(tipo) {
+  const pref = tipo === "areas" ? "a" : "k", usados = new Set((S.civil[tipo] || []).map((x) => x && x.id));
+  let k = (S.civil[tipo] || []).length + 1; while (usados.has(pref + k)) k++;
+  return pref + k;
+}
+/* H-265: un proyecto anterior no trae áreas ni cuartos propios de civil. Se copian UNA vez, al abrirlo, de las zonas y de los
+   cuartos limpios con los perímetros que ya tenía capturados (perimZonas / perimCuartos), para que abra con las mismas cifras;
+   desde ahí obra civil no los sigue. Las zonas o cuartos sin área no se copian (no aportaban nada). */
+function migrarCivilAutonoma(s, previo) {
+  const pz = previo && previo.perimZonas && typeof previo.perimZonas === "object" ? previo.perimZonas : {};
+  const pc = previo && previo.perimCuartos && typeof previo.perimCuartos === "object" ? previo.perimCuartos : {};
+  s.civil.areas = (s.zones || []).map((z, i) => ({ z, i })).filter(({ z }) => z && num(z.area, 0) > 0).map(({ z, i }) => {
+    const clave = z.id || `z${i + 1}`;
+    return { id: clave, nombre: z.name || clave, area: num(z.area, 0), altura: num(z.height, 0), perimetro: Math.max(0, num(pz[clave], 0)) };
+  });
+  const rooms = s.clean && Array.isArray(s.clean.rooms) ? s.clean.rooms : [];
+  s.civil.cuartos = rooms.filter((r) => r && num(r.area, 0) > 0).map((r, i) => {
+    const nombre = r.name || "Cuarto";
+    return { id: `k${i + 1}`, nombre, area: num(r.area, 0), altura: num(r.height, 0), perimetro: Math.max(0, num(pc[claveCuartoCivil(nombre)], 0)) };
+  });
 }
 /* H-243: clave estable del cuarto limpio para su perímetro capturado (el nombre sin signos: sirve de ruta data-path). */
 const claveCuartoCivil = (nombre) => String(nombre || "cuarto").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^A-Za-z0-9]+/g, "_");
 
 function computeCivil(C) {
   const avisos = [], memo = [], part = [];
-  /* Geometría: de las zonas si el usuario lo pidió, o capturada a mano. */
-  const zonas = (typeof S !== "undefined" && Array.isArray(S.zones)) ? S.zones : [];
-  const limpios = (typeof CLEAN !== "undefined" && CLEAN && CLEAN.list) ? CLEAN.list : [];
-  /* rev 2.9.19 · Un cuarto que el motor de cuartos limpios declara vacío (sin área o sin altura) no cuenta como área clasificada. */
-  const areaLimpia = limpios.reduce((a, c) => a + (c.vacio ? 0 : Math.max(0, num(c.area))), 0);
+  /* H-265 (decisión del dueño, 27-sep-2026): obra civil es autónoma. Las áreas de obra y los cuartos clasificados son los
+     capturados en esta pestaña (C.areas, C.cuartos); ya no se leen las zonas de carga térmica ni los cuartos limpios. */
+  const zonas = Array.isArray(C.areas) ? C.areas.filter((a) => a && typeof a === "object") : [];
+  const limpios = (Array.isArray(C.cuartos) ? C.cuartos : []).filter((c) => c && typeof c === "object").map((c, i) => {
+    const a = Math.max(0, num(c.area, 0)), h = Math.max(0, num(c.altura, 0));
+    return { id: c.id || `k${i + 1}`, name: c.nombre || `Cuarto ${i + 1}`, area: a, h, vacio: !(a * h > 0), perimetro: c.perimetro };
+  });
+  /* rev 2.9.19 · Un cuarto vacío (sin área o sin altura) no cuenta como área clasificada. */
+  const areaLimpia = limpios.reduce((a, c) => a + (c.vacio ? 0 : c.area), 0);
 
   let area = 0, muroM2 = 0, alturaProm = 0, estimado = false;
   /* H-244 (rev 2.9.24, civil v5; decisión 5 del dueño): la tabiquería NO son los muros de carga térmica (z.walls, envolvente
      por orientación). Cada zona lleva su perímetro de tabiquería capturado en esta pestaña; sin captura, el rectángulo 3:2 del
      área de la zona × su altura, marcado «estimado» en la partida. Antes se tomaban los muros de carga térmica cuando los había
      y el 3:2 cuando no: capturar un muro exterior de 30 m² BAJABA el muro civil (−400,446 MXN). */
-  const perimZ = (C.perimZonas && typeof C.perimZonas === "object") ? C.perimZonas : {};
-  const zonasCivil = [];
+  const zonasCivil = [], sinAltura = [];
   if (C.usarZonas && zonas.length) {
     zonas.forEach((z, i) => {
-      const a = Math.max(0, num(z.area)), h = Math.max(0, num(z.height, 2.8));
+      /* H-265: sin altura capturada no se supone ninguna (antes 2.8 m si el campo venía vacío): el muro queda pendiente. */
+      const a = Math.max(0, num(z.area, 0)), h = Math.max(0, num(z.altura, 0));
       area += a; alturaProm += h * a;
-      const clave = z.id || `z${i + 1}`;
-      const cap = Math.max(0, num(perimZ[clave], 0));
+      const clave = z.id || `a${i + 1}`;
+      if (a > 0 && !(h > 0)) sinAltura.push(z.nombre || clave);
+      const cap = Math.max(0, num(z.perimetro, 0));
       const per = cap > 0 ? cap : 2 * (1.5 + 1) * Math.sqrt(a / 1.5);
       if (!(cap > 0) && a > 0) estimado = true;
       muroM2 += per * h;
-      zonasCivil.push({ name: z.name || clave, clave, area: a, h, per, capturado: cap > 0, muro: per * h });
+      zonasCivil.push({ name: z.nombre || clave, clave, area: a, h, per, capturado: cap > 0, muro: per * h });
     });
     alturaProm = area > 0 ? alturaProm / area : 0;
   } else {
@@ -7335,14 +7367,8 @@ function computeCivil(C) {
   }
   if (estimado) memo.push(`Tabiquería ESTIMADA con un rectángulo 3:2 × altura en ${zonasCivil.filter((z) => !z.capturado && z.area > 0).map((z) => z.name).join(", ")}: captura el perímetro de tabiquería de cada zona para que la partida deje de ser estimada. Los muros de carga térmica (envolvente) no son tabiquería (H-244).`);
   zonasCivil.filter((z) => z.capturado).forEach((z) => memo.push(`${z.name}: tabiquería ${n(z.per, 2)} ml capturados × altura ${n(z.h, 2)} m = ${n(z.muro, 1)} m² (H-244).`));
-  /* H-67 (decisión del dueño, 15-sep-2026): load>civil y clean>civil entran al
-     sistema de cruces. Igual que en soportería, negar el permiso NO baja la
-     cantidad a cero —la geometría se sigue cuantificando— solo se marca
-     pendiente en avisos. */
-  if (C.usarZonas && zonas.length && !linkAllowed("load>civil"))
-    avisos.push({ lvl: "warn", msg: "Cuantificación de obra civil pendiente de autorizar el cruce load>civil: se calcula igual con la geometría de zona, pero el cruce no está declarado." });
-  if (areaLimpia > 0 && !linkAllowed("clean>civil"))
-    avisos.push({ lvl: "warn", msg: "La proporción de obra civil de cuarto limpio está pendiente de autorizar el cruce clean>civil: se calcula igual, pero el cruce no está declarado." });
+  /* H-265: los cruces load>civil y clean>civil se retiraron: obra civil no toma nada de otra disciplina. */
+  if (sinAltura.length) avisos.push({ lvl: "warn", msg: `Obra civil: ${sinAltura.join(", ")} sin altura capturada: su muro queda en 0, pendiente de la captura (no se supone ninguna altura, H-265).` });
 
   const fracLimpia = area > 0 ? Math.min(1, areaLimpia / area) : 0;
   const areaNoLimpia = Math.max(0, area - areaLimpia);
@@ -7351,10 +7377,9 @@ function computeCivil(C) {
      repartía el desarrollo de todo el edificio con la fracción de área y se dividía entre la altura media de todas las zonas
      (proyecto fijo: 31.11 ml y 73.32 m², bajo la cota geométrica mínima de un cuarto de 120 m²). El muro no clasificado sigue
      con la fracción de área. */
-  const perimCap = (C.perimCuartos && typeof C.perimCuartos === "object") ? C.perimCuartos : {};
-  const cuartosCivil = limpios.filter((c) => !c.vacio && num(c.area) > 0).map((c) => {
-    const a = Math.max(0, num(c.area)), h = a > 0 ? num(c.vol) / a : 0, clave = claveCuartoCivil(c.name);
-    const cap = Math.max(0, num(perimCap[clave], 0));
+  const cuartosCivil = limpios.filter((c) => !c.vacio && c.area > 0).map((c) => {
+    const a = c.area, h = c.h, clave = c.id;
+    const cap = Math.max(0, num(c.perimetro, 0));
     const per = cap > 0 ? cap : 2 * (1.5 + 1) * Math.sqrt(a / 1.5);
     return { name: c.name, clave, area: a, h, per, capturado: cap > 0, muro: per * h };
   });
@@ -7437,13 +7462,13 @@ function computeCivil(C) {
   if (areaLimpia > 0 && !ps.limpio)
     avisos.push({ lvl: "err", msg: `El piso elegido no es apto para área clasificada.` });
   if (areaLimpia > 0 && mlCana === 0)
-    avisos.push({ lvl: "warn", msg: "No salió media caña sanitaria: sin ella no hay validación de cuarto limpio. Revisa el área y la altura de los cuartos limpios." });
+    avisos.push({ lvl: "warn", msg: "No salió media caña sanitaria: sin ella no hay validación de cuarto limpio. Revisa el área y la altura de los cuartos clasificados capturados en esta pestaña." });
   if (cuartoEstimado) avisos.push({ lvl: "warn", msg: `Media caña y muro clasificado estimados con un rectángulo 3:2 en ${cuartosCivil.filter((c) => !c.capturado).map((c) => c.name).join(", ")}: captura el perímetro de cada cuarto limpio (H-243).` });
-  if (area === 0) avisos.push({ lvl: "warn", msg: "No hay área: captura zonas o pon el área a mano para que la obra civil tenga contenido." });
+  if (area === 0) avisos.push({ lvl: "warn", msg: "No hay área: captura las áreas de obra en esta pestaña (o el área total a mano) para que la obra civil tenga contenido; ya no se toma de carga térmica (H-265)." });
 
   memo.push(`Superficie total ${n(area, 0)} m², de los cuales ${n(areaLimpia, 0)} m² son cuarto limpio (${n(fracLimpia * 100, 0)} %). Desarrollo de muro ${n(muroM2, 0)} m² a una altura media ponderada de ${n(alturaProm, 2)} m.`);
   memo.push(`Media caña: ${n(mlCana, 0)} ml${C.mediaCanaDoble ? " (piso y plafón)" : " (solo piso)"}. Sale del perímetro de cada cuarto limpio (capturado o rectángulo 3:2 estimado); es la partida que más se subestima y la que revienta la validación.`);
-  memo.push("Las cantidades salen de la geometría de las zonas (o de la captura a mano de esta pestaña, si se eligió así) y el área clasificada de los cuartos limpios. Con geometría de zonas, si cambia un área esta sección se recalcula sola.");
+  memo.push("Las cantidades salen de las áreas de obra y de los cuartos clasificados capturados en esta pestaña (o de los totales a mano, si se eligió así). Obra civil es autónoma: no toma las zonas de carga térmica ni los cuartos limpios, y no se mueve si éstos cambian (H-265).");
 
   return { area, areaLimpia, areaNoLimpia, fracLimpia, muroM2, muroLimpio, muroNoLimpio,
     alturaProm, mlMuroLimpio, mlCana, estimado, zonasCivil, cuartosCivil, cuartoEstimado, part, total, sisMuro: mL, sisPlafon: pf, sisPiso: ps, avisos, memo };
@@ -17827,10 +17852,6 @@ function trazaHerencia() {
       origen: r.modo === "heredado" ? (g.hay ? `Carga térmica · ${g.zonas} zona(s)` : "sin geometría todavía") : "capturado por el usuario",
       fecha: fechaCorta(r.ts), estado: r.modo === "heredado" ? "heredado (regla 1)" : "propio", regla: 1 });
   });
-  if (S.civil) filas.push({ destinoId: "civil", destino: "Obra civil", campo: "Área, altura y desarrollo de muro por zona",
-    valor: S.civil.usarZonas !== false ? `${n(g.area, 0)} m² · ${n(g.altura, 2)} m` : `${n(num(S.civil.areaManual), 0)} m² · ${n(num(S.civil.alturaManual), 2)} m`,
-    origen: S.civil.usarZonas !== false ? "Carga térmica y Cuartos limpios, zona por zona" : "capturado por el usuario",
-    fecha: "con cada zona", estado: S.civil.usarZonas !== false ? "heredado (regla 1)" : "propio", regla: 1 });
   if (S.soporte) filas.push({ destinoId: "soporte", destino: "Soportería", campo: "Altura de trabajo",
     valor: num(S.soporte.alturaTrabajo) > 0 ? `${n(num(S.soporte.alturaTrabajo), 1)} m` : (typeof SOPORTE !== "undefined" && SOPORTE ? `${n(SOPORTE.hTrab, 1)} m` : "—"),
     origen: num(S.soporte.alturaTrabajo) > 0 ? "capturado por el usuario" : "mayor altura de zona + 1.2 m", fecha: "con cada zona",
@@ -17895,7 +17916,8 @@ function capturaReal(id) {
     case "aire": return !!(AIRE && AIRE.nPuntos > 0 && AIRE.fadRequerido > 0);
     case "civil": {
       const C = S.civil || {};
-      const geo = C.usarZonas !== false ? (geoProyecto().hay || cleanRooms().some((r) => num(r.area) > 0)) : num(C.areaManual) > 0;
+      /* H-265: la captura de civil es la suya: áreas de obra, cuartos clasificados o el área total a mano. */
+      const geo = (C.usarZonas !== false ? (C.areas || []).some((a) => a && num(a.area) > 0) : num(C.areaManual) > 0) || (C.cuartos || []).some((c) => c && num(c.area) > 0);
       /* Las cantidades que se teclean sin depender de un área también son captura: acabados, puertas, demolición. */
       const directas = ["firmeM2", "azulejoM2", "pinturaM2", "puertasLimpias", "puertasSimples", "visores", "passbox"].some((k) => num(C[k]) > 0)
         || (C.demoler === true && num(C.demolMuroM2) + num(C.demolPlafonM2) + num(C.demolPisoM2) > 0);
@@ -18313,7 +18335,6 @@ const eHer = () => Object.fromEntries(Object.entries(S.her || {}).map(([k, v]) =
 const eVinc = () => Object.fromEntries(Object.entries(S.vinculos || {}).map(([k, v]) => [k, v && (v.estado || v.aceptado || true)]));
 /* La geometría de las zonas llega a vent, fuego y civil ya COPIADA en sus propias capturas (regla 1: sincronizarHerencia),
    así que ellos no necesitan las zonas enteras; civil sólo lee área, altura y muros, y soportería sólo la altura. */
-const eZonasCivil = () => S.zones.map((z) => ({ area: z.area, height: z.height, walls: z.walls }));
 const eZonasAltura = () => S.zones.map((z) => z.height);
 const ENTRADAS = {
   /* H-263: la fecha de la instantánea del ventilador (miscVent.ts) no cambia el cálculo: fuera de la huella. Una zona sin
@@ -18327,7 +18348,7 @@ const ENTRADAS = {
   hidro: () => ({ hidro: sinClaves(S.hidro, ["equipoHN"]), site: S.site }),
   fuego: () => ({ fuego: S.fuego, perms: ePerms(), site: S.site }),
   aire: () => ({ aire: S.aire, site: S.site }),
-  civil: () => ({ civil: S.civil, zones: eZonasCivil(), rooms: cleanRooms(), perms: ePerms() }),
+  civil: () => ({ civil: S.civil }),   /* H-265: obra civil sólo depende de su propia captura */
   elec: () => ({ elec: S.elec, equip: ENTRADAS.equip(), vent: ENTRADAS.vent(), clean: ENTRADAS.clean(), aire: ENTRADAS.aire(), hidro: ENTRADAS.hidro(), fuego: ENTRADAS.fuego(), perms: ePerms() }),
   soporte: () => ({ soporte: S.soporte, duct: ENTRADAS.duct(), hidro: ENTRADAS.hidro(), fuego: ENTRADAS.fuego(), aire: ENTRADAS.aire(),
     alturas: eZonasAltura(), vinculos: eVinc(), perms: ePerms() }),
@@ -18342,7 +18363,7 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "6", clean: "3", equip: "1", duct: "4", vent: "4", quote: "24", valor: "1", kaizen: "1", elec: "8", hidro: "8", fuego: "4", aire: "5", civil: "5", soporte: "11" };
+const MOTOR_VER = { load: "6", clean: "3", equip: "1", duct: "4", vent: "4", quote: "24", valor: "1", kaizen: "1", elec: "8", hidro: "8", fuego: "4", aire: "5", civil: "6", soporte: "11" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
@@ -18374,7 +18395,8 @@ const MOTOR_CAMBIOS = {
     { ver: "3", rev: "2.9.24", que: "H-215: secador por ISO 7183:2007 Tabla 2 opción A1: capacidad = todo el caudal del compresor a las condiciones nominales (35 °C, 7 bar(e)), factor 1.0; fuera de A1 la corrección es del fabricante y queda pendiente con aviso (antes FAD requerido / (0.92 × 0.90) de memoria: proyecto fijo 2.46 → 2.43 m³/min)" },
     { ver: "4", rev: "2.9.24", que: "H-216: el tanque pulmón no se trunca a 5,000 L en silencio: si el teórico rebasa el mayor de la lista comercial se instalan varios de 5,000 L en paralelo (capacidad instalada ≥ teórica), con aviso y memoria veraz (13,103 L → 3 × 5,000 = 15,000 L; antes 5,000). Proyecto fijo: sin cambio (3,000 L)" },
     { ver: "5", rev: "2.9.24", que: "H-218: diámetro interior por material: cobre tipo L con los DI de ASTM B88 (TUB_AGUA.cobre: 55 m de cobre 1\" → 1 1/4\"), acero con cédula 40, aluminio e inoxidable con cédula 40 sólo como indicativo y el DI del fabricante pendiente (aviso, memoria, PDF y partida). Proyecto fijo (aluminio): sin cambio de cifras, con la pendencia declarada" }],
-  civil: [{ ver: "2", rev: "2.9.16", que: "sin área clasificada no hay partidas de área clasificada" }, { ver: "3", rev: "2.9.19", que: "un cuarto limpio vacío no cuenta como área clasificada" }, { ver: "4", rev: "2.9.24", que: "H-243: muro clasificado y media caña cuarto por cuarto (perímetro capturado o rectángulo 3:2 declarado «estimado» en la partida) × su altura; antes la fracción de área del edificio entre la altura media (proyecto fijo 31.11 ml / 73.32 m² → 89.44 ml / 134.16 m²)" }, { ver: "5", rev: "2.9.24", que: "H-244 (decisión 5): la tabiquería es un perímetro capturable por zona; sin captura, rectángulo 3:2 × altura marcado «estimado» en la partida; los muros de carga térmica ya no entran (capturar un muro exterior bajaba el muro civil)" }],
+  civil: [{ ver: "2", rev: "2.9.16", que: "sin área clasificada no hay partidas de área clasificada" }, { ver: "3", rev: "2.9.19", que: "un cuarto limpio vacío no cuenta como área clasificada" }, { ver: "4", rev: "2.9.24", que: "H-243: muro clasificado y media caña cuarto por cuarto (perímetro capturado o rectángulo 3:2 declarado «estimado» en la partida) × su altura; antes la fracción de área del edificio entre la altura media (proyecto fijo 31.11 ml / 73.32 m² → 89.44 ml / 134.16 m²)" }, { ver: "5", rev: "2.9.24", que: "H-244 (decisión 5): la tabiquería es un perímetro capturable por zona; sin captura, rectángulo 3:2 × altura marcado «estimado» en la partida; los muros de carga térmica ya no entran (capturar un muro exterior bajaba el muro civil)" },
+    { ver: "6", rev: "2.9.24", que: "H-265 (decisión del dueño, 27-sep-2026): obra civil es autónoma: sus áreas de obra (área, altura, perímetro de tabiquería) y sus cuartos clasificados (área, altura, perímetro) se capturan en su pestaña; ya no se leen las zonas de carga térmica ni los cuartos limpios (cruces load>civil y clean>civil retirados). Un proyecto guardado los copia una vez al abrirlo, con las mismas cifras. Sin altura capturada no se suponen 2.8 m: el muro queda pendiente" }],
   soporte: [{ ver: "2", rev: "2.9.16", que: "renta de elevación sólo con algo que montar" },
     { ver: "3", rev: "2.9.24", que: "H-232: 0 meses de renta capturados se respetan (sin renta) y sin captura la renta queda pendiente con aviso (antes el 0 se volvía 1 mes y la omisión 3)" },
     { ver: "4", rev: "2.9.24", que: "H-231: con la instantánea motores>soporte aceptada las bases de equipo salen de snap.nEquip (antes el conteo en vivo perdía el compresor: 3 → 2)" },
@@ -18812,8 +18834,6 @@ const ARISTAS = [
   { de: "proyecto", a: "civil", regla: 0, lane: 217, que: "Alcance de obra y áreas del proyecto" },
   { de: "proyecto", a: "estr",  regla: 0, lane: 233, que: "Alcance estructural del proyecto" },
 
-  { de: "hvac", a: "civil", regla: 1, path: "civil.zonas", que: "Área, altura y desarrollo de muro por zona", carril: 0, atras: true },
-  { de: "hvac", a: "civil", regla: 1, path: "civil.zonas", que: "Acabados y envolvente de área clasificada", carril: 16, atras: true },
 
   { de: "hvac", a: "elec", regla: 2, prop: "cedula>elec", lane: 702, que: "Cargas del equipo de la cédula HVAC" },
   { de: "hvac", a: "elec", regla: 2, prop: "cedula>elec", lane: 710, que: "Potencia del ventilador de extracción" },
@@ -18839,7 +18859,6 @@ function estadoArista(ar) {
     return { vigente: "vigente", desactualizado: "desactualizada", propio: "propia", pendiente: "pendiente", vivo: "pendiente", "sin-datos": "inerte", aceptado: "vigente" }[e.nivel] || "inerte";
   }
   if (ar.regla === 1) {
-    if (ar.path === "civil.zonas") return S.civil && S.civil.usarZonas === false ? "propia" : (geoProyecto().hay ? "vigente" : "inerte");
     const r = herDe(ar.path);
     if (!geoProyecto().hay) return "inerte";
     if (r.modo === "propio") return "propia";
@@ -21001,9 +21020,8 @@ function viewCivil() {
   const opts = (o) => Object.entries(o).map(([k, v]) => [k, v.label]);
   return `<div class="grid two">
     <div class="card"><h3>Sistemas constructivos<span class="tag">sección A</span></h3><div class="body">
-      ${sel("¿De dónde salen las cantidades?", "civil.usarZonas", [[true, "De las zonas y cuartos limpios capturados"], [false, "Capturadas a mano aquí"]])}
-      ${C.usarZonas !== false ? `<div class="her"><span class="hdot"></span><b>Heredado</b> de la geometría del proyecto: ${S.zones.length} zona(s), ${n(geoProyecto().area, 0)} m²</div>` : ""}
-      ${C.usarZonas !== false ? (R.zonasCivil || []).map((z) => inp(`Tabiquería de ${esc(z.name)} (ml de perímetro) · ${n(z.area, 0)} m² × ${n(z.h, 1)} m${z.capturado ? "" : ` · sin captura: rectángulo 3:2 estimado, ${n(z.per, 1)} ml`}`, `civil.perimZonas.${z.clave}`, "number", "0.1")).join("") : ""}
+      ${sel("¿De dónde salen las cantidades?", "civil.usarZonas", [[true, "De las áreas de obra capturadas aquí"], [false, "Totales capturados a mano"]])}
+      ${C.usarZonas !== false ? civilListaHtml("areas", "Áreas de obra", "Tabiquería (ml de perímetro)", R.zonasCivil) : ""}
       ${!C.usarZonas ? `<div class="row">
         ${inp("Área total (m²)", "civil.areaManual", "number", "10", "civil.area", C)}
         ${inp("Altura libre (m)", "civil.alturaManual", "number", "0.1", "civil.alt", C)}
@@ -21017,7 +21035,7 @@ function viewCivil() {
       <div class="hint" style="margin:6px 0 12px">${esc(R.sisPiso.nota)}</div>
       ${sel("Piso en área no clasificada", "civil.pisoNoLimpio", opts(SIS_PISO))}
       ${sel("Media caña sanitaria", "civil.mediaCanaDoble", [[true, "En piso y plafón (validable)"], [false, "Solo en piso"]])}
-      ${(R.cuartosCivil || []).map((c) => inp(`Perímetro de ${esc(c.name)} (ml) · ${n(c.area, 0)} m² × ${n(c.h, 1)} m${c.capturado ? "" : ` · sin captura: rectángulo 3:2 estimado, ${n(c.per, 1)} ml`}`, `civil.perimCuartos.${c.clave}`, "number", "0.1")).join("")}
+      ${civilListaHtml("cuartos", "Cuartos clasificados (área limpia dentro de las áreas de obra)", "Perímetro del cuarto (ml)", R.cuartosCivil)}
     </div></div>
 
     <div class="card"><h3>Cantidades adicionales<span class="tag">lo que la geometría no sabe</span></h3><div class="body">
@@ -21130,11 +21148,11 @@ function buildCivilPdf() {
   pdfTitle(d, "Cuantificacion de obra civil", `${S.meta.name || "Proyecto"} · seccion A`);
   pdfHeading(d, "Geometria de la que sale todo");
   pdfTable(d, ["Concepto", "Valor", "Origen"], [
-    ["Superficie total", `${n(R.area, 0)} m2`, S.civil.usarZonas ? `suma de ${S.zones.length} zona(s)` : "capturada a mano"],
-    ["Superficie clasificada", `${n(R.areaLimpia, 0)} m2`, "motor de cuartos limpios"],
+    ["Superficie total", `${n(R.area, 0)} m2`, S.civil.usarZonas ? `suma de ${(R.zonasCivil || []).length} area(s) de obra capturadas en obra civil` : "capturada a mano"],
+    ["Superficie clasificada", `${n(R.areaLimpia, 0)} m2`, `suma de ${(R.cuartosCivil || []).length} cuarto(s) clasificado(s) capturados en obra civil`],
     ["Superficie no clasificada", `${n(R.areaNoLimpia, 0)} m2`, "diferencia"],
-    ["Desarrollo de muro", `${n(R.muroM2, 0)} m2`, R.estimado ? "muros por orientacion, con estimacion donde faltan" : (S.civil.usarZonas ? "muros capturados por orientacion" : "capturado a mano")],
-    ["Altura media ponderada", `${n(R.alturaProm, 2)} m`, (S.civil.usarZonas ? "ponderada por area de zona" : "capturada a mano")],
+    ["Desarrollo de muro", `${n(R.muroM2, 0)} m2`, R.estimado ? "perimetro de tabiqueria por area, con rectangulo 3:2 ESTIMADO donde falta" : (S.civil.usarZonas ? "perimetro de tabiqueria capturado por area x altura" : "capturado a mano")],
+    ["Altura media ponderada", `${n(R.alturaProm, 2)} m`, (S.civil.usarZonas ? "ponderada por area de obra" : "capturada a mano")],
     ["Media cana sanitaria", `${n(R.mlCana, 0)} ml`, "muro clasificado entre altura libre" + (S.civil.mediaCanaDoble ? ", doble" : "")],
   ], [150, 110, 226]);
   pdfHeading(d, "Catalogo de conceptos");
@@ -21380,9 +21398,9 @@ const GUIA = {
     cuando: "Cuando la planta tiene neumática de proceso, instrumentación o herramienta. En cuarto limpio es obligado: la URS pide clase ISO 8573-1.",
     ojo: "La clase de calidad manda sobre el equipo: grado médico obliga compresor exento de aceite, secador desecante y tubería inoxidable. No es una preferencia.",
     metodo: "En el levantamiento de consumos, el pico es la suma de nominales; la demanda de diseño es la mayor entre el consumo medio y el pico con simultaneidad." },
-  civil: { que: "La obra civil cuantificada de la geometría que ya capturaste: muros, plafones, pisos, media caña, cancelería y limpieza.",
+  civil: { que: "La obra civil cuantificada de las áreas que capturas en esta pestaña: muros, plafones, pisos, media caña, cancelería y limpieza.",
     cuando: "Cuando el alcance incluye construcción y no solo instalaciones. Es la sección A del catálogo de la casa.",
-    ojo: "Las cantidades salen de las zonas y de los cuartos limpios: área y altura se copian zona por zona, y si cambias un área allá esta sección se mueve sola; la tabiquería se captura aquí como perímetro por zona (los muros de carga térmica son envolvente, no tabiquería) y, sin captura, se estima con un rectángulo de proporción 3:2 a la altura de la zona y queda marcada como estimada. Si eliges capturarlas a mano en esta pestaña, la geometría del proyecto no las toca." },
+    ojo: "Obra civil es autónoma: no toma las zonas de Carga térmica ni los Cuartos limpios, y no se mueve si éstos cambian (H-265). Cada área de obra se captura aquí con su área, su altura y su perímetro de tabiquería (los muros de carga térmica son envolvente, no tabiquería); cada cuarto clasificado, con su área, su altura y su perímetro. Sin perímetro capturado se estima con un rectángulo de proporción 3:2 a la altura capturada y la partida queda marcada como estimada; sin altura, su muro queda en 0 y se avisa. Con los totales capturados a mano cuentan esos totales y los cuartos clasificados." },
   soporte: { que: "Los soportes contados uno por uno de los metros de ducto y tubería que calcularon los otros motores, más el arriostramiento sísmico y el equipo de elevación.",
     cuando: "Al cerrar el alcance. Es la sección G y es la que siempre se cotiza por lote y se paga por pieza.",
     ojo: "El arriostramiento sísmico no es opcional en Baja California, zona sísmica: NFPA 13 cap. 18 lo exige para tubería de rociadores." },
@@ -21877,6 +21895,14 @@ document.addEventListener("click", (e) => {
       deliverPdf(buildSpecPdf(e.model, `${e.family} · ${e.productLine}`, rows), `Ficha-${pdfName(e.model)}.pdf`); break;
     }
     /* --- Motores de otras disciplinas (rev 2.2.0) --- */
+    /* H-265: renglones de la captura propia de obra civil. */
+    case "civil-add": { const tipo = b.dataset.tipo === "cuartos" ? "cuartos" : "areas"; histSnap(tipo === "areas" ? "agregar área de obra" : "agregar cuarto clasificado");
+      if (!Array.isArray(S.civil[tipo])) S.civil[tipo] = [];
+      S.civil[tipo].push({ id: civilNuevoId(tipo), nombre: tipo === "areas" ? `Área ${S.civil[tipo].length + 1}` : `Cuarto ${S.civil[tipo].length + 1}`, area: 0, altura: 0, perimetro: 0 });
+      recompute(); projAutosave(); render(); break; }
+    case "civil-del": { const tipo = b.dataset.tipo === "cuartos" ? "cuartos" : "areas"; histSnap(tipo === "areas" ? "quitar área de obra" : "quitar cuarto clasificado");
+      if (Array.isArray(S.civil[tipo])) S.civil[tipo].splice(+b.dataset.i, 1);
+      recompute(); projAutosave(); render(); break; }
     case "aire-add": S.aire.consumos.push(defaultConsumo(`Consumo ${S.aire.consumos.length + 1}`)); projAutosave(); render(); break;
     case "aire-del": S.aire.consumos = S.aire.consumos.filter((c) => c.id !== b.dataset.id); projAutosave(); render(); break;
     case "perms-todos": {
@@ -22426,7 +22452,8 @@ function sanearEstado(d) {
   if (!Array.isArray(s.hidro.tramos)) s.hidro.tramos = defaultHidro().tramos;
   s.fuego = { ...defaultFuego(), ...(s.fuego && typeof s.fuego === "object" ? s.fuego : {}) };
   s.aire = { ...defaultAire(), ...(s.aire && typeof s.aire === "object" ? s.aire : {}) };
-  s.civil = { ...defaultCivil(), ...(s.civil && typeof s.civil === "object" ? s.civil : {}) };
+  const civilPrevio = s.civil && typeof s.civil === "object" ? s.civil : null;   /* H-265: para saber si hay que migrar */
+  s.civil = { ...defaultCivil(), ...(civilPrevio || {}) };
   s.soporte = { ...defaultSoporte(), ...(s.soporte && typeof s.soporte === "object" ? s.soporte : {}) };
   if (!Array.isArray(s.aire.consumos)) s.aire.consumos = defaultAire().consumos;
   if (!s.clean || typeof s.clean !== "object" || Array.isArray(s.clean)) s.clean = { rooms: [defaultRoom()], ci: 0 };
@@ -22436,6 +22463,13 @@ function sanearEstado(d) {
     delete s.clean.rooms[0].rooms; delete s.clean.rooms[0].ci;
   }
   if (!s.clean.rooms.length) s.clean = { rooms: [defaultRoom()], ci: 0 };
+  /* H-265: obra civil autónoma. Proyecto anterior (sin áreas propias de civil): se copian una vez de zonas y cuartos limpios. */
+  if (!civilPrevio || !Array.isArray(civilPrevio.areas) || !Array.isArray(civilPrevio.cuartos)) migrarCivilAutonoma(s, civilPrevio);
+  delete s.civil.perimZonas; delete s.civil.perimCuartos;
+  ["areas", "cuartos"].forEach((tipo) => {
+    s.civil[tipo] = (Array.isArray(s.civil[tipo]) ? s.civil[tipo] : []).filter((x) => x && typeof x === "object");
+    s.civil[tipo].forEach((x, i) => { if (!idValido(x.id)) x.id = `${tipo === "areas" ? "a" : "k"}${i + 1}`; });
+  });
   if (!s.duct || typeof s.duct !== "object") s.duct = base.duct;
   if (!Array.isArray(s.duct.segments)) s.duct.segments = [];
   if (!s.quote || typeof s.quote !== "object") s.quote = JSON.parse(JSON.stringify(QUOTE_SEED));

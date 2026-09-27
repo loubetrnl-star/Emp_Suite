@@ -45,7 +45,10 @@ w.eval(String.raw`
   /* H-264: contra incendio ya no hereda; captura lo que la herencia le imponía al abrir (700 m² = suma de zonas, 6 m = zona más alta). */
   S.fuego = { ...defaultFuego(), area: 700, altura: 6, Lramal: 30, Lmontante: 12, presFuente: 30 };
   S.aire = { ...defaultAire(), Lprincipal: 60, consumos: [{ ...defaultConsumo("Sopleteo"), cant: 2, lmin: 400, bar: 6, uso: .5 }, { ...defaultConsumo("Actuadores"), cant: 4, lmin: 250, bar: 6, uso: .3 }] };
-  S.civil = { ...defaultCivil(), firmeM2: 120, puertasSimples: 3, puertasLimpias: 2, demoler: true, demolMuroM2: 40 };
+  /* H-265: obra civil ya no lee zonas ni cuartos limpios: captura las mismas áreas y el mismo cuarto que antes tomaba de ellos. */
+  S.civil = { ...defaultCivil(), firmeM2: 120, puertasSimples: 3, puertasLimpias: 2, demoler: true, demolMuroM2: 40,
+    areas: S.zones.map((z, i) => ({ id: "a" + (i + 1), nombre: z.name, area: z.area, altura: z.height, perimetro: 0 })),
+    cuartos: [{ id: "k1", nombre: "Cuarto limpio 1", area: 120, altura: 3, perimetro: 0 }] };
   S.soporte = { ...defaultSoporte(), rielM: 60, mesesElevacion: 3 };
   const fam = FAMILIES[0], m = familyPool(fam.id)[0]; if (m) S.quote.items = [{ id: m.id, fam: fam.id, qty: 2, unit: null }];
   /* Ruta de referencias con un precio de REFERENCIA DE PRUEBA AISLADO (no es una fuente real; decisión del dueño 22-sep-2026: sin IUSA, únicamente California, sólo material). 1/2" queda como proveedor local numérico. */
