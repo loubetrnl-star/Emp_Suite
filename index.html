@@ -1415,7 +1415,7 @@ function pdfFirmas(d, L) {
 }
 /* Bloque de trazabilidad que cierra cada documento: con qué norma se calculó,
    de qué catálogo salió el equipo y con qué revisión del motor. */
-function pdfTrazabilidad(d, motores) {
+function pdfTrazabilidad(d, motores, opciones) {
   pdfHeading(d, "Trazabilidad");
   pdfRows(d, [
     ...motores.map((m) => [`Norma · ${NORMAS[m] ? ENGINES[m] ? ENGINES[m].label : ((typeof DISCIPLINAS !== "undefined" && DISCIPLINAS.find((x) => x.id === m)) || {}).nombre || m : m}`, `${NORMAS[m] ? NORMAS[m].norma + " · " + NORMAS[m].edicion : "sin declarar"}${NORMAS[m] && NORMAS[m].extra ? " · " + NORMAS[m].extra : ""}`]),
@@ -1423,6 +1423,9 @@ function pdfTrazabilidad(d, motores) {
     ["Motor de calculo", REV_SELLO()],
     ["Emitido", new Date().toLocaleString("es-MX")],
   ]);
+  /* H-272 (regla 8): lo que entró a estas disciplinas desde archivos, con archivo, página o fila y cómo entró. La memoria
+     integral ya trae su propia tabla completa y lo pide sin esta. */
+  if (!(opciones && opciones.sinArchivos)) seguro(() => pdfOrigenArchivosDe(d, motores));
 }
 function buildSubmittalPdf(sub, kind) {
   const d = PdfDoc(`Submittal ${sub.model}`);
@@ -5389,6 +5392,18 @@ function buildPropuestaXlsx(opt) {
   traza.forEach((r0) => { const r = en && r0.en ? { ...r0, ...r0.en } : r0;   // H-263: espejo EN de las filas que lo traen
     df.push([xT(r.destino, XS.TD), xT(r.campo, XS.TD), xT(r.valor, XS.TD),
     xT(r.origen, XS.TD), xT(`${r.fecha} · ${r.estado}`, XS.TD)]); });
+  /* H-272 (regla 8): lo que entró desde archivos del proyecto ejecutivo, con archivo, página o fila y cómo entró (solo al cargar /
+     aceptado por el usuario). Antes el libro no decía que un valor vino de un archivo. */
+  const deArchivos = cxLotesDe().flatMap((l) => (l.aplicados || []).filter((a) => a && typeof a === "object").map((a) => ({ l, a })));
+  if (deArchivos.length) {
+    df.push([]);
+    df.push([xT(L("DATOS QUE ENTRARON DESDE ARCHIVOS DEL PROYECTO EJECUTIVO", "DATA ENTERED FROM EXECUTIVE-PROJECT FILES"), XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC)]);
+    df.push([L("DISCIPLINA", "DISCIPLINE"), L("DATO", "DATUM"), L("VALOR", "VALUE"), L("ARCHIVO · PAGINA / FILA", "FILE · PAGE / ROW"), L("COMO ENTRO · FECHA", "HOW IT ENTERED · DATE")].map((x) => xT(x, XS.TH)));
+    deArchivos.slice(0, 500).forEach(({ l, a }) => df.push([xT((CX_DISC[l.tab] || { nombre: l.tab }).nombre, XS.TD), xT(a.etiqueta, XS.TD), xT(`${a.valor} ${a.unidad || ""}`.trim(), XS.TD), xT(cxOrigenTexto(a), XS.TD),
+      xT(`${a.auto === true ? L("entró solo al cargar (dato claro)", "entered on load (clear datum)") : a.auto === false ? L("aceptado por el usuario", "accepted by the user") : L("carga anterior (sin distinguir)", "earlier load (not distinguished)")}${l.archivoRetirado ? L(" · archivo retirado", " · file removed") : ""} · ${fechaCorta(l.ts)}`, XS.TD)]));
+    if (deArchivos.length > 500) df.push([xT(L(`Y ${deArchivos.length - 500} dato(s) más, registrados en el proyecto.`, `And ${deArchivos.length - 500} more, recorded in the project.`), XS.NOTA)]);
+    df.push([xT(L("Lo que el archivo no trae quedó pendiente de captura: no se supuso ningún valor (regla 6). Lo leído de un archivo no sustituye la revisión del ingeniero responsable.", "What the file does not carry was left pending capture: no value was assumed (rule 6). What is read from a file does not replace the responsible engineer's review."), XS.NOTA)]);
+  }
   df.push([]);
   df.push([xT(L("Regla de la casa: cada disciplina calcula con los datos que se le capturan; ninguna hereda de otra (27-sep-2026). Ningun resultado entra solo a otra disciplina: se ofrece como propuesta, alguien la acepta o captura la suya, y queda el origen y la fecha. Si el dato de origen cambia despues, el destino NO se recalcula solo: se marca desactualizado y el usuario decide.",
     "House rule: each discipline calculates with the data captured in it; none inherits from another (27-sep-2026). No calculated result enters another discipline on its own: it is offered as a proposal, someone accepts it or captures their own, and the source and date are recorded. If the source datum later changes, the target is NOT recalculated automatically: it is flagged out of date and the user decides."), XS.NOTA)]);
@@ -7300,6 +7315,7 @@ function civilListaHtml(tipo, titulo, etiquetaPer, calc) {
       ${inp("Nombre", `civil.${tipo}.${i}.nombre`, "text")}
       <div class="row">${inp("Área (m²)", `civil.${tipo}.${i}.area`, "number", "1")}${inp("Altura (m)", `civil.${tipo}.${i}.altura`, "number", "0.1")}</div>
       ${inp(`${etiquetaPer}${c && !c.capturado && c.area > 0 ? ` · sin captura: rectángulo 3:2 estimado, ${n(c.per, 1)} ml` : ""}`, `civil.${tipo}.${i}.perimetro`, "number", "0.1")}
+      ${x.origen && x.origen.archivo ? `<div class="sub cx-origen-renglon">Del archivo ${esc(cxOrigenTexto(x.origen))}${x.origen.texto ? ` · «${esc(String(x.origen.texto).slice(0, 90))}»` : ""} · ${x.origen.auto ? "entró solo al cargar" : "aceptado por el usuario"}${x.origen.ts ? " · " + esc(fechaCorta(x.origen.ts)) : ""}${!(num(x.altura) > 0) ? " · altura pendiente: el archivo no la trae" : ""}</div>` : ""}
       <button class="btn-ghost" data-act="civil-del" data-tipo="${tipo}" data-i="${i}">Quitar</button></div></div>`; }).join("")}
     ${lista.length ? "" : `<div class="hint" style="margin-bottom:10px">Sin ${tipo === "areas" ? "áreas de obra" : "cuartos clasificados"} capturados.</div>`}
     <button class="btn-ghost" data-act="civil-add" data-tipo="${tipo}">Agregar ${tipo === "areas" ? "área de obra" : "cuarto clasificado"}</button>`;
@@ -7370,6 +7386,10 @@ function computeCivil(C) {
   zonasCivil.filter((z) => z.capturado).forEach((z) => memo.push(`${z.name}: tabiquería ${n(z.per, 2)} ml capturados × altura ${n(z.h, 2)} m = ${n(z.muro, 1)} m² (H-244).`));
   /* H-265: los cruces load>civil y clean>civil se retiraron: obra civil no toma nada de otra disciplina. */
   if (sinAltura.length) avisos.push({ lvl: "warn", msg: `Obra civil: ${sinAltura.join(", ")} sin altura capturada: su muro queda en 0, pendiente de la captura (no se supone ninguna altura, H-265).` });
+  /* H-272a: un cuarto clasificado con área pero sin altura (p. ej. leído de un plano que no la rotula) tampoco se supone: no cuenta
+     como área clasificada ni su muro, y se dice en vez de callarlo (regla 6). */
+  const cuartosSinAltura = limpios.filter((c) => c.area > 0 && !(c.h > 0)).map((c) => c.name);
+  if (cuartosSinAltura.length) avisos.push({ lvl: "warn", msg: `Obra civil: ${cuartosSinAltura.join(", ")} sin altura capturada: no cuenta como área clasificada ni su muro clasificado, pendiente de la captura (no se supone ninguna altura).` });
 
   const fracLimpia = area > 0 ? Math.min(1, areaLimpia / area) : 0;
   const areaNoLimpia = Math.max(0, area - areaLimpia);
@@ -13594,6 +13614,10 @@ const CX_PESOS = {
   civil: ["obra civil", "muro", "plafon", "plafón", "piso", "firme", "losa", "demolicion", "demolición", "canceleria", "cancelería", "acabado", "panel sandwich", "epoxico", "epóxico", "arquitectonico", "arquitectónico"],
   soporte: ["soporteria", "soportería", "MSS SP-58", "abrazadera", "varilla roscada", "trapecio", "anclaje", "unistrut", "sismico", "sísmico", "brazo rigido", "brazo rígido"],
   estructural: ["AISC", "estructural", "viga", "columna", "IPR", "PTR", "armadura", "cimentacion", "cimentación", "zapata", "momento flexionante", "cortante", "ACI 318", "acero de refuerzo"],
+  /* H-272d: una memoria de ventilación, una de ductos o una cédula de equipos ya no caen en carga térmica por falta de pesos propios. */
+  ventilacion: ["ventilacion", "ventilación", "extractor", "extractores", "extraccion", "extracción", "cambios por hora", "cambios de aire", "aire de reposicion", "aire de reposición", "campana", "louver", "inyector"],
+  ductos: ["ductos y calibres", "calibre", "lamina galvanizada", "lámina galvanizada", "ducteria", "ductería", "presion estatica", "presión estática"],
+  seleccion: ["cedula de equipos", "cédula de equipos", "submittal", "ficha tecnica", "ficha técnica", "marca y modelo"],
 };
 
 const CX_MARCAS = ["Carrier", "Greenheck", "Trane", "York", "Daikin", "Mitsubishi", "LG", "Samsung", "Rheem", "Lennox", "Grundfos", "Pentair", "Franklin", "Square D", "Schneider", "Siemens", "ABB", "Eaton", "Viking", "Tyco", "Reliable", "Victaulic", "Ductmate", "Atlas Copco", "Ingersoll", "Kaeser", "Sullair", "Camfil", "AAF", "Ruskin", "Titus", "Price"];
@@ -13907,13 +13931,18 @@ function cxCsvLeer(texto) {
         DXF, memoria o cédula en PDF, cuadro de cargas en CSV, DWG— y que la
         suite los lea, proponga las capturas y, si así se decide, abra con
         ellas un PROYECTO NUEVO E INDEPENDIENTE.
-   Tres reglas, las mismas de la casa:
-   · Nada entra solo a un motor. Cada dato leído se ofrece con su archivo, su
-     página y el renglón del que salió; el usuario lo marca o no.
+   Tres reglas, las mismas de la casa (al día con H-272, 27-sep-2026):
+   · Cada dato leído se ofrece con su archivo, su página o fila y el renglón
+     del que salió. Desde el tablero lo CLARO entra solo al cargar (decisión
+     del dueño, 25-sep-2026) y queda marcado «entró solo»; lo dudoso espera la
+     marca del usuario. Nada se supone: lo que el archivo no trae queda
+     pendiente (regla 6). Un levantamiento alimenta la captura propia de cada
+     disciplina; los catálogos quedan como referencia consultable.
    · El proyecto nuevo nace limpio: sale del estado inicial, no del proyecto
      abierto, y no arrastra nada de trabajos anteriores.
-   · Lo aplicado queda escrito en S.cx con su origen, para que la memoria y
-     cualquier revisión posterior sepan de dónde salió cada número.
+   · Lo aplicado queda escrito en S.cx con su origen y con cómo entró, y no se
+     repite al reprocesar el mismo archivo; la memoria, el libro y cualquier
+     revisión posterior saben de dónde salió cada número.
    ========================================================================= */
 const CX_DISC = {
   carga:       { nombre: "Carga térmica",       acepta: "planta en DXF con los cuartos, memoria en PDF con zonas y áreas" },
@@ -13925,12 +13954,14 @@ const CX_DISC = {
   hidro:       { nombre: "Hidrosanitario",      acepta: "memoria hidráulica en PDF, planta en DXF" },
   fuego:       { nombre: "Contra incendio",     acepta: "memoria NFPA 13 en PDF, planta en DXF" },
   aire:        { nombre: "Aire comprimido",     acepta: "memoria en PDF, lista de consumos en CSV" },
-  civil:       { nombre: "Obra civil",          acepta: "planta arquitectónica en DXF, catálogo en PDF" },
+  civil:       { nombre: "Obra civil",          acepta: "planta arquitectónica en DXF, levantamiento de locales en XLSX o CSV, memoria descriptiva en PDF" },
   soporte:     { nombre: "Soportería",          acepta: "plantas de instalaciones en DXF" },
   estructural: { nombre: "Estructural",         acepta: "memoria estructural en PDF, planta en DXF" },
 };
 const CX_MAX_BYTES_ARCHIVO = 60 * 1024 * 1024;
-const CX_MAX_LOTES = 30;
+/* H-272b: cada archivo aplicado es un registro de origen; con 30 un ZIP de 34 cuadros dejaba 4 sin trazado (regla 8). */
+const CX_MAX_LOTES = 300;
+const CX_MAX_REFERENCIAS = 2000;   // H-272e: renglones de catálogos y listas de precios como referencia consultable
 const CX_CFM_A_LS = 0.471947;
 let CX_LOTE = null;          // lote leído y todavía no aplicado (no viaja con el proyecto)
 
@@ -13999,9 +14030,25 @@ function cxDecodificaTexto(u8) {
   }
   return cxBytesALatin1(u8);
 }
+/* H-272b · Huella del contenido de un archivo: con ella se reconoce lo que ya entró de ese mismo archivo (volver a revisar tras
+   recargar, reasignar ida y vuelta, cargarlo otra vez) y no se repite. Misma mezcla que huellaTexto, sobre los bytes; arriba de
+   4 MB se toman el tamaño, el primer y el último medio MB: basta para distinguir archivos sin detener la carga. */
+function cxHuellaBytes(u8) {
+  if (!u8 || !u8.length) return "";
+  let h1 = 0xdeadbeef ^ u8.length, h2 = 0x41c6ce57 ^ u8.length;
+  const mezcla = (a, b) => { for (let i = a; i < b; i++) { h1 = Math.imul(h1 ^ u8[i], 2654435761); h2 = Math.imul(h2 ^ u8[i], 1597334677); } };
+  const LIM = 4 * 1024 * 1024, TROZO = 512 * 1024;
+  if (u8.length <= LIM) mezcla(0, u8.length); else { mezcla(0, TROZO); mezcla(u8.length - TROZO, u8.length); }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507); h1 ^= Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507); h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(16).padStart(14, "0");
+}
 function cxLeerArchivo(file) {
   return new Promise((listo) => {
-    const R = { nombre: (file && file.name) || "archivo", tam: (file && file.size) || 0, tipo: "", avisos: [], bytes: null };
+    const R = { nombre: (file && file.name) || "archivo", tam: (file && file.size) || 0, tipo: "", avisos: [], bytes: null,
+      /* H-272: la ruta (carpeta) distingue dos archivos del mismo nombre; la huella del contenido y la fila de la tabla (si viene
+         de ella) son la clave con la que se reconoce lo ya aplicado (H-272b). */
+      ruta: String((file && (file.ruta || file.webkitRelativePath)) || (file && file.name) || "archivo"), huella: (file && file.huella) || "", filaId: (file && file.filaId) || null };
     if (!file) { R.avisos.push("Archivo no válido."); listo(R); return; }
     if (R.tam > CX_MAX_BYTES_ARCHIVO) { R.avisos.push(`Pesa ${(R.tam / 1048576).toFixed(0)} MB; el límite es ${CX_MAX_BYTES_ARCHIVO / 1048576} MB.`); listo(R); return; }
     let rd;
@@ -14009,6 +14056,7 @@ function cxLeerArchivo(file) {
     rd.onerror = () => { R.avisos.push("No se pudo leer el archivo."); listo(R); };
     rd.onload = () => {
       try { R.bytes = new Uint8Array(rd.result); } catch { R.avisos.push("No se pudo leer el contenido."); }
+      if (R.bytes && !R.huella) R.huella = cxHuellaBytes(R.bytes);
       listo(R);
     };
     try { rd.readAsArrayBuffer(file); } catch { R.avisos.push("No se pudo abrir el archivo."); listo(R); }
@@ -14017,7 +14065,7 @@ function cxLeerArchivo(file) {
 
 /* Convierte un archivo leído en fuentes de texto y geometría. */
 function cxInterpretar(A) {
-  const F = { nombre: A.nombre, tam: A.tam, tipo: cxTipoDe(A.nombre, A.bytes), avisos: A.avisos.slice(), lineas: [], paginaDe: [], dxf: null, dwg: null, csv: null, json: null, paginas: 0 };
+  const F = { nombre: A.nombre, ruta: A.ruta || A.nombre, huella: A.huella || "", filaId: A.filaId || null, tam: A.tam, tipo: cxTipoDe(A.nombre, A.bytes), avisos: A.avisos.slice(), lineas: [], paginaDe: [], dxf: null, dwg: null, csv: null, json: null, paginas: 0 };
   if (!A.bytes) return F;
   /* Un renglón vacío no es texto: no cuenta en "renglones leídos". */
   const pon = (l, pag) => { if (String(l).trim()) { F.lineas.push(l); F.paginaDe.push(pag); } };
@@ -14060,6 +14108,7 @@ function cxInterpretar(A) {
         if (tsv.split("\n").length < 2) return;
         const r = cxCsvLeer(tsv);
         r.hoja = h.nombre;
+        r.filaEncabezado = h.filaEncabezado || 0;   // H-272: para decir la fila de la hoja de la que salió cada dato
         F.csvs.push({ nombre: h.nombre, r });
         (r.filasCrudas || r.filas).forEach((f) => pon(Object.entries(f).map(([k, v]) => `${k}: ${v}`).join(" · "), null));
         h.avisos.forEach((a) => F.avisos.push(a));
@@ -14247,6 +14296,7 @@ function cxProp(etiqueta, valor, unidad, fuente, opts) {
   return {
     etiqueta, valor, unidad: unidad || "", destino: o.destino || "",
     archivo: fuente ? fuente.archivo || "" : "", pagina: fuente ? fuente.pagina || null : null,
+    fila: fuente && fuente.fila != null ? fuente.fila : null,   // H-272: fila de la hoja (CSV/XLSX) de la que salió el dato
     texto: fuente ? String(fuente.texto || "").slice(0, 160) : "",
     confianza: o.confianza != null ? o.confianza : (fuente && fuente.confianza != null ? fuente.confianza : .8),
     marcado: o.marcado != null ? o.marcado : ((o.confianza != null ? o.confianza : (fuente && fuente.confianza) || .8) >= .8),
@@ -14256,34 +14306,24 @@ function cxProp(etiqueta, valor, unidad, fuente, opts) {
 /* exteriores: qué caras del rectángulo del cuarto dan al exterior. Una cara
    que comparte muro con otro cuarto del plano no gana calor del sol ni del
    aire de afuera, y contarla como exterior inflaba la carga hasta un 20 %. */
-/* Referencia de una zona típica de 120 m² (oficina), usada SOLO para estimar
-   lo que un plano no trae explícito (altura, ocupantes, W de luces/equipo,
-   muros/vidrio sin rectángulo envolvente). Arranque en ceros (17-sep-2026):
-   defaultZone() ya nace en 0 para un proyecto nuevo, así que esta escala de
-   importación necesita su propia referencia, separada del estado en blanco. */
-const ZONA_REF_120M2 = { height: 2.8, occ: 12, lights: 1200, equip: 1440,
-  walls: { N: 28, NE: 0, E: 18, SE: 0, S: 28, SW: 0, W: 18, NW: 0 },
-  glass: { N: 4, NE: 0, E: 6, SE: 0, S: 12, SW: 0, W: 8, NW: 0 } };
+/* H-272c (regla 6, decisión del dueño 27-sep-2026) · La zona nace SÓLO con lo que el archivo trae: área, altura rotulada,
+   personas rotuladas y muros exteriores por cara del rectángulo envolvente A LA ALTURA ROTULADA. Lo demás queda en 0 =
+   pendiente, y el motor de carga lo dice. Antes se rellenaba con una oficina de referencia de 120 m² (altura 2.8 m, 12
+   personas, 1200 W de luces, 1440 W de equipo, muros y vidrio a escala) que entraba sola y no quedaba en ningún registro. */
 function cxZonaDesde(nombre, area, altura, personas, bbox, exteriores) {
   const z = defaultZone(nombre);
-  const a = Math.max(1, +area || 0);
-  const h = +altura > 0 ? +altura : ZONA_REF_120M2.height;
-  const k = a / 120;                           // la zona de referencia es de 120 m²
+  const a = Math.max(0, +area || 0), h = +altura > 0 ? +altura : 0;
   z.area = +a.toFixed(2); z.height = +h.toFixed(2);
-  z.occ = personas > 0 ? Math.round(personas) : Math.max(1, Math.round(ZONA_REF_120M2.occ * k));
-  z.lights = Math.round(ZONA_REF_120M2.lights * k); z.equip = Math.round(ZONA_REF_120M2.equip * k);
-  if (bbox && bbox.x1 > bbox.x0 && bbox.y1 > bbox.y0) {
-    /* Con planta: muros por cara del rectángulo envolvente, a la altura real,
-       solo en las caras que dan al exterior. El vidrio no se deduce de un plano
-       y queda en cero. */
+  z.occ = personas > 0 ? Math.round(personas) : 0;
+  z.lights = 0; z.equip = 0;
+  ORI.forEach((o) => { z.walls[o] = 0; z.glass[o] = 0; });
+  if (bbox && bbox.x1 > bbox.x0 && bbox.y1 > bbox.y0 && h > 0) {
+    /* Con planta y altura rotulada: muros por cara del rectángulo envolvente, solo en las caras que dan al exterior. El vidrio
+       no se deduce de un plano y queda en cero. Sin altura no hay muro que calcular: queda pendiente junto con la altura. */
     const ex = exteriores || { N: true, S: true, E: true, W: true };
     const ancho = bbox.x1 - bbox.x0, fondo = bbox.y1 - bbox.y0;
-    ORI.forEach((o) => { z.walls[o] = 0; z.glass[o] = 0; });
     z.walls.N = ex.N ? +(ancho * h).toFixed(1) : 0; z.walls.S = ex.S ? +(ancho * h).toFixed(1) : 0;
     z.walls.E = ex.E ? +(fondo * h).toFixed(1) : 0; z.walls.W = ex.W ? +(fondo * h).toFixed(1) : 0;
-  } else {
-    const s = Math.sqrt(k);
-    ORI.forEach((o) => { z.walls[o] = +(num(ZONA_REF_120M2.walls[o]) * s).toFixed(1); z.glass[o] = +(num(ZONA_REF_120M2.glass[o]) * s).toFixed(1); });
   }
   return z;
 }
@@ -14304,26 +14344,38 @@ function cxCarasExteriores(p, util) {
   return ex;
 }
 const CX_MAX_ZONAS = 80;
-/* Zonas del lote: la geometría del DXF manda; el texto completa lo que falte. */
-function cxZonasDelLote(A) {
-  const out = [];
-  if (!Array.isArray(A.avisosPropuesta)) A.avisosPropuesta = [];
-  const avisa = (t) => { if (!A.avisosPropuesta.includes(t)) A.avisosPropuesta.push(t); };
-  /* Textos de cada plano que caen DENTRO de un cuarto: son del cuarto, no del
-     edificio, y su altura no se reparte a los demás. */
+/* Textos de cada plano que caen DENTRO de un cuarto: son del cuarto, no del edificio. Se calcula una vez por análisis. */
+function cxTextosDentro(A) {
+  if (A._dentro) return A._dentro;
   const dentro = new Map();
-  A.dxf.forEach(({ archivo, r }) => {
+  (A.dxf || []).forEach(({ archivo, r }) => {
     const util = cxPoligonosUtiles(r);
     const set = new Set();
     (r.textos || []).forEach((t) => {
       if (t.x == null || t.y == null) return;
       if (util.base.some((p) => t.x >= p.bbox.x0 && t.x <= p.bbox.x1 && t.y >= p.bbox.y0 && t.y <= p.bbox.y1 && cxPuntoEnPoligono([t.x, t.y], p.v || []))) set.add(String(t.texto).trim().slice(0, 200));
     });
-    dentro.set(archivo, set);
+    dentro.set(archivo, { textos: set, raices: util.raices.length });
   });
+  A._dentro = dentro;
+  return dentro;
+}
+/* H-272c · Una magnitud rotulada dentro de un cuarto es de ese cuarto: no es el área total, la altura general ni los ocupantes
+   del edificio (antes «NAVE 300 m2» y «h=3.20 m» de un cuarto se volvían área a proteger y altura general). Con un solo espacio
+   en el plano, el cuarto ES el local y sus rótulos valen para el conjunto, salvo que se pida `aunSolo`. */
+function cxTextoDeCuarto(A, m, aunSolo) {
+  const d = cxTextosDentro(A).get(m.archivo);
+  if (!d || !d.textos.has(String(m.texto).trim().slice(0, 200))) return false;
+  return aunSolo ? true : d.raices >= 2;
+}
+/* Zonas del lote: la geometría del DXF manda; el texto completa lo que falte. */
+function cxZonasDelLote(A) {
+  const out = [];
+  if (!Array.isArray(A.avisosPropuesta)) A.avisosPropuesta = [];
+  const avisa = (t) => { if (!A.avisosPropuesta.includes(t)) A.avisosPropuesta.push(t); };
   const deUnCuarto = (m) => /\d\s*(m2|m²)/i.test(m.texto) && !/total|general|nave|edificio|libre/i.test(m.texto);
   const candG = A.magnitudes.filter((m) => m.clave === "altura_m" && typeof m.valor === "number" && m.valor >= 2 && m.valor <= 30 &&
-    m.confianza >= .8 && !m.ambiguo && !deUnCuarto(m) && !((dentro.get(m.archivo) || new Set()).has(String(m.texto).trim().slice(0, 200))));
+    m.confianza >= .8 && !m.ambiguo && !deUnCuarto(m) && !cxTextoDeCuarto(A, m, true));
   /* Una sola altura general, o ninguna: si el documento trae varias distintas
      no se escoge la mayor por las demás. */
   const distintas = new Set(candG.map((m) => Math.round(m.valor * 100)));
@@ -14355,10 +14407,75 @@ function cxZonasDelLote(A) {
   });
   A.zonasTexto.forEach((z) => {
     const dup = out.some((o) => Math.abs(o.m2 - z.m2) < 0.5 || o.nombre.toLowerCase() === String(z.nombre).toLowerCase());
-    if (dup) return;
+    /* H-272c (D16): «Área total» o «superficie del edificio» no es una zona: es el total del documento. */
+    if (dup || /\b(total|general|edificio)\b/i.test(String(z.nombre))) return;
     const iso = (cxAnalizarTexto([z.texto]).magnitudes.find((m) => m.clave === "iso_clase") || {}).valor || null;
     out.push({ nombre: z.nombre, m2: z.m2, altura: rango(z.altura, 2, 40) || (alturaG ? alturaG.valor : null), personas: rango(z.personas, 1, 5000), iso, bbox: null, TR: z.TR,
       fuente: { archivo: z.archivo, pagina: z.pagina, texto: z.texto, confianza: z.ambiguo ? .6 : .75 } });
+  });
+  return out;
+}
+/* H-272a (decisión del dueño, 27-sep-2026) · Cada espacio del plano con lo que el plano trae DE ÉL: nombre, m² y perímetro del
+   polígono, y la altura, las personas, la clase ISO o los cambios de aire rotulados DENTRO del propio espacio (no los de un cuarto
+   que tenga adentro ni una altura general del documento). `raiz` = no está dentro de otro espacio (área de obra); `hoja` = no
+   contiene otro espacio con nombre (zona de carga térmica). Lo que el plano no rotula queda null: pendiente, nunca supuesto. */
+function cxEspaciosDelPlano(A) {
+  const out = [];
+  const rango = (v, a, b) => (typeof v === "number" && v >= a && v <= b ? v : null);
+  (A.dxf || []).forEach(({ archivo, r }) => {
+    const util = cxPoligonosUtiles(r);
+    const corregida = !!(r.unidades && r.unidades.corregida);
+    const dentroDe = (t, p) => t.x != null && t.y != null && t.x >= p.bbox.x0 && t.x <= p.bbox.x1 && t.y >= p.bbox.y0 && t.y <= p.bbox.y1 && cxPuntoEnPoligono([t.x, t.y], p.v || []);
+    util.base.forEach((p, i) => {
+      const hijos = (util.hijos.get(p) || []).filter((h) => h.etiqueta);
+      /* Los rótulos de un cuarto que está adentro son de ese cuarto, no de éste. */
+      const textos = (r.textos || []).filter((t) => dentroDe(t, p) && !hijos.some((h) => dentroDe(t, h)));
+      const propios = p.grupoEtiqueta != null ? textos.filter((t) => t.grupo === p.grupoEtiqueta) : [];
+      const lee = (lista) => (lista.length ? cxAnalizarTexto(lista.map((t) => t.texto)) : null);
+      const aP = lee(propios), aT = lee(textos);
+      const primero = (R2, clave, a, b) => (R2 ? rango((R2.magnitudes.find((m) => m.clave === clave && !m.ambiguo) || {}).valor, a, b) : null);
+      const busca = (clave, a, b) => primero(aP, clave, a, b) ?? primero(aT, clave, a, b);
+      const etiqueta = p.etiqueta || "";
+      const nombre = (etiqueta ? etiqueta.replace(/\s*\d[\d.,]*\s*(m2|m²).*$/i, "").replace(/\s+ISO\s*\d.*$/i, "").replace(/\s+h\s*=.*$/i, "").trim() : "") || `Espacio ${i + 1}`;
+      const iso = busca("iso_clase", 1, 9);
+      out.push({ archivo, nombre, m2: p.m2, perimetro: p.perimetroM || 0, bbox: p.bbox, capa: p.capa,
+        altura: busca("altura_m", 2, 40), personas: busca("ocupantes", 1, 5000), iso, ach: busca("ach", 1, 700),
+        limpio: !!iso || /limpio|clean|gmp|clasificad/i.test(etiqueta),
+        raiz: !(util.padres.get(p) || []).length, hoja: util.hojas.includes(p), exteriores: cxCarasExteriores(p, util),
+        fuente: { archivo, pagina: null, texto: `${p.capa} · polilínea cerrada de ${n(p.m2, 1)} m²${etiqueta ? " · " + etiqueta : ""}${corregida ? " · unidades corregidas" : ""}`, confianza: corregida ? .7 : .9 } });
+    });
+  });
+  return out;
+}
+/* H-272a · Un levantamiento en tabla (hoja de Excel o CSV: la exportación de locales de un programa de planos, la extracción de
+   datos de AutoCAD): un renglón por espacio con nombre, área, altura, perímetro y clasificación. La unidad puede venir en el
+   encabezado («Área (m²)», «Altura (ft)») o en la celda («300 m2»); lo que la columna no trae queda null (pendiente). Un cuadro
+   de cargas, de consumos o de muebles no es un levantamiento de espacios y no entra aquí. */
+function cxEspaciosDeTabla(A) {
+  const out = [];
+  (A.csv || []).forEach(({ archivo, r }) => {
+    if (!r || !Array.isArray(r.columnas)) return;
+    const col = (re, no) => r.columnas.find((c) => re.test(c) && !(no && no.test(c)));
+    const cA = col(/(^|[^a-z])(area|área|superficie|m2|m²|sup\.?)([^a-z]|$)/i, /dise|densidad|clasif|nombre|name/i);
+    if (!cA || r.columnas.some((c) => /(^|[^a-z])(kw|w|kva|v|volt|tensi[oó]n|fases|l\s*\/\s*min|lpm|scfm|mueble|wc)([^a-z]|$)/i.test(c))) return;
+    const cN = col(/local|nombre|espacio|cuarto|zona|sala|room|name|descrip|concepto/i, /(^|[^a-z])(area|área|m2|m²)([^a-z]|$)/i);
+    const cH = col(/altura|height|^alto$|^h$|^h\s*\(/i), cP = col(/per[ií]metro|perimeter|(^|[^a-z])ml([^a-z]|$)/i), cC = col(/clasif|clase|iso|class|tipo/i);
+    const fA = /ft2|ft²|sq\.?\s?ft|pies/i.test(cA) ? 0.092903 : 1, fH = cH && /ft\b|pies|'/i.test(cH) ? 0.3048 : 1, fP = cP && /ft\b|pies/i.test(cP) ? 0.3048 : 1;
+    (r.filasCrudas || r.filas).forEach((cruda, i) => {
+      const f = r.filas[i] || cruda;
+      const a0 = cxCeldaNum(r, f, i, cA);
+      const nombre = cxCeldaTxt(r, f, i, cN) || `Espacio ${i + 1}`;
+      if (!(a0 > 0) || /^(total|suma|subtotal)\b/i.test(nombre)) return;
+      const m2 = a0 * (/ft2|ft²|sq\.?\s?ft/i.test(cxCeldaTxt(r, f, i, cA)) ? 0.092903 : fA);
+      const h0 = cH ? cxCeldaNum(r, f, i, cH) : null, p0 = cP ? cxCeldaNum(r, f, i, cP) : null;
+      const clas = cC ? cxCeldaTxt(r, f, i, cC) : "";
+      const reIso = /\bISO\s*(?:clase\s*)?([5-9])(?![\d-])/i;
+      const iso = (reIso.exec(clas) || reIso.exec(nombre) || [])[1];
+      const fila = (r.filaEncabezado || 0) + 2 + i;   // fila de la hoja, contando título(s) y encabezado
+      out.push({ archivo, nombre: nombre.slice(0, 60), m2: +m2.toFixed(2), altura: h0 > 0 ? +(h0 * fH).toFixed(2) : null, perimetro: p0 > 0 ? +(p0 * fP).toFixed(2) : null,
+        iso: iso ? +iso : null, limpio: !!iso || /limpio|clean|gmp|clasificad/i.test(clas + " " + nombre), fila,
+        fuente: { archivo, pagina: null, fila, texto: Object.entries(cruda).map(([k, v]) => `${k}: ${v}`).join(" · "), confianza: .9 } });
+    });
   });
   return out;
 }
@@ -14372,9 +14489,10 @@ function cxAreaTotal(A) {
      paño que se supone operando a la vez, y tiene su propio campo. */
   const EXCL = /predio|terreno|\blote\b|estacionamiento|vialidad|jard[ií]n|banqueta|patio de maniobras|\bparcela\b|dise[nñ]o|design|densidad|gpm\s*\/\s*ft/i;
   const PRIO = /a proteger|construida|\btotal\b|\bnave\b|edificio|cubierta|techada|desplante/i;
-  const cands = A.magnitudes.filter((m) => m.clave === "area_m2" && typeof m.valor === "number" && m.valor >= 4 && m.confianza >= .6 && !EXCL.test(m.texto));
-  let dxfSum = 0, arch = "";
-  A.dxf.forEach(({ archivo, r }) => { const { raices } = cxPoligonosUtiles(r); const s = raices.reduce((a, p) => a + p.m2, 0); if (s > dxfSum) { dxfSum = s; arch = archivo; } });
+  /* H-272c: el rótulo de UN cuarto («NAVE 300 m2» dentro de la nave de un plano con varios espacios) no es el área total. */
+  const cands = A.magnitudes.filter((m) => m.clave === "area_m2" && typeof m.valor === "number" && m.valor >= 4 && m.confianza >= .6 && !EXCL.test(m.texto) && !cxTextoDeCuarto(A, m));
+  let dxfSum = 0, arch = "", nRaices = 0;
+  A.dxf.forEach(({ archivo, r }) => { const { raices } = cxPoligonosUtiles(r); const s = raices.reduce((a, p) => a + p.m2, 0); if (s > dxfSum) { dxfSum = s; arch = archivo; nRaices = raices.length; } });
   const prio = cands.filter((m) => PRIO.test(m.texto));
   if (prio.length) {
     const orden = prio.slice().sort((a, b) => (b.confianza - a.confianza) || (b.valor - a.valor));
@@ -14382,7 +14500,7 @@ function cxAreaTotal(A) {
     const best = orden[0];
     return { valor: best.valor, fuente: best, marcado: distintos.size === 1 && best.confianza >= .8 && !best.ambiguo, opciones: distintos.size > 1 ? cxOpcionesArea(prio) : [] };
   }
-  if (dxfSum > 0) return { valor: +dxfSum.toFixed(2), fuente: { archivo: arch, pagina: null, texto: "suma de polilíneas cerradas exteriores del plano", confianza: .85 }, marcado: true, opciones: [] };
+  if (dxfSum > 0) return { valor: +dxfSum.toFixed(2), fuente: { archivo: arch, pagina: null, texto: `suma de ${nRaices} polilínea(s) cerrada(s) exteriores del plano`, confianza: .85 }, marcado: true, opciones: [] };
   if (!cands.length) return null;
   const ops = cxOpcionesArea(cands);
   if (ops.length === 1) return { valor: ops[0].valor, fuente: ops[0], marcado: ops[0].confianza >= .8 && !ops[0].ambiguo, opciones: [] };
@@ -14437,8 +14555,10 @@ function cxPropuestasPara(tab, A, fuentes) {
   A.avisosPropuesta = [];
   const set = (path) => (v) => setPath(path, v);
   const area = cxAreaTotal(A);
-  const altura = cxMejor(A, "altura_m", (m) => m.valor >= 2 && m.valor <= 40 && !m.ambiguo);
-  const ocup = cxMayor(A, "ocupantes", (m) => m.valor >= 1 && m.valor <= 20000);
+  /* H-272c: la altura y los ocupantes generales del documento; lo rotulado dentro de un cuarto (en un plano con varios) es de
+     ese cuarto y no se vuelve dato del edificio (D6). */
+  const altura = cxMejor(A, "altura_m", (m) => m.valor >= 2 && m.valor <= 40 && !m.ambiguo && !cxTextoDeCuarto(A, m));
+  const ocup = cxMayor(A, "ocupantes", (m) => m.valor >= 1 && m.valor <= 20000 && !cxTextoDeCuarto(A, m));
   /* El área total se ofrece una vez si es clara, o como opciones sin marcar si
      el documento trae varias que no se pueden desempatar. */
   const proponerArea = (etiqueta, destino, fn) => {
@@ -14454,18 +14574,27 @@ function cxPropuestasPara(tab, A, fuentes) {
     cxZonasDelLote(A).forEach((z) => {
       const ext = z.exteriores ? ["N", "E", "S", "W"].filter((o) => z.exteriores[o]) : null;
       const muros = !z.bbox ? "" : ext.length ? ` · muros exteriores ${ext.join(", ")}` : " · sin muros exteriores";
-      P.push(cxProp(`Zona · ${z.nombre}`, `${n(z.m2, 1)} m²${z.altura ? ` · h ${n(z.altura, 2)} m` : ""}${z.personas ? ` · ${z.personas} personas` : ""}${muros}`, "", z.fuente,
+      /* H-272c (regla 6): la zona entra sólo con lo que el archivo trae; lo demás queda pendiente y se dice aquí y en el motor. */
+      const pend = [!(z.altura > 0) && "altura", !(z.personas > 0) && "ocupantes", "luces y equipo"].filter(Boolean);
+      P.push(cxProp(`Zona · ${z.nombre}`, `${n(z.m2, 1)} m²${z.altura ? ` · h ${n(z.altura, 2)} m` : ""}${z.personas ? ` · ${z.personas} personas` : ""}${muros}${z.bbox && !(z.altura > 0) ? " (muro pendiente de altura)" : ""} · pendientes: ${pend.join(", ")}`, "", z.fuente,
         { grupo: "zona", destino: "zones", fn: () => ({ zona: cxZonaDesde(z.nombre, z.m2, z.altura, z.personas, z.bbox, z.exteriores) }) }));
     });
+    if (P.some((p) => p.grupo === "zona")) A.avisosPropuesta.push("Carga térmica: cada zona entra sólo con lo que el archivo trae (área, altura y personas rotuladas, muros exteriores a la altura rotulada). Ocupantes, luces, equipo y vidrio no se suponen: quedan en 0, pendientes de captura, y el motor lo dice.");
   } else if (tab === "limpios") {
+    /* H-272c (regla 6): sin clase ISO escrita no se supone ninguna (antes ISO 7 con confianza 0.9, y entraba solo): el cuarto se
+       ofrece SIN marcar con la clase pendiente. Los cambios de aire del documento sólo si trae UNO (varios distintos no se
+       reparten a todos los cuartos). */
     const isoG = cxMejor(A, "iso_clase");
-    const achG = cxMejor(A, "ach", (m) => m.valor >= 5 && m.valor <= 700 && !m.ambiguo);
+    const achsDoc = A.magnitudes.filter((m) => m.clave === "ach" && typeof m.valor === "number" && m.valor >= 5 && m.valor <= 700 && !m.ambiguo);
+    const achG = achsDoc.length && new Set(achsDoc.map((m) => Math.round(m.valor))).size === 1 ? achsDoc[0] : null;
+    if (achsDoc.length && !achG) A.avisosPropuesta.push("Cuartos limpios: el documento trae varios cambios de aire distintos; no se asigna ninguno a los cuartos (captúralos por cuarto).");
     cxZonasDelLote(A).filter((z) => z.iso || /limpio|clean|ISO/i.test(z.nombre + " " + z.fuente.texto)).forEach((z) => {
-      const iso = z.iso || (isoG ? isoG.valor : 7);
-      P.push(cxProp(`Cuarto · ${z.nombre}`, `ISO ${iso} · ${n(z.m2, 1)} m²${z.altura ? ` · h ${n(z.altura, 2)} m` : ""}`, "", z.fuente,
-        { grupo: "cuarto", destino: "clean.rooms", fn: () => {
+      const iso = z.iso || (isoG ? isoG.valor : null);
+      P.push(cxProp(`Cuarto · ${z.nombre}`, `${iso ? `ISO ${iso}` : "clase ISO pendiente (revisar)"} · ${n(z.m2, 1)} m²${z.altura ? ` · h ${n(z.altura, 2)} m` : " · altura: pendiente"}${achG ? ` · ${n(achG.valor, 0)} cambios/h` : ""}`, "", z.fuente,
+        { grupo: "cuarto", destino: "clean.rooms", marcado: iso ? undefined : false, confianza: iso ? undefined : Math.min(.6, z.fuente.confianza || .6), fn: () => {
           const c = defaultRoom(z.nombre);
-          c.iso = ISO_CLASSES["iso" + iso] ? "iso" + iso : c.iso; c.area = +z.m2.toFixed(2);
+          if (iso && ISO_CLASSES["iso" + iso]) c.iso = "iso" + iso;   // sin clase escrita se queda la de un cuarto nuevo: la propuesta la declara pendiente
+          c.area = +z.m2.toFixed(2);
           if (z.altura) c.height = +z.altura; if (z.personas) c.occ = z.personas;
           if (achG) c.achSet = achG.valor;
           return { cuarto: c };
@@ -14485,16 +14614,26 @@ function cxPropuestasPara(tab, A, fuentes) {
         { grupo: "info", marcado: false }));
     });
   } else if (tab === "ventilacion") {
-    proponerArea("Área del local", "vent.area", (v) => { setPath("vent.area", Math.round(v)); marcarPropio("vent.area"); });
-    if (altura) P.push(cxProp("Altura", altura.valor, "m", altura, { destino: "vent.height", fn: (v) => { setPath("vent.height", v); marcarPropio("vent.height"); } }));
-    if (ocup) P.push(cxProp("Ocupantes", ocup.valor, "personas", ocup, { destino: "vent.occ", fn: (v) => { setPath("vent.occ", Math.round(v)); marcarPropio("vent.occ"); } }));
+    /* H-272d: ventilación resuelve UN local. Con varios espacios en el plano, cada uno se ofrece como opción sin marcar (área,
+       altura y personas del cuarto); el área total del plano no es el local. marcarPropio() era código muerto (HEREDA = {}). */
+    const espV = cxEspaciosDelPlano(A);
+    if (espV.length >= 2) {
+      espV.forEach((e) => P.push(cxProp(`Local · ${e.nombre}`, `${n(e.m2, 1)} m²${e.altura > 0 ? ` · h ${n(e.altura, 2)} m` : " · altura: pendiente"}${e.personas > 0 ? ` · ${e.personas} personas` : ""}`, "", e.fuente,
+        { destino: "vent.area", marcado: false, confianza: .7, fn: () => { setPath("vent.area", Math.round(e.m2)); if (e.altura > 0) setPath("vent.height", e.altura); if (e.personas > 0) setPath("vent.occ", Math.round(e.personas)); } })));
+      A.avisosPropuesta.push("Ventilación: el plano trae varios espacios; marca cuál es el local a ventilar (entra con su área, su altura y sus personas). El área total del plano no se toma como local.");
+    } else {
+      proponerArea("Área del local", "vent.area", (v) => setPath("vent.area", Math.round(v)));
+      if (altura) P.push(cxProp("Altura", altura.valor, "m", altura, { destino: "vent.height", fn: set("vent.height") }));
+      if (ocup) P.push(cxProp("Ocupantes", ocup.valor, "personas", ocup, { destino: "vent.occ", fn: (v) => setPath("vent.occ", Math.round(v)) }));
+    }
     const ach = cxMejor(A, "ach", (m) => m.valor > 0 && m.valor <= 120 && !m.ambiguo);
     if (ach) P.push(cxProp("Cambios de aire", ach.valor, "cambios/h", ach, { destino: "vent.ach", fn: set("vent.ach") }));
+    /* Caudal de proceso: cada extractor y la suma, sin marcar (antes se pisaban uno con otro); sólo aplica en modo industrial. */
     const ext = A.equipos.filter((e) => /^(EXT|PEXT|EF|VE|EX|VEX)-/i.test(e.tag));
-    ext.forEach((e) => {
-      const cfm = A.magnitudes.find((m) => m.archivo === e.archivo && m.linea === e.linea && m.clave === "CFM" && m.valor > 0);
-      if (cfm) P.push(cxProp(`Caudal de proceso · ${e.tag}`, cfm.valor, "CFM", cfm, { destino: "vent.processCFM", marcado: false, fn: set("vent.processCFM") }));
-    });
+    const cfms = ext.map((e) => ({ e, cfm: A.magnitudes.find((m) => m.archivo === e.archivo && m.linea === e.linea && m.clave === "CFM" && m.valor > 0) })).filter((x) => x.cfm);
+    cfms.forEach(({ e, cfm }) => P.push(cxProp(`Caudal de proceso · ${e.tag}`, cfm.valor, "CFM", cfm, { destino: "vent.processCFM", marcado: false, fn: set("vent.processCFM") })));
+    if (cfms.length > 1) P.push(cxProp("Caudal de proceso · suma de extractores", +cfms.reduce((s, x) => s + x.cfm.valor, 0).toFixed(0), "CFM", { archivo: cfms[0].cfm.archivo, pagina: cfms[0].cfm.pagina, texto: cfms.map((x) => `${x.e.tag} ${n(x.cfm.valor, 0)} CFM`).join(" + "), confianza: .7 }, { destino: "vent.processCFM", marcado: false, fn: set("vent.processCFM") }));
+    if (cfms.length) A.avisosPropuesta.push("Ventilación: el caudal de proceso sólo aplica en modo industrial (en modo general el motor lo ignora). Marca uno: un extractor o la suma.");
   } else if (tab === "ductos") {
     A.equipos.forEach((e) => {
       const cfm = A.magnitudes.find((m) => m.archivo === e.archivo && m.linea === e.linea && m.clave === "CFM" && m.valor > 0);
@@ -14527,13 +14666,19 @@ function cxPropuestasPara(tab, A, fuentes) {
       const cV = col(/(^|[^a-z])v([^a-z]|$)|tensi|volt/i, /va\b|kva/i);
       const cPh = col(/fase|(^|[^a-z])ph([^a-z]|$)|hilos/i);
       const cCant = col(/cant|qty|pzas/i), cL = col(/long|dist|(^|[^a-z])l([^a-z]|$)/i);
-      if (!cW && !cKW) {
-        if (r.columnas.some((c) => /kva/i.test(c))) A.avisosPropuesta.push(`${archivo}: trae kVA pero no kW ni W; las cargas se capturan a mano con su factor de potencia.`);
+      /* H-272d: HP (1 HP = 0.746 kW) y factor de potencia también se leen; la distancia respeta su unidad (pies → m). Lo que el
+         archivo no trae queda pendiente y se dice (tensión y fases sin leer: la carga se ofrece sin marcar). */
+      const cHP = col(/(^|[^a-z])hp([^a-z]|$)|caballos/i), cFP = col(/(^|[^a-z])fp([^a-z]|$)|factor.?de.?potencia|(^|[^a-z])pf([^a-z]|$)|cos\s*(φ|ϕ|phi|fi)/i);
+      const fL = cL && /\bft\b|pies|feet/i.test(cL) ? 0.3048 : 1;
+      if (!cW && !cKW && !cHP) {
+        if (r.columnas.some((c) => /kva/i.test(c))) A.avisosPropuesta.push(`${archivo}: trae kVA pero no kW, W ni HP; las cargas se capturan a mano con su factor de potencia.`);
+        else if (r.columnas.some((c) => /amper|(^|[^a-z])a([^a-z]|$)|corriente/i.test(c))) A.avisosPropuesta.push(`${archivo}: trae amperes pero no kW, W ni HP; las cargas se capturan a mano (la potencia no se deduce sin tensión y factor de potencia confirmados).`);
         return;
       }
       (r.filasCrudas || r.filas).forEach((cruda, i) => {
         const f = r.filas[i] || cruda;
-        const kW = cKW ? cxCeldaNum(r, f, i, cKW) : (cxCeldaNum(r, f, i, cW) != null ? cxCeldaNum(r, f, i, cW) / 1000 : null);
+        const hp = cHP ? cxCeldaNum(r, f, i, cHP) : null;
+        const kW = cKW ? cxCeldaNum(r, f, i, cKW) : cW ? (cxCeldaNum(r, f, i, cW) != null ? cxCeldaNum(r, f, i, cW) / 1000 : null) : (hp > 0 ? hp * 0.746 : null);
         if (!(kW > 0)) return;
         const nombre = cxCeldaTxt(r, f, i, cN) || `Carga ${i + 1}`;
         const d = r.columnas.find((c) => /desc/i.test(c));
@@ -14546,15 +14691,16 @@ function cxPropuestasPara(tab, A, fuentes) {
         /* Lo que no se pudo leer del archivo no se inventa en silencio: la carga
            se ofrece, pero sin marcar y con la leyenda de revisar. */
         const dudas = [];
-        if (!(vLeido >= 100 && vLeido <= 600)) dudas.push("tensión supuesta");
-        if (phLeido == null) dudas.push("fases supuestas");
+        if (!(vLeido >= 100 && vLeido <= 600)) dudas.push("tensión supuesta: no viene en el archivo (se ofrece 220 V sin marcar, pendiente de confirmar)");
+        if (phLeido == null) dudas.push("fases supuestas: no vienen en el archivo (pendiente de confirmar)");
         const firme = !dudas.length;
-        P.push(cxProp(`Carga · ${texto}`, `${n(kW, 3)} kW · ${V} V · ${ph}F · ${TIPO_CARGA[tipo].label}${dudas.length ? ` · ${dudas.join(", ")}` : ""}`, "",
+        P.push(cxProp(`Carga · ${texto}`, `${n(kW, 3)} kW${!cKW && !cW && hp > 0 ? ` (de ${n(hp, 2)} HP)` : ""} · ${V} V · ${ph}F · ${TIPO_CARGA[tipo].label}${dudas.length ? ` · ${dudas.join(", ")}` : ""}`, "",
           { archivo, pagina: null, texto: Object.entries(cruda).map(([k, v]) => `${k}: ${v}`).join(" · "), confianza: firme ? .9 : .6 },
           { grupo: "carga", destino: "elec.cargas", marcado: firme, fn: () => {
             const c = defaultCarga(texto.slice(0, 60)); c.kW = +kW.toFixed(3); c.V = V; c.ph = ph; c.tipo = tipo;
+            const fp = cFP ? cxCeldaNum(r, f, i, cFP) : null; if (fp > 0 && fp <= 1) c.fp = +fp.toFixed(2); else if (fp > 1 && fp <= 100) c.fp = +(fp / 100).toFixed(2);
             const cant = cxCeldaNum(r, f, i, cCant); if (cant > 0) c.cant = Math.max(1, Math.round(cant));
-            const lon = cxCeldaNum(r, f, i, cL); if (lon > 0) c.L = lon;
+            const lon = cxCeldaNum(r, f, i, cL); if (lon > 0) c.L = +(lon * fL).toFixed(2);
             return { carga: c };
           } }));
       });
@@ -14569,8 +14715,12 @@ function cxPropuestasPara(tab, A, fuentes) {
     const res = cxMejor(A, "mca", (m) => /residual/i.test(m.texto));
     if (res) P.push(cxProp("Presión residual", res.valor, "mca", res, { destino: "hidro.presResidual", fn: set("hidro.presResidual") }));
   } else if (tab === "fuego") {
-    proponerArea("Área a proteger", "fuego.area", (v) => { setPath("fuego.area", Math.round(v)); marcarPropio("fuego.area"); });
-    if (altura) P.push(cxProp("Altura libre", altura.valor, "m", altura, { destino: "fuego.altura", fn: (v) => { setPath("fuego.altura", v); marcarPropio("fuego.altura"); } }));
+    proponerArea("Área a proteger", "fuego.area", (v) => setPath("fuego.area", Math.round(v)));
+    /* H-272c: la altura general del documento; si sólo hay alturas rotuladas por cuarto, la del cuarto más alto (H-205: el
+       rociador más alto dimensiona la estática), dicho así en el origen. marcarPropio() era código muerto (HEREDA = {}). */
+    const cuartosH = cxEspaciosDelPlano(A).filter((e) => e.altura > 0).sort((a, b) => b.altura - a.altura);
+    if (altura) P.push(cxProp("Altura libre", altura.valor, "m", altura, { destino: "fuego.altura", fn: set("fuego.altura") }));
+    else if (cuartosH.length) P.push(cxProp("Altura libre · la mayor de los cuartos del plano", cuartosH[0].altura, "m", { ...cuartosH[0].fuente, texto: `${cuartosH[0].nombre}: h ${n(cuartosH[0].altura, 2)} m${cuartosH.length > 1 ? ` (el más alto de ${cuartosH.length} cuartos con altura rotulada)` : ""}` }, { destino: "fuego.altura", fn: set("fuego.altura") }));
     const rg = A.magnitudes.find((m) => m.clave === "riesgo_nfpa");
     if (rg) {
       const v = String(rg.valor);
@@ -14581,6 +14731,9 @@ function cxPropuestasPara(tab, A, fuentes) {
     if (dis) P.push(cxProp("Área de diseño", +dis.valor.toFixed(1), "m²", dis, { destino: "fuego.areaDiseno", marcado: false, fn: set("fuego.areaDiseno") }));
     const mca = cxMejor(A, "mca", (m) => /toma|red|municipal|disponible/i.test(m.texto));
     if (mca) P.push(cxProp("Presión disponible en la toma", mca.valor, "mca", mca, { destino: "fuego.presFuente", marcado: false, fn: set("fuego.presFuente") }));
+    /* H-272d: la tubería medida por capa es referencia: de una suma no se separan ramal y montante (regla 6): quedan pendientes. */
+    const { L: Lf, src: srcF } = cxLongitudesPorClase(A);
+    if (Lf.fuego > 0) P.push(cxProp("Tubería contra incendio medida en plano (referencia)", +Lf.fuego.toFixed(1), "m", { archivo: srcF.fuego, texto: "suma de líneas en capas de contra incendio; de una suma por capa no se separan ramal y montante: Lramal y Lmontante quedan pendientes de longitud", confianza: .6 }, { marcado: false, grupo: "info" }));
   } else if (tab === "aire") {
     const bar = cxMejor(A, "bar", (m) => m.valor >= 2 && m.valor <= 16) ||
       (() => { const p = cxMejor(A, "psi", (m) => m.valor >= 30 && m.valor <= 230); return p ? { ...p, valor: +(p.valor / 14.5038).toFixed(2) } : null; })();
@@ -14601,44 +14754,51 @@ function cxPropuestasPara(tab, A, fuentes) {
         const q = factor ? q0 * factor : q0;
         const nombre = cxCeldaTxt(r, f, i, cN) || `Consumo ${i + 1}`;
         const cant = cxCeldaNum(r, f, i, cC);
-        P.push(cxProp(`Consumo · ${nombre}`, `${n(q, 0)} l/min${factor && factor !== 1 ? ` (de ${n(q0, 2)} ${cQ})` : ""}${factor ? "" : " · unidad no reconocida"}${cant ? ` × ${cant}` : ""}`, "",
+        /* H-272c: sin columna de cantidad, cada renglón de la lista es UN consumidor (lectura, no estimación): antes cant quedaba en
+           0 y la demanda pico del archivo era 0. Con columna de cantidad vacía o en 0 se respeta el archivo (0 = pendiente). */
+        P.push(cxProp(`Consumo · ${nombre}`, `${n(q, 0)} l/min${factor && factor !== 1 ? ` (de ${n(q0, 2)} ${cQ})` : ""}${factor ? "" : " · unidad no reconocida"}${cant ? ` × ${cant}` : cC ? " · cantidad en 0 en el archivo (pendiente)" : " · 1 por renglón (sin columna de cantidad)"}`, "",
           { archivo, texto: Object.entries(cruda).map(([k, v]) => `${k}: ${v}`).join(" · "), confianza: factor ? .9 : .5 },
-          { grupo: "consumo", destino: "aire.consumos", marcado: !!factor, fn: () => { const c = defaultConsumo(nombre.slice(0, 60)); c.lmin = +q.toFixed(1); if (cant > 0) c.cant = Math.max(1, Math.round(cant)); return { consumo: c }; } }));
+          { grupo: "consumo", destino: "aire.consumos", marcado: !!factor, fn: () => { const c = defaultConsumo(nombre.slice(0, 60)); c.lmin = +q.toFixed(1); c.cant = cant > 0 ? Math.max(1, Math.round(cant)) : (cC ? 0 : 1); return { consumo: c }; } }));
       });
     });
   } else if (tab === "civil") {
-    proponerArea("Área de obra", "civil.areaManual", (v) => { setPath("civil.areaManual", +(+v).toFixed(2)); setPath("civil.usarZonas", false); });
-    if (altura) P.push(cxProp("Altura", altura.valor, "m", altura, { destino: "civil.alturaManual", fn: set("civil.alturaManual") }));
-    let muros = 0, arch = "";
-    A.dxf.forEach(({ archivo, r }) => { const { hojas } = cxPoligonosUtiles(r); const per = hojas.reduce((a, p) => a + p.perimetroM, 0); if (per > 0) { muros += per; arch = archivo; } });
-    const h = altura ? altura.valor : null;
-    if (muros > 0 && h) P.push(cxProp("Muros (perímetro de cuartos × altura)", +(muros * h).toFixed(1), "m²", { archivo: arch, texto: `perímetro ${n(muros, 1)} m × altura ${n(h, 2)} m`, confianza: .7 }, { destino: "civil.murosManual", marcado: false, fn: set("civil.murosManual") }));
+    /* H-272a (decisión del dueño, 27-sep-2026): el archivo alimenta la CAPTURA PROPIA de obra civil (H-265). Cada espacio del
+       plano (polígono raíz: no está dentro de otro) o del levantamiento en tabla entra como renglón de «Áreas de obra» con nombre,
+       área, altura y perímetro SÓLO si el archivo los trae (lo demás queda en 0 = pendiente, regla 6; el motor ya lo avisa); los
+       clasificados (clase ISO o «limpio»), a cualquier nivel del plano, entran como «Cuartos clasificados». Ya no se escribe el
+       total a mano (areaManual, alturaManual, murosManual) ni se apaga usarZonas: lo capturado a mano sigue igual y el archivo se
+       le suma. Cada renglón queda con su archivo, su rótulo o su fila (regla 8). */
+    const valorDe = (e) => `${n(e.m2, 1)} m²${e.altura > 0 ? ` · h ${n(e.altura, 2)} m` : " · altura: pendiente"}${e.perimetro > 0 ? ` · perímetro ${n(e.perimetro, 1)} m` : " · perímetro: pendiente"}`;
+    const renglon = (e) => ({ nombre: String(e.nombre || "Espacio").slice(0, 60), area: +(+e.m2).toFixed(2), altura: e.altura > 0 ? +(+e.altura).toFixed(2) : 0, perimetro: e.perimetro > 0 ? +(+e.perimetro).toFixed(2) : 0 });
+    const proponerArea2 = (e, o) => P.push(cxProp(`Área de obra · ${e.nombre}`, valorDe(e), "", e.fuente, { grupo: "areaCivil", destino: "civil.areas", ...(o || {}), fn: () => ({ areaCivil: renglon(e) }) }));
+    const proponerCuarto = (e, o) => P.push(cxProp(`Cuarto clasificado · ${e.nombre}`, `${e.iso ? `ISO ${e.iso} · ` : ""}${valorDe(e)}`, "", e.fuente, { grupo: "cuartoCivil", destino: "civil.cuartos", ...(o || {}), fn: () => ({ cuartoCivil: renglon(e) }) }));
+    const plano = cxEspaciosDelPlano(A);
+    /* Del plano: las raíces son áreas de obra (un cuarto dentro de la nave no se cuenta además como área: su superficie ya está
+       en la de la nave); los clasificados, a cualquier nivel, son cuartos. */
+    plano.filter((e) => e.raiz).forEach((e) => proponerArea2(e));
+    plano.filter((e) => e.limpio).forEach((e) => proponerCuarto(e));
+    const tabla = cxEspaciosDeTabla(A);
+    tabla.forEach((e) => (e.limpio ? proponerCuarto(e) : proponerArea2(e)));
+    if (plano.length || tabla.length) A.avisosPropuesta.push("Obra civil: cada espacio del archivo entra como renglón propio con área, altura y perímetro sólo si vienen en el archivo; lo que falte queda pendiente (no se supone). Un cuarto clasificado que viene en tabla se toma como área limpia DENTRO de las áreas de obra; si es un área aparte, agrégalo también en «Áreas de obra».");
+    /* Sin plano ni tabla: los espacios que la memoria descriptiva nombra con su área se ofrecen sin marcar, uno por renglón. */
+    if (!plano.length && !tabla.length) A.zonasTexto.forEach((z) => proponerArea2({ nombre: z.nombre, m2: z.m2, altura: z.altura > 0 ? z.altura : null, perimetro: null,
+      fuente: { archivo: z.archivo, pagina: z.pagina, texto: z.texto, confianza: z.ambiguo ? .6 : .75 } }, { marcado: false }));
   } else if (tab === "soporte") {
+    /* H-272d (H-266): soportería captura sus metros; los del plano entran a esa captura sólo mientras no haya instantánea de
+       motores aceptada (con ella el motor no los usa: se ofrecen sin marcar y se dice). La casilla «usar las longitudes del plano
+       en lugar del conteo por motores» se retiró: describía el conteo en vivo retirado en H-266 y leía SOPORTE en vivo. */
     const { L, src } = cxLongitudesPorClase(A);
+    const conSnap = !!(S.soporte && S.soporte.snap && S.soporte.usarMotores !== false);
     const clases = [["ducto", "Ducto", "soporte.ductoM"], ["hidro", "Tubería hidrosanitaria", "soporte.tubHidroM"], ["fuego", "Tubería contra incendio", "soporte.tubFuegoM"], ["aire", "Tubería de aire comprimido", "soporte.tubAireM"]];
     clases.forEach(([k, et, path]) => {
-      if (L[k] > 0) P.push(cxProp(`${et} medido en plano`, +L[k].toFixed(1), "m", { archivo: src[k], texto: `suma de líneas en capas de ${et.toLowerCase()}`, confianza: .8 }, { destino: path, fn: (v) => setPath(path, v) }));
+      if (L[k] > 0) P.push(cxProp(`${et} medido en plano`, +L[k].toFixed(1), "m", { archivo: src[k], texto: `suma de líneas en capas de ${et.toLowerCase()}${conSnap ? " · con la instantánea de motores aceptada estos metros no se usan: acéptala de nuevo o captura a mano (H-266)" : ""}`, confianza: conSnap ? .6 : .8 }, { destino: path, marcado: !conSnap, fn: (v) => setPath(path, v) }));
     });
-    /* Las longitudes del plano solo cuentan si se apaga el conteo por motores,
-       y apagarlo afecta a TODAS las instalaciones. Por eso es una casilla
-       aparte, sin marcar, que rellena con la longitud del motor las que el
-       plano no trae: ninguna instalación se queda en cero por leer un plano. */
-    if (clases.some(([k]) => L[k] > 0)) {
-      P.push(cxProp("Usar las longitudes del plano en lugar del conteo por motores", "apaga el conteo automático; lo que el plano no trae conserva la longitud de los motores", "",
-        { archivo: src.ducto || src.hidro || src.fuego || src.aire, texto: "afecta ductos, hidrosanitario, contra incendio y aire comprimido", confianza: .7 },
-        { destino: "soporte.usarMotores", marcado: false, fn: () => {
-          const SOP = (typeof SOPORTE !== "undefined" && SOPORTE) ? SOPORTE : null;
-          if (SOP) {
-            const deMotor = (et) => (((SOP.porTuberia || []).find((x) => x.etiqueta === et) || {}).m) || 0;
-            if (!(num(S.soporte.ductoM) > 0) && num(SOP.mDucto) > 0) S.soporte.ductoM = +num(SOP.mDucto).toFixed(1);
-            if (!(num(S.soporte.tubHidroM) > 0)) S.soporte.tubHidroM = +deMotor("Hidráulica y sanitario").toFixed(1);
-            if (!(num(S.soporte.tubFuegoM) > 0)) S.soporte.tubFuegoM = +deMotor("Contra incendio").toFixed(1);
-            if (!(num(S.soporte.tubAireM) > 0)) S.soporte.tubAireM = +deMotor("Aire comprimido").toFixed(1);
-          }
-          setPath("soporte.usarMotores", false);
-        } }));
-    }
-    if (altura) P.push(cxProp("Altura de trabajo", altura.valor, "m", altura, { destino: "soporte.alturaTrabajo", marcado: false, fn: set("soporte.alturaTrabajo") }));
+    if (conSnap && clases.some(([k]) => L[k] > 0)) A.avisosPropuesta.push("Soportería: hay una instantánea de motores aceptada; los metros medidos en el plano se ofrecen sin marcar porque el motor no los usa mientras esa instantánea esté vigente (H-266).");
+    /* La altura libre del plano es la de la ESTRUCTURA de la que cuelga la instalación (ASCE 7-16 §13.3.1), no la altura de
+       trabajo (que es otra cosa y no se estima, H-266). Se ofrece sin marcar. */
+    const masAlto = cxEspaciosDelPlano(A).filter((e) => e.altura > 0).sort((x, y) => y.altura - x.altura)[0];
+    const hEst = altura ? { valor: altura.valor, fuente: altura } : masAlto ? { valor: masAlto.altura, fuente: { ...masAlto.fuente, texto: `${masAlto.nombre}: h ${n(masAlto.altura, 2)} m (el más alto del plano)` } } : null;
+    if (hEst) P.push(cxProp("Altura de la estructura (altura libre del plano)", hEst.valor, "m", hEst.fuente, { destino: "soporte.alturaEstructura", marcado: false, fn: set("soporte.alturaEstructura") }));
   } else if (tab === "estructural") {
     if (area) P.push(cxProp("Área estructurada (referencia)", area.valor, "m²", area.fuente, { marcado: false, grupo: "info" }));
     if (altura) P.push(cxProp("Altura (referencia)", altura.valor, "m", altura, { marcado: false, grupo: "info" }));
@@ -14658,22 +14818,33 @@ function cxPropuestasPara(tab, A, fuentes) {
 }
 
 /* ---------- Proceso completo: archivos → lote ---------- */
-async function cxProcesarArchivos(files, tab) {
+/* H-272d · La lectura (bytes → fuentes → análisis) se hace UNA vez; de ella salen tantos lotes como disciplinas la usen. */
+async function cxLeerLote(files) {
   const lista = Array.from(files || []).slice(0, 20);
   const leidos = [];
   for (const f of lista) leidos.push(await cxLeerArchivo(f));
   const fuentes = leidos.map(cxInterpretar);
+  if ((files && files.length) > 20 && fuentes[0]) fuentes[0].avisos.push("Se leen hasta 20 archivos por carga; el resto se omitió.");
   const A = cxAnalizarLote(fuentes);
+  cxTextosDentro(A);   // se calcula una vez y viaja con cada copia del análisis
+  return { fuentes, A };
+}
+function cxLoteDesde(lectura, tab) {
+  const { fuentes, A } = lectura;
+  /* Cada lote lleva su propio análisis (copia superficial): las propuestas de una disciplina no pisan los avisos de otra. */
+  const An = { ...A };
   const lote = {
     id: "cx" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
-    ts: Date.now(), tab, fuentes: fuentes.map((F) => ({ nombre: F.nombre, tipo: F.tipo, tam: F.tam, paginas: F.paginas, lineas: F.lineas.length,
+    ts: Date.now(), tab, fuentes: fuentes.map((F) => ({ nombre: F.nombre, ruta: F.ruta || F.nombre, huella: F.huella || "", filaId: F.filaId || null, tipo: F.tipo, tam: F.tam, paginas: F.paginas, lineas: F.lineas.length,
       poligonos: F.dxf ? F.dxf.poligonos.length : 0, capas: F.dxf ? F.dxf.capas.length : (F.dwg ? F.dwg.capasProbables.length : 0), avisos: F.avisos.slice(0, 8) })),
-    analisis: A, propuestas: [],
+    analisis: An, propuestas: [],
   };
-  if ((files && files.length) > 20) lote.fuentes[0].avisos.push("Se leen hasta 20 archivos por carga; el resto se omitió.");
-  lote.propuestas = cxPropuestasPara(tab, A, fuentes);
+  lote.propuestas = cxPropuestasPara(tab, An, fuentes);
   return lote;
 }
+async function cxProcesarArchivos(files, tab) { return cxLoteDesde(await cxLeerLote(files), tab); }
+/* Disciplinas a las que un levantamiento ofrece sus datos, cada una a su captura propia. */
+const CX_TABS_LEVANTAMIENTO = ["civil", "carga", "limpios", "fuego", "ventilacion", "soporte", "hidro"];
 
 /* ---------- Ventana de hallazgos ---------- */
 /* Qué revisar cuando no salió nada, según lo que se cargó. */
@@ -14682,23 +14853,26 @@ function cxPistaVacio(lote) {
   if (t.has("dwg")) return "Si cargaste un DWG, expórtalo a DXF y vuelve a cargarlo.";
   if (t.has("pdf")) return "Revisa que el PDF tenga texto seleccionable y no sea un escaneo.";
   if (t.has("dxf")) return "Revisa que el plano tenga polilíneas cerradas y textos en espacio modelo, y que sus unidades sean las correctas.";
-  if (t.has("csv")) return "Revisa que el CSV traiga encabezados con la unidad de cada columna (W o kW, V, fases, l/min).";
+  if (t.has("csv")) return "Revisa que el CSV traiga encabezados con la unidad de cada columna (W o kW, V, fases, l/min), o una tabla de locales con Local, Área (m²), Altura (m), Perímetro (m).";
   if (t.has("json")) return "Si es un respaldo de SuiteEmp, ábrelo con «Abrir .json».";
   return "Revisa el contenido del archivo.";
 }
-function cxModalHtml(lote) {
+function cxModalHtml(lote, opts) {
   const D = CX_DISC[lote.tab] || { nombre: lote.tab };
   const A = lote.analisis;
   const marcadas = lote.propuestas.filter((p) => p.marcado && p.grupo !== "info").length;
   const otras = Object.entries(A.disciplinas || {}).filter(([d, v]) => v >= .6).map(([d]) => d);
-  const mapaTab = { hvac: "carga", limpios: "limpios", electrico: "electrico", hidro: "hidro", fuego: "fuego", aire: "aire", civil: "civil", soporte: "soporte", estructural: "estructural" };
-  const sugeridas = otras.map((d) => mapaTab[d]).filter((t) => t && t !== lote.tab && CX_DISC[t]);
+  const mapaTab = CXZ_DISC_MOTOR;
+  /* H-272d: un levantamiento trae un lote por disciplina; la ventana ofrece una pestaña por cada una en vez de «también sirve para». */
+  const tabsLev = opts && Array.isArray(opts.tabs) ? opts.tabs : null;
+  const sugeridas = tabsLev ? [] : otras.map((d) => mapaTab[d]).filter((t) => t && t !== lote.tab && CX_DISC[t]);
   const origen = (p) => [p.archivo, p.pagina ? `p. ${p.pagina}` : ""].filter(Boolean).join(" · ");
   return `<div class="sheet cx-sheet">
     <div class="sheet-head"><div><h3>Proyecto ejecutivo · ${esc(D.nombre)}</h3>
       <div class="sub">${lote.fuentes.length} archivo(s) leídos · ${lote.propuestas.length} dato(s) encontrados · ${marcadas} marcados</div></div>
       <button class="toolbtn" style="margin-left:auto" data-act="cx-descartar">Cerrar</button></div>
     <div style="padding:14px">
+      ${tabsLev ? `<div class="sub" style="margin-bottom:10px">Este levantamiento alimenta: ${tabsLev.map((t) => `<button class="toolbtn mini${t === lote.tab ? " on" : ""}" data-act="cx-cambiar" data-cx-tab="${t}" ${t === lote.tab ? 'aria-current="true"' : ""}>${esc((CX_DISC[t] || { nombre: t }).nombre)}</button>`).join("")}</div>` : ""}
       ${lote.fuentes.map((F) => `<div class="list-item"><div style="flex:1;min-width:0">
         <div style="font-weight:600">${esc(F.nombre)} <span class="badge">${esc(F.tipo.toUpperCase())}</span></div>
         <div class="sub">${F.paginas ? `${F.paginas} página(s) · ` : ""}${F.lineas} renglón(es) de texto${F.poligonos ? ` · ${F.poligonos} polilínea(s)` : ""}${F.capas ? ` · ${F.capas} capa(s)` : ""}</div>
@@ -14708,7 +14882,7 @@ function cxModalHtml(lote) {
         <thead><tr><th></th><th>Dato</th><th>Valor</th><th>Origen</th></tr></thead>
         <tbody>${lote.propuestas.map((p, i) => `<tr class="${p.grupo === "info" ? "cx-info" : ""}">
           <td>${p.grupo === "info" ? "" : `<input type="checkbox" data-cx-prop="${i}" ${p.marcado || p.aplicado ? "checked" : ""} ${p.aplicado ? "disabled" : ""} aria-label="${p.aplicado ? "Ya aplicado" : "Aplicar"} ${esc(p.etiqueta)}">`}</td>
-          <td>${esc(p.etiqueta)}${p.aplicado ? ' <span class="badge">aplicado al cargar</span>' : p.confianza < .8 ? ' <span class="badge warn">revisar</span>' : ""}</td>
+          <td>${esc(p.etiqueta)}${p.yaEntro ? ' <span class="badge">ya había entrado de este archivo</span>' : p.aplicado ? ' <span class="badge">aplicado al cargar</span>' : p.confianza < .8 ? ' <span class="badge warn">revisar</span>' : ""}</td>
           <td class="num">${typeof p.valor === "number" ? n(p.valor, 2) : esc(p.valor)} ${esc(p.unidad)}</td>
           <td><div class="sub">${esc(origen(p))}</div>${p.texto ? `<div class="cx-renglon">${esc(p.texto)}</div>` : ""}</td></tr>`).join("")}</tbody>
       </table></div>`
@@ -14731,7 +14905,7 @@ function cxOrigenHtml(tab) {
       <button class="toolbtn" style="margin-left:auto" data-act="close">Cerrar</button></div>
     <div style="padding:14px">${lotes.map((l) => `<div class="prop aceptado" style="margin-bottom:10px">
       <div class="ptop"><span class="pdotp"></span><b>${esc((l.archivos || []).filter((a) => a && typeof a === "object").map((a) => a.nombre).join(", "))}</b><span class="badge">${fechaCorta(l.ts)}</span></div>
-      ${(l.aplicados || []).filter((a) => a && typeof a === "object").map((a) => `<div class="prow"><span class="pk">${esc(a.destino || "dato")}</span><span>${esc(a.etiqueta)}: <b>${esc(String(a.valor))} ${esc(a.unidad || "")}</b><br><span class="sub">${esc([a.archivo, a.pagina ? "p. " + a.pagina : ""].filter(Boolean).join(" · "))}${a.texto ? " · " + esc(a.texto) : ""}</span></span></div>`).join("")}
+      ${(l.aplicados || []).filter((a) => a && typeof a === "object").map((a) => `<div class="prow"><span class="pk">${esc(a.destino || "dato")}</span><span>${esc(a.etiqueta)}: <b>${esc(String(a.valor))} ${esc(a.unidad || "")}</b><br><span class="sub">${esc(cxOrigenTexto(a))}${a.texto ? " · " + esc(a.texto) : ""} · ${esc(cxComoEntro(a, l))}</span></span></div>`).join("")}
     </div>`).join("") || `<div class="sub">Todavía no se han cargado archivos en esta disciplina.</div>`}</div></div>`;
 }
 
@@ -14747,14 +14921,49 @@ function pdfOrigenArchivos(d) {
   lotes.forEach((l) => (l.aplicados || []).filter((a) => a && typeof a === "object").forEach((a) => filas.push([
     (CX_DISC[l.tab] || { nombre: l.tab }).nombre, a.etiqueta,
     `${a.valor} ${a.unidad || ""}`.trim(),
-    [a.archivo, a.pagina ? `p. ${a.pagina}` : ""].filter(Boolean).join(" · "),
-    fechaCorta(l.ts),
+    cxOrigenTexto(a),
+    cxComoEntroPdf(a, l),
   ])));
-  if (!filas.length) return;
+  const refs = S.cx && Array.isArray(S.cx.referencias) ? S.cx.referencias.length : 0;
+  if (!filas.length && !refs) return;
   pdfHeading(d, "Trazado de origen · datos cargados de archivos del proyecto ejecutivo");
-  pdfTable(d, ["Disciplina", "Dato", "Valor", "Archivo", "Aceptado"], filas.slice(0, 300), [85, 150, 90, 150, 85]);
-  if (filas.length > 300) pdfParagraph(d, `Y ${filas.length - 300} dato(s) mas, registrados en el proyecto.`);
-  pdfParagraph(d, "Cada dato fue leido del archivo indicado y aceptado por el usuario antes de entrar al motor. Lo leido de un archivo no sustituye la revision del ingeniero responsable.");
+  if (filas.length) {
+    pdfTable(d, ["Disciplina", "Dato", "Valor", "Archivo · pagina / fila", "Como entro"], filas.slice(0, 300), [80, 130, 80, 140, 130]);
+    if (filas.length > 300) pdfParagraph(d, `Y ${filas.length - 300} dato(s) mas, registrados en el proyecto.`);
+  }
+  /* H-272 (regla 8): la verdad sobre como entro cada dato. Desde el 25-sep-2026 lo claro entra solo al cargar; lo demas lo acepta el
+     usuario en la ventana de hallazgos. Antes este parrafo afirmaba que todo lo habia aceptado el usuario antes de entrar al motor. */
+  const nAuto = lotes.reduce((s, l) => s + (l.aplicados || []).filter((a) => a && a.auto === true).length, 0);
+  const nUsuario = lotes.reduce((s, l) => s + (l.aplicados || []).filter((a) => a && a.auto === false).length, 0);
+  const nViejos = filas.length - nAuto - nUsuario;
+  if (filas.length) pdfParagraph(d, `Cada dato fue leido del archivo indicado. ${nAuto} dato(s) claros entraron solos al cargar el archivo en el tablero (decision del dueno, 25-sep-2026) y ${nUsuario} los acepto el usuario en la ventana de hallazgos${nViejos > 0 ? `; ${nViejos} vienen de cargas anteriores a esta revision, sin distinguir como entraron` : ""}. Lo que el archivo no trae quedo pendiente de captura: no se supuso ningun valor (regla 6). Lo leido de un archivo no sustituye la revision del ingeniero responsable.`);
+  if (refs) pdfParagraph(d, `Ademas, ${refs} renglon(es) de catalogos y listas de precios quedaron como referencia consultable en el tablero: no entraron a ningun motor.`);
+}
+
+/* H-272 (regla 8) · Origen de un dato aplicado, para pantalla y entregables: archivo, página (PDF) o fila (hoja), y cómo entró:
+   solo al cargar (dato claro, decisión del dueño 25-sep-2026) o aceptado por el usuario en la ventana de hallazgos. */
+const CX_TAB_DE_MOTOR = { load: "carga", clean: "limpios", equip: "seleccion", duct: "ductos", vent: "ventilacion", elec: "electrico", hidro: "hidro", fuego: "fuego", aire: "aire", civil: "civil", soporte: "soporte" };
+function cxOrigenTexto(a) { return [a.archivo, a.pagina ? `p. ${a.pagina}` : "", a.fila ? `fila ${a.fila}` : ""].filter(Boolean).join(" · "); }
+function cxComoEntro(a, l) {
+  const como = a.auto === true ? "entró solo al cargar" : a.auto === false ? "aceptado por el usuario" : "carga anterior a H-272 (sin distinguir cómo entró)";
+  return `${como}${l && l.archivoRetirado ? " · archivo retirado de la tabla" : ""} · ${fechaCorta(l && l.ts)}`;
+}
+/* La misma leyenda sin acentos para los PDF (fuente base14 WinAnsi, como el resto de los textos de los documentos). */
+function cxComoEntroPdf(a, l) {
+  const como = a.auto === true ? "entro solo al cargar" : a.auto === false ? "aceptado por el usuario" : "carga anterior (sin distinguir)";
+  return `${como}${l && l.archivoRetirado ? " · archivo retirado" : ""} · ${fechaCorta(l && l.ts)}`;
+}
+/* En la memoria de cada disciplina: qué entró desde archivos del proyecto ejecutivo a ESA disciplina. */
+function pdfOrigenArchivosDe(d, motores) {
+  const tabs = (motores || []).map((m) => CX_TAB_DE_MOTOR[m]).filter(Boolean);
+  const filas = [];
+  cxLotesDe().filter((l) => tabs.includes(l.tab)).forEach((l) => (l.aplicados || []).filter((a) => a && typeof a === "object").forEach((a) =>
+    filas.push([a.etiqueta, `${a.valor} ${a.unidad || ""}`.trim(), cxOrigenTexto(a), cxComoEntroPdf(a, l)])));
+  if (!filas.length) return;
+  pdfHeading(d, "Datos que entraron desde archivos del proyecto ejecutivo");
+  pdfTable(d, ["Dato", "Valor", "Archivo · pagina / fila", "Como entro"], filas.slice(0, 150), [160, 90, 170, 140]);
+  if (filas.length > 150) pdfParagraph(d, `Y ${filas.length - 150} dato(s) mas, registrados en el proyecto.`);
+  pdfParagraph(d, "Lo leido de un archivo no sustituye la revision del ingeniero responsable. Lo que el archivo no trae queda pendiente de captura; no se supone ningun valor.");
 }
 
 /* ---------- Aplicar ---------- */
@@ -14764,7 +14973,23 @@ function pdfOrigenArchivos(d) {
    ventana de hallazgos no la meta dos veces; lo dudoso sigue esperando la marca. */
 function cxAplicar(lote, modo, opts) {
   if (!lote) return 0;
+  /* H-272b · Reaplicar un archivo no duplica: cada dato aplicado lleva la clave archivo (huella del contenido + nombre) + destino
+     + dato. Lo que ya entró de ese mismo archivo a esta disciplina (volver a revisar tras recargar, reasignar ida y vuelta,
+     cargarlo otra vez) se reconoce, no se repite y no pisa lo que el usuario haya editado después. En «proyecto nuevo» no hay
+     nada previo. */
+  const fuenteDe = (p) => (lote.fuentes || []).find((x) => x.nombre === p.archivo || String(p.archivo || "").startsWith(x.nombre + " · ")) || {};
+  const claveDe = (p) => `${fuenteDe(p).huella || fuenteDe(p).ruta || p.archivo || ""}|${p.archivo}|${p.destino}|${p.etiqueta}`;
+  const previos = new Map();
+  if (modo !== "nuevo") cxLotesDe(lote.tab).forEach((l) => (l.aplicados || []).forEach((a) => { if (a && a.clave && !previos.has(a.clave)) previos.set(a.clave, l.ts); }));
+  let yaEntraron = 0, tsPrevio = null;
+  lote.propuestas.forEach((p) => {
+    if (p.aplicado || !p.fn || p.grupo === "info" || !previos.has(claveDe(p))) return;
+    p.aplicado = true; p.yaEntro = true; p.marcado = false; yaEntraron++; tsPrevio = tsPrevio || previos.get(claveDe(p));
+  });
+  lote.yaEntraron = { n: yaEntraron, ts: tsPrevio };
   const marcadas = lote.propuestas.filter((p) => p.marcado && !p.aplicado && p.fn && p.grupo !== "info");
+  /* Nada nuevo que escribir: ni lote vacío ni paso de deshacer. */
+  if (!marcadas.length && modo !== "nuevo") { if (!(opts && opts.quedarse)) S.tab = lote.tab; return 0; }
   histSnap(modo === "nuevo" ? "proyecto nuevo desde archivos" : "datos cargados de archivos");
   if (modo === "nuevo") {
     /* Instancia limpia: el estado inicial, no el proyecto abierto. Se conservan
@@ -14786,16 +15011,28 @@ function cxAplicar(lote, modo, opts) {
   if (!S.cx || !Array.isArray(S.cx.lotes)) S.cx = { lotes: [] };
   const zonas = [], cuartos = [], tramos = [], cargas = [], consumos = [], equipos = [];
   const aplicados = [];
+  /* H-272a: obra civil recibe renglones de su captura propia (áreas de obra y cuartos clasificados, H-265), cada uno con su origen. */
+  if (!S.civil || typeof S.civil !== "object") S.civil = defaultCivil();
+  if (!Array.isArray(S.civil.areas)) S.civil.areas = [];
+  if (!Array.isArray(S.civil.cuartos)) S.civil.cuartos = [];
+  if (modo === "nuevo" && marcadas.some((p) => /^civil\.(areas|cuartos)$/.test(p.destino))) { S.civil.areas = []; S.civil.cuartos = []; }
+  /* H-272: cada dato aplicado dice si entró solo al cargar (auto) o lo aceptó el usuario, y lleva una clave archivo+dato. */
+  const auto = !!(opts && opts.auto);
   marcadas.forEach((p) => {
     try {
       const r = p.fn(p.valor);
+      const origen = { archivo: p.archivo, pagina: p.pagina || null, fila: p.fila || null, texto: p.texto, ts: Date.now(), auto };
+      let itemId = null;
       if (r && r.zona) zonas.push(r.zona);
       else if (r && r.cuarto) cuartos.push(r.cuarto);
       else if (r && r.tramo) tramos.push(r.tramo);
       else if (r && r.carga) cargas.push(r.carga);
       else if (r && r.consumo) consumos.push(r.consumo);
       else if (r && r.equipo) equipos.push(r.equipo);
-      aplicados.push({ etiqueta: p.etiqueta, destino: p.destino, valor: typeof p.valor === "number" ? +p.valor.toFixed(3) : String(p.valor).slice(0, 120), unidad: p.unidad, archivo: p.archivo, pagina: p.pagina, texto: p.texto });
+      else if (r && r.areaCivil) { const a = r.areaCivil; a.id = civilNuevoId("areas"); a.origen = origen; S.civil.areas.push(a); itemId = a.id; }
+      else if (r && r.cuartoCivil) { const c = r.cuartoCivil; c.id = civilNuevoId("cuartos"); c.origen = origen; S.civil.cuartos.push(c); itemId = c.id; }
+      aplicados.push({ etiqueta: p.etiqueta, destino: p.destino, valor: typeof p.valor === "number" ? +p.valor.toFixed(3) : String(p.valor).slice(0, 120), unidad: p.unidad, archivo: p.archivo, pagina: p.pagina, fila: p.fila || null, texto: p.texto,
+        clave: claveDe(p), auto, itemId });
       p.aplicado = true; p.marcado = false;
     } catch { /* un dato que no se pudo escribir no tumba los demás */ }
   });
@@ -14818,7 +15055,9 @@ function cxAplicar(lote, modo, opts) {
   if (consumos.length) S.aire.consumos = modo === "nuevo" ? consumos : S.aire.consumos.concat(consumos);
   S.cx.lotes.push({
     id: lote.id, ts: Date.now(), tab: lote.tab, modo,
-    archivos: lote.fuentes.map((F) => ({ nombre: F.nombre, tipo: F.tipo, tam: F.tam, paginas: F.paginas })),
+    /* H-272b: liga con la fila de la tabla y huella del contenido, para reconocer el archivo aunque cambie de fila o de nombre. */
+    filaId: (lote.fuentes[0] || {}).filaId || null, huella: (lote.fuentes[0] || {}).huella || "",
+    archivos: lote.fuentes.map((F) => ({ nombre: F.nombre, ruta: F.ruta || F.nombre, tipo: F.tipo, tam: F.tam, paginas: F.paginas })),
     aplicados, equipos, normas: lote.analisis.normas.slice(0, 30),
     avisos: lote.fuentes.flatMap((F) => F.avisos).slice(0, 12),
   });
@@ -14866,14 +15105,22 @@ document.addEventListener("click", (e) => {
   } else if (act === "cx-origen") {
     openModal(cxOrigenHtml(b.dataset.cxTab || S.tab));
   } else if (act === "cx-cambiar" && CX_LOTE) {
-    CX_LOTE.tab = b.dataset.cxTab;
-    CX_LOTE.propuestas = cxPropuestasPara(CX_LOTE.tab, CX_LOTE.analisis, CX_LOTE.fuentes);
-    openModal(cxModalHtml(CX_LOTE));
+    const comp = CXZ_REVISANDO && CXZ_LOTES[CXZ_REVISANDO] && CXZ_LOTES[CXZ_REVISANDO].compuesto ? CXZ_LOTES[CXZ_REVISANDO] : null;
+    if (comp && comp.porTab[b.dataset.cxTab]) {
+      /* H-272d: levantamiento: cada disciplina tiene su propio lote ya aplicado; se cambia de pestaña sin recalcular. */
+      CX_LOTE = comp.porTab[b.dataset.cxTab].lote;
+      openModal(cxModalHtml(CX_LOTE, { tabs: comp.tabs }));
+    } else {
+      CX_LOTE.tab = b.dataset.cxTab;
+      CX_LOTE.propuestas = cxPropuestasPara(CX_LOTE.tab, CX_LOTE.analisis, CX_LOTE.fuentes);
+      openModal(cxModalHtml(CX_LOTE));
+    }
   } else if ((act === "cx-nuevo" || act === "cx-aplicar") && CX_LOTE) {
     const modo = act === "cx-nuevo" ? "nuevo" : "abierto";
     const k = cxAplicar(CX_LOTE, modo);
+    const ya = CX_LOTE.yaEntraron && CX_LOTE.yaEntraron.n ? ` · ${CX_LOTE.yaEntraron.n} ya habían entrado de este archivo: no se repiten` : "";
     CX_LOTE = null; closeModal(); render(); window.scrollTo({ top: 0 });
-    toast(modo === "nuevo" ? `Proyecto nuevo creado desde archivos · ${k} dato(s) aplicados` : `${k} dato(s) aplicados al proyecto abierto`);
+    toast(modo === "nuevo" ? `Proyecto nuevo creado desde archivos · ${k} dato(s) aplicados` : `${k} dato(s) aplicados al proyecto abierto${ya}`);
   } else if (act === "cx-descartar") {
     CX_LOTE = null; closeModal();
   }
@@ -15104,6 +15351,7 @@ function cxHojaATsv(hoja) {
     const textos = filas[i].filter((c) => typeof c === "string" && c.trim()).length;
     if (textos >= 2) { ini = i; break; }
   }
+  if (hoja && typeof hoja === "object") hoja.filaEncabezado = ini;   // H-272: índice (base 0) de la fila de encabezado en la hoja
   const limpia = (c) => String(c == null ? "" : c).replace(/[\t\r\n]+/g, " ").trim();
   return filas.slice(ini).map((f) => f.map(limpia).join("\t")).join("\n");
 }
@@ -15179,10 +15427,15 @@ function cxEntradasDeInput(input) {
      viaja nada: ni archivos, ni capturas, ni resultados.
    ========================================================================= */
 const CXZ_MOTORES = [
+  /* H-272d (decisión del dueño, 27-sep-2026): un levantamiento (planta arquitectónica, as-built) alimenta la captura propia de
+     varias disciplinas a la vez; el archivo es la fuente, no otra disciplina. */
+  ["levantamiento", "Levantamiento · varias disciplinas"],
   ["carga", "HVAC · Carga térmica"], ["limpios", "HVAC · Cuartos limpios"], ["seleccion", "HVAC · Selección de equipo"],
   ["ventilacion", "HVAC · Ventilación"], ["ductos", "HVAC · Ductos y calibres"],
   ["electrico", "Eléctrico"], ["hidro", "Hidrosanitario"], ["fuego", "Contra incendio"], ["aire", "Aire comprimido"],
   ["civil", "Obra civil"], ["soporte", "Soportería"], ["estructural", "Estructural"],
+  /* H-272e: catálogos de equipo y listas de precios quedan como referencia consultable; no entran solos a ningún motor. */
+  ["catalogo", "Catálogo / lista de precios · referencia consultable"],
   ["referencia", "Referencia (adjunto, sin motor)"], ["sin", "Sin asignar"],
 ];
 const CXZ_MOTOR_NOMBRE = Object.fromEntries(CXZ_MOTORES);
@@ -15253,10 +15506,12 @@ const CXZ_PISTAS = [
   [/\b(hvac|clima|aa\b|aire.?acond|termic|t[eé]rmic|carga)/i, "carga"],
   [/\b(soport|soporter)/i, "soporte"],
   [/\b(estruct|acero|cimentac)/i, "estructural"],
-  [/\b(arq|arquitect|civil|obra.?civil|acabados|albañil|albanil)/i, "civil"],
-  [/\b(equipo|c[eé]dula|submittal|catalogo|cat[aá]logo)/i, "seleccion"],
+  [/\b(levantamiento|arq|arquitect|as.?built)/i, "levantamiento"],   // H-272d: el levantamiento es de todas las disciplinas
+  [/\b(civil|obra.?civil|acabados|albañil|albanil)/i, "civil"],
+  [/\b(catalogos?|cat[aá]logos?|precios?|lista.?de.?precios|cotizaci[oó]n|proveedor(es)?)/i, "catalogo"],   // H-272e: referencia consultable
+  [/\b(equipo|c[eé]dula|submittal)/i, "seleccion"],
 ];
-const CXZ_DISC_MOTOR = { hvac: "carga", limpios: "limpios", electrico: "electrico", hidro: "hidro", fuego: "fuego", aire: "aire", civil: "civil", soporte: "soporte", estructural: "estructural" };
+const CXZ_DISC_MOTOR = { hvac: "carga", limpios: "limpios", electrico: "electrico", hidro: "hidro", fuego: "fuego", aire: "aire", civil: "civil", soporte: "soporte", estructural: "estructural", ventilacion: "ventilacion", ductos: "ductos", seleccion: "seleccion" };
 function cxzPistaCarpeta(ruta) {
   const dir = String(ruta || "").replace(/\\/g, "/").split("/").slice(0, -1).join("/").normalize("NFD").replace(/[̀-ͯ]/g, "");
   if (!dir) return null;
@@ -15275,6 +15530,8 @@ function cxzMotorPorTexto(lineas) {
 }
 function cxzMotorPorEncabezados(texto) {
   const cab = String(texto || "").split(/\r?\n/).slice(0, 3).join(" ").toLowerCase();
+  /* H-272e: una columna de precio dice «lista de precios / catálogo» antes que cualquier otra cosa: referencia consultable. */
+  if (/precio|costo|p\.?\s?u\.?(\s|$|\()|unitario|importe|\bmxn\b|\busd\b|vigencia/.test(cab)) return "catalogo";
   if (/kw|\bw\b|watts|tensi|volt|fases|circuito|interruptor|amper/.test(cab)) return "electrico";
   if (/hidr[aá]ulic|sanitari|plomer|\bmueble|\bwc\b|lavabo|regadera|inodoro|mingitorio|cisterna|presion.?residual|\bmca\b/.test(cab)) return "hidro";
   if (/rociador|sprinkl|hidrante|gabinete|\bnfpa\b|contra.?incendio|extintor/.test(cab)) return "fuego";
@@ -15324,9 +15581,13 @@ function cxzClasificar(nombre, ruta, bytes) {
     /* Se lee igual haya o no carpeta: sin ella decide el contenido, y con
        ella sirve para avisar si no está de acuerdo (misma política que PDF y
        TXT). Es la misma lectura que ya hace el motor de carga. */
-    try { const D = cxDxfLeer(cxDecodificaTexto(bytes)); motorContenido = cxzMotorPorTexto((D.textos || []).map((t2) => t2.texto)); } catch { /* sin pista de contenido */ }
+    let espacios = 0;
+    try { const D = cxDxfLeer(cxDecodificaTexto(bytes)); motorContenido = cxzMotorPorTexto((D.textos || []).map((t2) => t2.texto)); espacios = cxPoligonosUtiles(D).raices.length; } catch { /* sin pista de contenido */ }
     porCarpetaYContenido(motorContenido);
-    if (R.motor === "sin") { R.motor = "carga"; R.motivo = "planta: las polilíneas cerradas son zonas"; }
+    /* H-272d: sin carpeta, una planta con varios espacios es un levantamiento y alimenta a varias disciplinas (aunque su texto
+       hable de una: las disciplinas que no le sirvan no reciben nada); con un solo espacio sigue siendo zona de carga térmica. */
+    if (!pista && espacios >= 2) { R.motor = "levantamiento"; R.motivo = `planta con ${espacios} espacios: levantamiento para varias disciplinas${motorContenido ? ` (su texto habla de ${(CXZ_MOTOR_NOMBRE[motorContenido] || motorContenido).replace(/^HVAC · /, "")})` : ""}`; }
+    else if (R.motor === "sin") { R.motor = "carga"; R.motivo = "planta: las polilíneas cerradas son zonas"; }
     return R;
   }
   if (ext === "dwg") {
@@ -15449,7 +15710,7 @@ async function cxzAgregarArchivos(entradas, prof, pidCarga) {
       continue;
     }
     const C = cxzClasificar(nombre, ruta, bytes);
-    Object.assign(fila, { tipo: C.tipo, motor: C.motor, estado: C.estado, detalle: C.detalle, motivo: C.motivo, info: C.info });
+    Object.assign(fila, { tipo: C.tipo, motor: C.motor, estado: C.estado, detalle: C.detalle, motivo: C.motivo, info: C.info, huella: cxHuellaBytes(bytes) });
     if (ent.avisosZip && ent.avisosZip.length) { fila.estado = "error"; fila.detalle = ent.avisosZip[0]; }
     if (agregarFila(fila)) { await guardarBytesDestino(fila.id, bytes); agregados++; }
   }
@@ -15477,7 +15738,139 @@ function cxzMensajeClaro(avisos, fila) {
   return "";
 }
 function cxzArchivoDe(fila, bytes) {
-  try { return new File([bytes], fila.nombre); } catch { return { name: fila.nombre, size: bytes.length, bytes }; }
+  let f;
+  try { f = new File([bytes], fila.nombre); } catch { f = { name: fila.nombre, size: bytes.length, bytes }; }
+  try { f.ruta = fila.ruta || fila.nombre; f.huella = fila.huella || ""; f.filaId = fila.id; } catch { /* opcionales: distinguen archivos homónimos y ligan la fila con su registro de origen */ }
+  return f;
+}
+/* H-272d (decisión del dueño, 27-sep-2026) · Un levantamiento alimenta a varias disciplinas: se lee UNA vez y cada disciplina
+   recibe su propio lote (sus propuestas, «lo claro entra solo», su registro de origen), sin cruces entre motores: el archivo
+   es la fuente, no otra disciplina. La fila cuenta por disciplina (fila.porMotor) y el motor de la fila sigue siendo
+   «levantamiento». */
+async function cxzProcesarLevantamiento(fila, bytes, vigente) {
+  try {
+    const lectura = await cxLeerLote([cxzArchivoDe(fila, bytes)]);
+    if (!vigente()) return;
+    const F = lectura.fuentes[0] || { avisos: [] };
+    const porTab = {}, partes = [];
+    let total = 0, aplicados = 0;
+    CX_TABS_LEVANTAMIENTO.forEach((tab) => {
+      const lote = cxLoteDesde(lectura, tab);
+      const utiles = lote.propuestas.filter((p) => p.grupo !== "info");
+      if (!utiles.length) return;
+      const k = cxAplicar(lote, "abierto", { quedarse: true, auto: true });
+      const ya = lote.yaEntraron && lote.yaEntraron.n ? lote.yaEntraron.n : 0;
+      const porRevisar = utiles.length - k - ya;
+      porTab[tab] = { lote, propuestas: utiles.length, aplicados: k + ya };
+      total += utiles.length; aplicados += k + ya;
+      partes.push(`${(CX_DISC[tab] || { nombre: tab }).nombre} ${k + ya}${ya ? ` (${ya} ya habían entrado)` : ""}${porRevisar ? ` (${porRevisar} por revisar)` : ""}`);
+    });
+    if (!vigente()) return;
+    CXZ_LOTES[fila.id] = { compuesto: true, tabs: Object.keys(porTab), porTab, fuentes: lectura.fuentes };
+    fila.porMotor = Object.fromEntries(Object.entries(porTab).map(([t, x]) => [t, { propuestas: x.propuestas, aplicados: x.aplicados }]));
+    fila.propuestas = total; fila.aplicados = aplicados;
+    fila.avisos = (F.avisos || []).slice(0, 6);
+    const claro = cxzMensajeClaro(F.avisos, fila);
+    if (!total && claro) { fila.estado = "error"; fila.detalle = claro; }
+    else if (!total) { fila.estado = "listo"; fila.detalle = "sin datos de levantamiento (espacios con área, alturas rotuladas, longitudes por capa) · prueba otro motor o revísalo a mano"; }
+    else { fila.estado = "listo"; fila.detalle = `levantamiento · ${partes.join(" · ")}${claro ? " · " + claro : ""}`; }
+  } catch (e) {
+    if (!vigente()) return;
+    fila.estado = "error"; fila.detalle = "El archivo no se pudo leer completo: " + String(e && e.message || e).slice(0, 100) + ". Vuelve a exportarlo o cárgalo en otro formato.";
+  }
+}
+/* H-272e (decisión del dueño, 27-sep-2026) · Catálogos de equipo y listas de precios: se leen y quedan como REFERENCIA consultable
+   (S.cx.referencias) con archivo, hoja/página y fila; NO entran solos a ningún motor (regla 6: un precio sin fuente y fecha es
+   «Por cotizar»; un equipo de catálogo no es una selección). Se consultan en el tablero y se capturan a mano donde apliquen.
+   Una lista de precios de tubería en CSV con las columnas del importador de hidrosanitario (material, diametro, precio, …) se
+   ofrece para importarla con sus mismas reglas (H-251). Antes el lector los leía y los tiraba («sin datos para …»). */
+function cxzReferencias() { if (!S.cx || typeof S.cx !== "object") S.cx = { lotes: [], archivos: [] }; if (!Array.isArray(S.cx.referencias)) S.cx.referencias = []; return S.cx.referencias; }
+function cxReferenciasDeTabla(archivo, r, fila) {
+  const out = [];
+  if (!r || !Array.isArray(r.columnas)) return out;
+  const col = (re, no) => r.columnas.find((c) => re.test(c) && !(no && no.test(c)));
+  const cMarca = col(/marca|fabricante|brand/i), cModelo = col(/modelo|model|clave|c[oó]digo|sku|part/i), cDesc = col(/desc|concepto|nombre|equipo|material|art[ií]culo|producto/i, /marca|modelo/i);
+  const cPrecio = col(/precio|costo|p\.?\s?u\.?(\s|$|\()|unitario|importe/i), cMon = col(/moneda|currency|divisa/i), cFecha = col(/fecha|vigencia|valid/i), cDiam = col(/di[aá]metro|diam/i);
+  const caps = r.columnas.filter((c) => c !== cPrecio && /(^|[^a-z])(tr|ton|cfm|kw|hp|l\s*\/\s*min|lpm|gpm|m3\s*\/\s*h|m³\s*\/\s*h|btu|kcal|w)([^a-z]|$)|capacidad|caudal/i.test(c));
+  if ((!cPrecio && !caps.length) || (!cMarca && !cModelo && !cDesc)) return out;
+  const hojaFila = (r.filaEncabezado || 0) + 2;
+  (r.filasCrudas || r.filas).forEach((cruda, i) => {
+    const f = r.filas[i] || cruda;
+    const marca = cxCeldaTxt(r, f, i, cMarca), modelo = cxCeldaTxt(r, f, i, cModelo), desc = cxCeldaTxt(r, f, i, cDesc);
+    if (!marca && !modelo && !desc) return;
+    const capacidad = caps.map((c) => { const v = cxCeldaNum(r, f, i, c); if (!(v > 0)) return ""; const u = (/\(([^)]+)\)/.exec(c) || [])[1] || c.replace(/capacidad|caudal/i, "").trim(); return `${n(v, v % 1 ? 2 : 0)} ${u}`.trim(); }).filter(Boolean).join(" · ");
+    const precio = cPrecio ? cxCeldaNum(r, f, i, cPrecio) : null;
+    const monTxt = (cxCeldaTxt(r, f, i, cMon) || cPrecio || "").toUpperCase();
+    const fecha = cFecha ? cxCeldaTxt(r, f, i, cFecha) : "", diam = cDiam ? cxCeldaTxt(r, f, i, cDiam) : "";
+    out.push({ id: "r" + Math.random().toString(36).slice(2, 8), filaId: fila.id, huella: fila.huella || "", archivoNombre: fila.nombre, archivo, ruta: fila.ruta, fila: hojaFila + i, pagina: null,
+      tipo: precio > 0 ? "precio" : "equipo", marca: marca.slice(0, 60), modelo: modelo.slice(0, 60), descripcion: [desc, diam].filter(Boolean).join(" · ").slice(0, 120), capacidad: capacidad.slice(0, 80),
+      precio: precio > 0 ? +precio : null, moneda: precio > 0 ? (/USD|D[OÓ]LAR|US\$/.test(monTxt) ? "USD" : "MXN") : "", fecha: fecha || null,
+      texto: Object.entries(cruda).map(([k, v]) => `${k}: ${v}`).join(" · ").slice(0, 160), ts: Date.now() });
+  });
+  return out;
+}
+async function cxzProcesarCatalogo(fila, bytes, vigente) {
+  try {
+    const { fuentes, A } = await cxLeerLote([cxzArchivoDe(fila, bytes)]);
+    if (!vigente()) return;
+    const F = fuentes[0] || { avisos: [] };
+    const nuevas = [];
+    A.csv.forEach(({ archivo, r }) => nuevas.push(...cxReferenciasDeTabla(archivo, r, fila)));
+    /* Cédula o catálogo en PDF/texto: cada equipo con su marca, modelo y capacidades del mismo renglón, con su página. Las hojas
+       (CSV/XLSX) ya entraron renglón por renglón arriba: sus etiquetas no se repiten como equipos. */
+    const tabulares = new Set(fuentes.filter((F2) => F2.csv || (Array.isArray(F2.csvs) && F2.csvs.length)).map((F2) => F2.nombre));
+    A.equipos.filter((e) => !tabulares.has(e.archivo)).forEach((e) => {
+      const cap = A.magnitudes.filter((m) => m.archivo === e.archivo && m.linea === e.linea && ["TR", "CFM", "kW", "HP", "l_min", "gpm"].includes(m.clave) && !m.ambiguo).map((m) => `${n(m.valor, m.valor % 1 ? 2 : 0)} ${m.unidad || m.clave}`).join(" · ");
+      nuevas.push({ id: "r" + Math.random().toString(36).slice(2, 8), filaId: fila.id, huella: fila.huella || "", archivoNombre: fila.nombre, archivo: e.archivo, ruta: fila.ruta, fila: null, pagina: e.pagina || null, tipo: "equipo", tag: e.tag, marca: e.marca || "", modelo: e.modelo || "", descripcion: e.tag, capacidad: cap, precio: null, moneda: "", fecha: null, texto: String(e.texto || "").slice(0, 160), ts: Date.now() });
+    });
+    /* Sin duplicar: lo que ya se leyó de esta fila o del mismo archivo (huella + nombre) se sustituye. */
+    const resto = cxzReferencias().filter((x) => x.filaId !== fila.id && !(fila.huella && x.huella === fila.huella && x.archivoNombre === fila.nombre));
+    S.cx.referencias = resto.concat(nuevas).slice(-CX_MAX_REFERENCIAS);
+    const sinAcento = (t) => String(t || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    fila.info = fila.info && typeof fila.info === "object" ? fila.info : {};
+    fila.info.preciosHidro = ["csv", "tsv"].includes(fila.ext) && A.csv.some(({ r }) => r && Array.isArray(r.columnas) && ["material", "diametro", "precio"].every((k) => r.columnas.some((c) => sinAcento(c).startsWith(k))));
+    fila.propuestas = 0; fila.aplicados = 0; fila.referencias = nuevas.length;
+    fila.avisos = (F.avisos || []).slice(0, 6);
+    const claro = cxzMensajeClaro(F.avisos, fila);
+    const conPrecio = nuevas.filter((x) => x.precio > 0).length, sinFecha = nuevas.filter((x) => x.precio > 0 && !x.fecha).length;
+    if (!nuevas.length && claro) { fila.estado = "error"; fila.detalle = claro; }
+    else if (!nuevas.length) { fila.estado = "listo"; fila.detalle = "sin renglones de catálogo (marca, modelo o descripción con capacidad o precio) · revísalo a mano"; }
+    else { fila.estado = "listo"; fila.detalle = `catálogo · ${nuevas.length} renglón(es) de referencia${conPrecio ? ` · ${conPrecio} con precio${sinFecha ? ` (${sinFecha} sin fecha de vigencia: referencia, no cotización)` : ""}` : ""} · no entran a ningún motor: se consultan y se capturan a mano donde apliquen${fila.info.preciosHidro ? " · lista de precios de tubería: se puede importar a hidrosanitario" : ""}${claro ? " · " + claro : ""}`; }
+  } catch (e) {
+    if (!vigente()) return;
+    fila.estado = "error"; fila.detalle = "El archivo no se pudo leer completo: " + String(e && e.message || e).slice(0, 100) + ". Vuelve a exportarlo o cárgalo en otro formato.";
+  }
+}
+function cxzReferenciasTabla(lista) {
+  const fila = (x) => {
+    const donde = [x.archivo, x.pagina ? `p. ${x.pagina}` : "", x.fila ? `fila ${x.fila}` : ""].filter(Boolean).join(" · ");
+    const precio = x.precio > 0 ? `${n(x.precio, 2)} ${esc(x.moneda)}${x.fecha ? ` · vigencia ${esc(x.fecha)}` : " · sin fecha de vigencia: referencia, no cotización"}` : "sin precio";
+    return `<tr><td>${esc([x.marca, x.modelo].filter(Boolean).join(" ") || "—")}</td><td>${esc(x.descripcion || x.tag || "")}</td><td>${esc(x.capacidad || "—")}</td><td class="num">${precio}</td><td><div class="sub">${esc(donde)}</div></td></tr>`;
+  };
+  return `<div class="tw"><table class="cxz-tabla"><thead><tr><th>Marca · modelo</th><th>Descripción</th><th>Capacidad</th><th class="num">Precio</th><th>Archivo · página / fila</th></tr></thead><tbody>${lista.slice(0, 200).map(fila).join("")}</tbody></table></div>${lista.length > 200 ? `<div class="sub">Y ${lista.length - 200} renglón(es) más.</div>` : ""}`;
+}
+function cxzReferenciasHtml() {
+  const R = cxzReferencias();
+  if (!R.length) return "";
+  return `<div class="card" style="margin-top:14px"><h3>Referencias del proyecto ejecutivo<span class="tag">${R.length} renglón(es) de catálogos y listas de precios · no entran a ningún motor</span></h3><div class="body">
+    <div class="hint" style="margin-bottom:10px">Catálogos de equipo y listas de precios leídos de los archivos cargados. Se consultan aquí y se capturan a mano donde apliquen; un precio sin fecha de vigencia es referencia, no cotización (regla 6).</div>
+    ${cxzReferenciasTabla(R)}</div></div>`;
+}
+function cxzReferenciasModal(filaId) {
+  const f = cxzArchivos().find((x) => x.id === filaId) || { id: filaId, nombre: "archivo", info: {} };
+  const R = cxzReferencias().filter((x) => x.filaId === filaId);
+  return `<div class="sheet cx-sheet"><div class="sheet-head"><div><h3>Catálogo · ${esc(f.nombre)}</h3><div class="sub">${R.length} renglón(es) de referencia · no entran a ningún motor</div></div><button class="toolbtn" style="margin-left:auto" data-act="close">Cerrar</button></div>
+    <div style="padding:14px">${R.length ? cxzReferenciasTabla(R) : `<div class="hint">Sin renglones de catálogo en este archivo.</div>`}
+    ${f.info && f.info.preciosHidro ? `<div class="row" style="margin-top:12px"><button class="btn-ghost" data-act="cxz-catalogo-hidro" data-id="${esc(f.id)}">Importar a precios de tubería (hidrosanitario)</button><span class="sub">Con las reglas del importador: material, diámetro, precio, moneda, fuente y fecha (H-251).</span></div>` : ""}
+    </div></div>`;
+}
+async function cxzImportarPreciosHidro(id) {
+  const bytes = await cxzBytes(id);
+  if (!bytes) { toast("Los bytes del archivo ya no están en este dispositivo. Vuelve a cargarlo."); return; }
+  let texto = ""; try { texto = cxDecodificaTexto(bytes); } catch { texto = ""; }
+  const res = hidroPUImportarCsv(texto);
+  toast(`${res.ok} precio(s) de tubería importados a hidrosanitario${res.malas && res.malas.length ? ` · ${res.malas.length} fila(s) rechazadas: ${res.malas.slice(0, 2).join("; ")}` : ""}`, 8000);
+  projAutosave(); render();
 }
 async function cxzProcesarFila(fila) {
   if (!fila || fila.motor === "sin" || fila.motor === "referencia" || fila.estado === "norec") return;
@@ -15486,8 +15879,11 @@ async function cxzProcesarFila(fila) {
   const bytes = await cxzBytes(fila.id);
   if (!vigente()) return; // se reasignó, se quitó o cambió de proyecto mientras se leían los bytes
   if (!bytes) { fila.estado = "error"; fila.detalle = "Los bytes del archivo ya no están en este dispositivo. Vuelve a cargarlo."; return; }
+  if (!fila.huella) fila.huella = cxHuellaBytes(bytes);   // H-272b: filas de proyectos anteriores
   fila.estado = "procesando"; fila.detalle = "";
   if (S.tab === "tablero") render();
+  if (motorUsado === "levantamiento") { await cxzProcesarLevantamiento(fila, bytes, vigente); return; }
+  if (motorUsado === "catalogo") { await cxzProcesarCatalogo(fila, bytes, vigente); return; }
   try {
     const lote = await cxProcesarArchivos([cxzArchivoDe(fila, bytes)], motorUsado);
     /* Si en lo que tardó la lectura el usuario reasignó, quitó la fila o
@@ -15506,10 +15902,12 @@ async function cxzProcesarFila(fila) {
     else {
       /* rev 2.9.24 (decisión del dueño): los datos claros entran solos a su disciplina al terminar de leerse; los dudosos
          esperan la marca en la ventana de hallazgos. */
-      const k = utiles.some((p) => p.marcado && p.fn) ? cxAplicar(lote, "abierto", { quedarse: true }) : 0;
-      fila.aplicados = k;
-      const dudosos = utiles.length - k;
-      fila.estado = "listo"; fila.detalle = `${utiles.length} dato(s) propuestos · ${k} aplicados al cargar${dudosos ? ` · ${dudosos} por revisar` : ""}${claro ? " · " + claro : ""}`;
+      const k = cxAplicar(lote, "abierto", { quedarse: true, auto: true });
+      /* H-272b: lo que ya había entrado de este mismo archivo no se repite, y la fila lo dice. */
+      const ya = lote.yaEntraron && lote.yaEntraron.n ? lote.yaEntraron.n : 0;
+      fila.aplicados = k + ya;
+      const dudosos = utiles.length - k - ya;
+      fila.estado = "listo"; fila.detalle = `${utiles.length} dato(s) propuestos · ${k} aplicados al cargar${ya ? ` · ${ya} ya habían entrado de este archivo (${fechaCorta(lote.yaEntraron.ts)}): no se repiten` : ""}${dudosos ? ` · ${dudosos} por revisar` : ""}${claro ? " · " + claro : ""}`;
     }
   } catch (e) {
     if (!vigente()) return;
@@ -15539,7 +15937,8 @@ function cxzReasignar(id, motor) {
   const f = cxzArchivos().find((x) => x.id === id); if (!f) return;
   f.motor = CXZ_MOTOR_NOMBRE[motor] ? motor : "sin";
   delete CXZ_LOTES[id];
-  f.propuestas = 0; f.aplicados = 0;
+  f.propuestas = 0; f.aplicados = 0; delete f.porMotor; delete f.referencias;
+  if (S.cx && Array.isArray(S.cx.referencias)) S.cx.referencias = S.cx.referencias.filter((x) => x.filaId !== id);   // H-272e
   if (f.motor === "sin") { f.estado = f.estado === "norec" ? "norec" : "espera"; f.detalle = f.estado === "norec" ? f.detalle : "sin motor: elige uno para leerlo"; }
   else if (f.motor === "referencia") { f.estado = "listo"; f.detalle = "adjunto de referencia"; }
   else { f.estado = "espera"; f.detalle = ""; }
@@ -15551,8 +15950,18 @@ async function cxzQuitar(id) {
   const filas = cxzArchivos();
   const i = filas.findIndex((x) => x.id === id); if (i < 0) return;
   histSnap("quitar archivo cargado");
+  const f = filas[i];
   filas.splice(i, 1);
   delete CXZ_LOTES[id];
+  if (S.cx && Array.isArray(S.cx.referencias)) S.cx.referencias = S.cx.referencias.filter((x) => x.filaId !== id);   // H-272e: sus referencias se van con él
+  /* H-272b (regla 8): quitar el archivo de la tabla no retira lo que entró desde él (puede estar ya editado); su registro de origen
+     se conserva marcado «archivo retirado» y se avisa en qué disciplina quedaron esos datos, para quitarlos ahí si hace falta. */
+  const suyos = cxLotesDe().filter((l) => (l.filaId && l.filaId === id) || (f.huella && l.huella === f.huella && (l.archivos || []).some((a) => a && a.nombre === f.nombre)));
+  const nDatos = suyos.reduce((s, l) => s + (l.aplicados || []).length, 0);
+  if (nDatos) {
+    suyos.forEach((l) => { l.archivoRetirado = true; });
+    toast(`Los ${nDatos} dato(s) que entraron desde «${f.nombre}» siguen en ${[...new Set(suyos.map((l) => (CX_DISC[l.tab] || { nombre: l.tab }).nombre))].join(", ")}; quítalos ahí si hace falta. Su origen queda registrado como «archivo retirado».`, 8000);
+  }
   await cxzAlmacen.quitar(cxzClave(S.pid, id));
   projAutosave(); render();
 }
@@ -15561,7 +15970,14 @@ async function cxzRevisar(id) {
   if (!CXZ_LOTES[id]) { f.estado = "espera"; await cxzProcesarFila(f); }
   const lote = CXZ_LOTES[id];
   if (!lote) { toast(f.detalle || "No hay nada que revisar de este archivo"); render(); return; }
-  CX_LOTE = lote; CXZ_REVISANDO = id;
+  CXZ_REVISANDO = id;
+  /* H-272d: un levantamiento tiene un lote por disciplina; se abre el de la primera y la ventana ofrece las demás. */
+  if (lote.compuesto) {
+    const t0 = lote.tabs[0];
+    if (!t0) { toast(f.detalle || "No hay nada que revisar de este archivo"); render(); return; }
+    CX_LOTE = lote.porTab[t0].lote; openModal(cxModalHtml(CX_LOTE, { tabs: lote.tabs })); return;
+  }
+  CX_LOTE = lote;
   openModal(cxModalHtml(lote));
 }
 /* Al aplicar desde la ventana de hallazgos, la fila se marca como aplicada. */
@@ -15577,9 +15993,16 @@ document.addEventListener("click", (e) => {
        eso puede cambiar lote.tab a un motor distinto del que muestra la
        fila. Lo aplicado se guarda ahí, así que la tabla debe decir lo mismo:
        si no, el motor asignado miente sobre a dónde fueron los datos. */
-    if (CXZ_MOTOR_NOMBRE[lote.tab] && lote.tab !== f.motor) f.motor = lote.tab;
-    f.aplicados = lote.propuestas.filter((p) => p.aplicado && p.grupo !== "info").length;
-    f.estado = "listo"; f.detalle = `${f.aplicados} dato(s) aplicados de ${f.propuestas}`;
+    if (f.motor === "levantamiento" && f.porMotor) {
+      /* H-272d: la fila cuenta por disciplina; su motor sigue siendo «levantamiento». */
+      if (f.porMotor[lote.tab]) f.porMotor[lote.tab].aplicados = lote.propuestas.filter((p) => p.aplicado && p.grupo !== "info").length;
+      f.aplicados = Object.values(f.porMotor).reduce((s, x) => s + (x.aplicados || 0), 0);
+      f.estado = "listo"; f.detalle = `levantamiento · ${Object.entries(f.porMotor).map(([t, x]) => `${(CX_DISC[t] || { nombre: t }).nombre} ${x.aplicados}${x.propuestas > x.aplicados ? ` (${x.propuestas - x.aplicados} por revisar)` : ""}`).join(" · ")}`;
+    } else {
+      if (CXZ_MOTOR_NOMBRE[lote.tab] && lote.tab !== f.motor) f.motor = lote.tab;
+      f.aplicados = lote.propuestas.filter((p) => p.aplicado && p.grupo !== "info").length;
+      f.estado = "listo"; f.detalle = `${f.aplicados} dato(s) aplicados de ${f.propuestas}`;
+    }
     projAutosave(); if (S.tab === "tablero") render();
   }, 0);
 }, true);
@@ -15587,15 +16010,17 @@ document.addEventListener("click", (e) => {
 /* ---------- Estado de los motores ---------- */
 function cxzEstadoMotores() {
   const filas = cxzArchivos();
-  return CXZ_MOTORES.filter(([id]) => id !== "sin" && id !== "referencia").map(([id, nombre]) => {
-    const mias = filas.filter((f) => f.motor === id);
+  /* H-272d: un levantamiento cuenta en cada disciplina a la que aplicó (fila.porMotor); no es un motor en sí. */
+  return CXZ_MOTORES.filter(([id]) => id !== "sin" && id !== "referencia" && id !== "levantamiento" && id !== "catalogo").map(([id, nombre]) => {
+    const mias = filas.filter((f) => f.motor === id || (f.motor === "levantamiento" && f.porMotor && f.porMotor[id]));
+    const cuenta = (f, k) => ((f.motor === "levantamiento" && f.porMotor && f.porMotor[id]) ? f.porMotor[id][k] : f[k]) || 0;
     let estado = "espera";
     if (mias.some((f) => f.estado === "procesando")) estado = "procesando";
     else if (mias.some((f) => f.estado === "error")) estado = "error";
     else if (mias.length && mias.every((f) => f.estado === "listo")) estado = "listo";
     else if (mias.some((f) => f.estado === "listo")) estado = "procesando";
     const errores = mias.filter((f) => f.estado === "error").map((f) => ({ archivo: f.nombre, motivo: f.detalle }));
-    const propuestas = mias.reduce((a, f) => a + (f.propuestas || 0), 0), aplicados = mias.reduce((a, f) => a + (f.aplicados || 0), 0);
+    const propuestas = mias.reduce((a, f) => a + cuenta(f, "propuestas"), 0), aplicados = mias.reduce((a, f) => a + cuenta(f, "aplicados"), 0);
     return { id, nombre, estado, archivos: mias.length, errores, propuestas, aplicados };
   });
 }
@@ -15841,7 +16266,7 @@ function cxzTablaHtml() {
         <td class="num">${cxzTam(f.tam || 0)}</td>
         <td>${sel(f)}${f.motivo ? `<div class="sub">${esc(f.motivo)}</div>` : ""}</td>
         <td>${badge(f)}${f.detalle ? `<div class="sub cxz-det">${esc(f.detalle)}</div>` : ""}</td>
-        <td class="cxz-acc">${f.info && (f.info.paquete || f.info.respaldo) ? `<button class="toolbtn mini" data-act="cxz-abrir" data-id="${esc(f.id)}">Abrir como proyecto</button>` : ""}${f.propuestas > 0 && f.estado === "listo" ? `<button class="toolbtn mini" data-act="cxz-revisar" data-id="${esc(f.id)}">${f.aplicados ? "Volver a revisar" : "Revisar y aplicar"}</button>` : ""}${f.estado === "listo" && !f.propuestas && f.motor !== "referencia" && !(f.info && (f.info.paquete || f.info.respaldo)) ? `<button class="toolbtn mini" data-act="cxz-revisar" data-id="${esc(f.id)}">Ver lectura</button>` : ""}<button class="toolbtn mini" data-act="cxz-quitar" data-id="${esc(f.id)}" title="Quitar de la carga">Quitar</button></td>
+        <td class="cxz-acc">${f.info && (f.info.paquete || f.info.respaldo) ? `<button class="toolbtn mini" data-act="cxz-abrir" data-id="${esc(f.id)}">Abrir como proyecto</button>` : ""}${f.motor === "catalogo" && f.estado === "listo" ? `<button class="toolbtn mini" data-act="cxz-catalogo" data-id="${esc(f.id)}">Consultar</button>` : ""}${f.propuestas > 0 && f.estado === "listo" ? `<button class="toolbtn mini" data-act="cxz-revisar" data-id="${esc(f.id)}">${f.aplicados ? "Volver a revisar" : "Revisar y aplicar"}</button>` : ""}${f.estado === "listo" && !f.propuestas && f.motor !== "referencia" && !(f.info && (f.info.paquete || f.info.respaldo)) ? `<button class="toolbtn mini" data-act="cxz-revisar" data-id="${esc(f.id)}">Ver lectura</button>` : ""}<button class="toolbtn mini" data-act="cxz-quitar" data-id="${esc(f.id)}" title="Quitar de la carga">Quitar</button></td>
       </tr>`).join("")}</tbody>
     </table></div>
   </div></div>`;
@@ -15899,6 +16324,8 @@ document.addEventListener("click", (e) => {
   else if (act === "cxz-carpeta") { const i = cxzInput("cxz-dir", true); i.value = ""; i.click(); }
   else if (act === "cxz-importar") { const i = cxzInput("cxz-paquete", false); i.accept = ".zip,.json"; i.multiple = false; i.value = ""; i.click(); }
   else if (act === "cxz-quitar") cxzQuitar(b.dataset.id);
+  else if (act === "cxz-catalogo") openModal(cxzReferenciasModal(b.dataset.id));
+  else if (act === "cxz-catalogo-hidro") cxzImportarPreciosHidro(b.dataset.id);
   else if (act === "cxz-revisar") cxzRevisar(b.dataset.id);
   else if (act === "cxz-abrir") cxzAbrirFila(b.dataset.id);
   else if (act === "cxz-abrir-proyecto") cxzCambiarProyecto(b.dataset.id);
@@ -18753,10 +19180,11 @@ function viewTablero() {
     ${cxzZonaCargaHtml()}
     ${cxzTablaHtml()}
     ${cxzMotoresHtml()}
+    ${cxzReferenciasHtml()}
     ${guiaHtml("tablero")}
 
     <div class="grp">Flujo del proyecto</div>
-    <div class="gsub">Las cuatro etapas y lo que hereda cada disciplina. Un clic en un módulo entra directo a su captura.</div>
+    <div class="gsub">Las cuatro etapas; cada disciplina calcula con lo que se le captura (ninguna hereda). Un clic en un módulo entra directo a su captura.</div>
     <div class="tdiag">${diagramaLienzoHtml()}</div>
 
     <div class="grp"><b>Tablero del proyecto</b> · estado por disciplina</div>
@@ -19611,7 +20039,7 @@ function buildMemoriaIntegralPdf() {
   pdfTitle(d, "Cierre de la memoria integral", S.meta.name || "");
   pdfHeading(d, "Capitulos integrados");
   pdfRows(d, incluidos.map((t2, i) => [`Capitulo ${i + 1}`, t2]).concat(omitidos.length ? [["No integrados (sin datos)", omitidos.join(" · ")]] : []));
-  pdfTrazabilidad(d, ["load", "clean", "equip", "vent", "duct", "elec", "hidro", "fuego"]);
+  pdfTrazabilidad(d, ["load", "clean", "equip", "vent", "duct", "elec", "hidro", "fuego"], { sinArchivos: true });
   /* H-94 (17-sep-2026): quedaba un nombre propio escrito directo en el código
      como "responsable técnico", ignorando S.meta.engineer -el campo que el
      propio texto de ayuda del formulario promete: "Aparece firmando la
@@ -21214,6 +21642,15 @@ function buildCivilPdf() {
     ["Altura media ponderada", `${n(R.alturaProm, 2)} m`, (S.civil.usarZonas ? "ponderada por area de obra" : "capturada a mano")],
     ["Media cana sanitaria", `${n(R.mlCana, 0)} ml`, "muro clasificado entre altura libre" + (S.civil.mediaCanaDoble ? ", doble" : "")],
   ], [150, 110, 226]);
+  /* H-272a (regla 8): cada renglón capturado con su origen: archivo, página o fila y cómo entró, o «capturado a mano». */
+  const origenRenglon = (x) => (x.origen && x.origen.archivo ? `${cxOrigenTexto(x.origen)} · ${x.origen.auto ? "entro solo al cargar" : "aceptado por el usuario"}` : "capturado a mano");
+  const filaDe = (tipo, x) => [tipo, x.nombre || x.id || "", n(num(x.area), 1), num(x.altura) > 0 ? n(num(x.altura), 2) : "pendiente", num(x.perimetro) > 0 ? n(num(x.perimetro), 1) : "pendiente (3:2 estimado)", origenRenglon(x)];
+  const renglones = (S.civil.usarZonas !== false ? (S.civil.areas || []) : []).filter((x) => x && typeof x === "object").map((x) => filaDe("Area de obra", x))
+    .concat((S.civil.cuartos || []).filter((x) => x && typeof x === "object").map((x) => filaDe("Cuarto clasificado", x)));
+  if (renglones.length) {
+    pdfHeading(d, "Renglones capturados y su origen");
+    pdfTable(d, ["Tipo", "Nombre", "m2", "h (m)", "Perimetro (ml)", "Origen"], renglones.slice(0, 120), [70, 110, 40, 45, 80, 215]);
+  }
   pdfHeading(d, "Catalogo de conceptos");
   pdfTable(d, ["Grupo", "Concepto", "Un", "Cantidad", "P.U.", "Importe"],
     R.part.map((p) => [p.clave, p.desc, p.un, n(p.qty, 2), n(p.unit, 2), n(p.total, 0)])
@@ -21505,7 +21942,7 @@ const GUIA = {
   /* rev 2.9.14 · Estructural no tenía guía: su vista repetía en dos párrafos lo que aquí queda, y el modbar y la barra de
      acciones ya dicen que corre como archivo aparte. Nada se perdió: presentación y aviso de liberación viven ahora aquí. */
   estructural: { que: "El motor estructural de la casa es EMP StructCalc v0.1.2 (solver 3D, P-Delta, análisis modal, pandeo, generador de marco a dos aguas). Corre como archivo aparte, StructCalc.html, sin instalación.",
-    cuando: "Uso admisible hoy: modelado, análisis, comparación de alternativas y prueba piloto; no construcción. Cuando tenga su capa de revisión de miembros (rev 0.2) entrará como cualquier otro motor autónomo: hereda geometría (regla 1) y recibe cargas de equipo en cubierta como propuesta (regla 2).",
+    cuando: "Uso admisible hoy: modelado, análisis, comparación de alternativas y prueba piloto; no construcción. Cuando tenga su capa de revisión de miembros (rev 0.2) entrará como cualquier otro motor autónomo: capturará su geometría (ninguna disciplina hereda desde H-262…H-266; un levantamiento cargado se la ofrece) y recibirá cargas de equipo en cubierta como propuesta (regla 2).",
     ojo: "Todavía no cumple su propio criterio de liberación (así lo declara su README): resuelve la física del marco, pero no revisa miembros contra AISC 360 —sin eso no hay memoria firmable— y las cargas de viento y sismo se capturan a mano, no salen de una norma automatizada. No está empalmado a este archivo: su cálculo no entra a la memoria integral ni a la cotización." },
   catalogo: { que: "El catálogo de equipo y materiales con su ficha, su submittal en PDF y la procedencia de cada dato.",
     cuando: "Para consultar un modelo, comparar una familia o sacar un submittal suelto." },
@@ -22580,6 +23017,7 @@ function sanearEstado(d) {
   if (!BASES_PRECIO[s.quote.basePrecio]) s.quote.basePrecio = "casa";
   if (!s.cx || typeof s.cx !== "object" || !Array.isArray(s.cx.lotes)) s.cx = { lotes: [], archivos: [] };
   if (!Array.isArray(s.cx.archivos)) s.cx.archivos = [];
+  s.cx.referencias = (Array.isArray(s.cx.referencias) ? s.cx.referencias : []).filter((x) => x && typeof x === "object").slice(-CX_MAX_REFERENCIAS);   // H-272e
   s.cx.archivos = s.cx.archivos.filter((a) => a && typeof a === "object" && typeof a.id === "string" && typeof a.nombre === "string").map((a) => ({ ...a, motor: CXZ_MOTOR_NOMBRE[a.motor] ? a.motor : "sin", estado: CXZ_ESTADOS[a.estado] ? (a.estado === "procesando" ? "espera" : a.estado) : "espera", info: a.info && typeof a.info === "object" ? a.info : {} })).slice(-CX_ZIP_MAX_ENTRADAS);
   s.cx.lotes = s.cx.lotes.filter((l) => l && typeof l === "object" && Array.isArray(l.archivos) && Array.isArray(l.aplicados)).map((l) => ({ ...l, archivos: l.archivos.filter((x) => x && typeof x === "object"), aplicados: l.aplicados.filter((x) => x && typeof x === "object"), equipos: Array.isArray(l.equipos) ? l.equipos.filter((x) => x && typeof x === "object") : [] })).slice(-CX_MAX_LOTES);
   if (!Array.isArray(s.quote.items)) s.quote.items = [];
