@@ -83,7 +83,7 @@ Tres lentes (norma, consumidores, pruebas) y verificación con sonda: 27 hallazg
 | 125 % compuesto con los factores de corrección | La suite exige `base·ft·fg ≥ 1.25·I`; 210-19(a)(1) y 215-2(a)(1) (p. 52, 61) piden el 125 % «antes de la aplicación de cualquier factor de ajuste o de corrección» y aparte la ampacidad corregida ≥ carga. La regla de la casa es más conservadora (nunca subdimensiona); se declara, no se corrige. |
 | Corriente de falla (bus infinito) | Fórmula de memoria, no de la NOM: las filas CM.elec.3.n y CM.elec.12.a/b van con `caracter = memoria`. |
 | Valores normalizados 16, 32 y 63 A de 240-6(a) | La suite no los lista (criterio de la casa, valores IEC del DOF). Sin fila: ningún caso vigente cae en ellos. |
-| Cargas automáticas (tomarHVAC, cédula, ventilación, aire, hidro, fuego, FFU) | Los casos CM usan sólo cargas capturadas (`tomarHVAC:false`), como 22.4 y J.1. Desde H-178 las cubren S.50 (aire, hidro, fuego y FFU en vivo) y S.51 (cédula aceptada antes y vuelta a aceptar). |
+| Cargas de otros motores (cédula, ventilación, aire, hidro, fuego, FFU) | Desde H-268 el eléctrico es autónomo: no hay cargas automáticas ni modo en vivo (`tomarHVAC` sin uso); entran sólo como propuesta `cedula>elec` aceptada (instantánea con origen y fecha). Los casos CM usan sólo cargas capturadas, como 22.4 y J.1. Las cubren S.103 (H-268: sin aceptar no entran; aceptar concede los cruces; regla 3; migración del proyecto en vivo; sello), S.48 y S.50 (la propuesta en sombra: aire, hidro, fuego y FFU), S.51/S.52 (cédula aceptada antes y vuelta a aceptar) y M.1–M.4. |
 
 ## 4. Compuerta de mutantes
 `node parches/mutantes/mutantes.mjs elec` → ver la tabla en el commit. H-183 (elec v5): `elec.m02` se reapuntó al valor

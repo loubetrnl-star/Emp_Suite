@@ -1740,6 +1740,7 @@ function buildElecPdf() {
   pdfHeading(d, "2. Bases de calculo");
   pdfRows(d, [
     ["Norma", "NOM-001-SEDE Instalaciones Electricas (utilizacion)"],
+    ["Origen de las cargas", `${R.calc.filter((c) => c.origen === "cedula").length} aceptada(s) de los demas motores como propuesta (instantanea con origen y fecha; no se mueven solas si el origen cambia) y ${R.calc.filter((c) => c.origen !== "cedula").length} capturada(s) en la pestana Electrico. Ninguna entra sin aceptarse (H-268)`],
     ["Sistema", SISTEMAS.find(([k]) => k === E.sistema)?.[1] || ""],
     ["Conductor", `${R.mat === "aluminio" ? "Aluminio" : "Cobre"} tipo ${AISLAMIENTOS[aislamientoDe((S.elec || {}).aislamiento)].pdf} (ampacidad a 75 C, Tabla 310-15(b)(16)) · canalizacion con las areas de ese mismo conductor (NOM-001-SEDE, Cap. 10, Tabla 5)`],
     ["Temperatura ambiente", `${num(E.tempAmb, 40)} C · factor ${n(fTemp(E.tempAmb), 2)} (Tabla 310-15(b)(2)(a))`],
@@ -4159,7 +4160,7 @@ const DOMAINS = {
      físico distinto al del aire y responden por sus propios números. Toman datos
      del núcleo térmico solo con permiso, igual que ductos y ventilación. */
   elec:  { cluster: "autonomo", label: "Eléctrico",           method: "NOM-001-SEDE",
-           owns: "Cargas capturadas, sistema de tensión, temperatura ambiente, material del conductor y longitudes.",
+           owns: "Cargas capturadas y las aceptadas de otros motores como propuesta (instantánea), sistema de tensión, temperatura ambiente, material del conductor, longitudes y transformador.",
            emits: ["kVA demandados", "alimentador", "protección", "caída de tensión", "cuadro de cargas"] },
   hidro: { cluster: "autonomo", label: "Hidráulico sanitario", method: "Hunter / Hazen-Williams",
            owns: "Muebles, unidades mueble, material de tubería, presión de la toma, drenaje y dotación.",
@@ -4240,7 +4241,7 @@ const LINKS = {
     from: "equip", to: "elec",
     what: "Modelos, cantidades y consumo eléctrico estimado de los equipos de la cédula.",
     why: "Para que el cuadro de cargas arranque con el equipo que ya seleccionó el proyecto, con la misma potencia, tensión y fases que se imprimen en el submittal (el conductor se dimensiona con la corriente de esa potencia, no con el MCA), en vez de recapturarlo a mano.",
-    cost: "Si lo niegas, el motor eléctrico solo suma las cargas que captures tú, y el equipo HVAC no aparece en el cuadro.",
+    cost: "Si lo niegas, el motor eléctrico solo suma las cargas que captures tú: el equipo HVAC entra al cuadro únicamente al aceptar la propuesta «Cargas eléctricas de los demás motores», que concede este cruce (H-268).",
   },
   "vent>elec": {
     from: "vent", to: "elec",
@@ -9589,9 +9590,11 @@ function defaultSegment(tag = "TR-1", flow = 0) {
 /* =========================================================================
    MOTOR ELÉCTRICO — NOM-001-SEDE
    =========================================================================
-   Qué resuelve: el cuadro de cargas del proyecto. Toma los equipos de la
-   cédula HVAC como cargas automáticas —con la misma estimación de consumo que
-   ya usa la ficha de equipo, no otra— deja capturar el resto (alumbrado,
+   Qué resuelve: el cuadro de cargas del proyecto con lo que se le captura en
+   su pestaña. Los equipos de la cédula HVAC, el ventilador, el compresor, las
+   bombas y los FFU entran SÓLO como propuesta aceptada (instantánea con origen
+   y fecha, H-268; la propuesta se arma con la misma estimación de consumo que
+   ya usa la ficha de equipo, no otra); deja capturar el resto (alumbrado,
    contactos, proceso), balancea por fase, aplica los factores de demanda del
    artículo 220, y dimensiona alimentador, protección, canalización y conductor
    de puesta a tierra con caída de tensión verificada.
@@ -10043,8 +10046,9 @@ function defaultElec() {
     /* H-180: fp del alimentador para su caída de tensión; vacío = 0.95, criterio de la casa (antes 0.95 guardado y oculto). */
     fpObjetivo: null,
     h180: true,                    // cargas de la cédula con procedencia de kW y fp (sanearEstado)
-    cargas: [],                // capturadas por el usuario
-    tomarHVAC: false,          // rev 2.7.0: la cédula ya no entra sola, entra como propuesta aceptada
+    cargas: [],                // capturadas por el usuario, más las aceptadas de otros motores como propuesta (origen "cedula", con fecha)
+    tomarHVAC: false,          // sin uso desde H-268 (era el modo EN VIVO de revisiones anteriores; sanearEstado lo apaga y migra)
+    h268: true,                // proyecto creado o migrado con la regla H-268: las cargas de otros motores sólo como propuesta aceptada (sanearEstado)
   };
 }
 const SISTEMAS = [
@@ -10064,18 +10068,18 @@ const sistemaDe = (k) => {
 const placaEstDe = (c) => ({
   mca: c.placaEstimada === true || !!(c.placaEst && num(c.mca) === num(c.placaEst.mca)),
   mop: c.placaEstimada === true || !!(c.placaEst && num(c.mop) === num(c.placaEst.mop)) });
-function computeElec(E) {
-  const memo = [], avisos = [];
+/* H-268 (decisión del dueño, 27-sep-2026): cargas que los demás motores PROPONEN al eléctrico —cédula HVAC, ventilador,
+   compresor de aire, bomba de agua, bomba contra incendio y FFU— con la misma estimación de consumo que ya usan sus fichas.
+   Sólo arma la propuesta «cedula>elec» (propuestaElecFilasCalc): computeElec NO las lee. Entran al cuadro únicamente cuando el
+   usuario acepta la propuesta (instantánea con origen y fecha, que concede los cruces) y desde ahí no se mueven solas (regla 3).
+   El modo EN VIVO de revisiones anteriores (tomarHVAC con permisos) se retiró; un proyecto guardado así se migra al abrir.
+   H-179 (rev 2.9.24): ninguna trae distancia (antes Ltablero + 15/25/20/15/30/10 m, supuestas): entran con L vacía y su caída
+   queda pendiente de longitud hasta que se capture. */
+function cargasOtrosMotoresElec(E) {
   const sis = sistemaDe(E.sistema);
-  const mat = E.material === "aluminio" ? "aluminio" : "cobre";
   const filas = [];
-
-  /* 1) Cargas automáticas: los equipos de la cédula HVAC. Es un cruce entre
-        motores y por eso pasa por el permiso declarado.
-     H-179 (rev 2.9.24): ninguna carga automática trae distancia (antes Ltablero + 15/25/20/15/30/10 m, supuestas): entran
-     con L vacía y su caída queda pendiente de longitud hasta que se capture. */
-  const verHVAC = linkAllowed("equip>elec");
-  if (E.tomarHVAC && verHVAC && SYS && SYS.chosen) {
+  /* 1) Los equipos de la cédula HVAC (cruce equip>elec, que se concede al aceptar la propuesta). */
+  if (SYS && SYS.chosen) {
     const eqs = [];
     (SYS.chosen.plant || []).filter((p) => p.model).forEach((p) => eqs.push({ m: p.model, q: p.qty, rol: p.role || "Planta" }));
     (SYS.chosen.groups || []).filter((g) => g.model).forEach((g) => eqs.push({ m: g.model, q: g.qty, rol: `Terminal · ${g.zones.slice(0, 2).join(", ")}` }));
@@ -10086,9 +10090,8 @@ function computeElec(E) {
         ph: el.ph, cant: x.q, L: null, fp: el.fp, auto: true, mca: el.mca, mop: el.mop, placaEstimada: !!el.estimado, modelo: x.m, kWOrigen: "hvac", estimado: true });
     });
   }
-  /* 2) Ventiladores y extractores del motor de ventilación, con su permiso. */
-  const verVent = linkAllowed("vent>elec");
-  if (E.tomarHVAC && verVent && VENT && VENT.demand > 0 && VENT.eq && VENT.eq.primary) {
+  /* 2) Ventiladores y extractores del motor de ventilación (cruce vent>elec). */
+  if (VENT && VENT.demand > 0 && VENT.eq && VENT.eq.primary) {
     /* Potencia al freno estimada por caudal y presión estática, con 60 % de
        eficiencia de ventilador y motor. Es estimación, no dato de CAPS. */
     const cfm = VENT.demand, sp = Math.max(.1, VENT.sp);
@@ -10098,14 +10101,14 @@ function computeElec(E) {
   }
   /* 3)-6) Balance global (decisión del dueño, 15-sep-2026): compresor de aire,
      bomba de agua, bomba contra incendio y FFU de cuartos limpios, cada uno
-     con su propio permiso. Ninguno de los tres motores trae tensión ni fases
+     con su propio cruce (aire/hidro/fuego/clean>elec), que se concede al aceptar
+     la propuesta. Ninguno de los tres motores trae tensión ni fases
      de catálogo —a diferencia del equipo HVAC, que sí—, así que se asume el
      sistema eléctrico general del proyecto (sis.V/sis.ph), que es lo más
      defendible sin un dato propio: es el tablero al que en efecto se conectan.
      Los FFU son de 127 V monofásico (sis.Vf), por su tamaño. */
-  const verAire = linkAllowed("aire>elec");
   /* rev 2.9.19 · Sin demanda de aire (nUnidades 0, rev 2.9.16) no hay compresor que alimentar: antes entraba una unidad. */
-  if (E.tomarHVAC && verAire && AIRE && AIRE.principal && AIRE.principal.kW > 0 && num(AIRE.nUnidades, 0) > 0) {
+  if (AIRE && AIRE.principal && AIRE.principal.kW > 0 && num(AIRE.nUnidades, 0) > 0) {
     /* H-51 (decisión del dueño, 15-sep-2026): antes cant:1 siempre, aunque
        AIRE.nUnidades > 1 (varios compresores en paralelo por control
        secuencial cuando uno solo no cubre el FAD) — el alimentador se
@@ -10118,26 +10121,35 @@ function computeElec(E) {
     filas.push({ id: "aire-1", nombre: `Compresor ${AIRE.principal.tipo} · ${AIRE.principal.hp} HP × ${AIRE.nUnidades} en servicio${AIRE.redund ? " (más 1 de relevo N+1, no incluida: no corre en simultáneo)" : ""}`, tipo: "motor",
       kW: AIRE.principal.kW, hpRef: num(AIRE.principal.hp, 0) || null, hpRefOrigen: "catalogo", V: sis.V, ph: sis.ph, cant: Math.max(1, num(AIRE.nUnidades, 1)), L: null, fp: .85, auto: true, estimado: false, kWOrigen: "aire" });
   }
-  const verHidro = linkAllowed("hidro>elec");
-  if (E.tomarHVAC && verHidro && HIDRO && HIDRO.kWbomba > 0) {
+  if (HIDRO && HIDRO.kWbomba > 0) {
     filas.push({ id: "hidro-1", nombre: `Bomba de agua · ${n(HIDRO.hpBomba, 1)} HP`, tipo: "motor",
       kW: +HIDRO.kWbomba.toFixed(2), hpRef: num(HIDRO.hpBomba, 0) || null, hpRefOrigen: "hidro", V: sis.V, ph: sis.ph, cant: 1, L: null, fp: .85, auto: true, estimado: true, kWOrigen: "hidro" });
   }
-  const verFuego = linkAllowed("fuego>elec");
-  if (E.tomarHVAC && verFuego && FUEGO && FUEGO.kWbomba > 0) {
+  if (FUEGO && FUEGO.kWbomba > 0) {
     filas.push({ id: "fuego-1", nombre: `Bomba contra incendio · ${n(FUEGO.hpBomba, 0)} HP`, tipo: "motor",
       kW: +FUEGO.kWbomba.toFixed(2), hpRef: num(FUEGO.hpBomba, 0) || null, hpRefOrigen: "fuego", V: sis.V, ph: sis.ph, cant: 1, L: null, fp: .85, auto: true, estimado: true, kWOrigen: "fuego" });
   }
-  const verClean = linkAllowed("clean>elec");
-  if (E.tomarHVAC && verClean && CLEAN && CLEAN.sum && CLEAN.sum.ffu > 0) {
+  if (CLEAN && CLEAN.sum && CLEAN.sum.ffu > 0) {
     /* Un solo renglón agregado, como el resto de este bloque: en obra real se
        reparten en varios circuitos derivados, pero para el alimentador general
        y la demanda del tablero la suma es lo que importa. */
     filas.push({ id: "ffu-1", nombre: `Módulos FFU · ${CLEAN.sum.ffu} × ${FFU.watts} W`, tipo: "motor",
       kW: +(CLEAN.sum.ffu * FFU.watts / 1000).toFixed(2), V: sis.Vf, ph: 1, cant: 1, L: null, fp: .85, auto: true, estimado: false, aparato: true, kWOrigen: "ffu" });
   }
-  /* 7) Cargas capturadas por el usuario */
-  (E.cargas || []).forEach((c, i) => filas.push({ ...c, id: c.id || `u-${i}`, auto: false }));
+  return filas;
+}
+function computeElec(E) {
+  const memo = [], avisos = [];
+  const sis = sistemaDe(E.sistema);
+  const mat = E.material === "aluminio" ? "aluminio" : "cobre";
+  const filas = [];
+
+  /* H-268 (decisión del dueño, 27-sep-2026): el eléctrico es autónomo. Calcula sólo con E.cargas: las capturadas en su pestaña y
+     las aceptadas de otros motores como propuesta (origen "cedula", con fecha: instantánea, regla 3). Ya no lee la cédula HVAC,
+     ventilación, aire comprimido, hidráulica, contra incendio ni cuartos limpios al calcular (el modo EN VIVO de revisiones
+     anteriores se retiró); la propuesta se arma aparte (cargasOtrosMotoresElec) y sólo entra al aceptarla. La marca «auto» la
+     trae únicamente la corrida en sombra de esa propuesta (propuestaElecFilasCalc); las cargas guardadas no la llevan. */
+  (E.cargas || []).forEach((c, i) => filas.push({ ...c, id: c.id || `u-${i}`, auto: c.auto === true }));
 
   /* Cálculo por carga */
   const calc = filas.map((c) => {
@@ -10308,7 +10320,7 @@ function computeElec(E) {
   if (kWest.length) avisos.push({ lvl: "info", msg: `${kWest.length} carga(s) con kW ESTIMADO, no de placa (${kWest.slice(0, 4).map((c) => c.nombre).join(", ")}${kWest.length > 4 ? "…" : ""}): su demanda y su ramal salen de esa estimación. Captura la potencia de placa antes de firmar el cuadro.` });
   if (desbalance > 5) avisos.push({ lvl: "warn", msg: `Desbalance entre fases de ${n(desbalance, 1)} %. Arriba de 5 % calienta el neutro y castiga la vida de los motores: reacomoda las cargas monofásicas.` });
   const sinLong = calc.filter((c) => c.sinL);
-  if (sinLong.length) avisos.push({ lvl: "err", msg: `${sinLong.length} carga(s) sin longitud capturada (${sinLong.slice(0, 4).map((c) => c.nombre).join(", ")}${sinLong.length > 4 ? "…" : ""}): su caída de tensión queda pendiente; no se supone una distancia ni se toma como 0 %. Captura la distancia de cada una a su tablero${sinLong.some((c) => c.auto) ? "; las que entran en vivo de otros motores no tienen campo de distancia: acepta la propuesta «Cargas eléctricas de los demás motores» y captúrala en «Editar cargas capturadas»" : ""}.` });
+  if (sinLong.length) avisos.push({ lvl: "err", msg: `${sinLong.length} carga(s) sin longitud capturada (${sinLong.slice(0, 4).map((c) => c.nombre).join(", ")}${sinLong.length > 4 ? "…" : ""}): su caída de tensión queda pendiente; no se supone una distancia ni se toma como 0 %. Captura la distancia de cada una a su tablero${sinLong.some((c) => c.auto) ? "; las que proponen otros motores no tienen campo de distancia hasta aceptarlas: acepta la propuesta «Cargas eléctricas de los demás motores» y captúrala en «Editar cargas capturadas»" : ""}.` });
   if (calc.length && alimSinL) avisos.push({ lvl: "err", msg: "Falta la distancia al tablero (de la subestación al tablero general): la caída de tensión del alimentador queda pendiente; no se supone." });
   if (calc.length && !conTrafo) avisos.push({ lvl: "err", msg: !(kVAtr > 0) && !(z > 0)
     ? "Falta el transformador de la acometida (kVA y Z de placa): la corriente de falla y la capacidad interruptiva quedan pendientes; no se supone un transformador."
@@ -10317,7 +10329,6 @@ function computeElec(E) {
   if (sinConf.Ltablero || sinConf.trafoKVA || sinConf.trafoZ || calc.some((c) => c.Lsin))
     avisos.push({ lvl: "warn", msg: `Valores que este proyecto guardó por omisión en una revisión anterior, sin confirmar: ${[sinConf.Ltablero ? `distancia al tablero ${n(Lalim, 0)} m` : "", sinConf.trafoKVA ? `transformador ${n(kVAtr, 0)} kVA` : "", sinConf.trafoZ ? `Z ${n(z, 1)} %` : "", calc.some((c) => c.Lsin) ? `distancia de ${calc.filter((c) => c.Lsin).length} carga(s) aceptadas de otros motores` : ""].filter(Boolean).join(", ")}. Confírmalos o captura los reales: hoy nada se supone (H-179).` });
   if (kVAtr > 0 && kVAdemanda > kVAtr * .8) avisos.push({ lvl: "err", msg: `La demanda calculada (${n(kVAdemanda, 1)} kVA) supera el 80 % del transformador capturado (${n(kVAtr, 0)} kVA). El transformador queda corto: revisar capacidad contratada antes de seguir.` });
-  if (E.tomarHVAC && !verHVAC) avisos.push({ lvl: "info", msg: "Las cargas del equipo HVAC no están incluidas: el cruce entre la cédula de equipos y el motor eléctrico no está autorizado." });
 
   memo.push(`Sistema ${SISTEMAS.find(([k]) => k === E.sistema)?.[1] || sis.V + " V"} · conductor de ${mat} tipo ${AISLAMIENTOS[aislamientoDe(E.aislamiento)].nombre} con ampacidad de la columna de 75 °C · relleno de canalización con las áreas de ese mismo conductor (NOM-001-SEDE, Capítulo 10, Tabla 5) · temperatura ambiente de diseño ${num(E.tempAmb, 40)} °C (factor ${n(fTemp(E.tempAmb), 2)}) · ${num(E.nCond, 3)} portadores por canalización (factor ${n(fGrupo(E.nCond), 2)}).`);
   memo.push(`Carga conectada ${n(kVAconectada, 2)} kVA · demanda ${n(kVAdemanda, 2)} kVA (factor de demanda ${n(fdem, 2)}), incluyendo el 25 % adicional del motor mayor que pide el art. 430-24 (${n(extraMotor, 2)} kVA).`);
@@ -10336,10 +10347,11 @@ function computeElec(E) {
   if (!conTrafo) memo.push(`Corriente de falla PENDIENTE: falta ${!(kVAtr > 0) && !(z > 0) ? "el transformador de la acometida (kVA y Z de placa)" : !(z > 0) ? `la Z de placa del transformador (kVA capturado: ${n(kVAtr, 0)})` : `la capacidad en kVA del transformador (Z capturada: ${n(z, 1)} %)`}; no se supone, así que tampoco hay capacidad interruptiva sugerida.`);
   else memo.push(`Corriente de falla ESTIMADA en barras: ${n(IccTrafo / 1000, 1)} kA con transformador de ${n(kVAtr, 0)} kVA e impedancia ${n(z, 1)} % (${sinConf.trafoKVA || sinConf.trafoZ ? "valores por omisión de una revisión anterior, SIN CONFIRMAR" : "datos capturados"}). Capacidad interruptiva mínima sugerida ${kAIC} kA simétricos. Es una cota superior para preselección, no un estudio de corto circuito.`);
   memo.push(`Procedencia de cada carga (H-180; sólo «capturado» es dato): ${calc.map((c) => `${c.nombre}: kW ${kWOrigenTexto(c, false)}, fp ${n(c.fp, 2)} ${fpOrigenTexto(c, false)}`).join("; ")}. fp del alimentador ${n(fpAlim, 2)} (${fpAlimOrigen === "casa" ? "criterio de la casa" : "capturado"}), para su caída de tensión.`);
+  memo.push(`Origen de las cargas (H-268): ${calc.filter((c) => c.origen === "cedula").length} aceptada(s) de otros motores como propuesta (instantánea con origen y fecha; si el origen cambia, la propuesta avisa y nada se mueve solo) y ${calc.filter((c) => c.origen !== "cedula").length} capturada(s) en esta pestaña. Ninguna entra sin aceptarse: el eléctrico calcula sólo con lo capturado y lo aceptado aquí.`);
   memo.push("Criterio de caída de tensión: el capturado para circuito derivado y el acumulado desde la acometida (3 % y 5 % por omisión). No es requisito obligatorio de la NOM-001-SEDE sino recomendación de las notas de los artículos 210-19 y 215-2; se aplica como criterio duro de la casa.");
 
   return { calc, demTipo, fases, desbalance, kVAconectada, kVAdemanda, fdem, extraMotor,
-    Itab, IdisAlim, alim, principal, IccTrafo, kAIC, sis, mat, memo, avisos, verHVAC, verVent,
+    Itab, IdisAlim, alim, principal, IccTrafo, kAIC, sis, mat, memo, avisos,
     Lalim: alimSinL ? null : Lalim, trafoKVA: kVAtr > 0 ? kVAtr : null, trafoZ: z > 0 ? z : null, sinConf, fpAlim, fpAlimOrigen,
     kWtot: calc.reduce((a, c) => a + c.kWtot, 0) };
 }
@@ -11479,16 +11491,13 @@ function recompute() {
   DUCT = calcDuct(S.duct);
   CLEAN = computeCleanAll();
   SYS = buildSystem(S.sysForce);
-  /* Los tres motores nuevos corren DESPUÉS de la selección de equipo, porque el
-     eléctrico toma sus cargas automáticas de la cédula, y ANTES de la cotización,
-     que ahora tiene renglones que salen de los tres.
-     Balance global (decisión del dueño, 15-sep-2026): el eléctrico también toma,
-     con su propio permiso, el compresor de aire, la bomba hidrosanitaria y la
-     bomba contra incendio. Por eso ELEC pasa a correr AL FINAL de hidro/fuego/
-     aire, no antes: si corriera primero, leería el compresor o las bombas del
-     ciclo de recompute ANTERIOR, no del que se está calculando. Ninguno de los
-     tres motores nuevos lee ELEC, así que el orden se puede invertir sin crear
-     una dependencia circular (verificado: ninguno menciona la variable ELEC). */
+  /* Los tres motores nuevos corren DESPUÉS de la selección de equipo y ANTES de la
+     cotización, que tiene renglones que salen de los tres. El eléctrico corre AL
+     FINAL de hidro/fuego/aire: ya no toma nada de ellos al calcular (H-268: sólo
+     S.elec), pero la PROPUESTA «cedula>elec» se arma con el compresor, las bombas,
+     la cédula, el ventilador y los FFU de ESTE ciclo, no del anterior, y la
+     migración de un proyecto en vivo la acepta aquí mismo. Ninguno de los tres
+     lee ELEC, así que el orden no crea una dependencia circular. */
   if (!S.elec) S.elec = defaultElec();
   if (!S.hidro) S.hidro = defaultHidro();
   if (!S.fuego) S.fuego = defaultFuego();
@@ -11496,6 +11505,22 @@ function recompute() {
   HIDRO = computeHidro(S.hidro);
   FUEGO = computeFuego(S.fuego);
   AIRE = computeAire(S.aire);
+  /* H-268: un proyecto anterior que tomaba las cargas de otros motores EN VIVO (tomarHVAC con cruces autorizados) las acepta una
+     sola vez al abrir como propuesta —sólo las de los cruces que tenía autorizados— y quedan como instantánea con fecha: abre con
+     las mismas cifras y desde ahí no se mueve solo (regla 3). La marca (los cruces) la deja sanearEstado y se consume aquí, después
+     de que corren los motores que alimentan la propuesta y antes del eléctrico. */
+  if (Array.isArray(S.elec.tomarPropuesta)) {
+    const cruces = S.elec.tomarPropuesta;
+    delete S.elec.tomarPropuesta;
+    const f = propuestaElecFilas().filter((c) => cruces.includes(CRUCE_DE_ORIGEN_ELEC[c.kWOrigen] || ""));
+    if (f.length) {
+      aceptarCargasElec(f, Date.now());
+      registrarVinculo("cedula>elec", "aceptado");
+      /* Firma y resumen de lo que SÍ entró: si hoy los demás motores proponen más (cruces que no estaban autorizados), la
+         propuesta sale «desactualizada» y el usuario decide; nada entra solo. */
+      S.vinculos["cedula>elec"].firma = firmaFilasElec(f); S.vinculos["cedula>elec"].resumen = resumenFilasElec(f);
+    }
+  } else delete S.elec.tomarPropuesta;
   ELEC = computeElec(S.elec);
   /* Civil y soportería corren AL FINAL de las instalaciones: la soportería
      cuenta metros de ducto, tubería hidráulica, de incendio y de aire, así que
@@ -17546,15 +17571,18 @@ function conPermisoTemporal(ids, fn) {
   ids.forEach((k) => { if (!S.perms[k]) S.perms[k] = { ts: 0, via: "vista previa de propuesta" }; });
   try { return fn(); } finally { S.perms = prev; }
 }
-/* Cargas eléctricas que la cédula HVAC y el ventilador propondrían. Salen del
-   mismo motor eléctrico corriendo en sombra, así que son EXACTAMENTE las que
-   entrarían: no hay una segunda fórmula. */
+/* Cargas eléctricas que los demás motores proponen (cédula HVAC, ventilador, compresor, bombas, FFU). Las arma
+   cargasOtrosMotoresElec y pasan por el mismo motor eléctrico corriendo en sombra, así que son EXACTAMENTE las que entrarían al
+   aceptar: no hay una segunda fórmula. H-268: computeElec ya no las lee; sólo entran al cuadro al aceptar la propuesta. */
 function propuestaElecFilas() { return memo("elecFilas", propuestaElecFilasCalc); }
 const CRUCES_ELEC = ["equip>elec", "vent>elec", "aire>elec", "hidro>elec", "fuego>elec", "clean>elec"];
+/* H-268: cruce que corresponde a cada origen de carga propuesta (la migración de un proyecto en vivo acepta sólo los que tenía). */
+const CRUCE_DE_ORIGEN_ELEC = { hvac: "equip>elec", vent: "vent>elec", aire: "aire>elec", hidro: "hidro>elec", fuego: "fuego>elec", ffu: "clean>elec" };
 function propuestaElecFilasCalc() {
   if (!S.elec) return [];
-  const E = { ...S.elec, tomarHVAC: true, cargas: [] };
-  const R = conPermisoTemporal(CRUCES_ELEC, () => seguro(() => computeElec(E), null));
+  const brutas = seguro(() => cargasOtrosMotoresElec(S.elec), []);
+  if (!brutas.length) return [];
+  const R = seguro(() => computeElec({ ...S.elec, cargas: brutas }), null);
   if (!R || !Array.isArray(R.calc)) return [];
   return R.calc.filter((c) => c.auto).map((c) => ({
     nombre: c.nombre, tipo: c.tipo, kW: c.kW, V: c.V, ph: c.ph, cant: c.cant, L: c.L, fp: c.fp,
@@ -17562,6 +17590,22 @@ function propuestaElecFilasCalc() {
     hpRef: num(c.hpRef, 0) || null, hpRefOrigen: c.hpRefOrigen || null, aparato: !!c.aparato, kWOrigen: c.kWOrigen || null,
   }));
 }
+/* H-268: escribe las filas propuestas en S.elec.cargas como instantánea con origen «cedula» y fecha. Lo usan aceptar la
+   propuesta y la migración de un proyecto que las tomaba en vivo (recompute). */
+function aceptarCargasElec(f, ts) {
+  /* H-178: volver a aceptar conserva lo que el usuario capturó en la carga del mismo nombre (distancia y hp de placa). */
+  const previas = new Map((S.elec.cargas || []).filter((c) => c.origen === "cedula").map((c) => [c.nombre, c]));
+  const conserva = (p) => (p ? { ...(num(p.L, 0) > 0 ? { L: p.L, ...(p.Lsupuesta != null ? { Lsupuesta: p.Lsupuesta } : {}) } : {}), ...(num(p.hp, 0) > 0 ? { hp: p.hp } : {}), ...(num(p.fp, 0) > 0 ? { fp: p.fp } : {}) } : {});
+  S.elec.cargas = (S.elec.cargas || []).filter((c) => c.origen !== "cedula");
+  /* H-177: el equipo con motocompresor entra con su MCA y su MOP (art. 440); antes se descartaban. */
+  f.forEach((c, i) => S.elec.cargas.push({ id: `ced${ts.toString(36)}${i}`, nombre: c.nombre, tipo: c.tipo, kW: c.kW, V: c.V, ph: c.ph, cant: c.cant, L: c.L, fp: null, fpCasa: c.fp, ...(c.kWOrigen ? { kWOrigen: c.kWOrigen, kWRef: c.kW } : {}), fija: false, origen: "cedula", ts, modelo: c.modelo, estimado: c.estimado,
+    ...(num(c.hpRef, 0) > 0 ? { hpRef: c.hpRef, hpRefOrigen: c.hpRefOrigen } : {}), ...(c.aparato ? { aparato: true } : {}),
+    ...(num(c.mop, 0) > 0 ? { mca: c.mca, mop: c.mop, ...(c.placaEstimada ? { placaEst: { mca: c.mca, mop: c.mop } } : {}) } : {}), ...conserva(previas.get(c.nombre)) }));
+  S.elec.tomarHVAC = false;
+}
+/* H-268: firma y resumen de un juego de filas propuestas (la propuesta entera o, al migrar, sólo las de los cruces autorizados). */
+const firmaFilasElec = (f) => JSON.stringify(f.map((c) => [c.nombre, +num(c.kW).toFixed(2), c.cant, c.V, c.ph, ...(num(c.hpRef, 0) > 0 ? [num(c.hpRef)] : []), ...(c.aparato ? ["aparato"] : [])]));
+const resumenFilasElec = (f) => `${f.length} carga(s) · ${n(f.reduce((a, c) => a + num(c.kW) * num(c.cant, 1), 0), 1)} kW · ${f.map((c) => c.nombre.split(" · ")[0]).slice(0, 4).join(", ")}${f.length > 4 ? "…" : ""}`;
 /* H-266: equipos Carrier capturados en la cotización (piezas), sin esperar a que corra la cotización. */
 function equiposCotizados() {
   return (S.quote && Array.isArray(S.quote.items) ? S.quote.items : [])
@@ -17672,27 +17716,15 @@ const PROPUESTAS = {
   "cedula>elec": {
     destino: "elec", origen: "equip", permisos: CRUCES_ELEC,
     titulo: "Cargas eléctricas de los demás motores",
-    que: "Cada equipo de la cédula con compresor entra como carga tipo motor con su kW, tensión y fases; el ventilador de extracción, el compresor de aire, la bomba de agua, la bomba contra incendio y los FFU de cuartos limpios entran con su potencia estimada, cada uno solo si su motor ya lo calculó (la propuesta se arma con todos los cruces hacia el eléctrico). Al aceptarlas quedan autorizados esos cruces y se vuelven cargas de este cuadro, con origen y fecha, y ya no cambian solas.",
+    que: "Cada equipo de la cédula con compresor entra como carga tipo motor con su kW, tensión y fases; el ventilador de extracción, el compresor de aire, la bomba de agua, la bomba contra incendio y los FFU de cuartos limpios entran con su potencia estimada, cada uno solo si su motor ya lo calculó (la propuesta se arma con todos los cruces hacia el eléctrico). Al aceptarlas quedan autorizados esos cruces y se vuelven cargas de este cuadro como instantánea, con origen y fecha, y ya no cambian solas: si el origen cambia, la propuesta avisa «desactualizada» y tú decides. El eléctrico es autónomo (H-268): nada entra sin aceptarse; calcula sólo con lo capturado y lo aceptado aquí.",
     disponible: () => propuestaElecFilas().length > 0,
     /* H-178: el hp de referencia y la marca de aparato entran a la firma: un proyecto que aceptó antes de la rev 2.9.24 las cargas
        que los traen sale «Desactualizada» y se vuelve a aceptar; sin ellos la firma no cambia. */
-    firma: () => JSON.stringify(propuestaElecFilas().map((c) => [c.nombre, +num(c.kW).toFixed(2), c.cant, c.V, c.ph, ...(num(c.hpRef, 0) > 0 ? [num(c.hpRef)] : []), ...(c.aparato ? ["aparato"] : [])])),
-    resumen: () => { const f = propuestaElecFilas(); return `${f.length} carga(s) · ${n(f.reduce((a, c) => a + num(c.kW) * num(c.cant, 1), 0), 1)} kW · ${f.map((c) => c.nombre.split(" · ")[0]).slice(0, 4).join(", ")}${f.length > 4 ? "…" : ""}`; },
-    actual: () => { const cs = (S.elec.cargas || []); const ced = cs.filter((c) => c.origen === "cedula"); return `${ced.length} carga(s) aceptadas de otros motores · ${cs.length - ced.length} capturada(s) a mano${S.elec.tomarHVAC ? " · además entran EN VIVO por el modo de revisiones anteriores" : ""}`; },
-    enVivo: () => S.elec.tomarHVAC === true && CRUCES_ELEC.some(linkAllowed),
-    aplicar: () => {
-      const f = propuestaElecFilas();
-      const ts = Date.now();
-      /* H-178: volver a aceptar conserva lo que el usuario capturó en la carga del mismo nombre (distancia y hp de placa). */
-      const previas = new Map((S.elec.cargas || []).filter((c) => c.origen === "cedula").map((c) => [c.nombre, c]));
-      const conserva = (p) => (p ? { ...(num(p.L, 0) > 0 ? { L: p.L, ...(p.Lsupuesta != null ? { Lsupuesta: p.Lsupuesta } : {}) } : {}), ...(num(p.hp, 0) > 0 ? { hp: p.hp } : {}), ...(num(p.fp, 0) > 0 ? { fp: p.fp } : {}) } : {});
-      S.elec.cargas = (S.elec.cargas || []).filter((c) => c.origen !== "cedula");
-      /* H-177: el equipo con motocompresor entra con su MCA y su MOP (art. 440); antes se descartaban. */
-      f.forEach((c, i) => S.elec.cargas.push({ id: `ced${ts.toString(36)}${i}`, nombre: c.nombre, tipo: c.tipo, kW: c.kW, V: c.V, ph: c.ph, cant: c.cant, L: c.L, fp: null, fpCasa: c.fp, ...(c.kWOrigen ? { kWOrigen: c.kWOrigen, kWRef: c.kW } : {}), fija: false, origen: "cedula", ts, modelo: c.modelo, estimado: c.estimado,
-        ...(num(c.hpRef, 0) > 0 ? { hpRef: c.hpRef, hpRefOrigen: c.hpRefOrigen } : {}), ...(c.aparato ? { aparato: true } : {}),
-        ...(num(c.mop, 0) > 0 ? { mca: c.mca, mop: c.mop, ...(c.placaEstimada ? { placaEst: { mca: c.mca, mop: c.mop } } : {}) } : {}), ...conserva(previas.get(c.nombre)) }));
-      S.elec.tomarHVAC = false;
-    },
+    firma: () => firmaFilasElec(propuestaElecFilas()),
+    resumen: () => resumenFilasElec(propuestaElecFilas()),
+    actual: () => { const cs = (S.elec.cargas || []); const ced = cs.filter((c) => c.origen === "cedula"); return `${ced.length} carga(s) aceptadas de otros motores (instantánea) · ${cs.length - ced.length} capturada(s) a mano`; },
+    enVivo: () => false,   /* H-268: ya no existe el modo en vivo */
+    aplicar: () => aceptarCargasElec(propuestaElecFilas(), Date.now()),
     propio: () => { S.elec.tomarHVAC = false; },
   },
   "motores>soporte": {
@@ -18371,7 +18403,9 @@ const ENTRADAS = {
   fuego: () => ({ fuego: S.fuego, perms: ePerms(), site: S.site }),
   aire: () => ({ aire: S.aire, site: S.site }),
   civil: () => ({ civil: S.civil }),   /* H-265: obra civil sólo depende de su propia captura */
-  elec: () => ({ elec: S.elec, equip: ENTRADAS.equip(), vent: ENTRADAS.vent(), clean: ENTRADAS.clean(), aire: ENTRADAS.aire(), hidro: ENTRADAS.hidro(), fuego: ENTRADAS.fuego(), perms: ePerms() }),
+  /* H-268: sólo su captura (las cargas aceptadas de otros motores van dentro, como instantánea) y los permisos; tomarHVAC ya no
+     interviene en el cálculo y la marca de migración es pasajera: fuera de la huella. */
+  elec: () => ({ elec: sinClaves(S.elec, ["tomarHVAC", "tomarPropuesta"]), perms: ePerms() }),
   soporte: () => ({ soporte: sinClaves(S.soporte, ["tomarInstantanea", "tomarBases"]) }),   /* H-266: sólo su captura (la instantánea va dentro) */
   quote: () => ({ quote: sinClaves(S.quote, ["prop"]), qfam: S.qfam, perms: ePerms(),
     motores: ["equip", "duct", "vent", "clean", "elec", "hidro", "fuego", "aire", "civil", "soporte"].map((k) => ENTRADAS[k]()) }),
@@ -18384,7 +18418,7 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "6", clean: "3", equip: "1", duct: "4", vent: "4", quote: "24", valor: "1", kaizen: "1", elec: "8", hidro: "8", fuego: "4", aire: "5", civil: "6", soporte: "12" };
+const MOTOR_VER = { load: "6", clean: "3", equip: "1", duct: "4", vent: "4", quote: "24", valor: "1", kaizen: "1", elec: "9", hidro: "8", fuego: "4", aire: "5", civil: "6", soporte: "12" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
@@ -18403,7 +18437,8 @@ const MOTOR_CAMBIOS = {
     { ver: "5", rev: "2.9.24", que: "H-183: conductor de puesta a tierra con la Tabla 250-122 de la NOM-001-SEDE-2012 (p. 151): 400 A → 2 AWG (antes 3 AWG, valor del NEC), renglones hasta 6000 A y columna de aluminio (hasta 100 A la tabla sólo da cobre)" },
     { ver: "6", rev: "2.9.24", que: "H-177: equipo con motocompresor hermético con MCA y MOP por el art. 440: conductor por la MCA de placa (440-4(b), 440-35; una MCA estimada por la suite no lo baja del 125 %) y protección igual al MOP o al valor inmediato inferior de 240-6(a) completo (16, 32, 63 A; abajo de 15 A sólo fusibles de 1, 3, 6, 10 A), sin el 250 % de la Tabla 430-52 (40VMA-240: 150 → 90 A; 40MBC-24: 25 → 15 A). Aceptar la cédula conserva MCA y MOP (marcados estimados); una carga sin kW no fija el principal" },
     { ver: "7", rev: "2.9.24", que: "H-179: nada se supone. Sin distancia al tablero, sin transformador (kVA y Z de placa) o sin longitud de una carga, la caída del alimentador, la corriente de falla con su capacidad interruptiva y la caída del ramal quedan «pendiente» con aviso (antes 30 m, 150 kVA / Z 4 % y 25 m supuestos; 0 m daba 0.00 %). Las cargas de otros motores ya no traen distancia automática (Ltablero + 10 a 30 m). Sin longitud el calibre se declara mínimo por ampacidad. El 80 % del transformador se revisa con sólo el kVA. Proyectos guardados antes conservan sus valores, marcados «sin confirmar». La memoria, el PDF y el libro dan la L de cada carga. Cubre H-189" },
-    { ver: "8", rev: "2.9.24", que: "H-178: la corriente de un motor de uso general sale de la Tabla 430-250 (trifásico) o 430-248 (monofásico, con su columna de 127 V) de la NOM-001-SEDE-2012 (430-6(a)(1)), no de kW/(1.732·V·fp): hp de placa (campo nuevo) o, sin él, el renglón inmediato superior al kW por la columna kW de la propia tabla (decisión del dueño 2; 15 kW → 25 hp → 68 A, antes 46.31 A → 4 AWG/125 A, ahora 3 AWG/175 A). Su kVA en la demanda sale de esa corriente. El hp de catálogo o estimado por otro motor (compresor, bombas) no es de placa: sólo puede subir el renglón. Los FFU entran como aparato (Exc. 2). Fuera de la tabla, corriente ESTIMADA con aviso, o PENDIENTE sin kW. Los proyectos que aceptaron la cédula antes salen con la propuesta «Desactualizada»" }],
+    { ver: "8", rev: "2.9.24", que: "H-178: la corriente de un motor de uso general sale de la Tabla 430-250 (trifásico) o 430-248 (monofásico, con su columna de 127 V) de la NOM-001-SEDE-2012 (430-6(a)(1)), no de kW/(1.732·V·fp): hp de placa (campo nuevo) o, sin él, el renglón inmediato superior al kW por la columna kW de la propia tabla (decisión del dueño 2; 15 kW → 25 hp → 68 A, antes 46.31 A → 4 AWG/125 A, ahora 3 AWG/175 A). Su kVA en la demanda sale de esa corriente. El hp de catálogo o estimado por otro motor (compresor, bombas) no es de placa: sólo puede subir el renglón. Los FFU entran como aparato (Exc. 2). Fuera de la tabla, corriente ESTIMADA con aviso, o PENDIENTE sin kW. Los proyectos que aceptaron la cédula antes salen con la propuesta «Desactualizada»" },
+    { ver: "9", rev: "2.9.24", que: "H-268 (decisión del dueño, 27-sep-2026): el eléctrico es autónomo: calcula sólo con las cargas de su pestaña (capturadas y aceptadas de otros motores como propuesta, instantánea con origen y fecha). Se retiró el modo EN VIVO (tomarHVAC con permisos) que metía al calcular el equipo de la cédula HVAC, el ventilador, el compresor, las bombas y los FFU; aceptar la propuesta concede los cruces y, ya aceptada, no se mueve sola (si el origen cambia sale «desactualizada»). Un proyecto guardado en vivo se migra una vez al abrir (acepta la propuesta con los cruces que tenía) con las mismas cifras. Cambia de dónde salen las entradas del motor, no una fórmula: la huella del sello es sólo S.elec y permisos" }],
   hidro: [{ ver: "2", rev: "2.9.16", que: "tramo sin longitud ya no supone 10 m" }, { ver: "3", rev: "2.9.18", que: "curva de Hunter de IPC apéndice E Table E103.3(3)" }, { ver: "4", rev: "2.9.19", que: "renglones de 2500 a 5000 UM de la misma tabla" },
     { ver: "5", rev: "2.9.24", que: "H-194: presión mínima en la salida de cada mueble por la Tabla 604.3 del IPC 2015 (WC con fluxómetro 35 psi = 24.6 m, antes 10.5 m sin fuente; mingitorio 25, WC de tanque 20, regadera 20 por §424.3, lavabo/fregadero/lavadero/bebedero/manguera 8 psi); la carga dinámica de la bomba lleva máx(residual capturado, mínima de norma del mueble más exigente), antes sólo el residual fijo de 15 m" },
     { ver: "6", rev: "2.9.24", que: "H-195: regadera de emergencia (20 gpm = 75.7 L/min) y lavaojos fijo (0.4 gal/min = 1.5 L/min, mueble nuevo) fuera de Hunter con gasto fijo sumado al del sistema, antes 6 unidades mueble cada uno; volumen para 15 min; el tramo declara el gasto de emergencia que conduce (L/min) con aviso si ninguno lo lleva. Fuente secundaria: ANSI Z358.1-1990 citada por OSHA (cartas del 18-abr-2002 y 22-nov-1993); ratificar con Z358.1-2014" },
@@ -19506,7 +19541,7 @@ function pdfPortadaIntegral(d, sem) {
     ["Ocupacion de diseno", `${g.personas} persona(s)`],
     ["Carga de bloque", `${n(t.tons, 2)} TR · hora pico ${SYS ? SYS.blockHour : "-"}:00`],
   ]);
-  pdfParagraph(d, "Estos datos son la geometria capturada en las zonas de carga termica. Las demas disciplinas ya no la heredan: cada una captura la suya en su pestana (decision del dueno, 27-sep-2026; H-262 a H-266).", { color: [0.294, 0.333, 0.388] });
+  pdfParagraph(d, "Estos datos son la geometria capturada en las zonas de carga termica. Las demas disciplinas ya no la heredan: cada una captura la suya en su pestana (decision del dueno, 27-sep-2026; H-262 a H-268).", { color: [0.294, 0.333, 0.388] });
   pdfHeading(d, "Estado de completitud por disciplina");
   pdfTable(d, ["Disciplina", "Metodo", "Estado", "Resultado"],
     sem.filter(conSemaforo).map((s) => [s.nombre, s.metodo, NIVEL_SEM[s.nivel][0], s.texto]),
@@ -19533,7 +19568,7 @@ function buildMemoriaIntegralPdf() {
   const d = PdfDocBase("Memoria integral de calculo");
   pdfPortadaIntegral(d, sem);
   pdfTrazadoOrigen(d, traza.filter((r) => r.regla === 1), "Trazado de origen · geometria y ocupacion (regla 1)");
-  if (!traza.some((r) => r.regla === 1)) pdfParagraph(d, "Trazado de origen, regla 1 (herencia): ninguna disciplina hereda datos de otra. Cada una calcula con lo que se le captura en su pestana; un resultado de otra disciplina entra solo como propuesta aceptada (regla 2) (decision del dueno, 27-sep-2026; H-262 a H-266).");
+  if (!traza.some((r) => r.regla === 1)) pdfParagraph(d, "Trazado de origen, regla 1 (herencia): ninguna disciplina hereda datos de otra. Cada una calcula con lo que se le captura en su pestana; un resultado de otra disciplina entra solo como propuesta aceptada (regla 2) (decision del dueno, 27-sep-2026; H-262 a H-268).");
   pdfTrazadoOrigen(d, traza.filter((r) => r.regla === 2), "Trazado de origen · resultados aceptados entre disciplinas (regla 2)");
   pdfOrigenArchivos(d);
   pdfParagraph(d, "Regla de la casa: ningun resultado calculado entra solo a otra disciplina. Se ofrece como propuesta, el usuario la acepta o captura la suya, y queda el origen y la fecha. Si el dato de origen cambia despues, el destino NO se recalcula solo: se marca desactualizado y el usuario decide.", { color: [0.294, 0.333, 0.388] });
@@ -20819,7 +20854,7 @@ function viewElec() {
       <div class="card"><h3>Cuadro de cargas<span class="tag">${R.calc.length} carga(s)</span></h3>
         <div class="tw"><table>
           <thead><tr><th>Carga</th><th class="num">kW</th><th class="num">V/F</th><th class="num">A</th><th class="num">Cal.</th><th class="num">Prot.</th><th class="num">Tierra</th><th class="num">Tubo</th><th class="num">e %</th><th></th></tr></thead>
-          <tbody>${R.calc.map(fila).join("") || `<tr><td colspan="10" class="sub">Sin cargas. Agrega una, o autoriza que entren las de la cédula HVAC.</td></tr>`}</tbody>
+          <tbody>${R.calc.map(fila).join("") || `<tr><td colspan="10" class="sub">Sin cargas. Agrega una, o acepta la propuesta de cargas de los demás motores (entran como instantánea, con origen y fecha).</td></tr>`}</tbody>
         </table></div>
       </div>
       <div class="card"><h3>Demanda y alimentador general</h3><div class="body">
@@ -21450,9 +21485,9 @@ const GUIA = {
   ductos: { que: "Dimensiona cada tramo por fricción constante o por velocidad —Darcy–Weisbach con Haaland—, con calibres SMACNA por clase de presión, accesorios Ductmate compatibles y cuantificación de lámina.",
     cuando: "Cuando ya hay caudales. Se pueden generar los tramos desde la carga térmica con un botón.",
     ojo: "El ventilador debe vencer el recorrido crítico, no la suma de todos los tramos. Por ahora la suite muestra la suma de los tramos de suministro y retorno, porque el recorrido crítico todavía no se calcula: es cota superior del recorrido crítico de los tramos capturados; no incluye tramos, rejillas ni filtros que no estén en la lista. La red que se genera desde la carga no trae tramos de retorno: si no los capturas, la cifra tampoco los incluye. La presión real del recorrido crítico se revisa a mano. Si un tramo domina la pérdida, revisa su velocidad o sus accesorios antes de subir el equipo." },
-  electrico: { que: "Cuadro de cargas del proyecto: demanda, balanceo por fase, alimentador, protección, tierra y canalización.",
-    cuando: "Cuando la cédula de equipos está cerrada, para aceptar como propuesta sus cargas con su kW, tensión y fases.",
-    ojo: "No es estudio de corto circuito ni coordinación de protecciones: los datos del transformador de la acometida solo sirven para estimar la corriente de falla, elegir la capacidad interruptiva y avisar si la demanda pasa del 80 % de su capacidad.",
+  electrico: { que: "Cuadro de cargas del proyecto con lo que capturas en esta pestaña: demanda, balanceo por fase, alimentador, protección, tierra y canalización.",
+    cuando: "Cuando la cédula de equipos está cerrada, para aceptar como propuesta sus cargas con su kW, tensión y fases, junto con el ventilador, el compresor, las bombas y los FFU que ya calcularon los otros motores.",
+    ojo: "Eléctrico es autónomo (H-268): calcula sólo con las cargas capturadas aquí y con las que aceptas de los demás motores como propuesta (instantánea con origen y fecha); nada entra sin aceptarse y, si el origen cambia, la propuesta avisa «desactualizada» y tú decides. El sistema, la distancia al tablero y el transformador también se capturan aquí. No es estudio de corto circuito ni coordinación de protecciones: los datos del transformador de la acometida solo sirven para estimar la corriente de falla, elegir la capacidad interruptiva y avisar si la demanda pasa del 80 % de su capacidad.",
     metodo: "Ampacidad de la Tabla 310-15(b)(16) a 75 °C corregida por temperatura y agrupamiento, factores de demanda del art. 220, 125 % del motor mayor por el art. 430-24, protección por 240-6 y tierra por la Tabla 250-122. La caída de tensión se resuelve con R·cosφ + X·senφ y la Tabla 9 del capítulo 9, no con una constante K." },
   hidro: { que: "Agua fría y caliente por unidades mueble y método de Hunter, drenaje sanitario, cisterna y equipo de bombeo.",
     cuando: "Cuando hay muebles sanitarios que resolver; corre independiente del aire.",
@@ -22428,6 +22463,7 @@ function sanearEstado(d) {
   const elecViejo = !!(s.elec && typeof s.elec === "object" && !("h179" in s.elec));
   const elecSin178 = !!(s.elec && typeof s.elec === "object" && !("h178" in s.elec));
   const elecSin180 = !!(s.elec && typeof s.elec === "object" && !("h180" in s.elec));
+  const elecSin268 = !!(s.elec && typeof s.elec === "object" && !("h268" in s.elec));
   s.elec = { ...defaultElec(), ...(s.elec && typeof s.elec === "object" ? s.elec : {}) };
   if (elecViejo) {
     const sc = {};
@@ -22467,6 +22503,19 @@ function sanearEstado(d) {
       if (!c.kWOrigen) { c.kWOrigen = o; c.kWRef = c.kW; }
     });
     s.elec.h180 = true;
+  }
+  /* H-268 (decisión del dueño, 27-sep-2026): el eléctrico ya no toma cargas de otros motores EN VIVO. Un proyecto guardado en ese
+     modo (tomarHVAC con algún cruce hacia el eléctrico autorizado) las acepta UNA vez al abrir como propuesta —sólo las de los
+     cruces que tenía autorizados— y quedan como instantánea con fecha: abre con las mismas cifras y desde ahí no se mueve solo.
+     La marca (los cruces) la consume recompute después de que corren los motores que alimentan la propuesta. Ningún número
+     cambia; tomarHVAC queda apagado y sin uso. */
+  if (elecSin268) {
+    const enVivo = s.elec.tomarHVAC === true || s.elec.tomarHVAC === "true";
+    const perms = s.perms && typeof s.perms === "object" ? s.perms : {};
+    const cruces = enVivo ? CRUCES_ELEC.filter((k) => !!perms[k]) : [];
+    if (cruces.length) s.elec.tomarPropuesta = cruces;
+    s.elec.tomarHVAC = false;
+    s.elec.h268 = true;
   }
      if (!Array.isArray(s.elec.cargas)) s.elec.cargas = [];
    s.elec.aislamiento = aislamientoDe(s.elec.aislamiento);

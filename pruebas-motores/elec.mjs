@@ -56,10 +56,11 @@ export default async function ({ t, G, S, CM, fs }) {
     grupo.forEach((f) => { if (CM.esFase2(f) && !CM.exigirFase2) return; CM.comprobar(f, evalua(f.expresion)); });
   };
   const dc = (nombre) => G("defaultCarga")(nombre);
-  /* Arma S.elec como las pruebas 22.4/J.1 (sólo S.elec; el resto del estado no interviene con tomarHVAC:false). */
+  /* Arma S.elec como las pruebas 22.4/J.1 (sólo S.elec: desde H-268 el eléctrico es autónomo y el resto del estado nunca
+     interviene en computeElec; las cargas de otros motores entran sólo como propuesta aceptada, que estos casos no aceptan). */
   const conEstado = (elec, fn) => {
     const guardado = JSON.stringify(S.elec);
-    try { S.elec = { ...G("defaultElec")(), tomarHVAC: false, ...elec }; G("recompute")(); fn(); }
+    try { S.elec = { ...G("defaultElec")(), ...elec }; G("recompute")(); fn(); }
     finally { S.elec = JSON.parse(guardado); G("recompute")(); }
   };
   /* H-179: defaultElec() ya no supone distancia al tablero ni transformador; el caso los captura (entradas de la hoja). */
