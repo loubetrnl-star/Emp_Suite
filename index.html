@@ -14259,34 +14259,24 @@ function cxProp(etiqueta, valor, unidad, fuente, opts) {
 /* exteriores: qué caras del rectángulo del cuarto dan al exterior. Una cara
    que comparte muro con otro cuarto del plano no gana calor del sol ni del
    aire de afuera, y contarla como exterior inflaba la carga hasta un 20 %. */
-/* Referencia de una zona típica de 120 m² (oficina), usada SOLO para estimar
-   lo que un plano no trae explícito (altura, ocupantes, W de luces/equipo,
-   muros/vidrio sin rectángulo envolvente). Arranque en ceros (17-sep-2026):
-   defaultZone() ya nace en 0 para un proyecto nuevo, así que esta escala de
-   importación necesita su propia referencia, separada del estado en blanco. */
-const ZONA_REF_120M2 = { height: 2.8, occ: 12, lights: 1200, equip: 1440,
-  walls: { N: 28, NE: 0, E: 18, SE: 0, S: 28, SW: 0, W: 18, NW: 0 },
-  glass: { N: 4, NE: 0, E: 6, SE: 0, S: 12, SW: 0, W: 8, NW: 0 } };
+/* H-272c (regla 6, decisión del dueño 27-sep-2026) · La zona nace SÓLO con lo que el archivo trae: área, altura rotulada,
+   personas rotuladas y muros exteriores por cara del rectángulo envolvente A LA ALTURA ROTULADA. Lo demás queda en 0 =
+   pendiente, y el motor de carga lo dice. Antes se rellenaba con una oficina de referencia de 120 m² (altura 2.8 m, 12
+   personas, 1200 W de luces, 1440 W de equipo, muros y vidrio a escala) que entraba sola y no quedaba en ningún registro. */
 function cxZonaDesde(nombre, area, altura, personas, bbox, exteriores) {
   const z = defaultZone(nombre);
-  const a = Math.max(1, +area || 0);
-  const h = +altura > 0 ? +altura : ZONA_REF_120M2.height;
-  const k = a / 120;                           // la zona de referencia es de 120 m²
+  const a = Math.max(0, +area || 0), h = +altura > 0 ? +altura : 0;
   z.area = +a.toFixed(2); z.height = +h.toFixed(2);
-  z.occ = personas > 0 ? Math.round(personas) : Math.max(1, Math.round(ZONA_REF_120M2.occ * k));
-  z.lights = Math.round(ZONA_REF_120M2.lights * k); z.equip = Math.round(ZONA_REF_120M2.equip * k);
-  if (bbox && bbox.x1 > bbox.x0 && bbox.y1 > bbox.y0) {
-    /* Con planta: muros por cara del rectángulo envolvente, a la altura real,
-       solo en las caras que dan al exterior. El vidrio no se deduce de un plano
-       y queda en cero. */
+  z.occ = personas > 0 ? Math.round(personas) : 0;
+  z.lights = 0; z.equip = 0;
+  ORI.forEach((o) => { z.walls[o] = 0; z.glass[o] = 0; });
+  if (bbox && bbox.x1 > bbox.x0 && bbox.y1 > bbox.y0 && h > 0) {
+    /* Con planta y altura rotulada: muros por cara del rectángulo envolvente, solo en las caras que dan al exterior. El vidrio
+       no se deduce de un plano y queda en cero. Sin altura no hay muro que calcular: queda pendiente junto con la altura. */
     const ex = exteriores || { N: true, S: true, E: true, W: true };
     const ancho = bbox.x1 - bbox.x0, fondo = bbox.y1 - bbox.y0;
-    ORI.forEach((o) => { z.walls[o] = 0; z.glass[o] = 0; });
     z.walls.N = ex.N ? +(ancho * h).toFixed(1) : 0; z.walls.S = ex.S ? +(ancho * h).toFixed(1) : 0;
     z.walls.E = ex.E ? +(fondo * h).toFixed(1) : 0; z.walls.W = ex.W ? +(fondo * h).toFixed(1) : 0;
-  } else {
-    const s = Math.sqrt(k);
-    ORI.forEach((o) => { z.walls[o] = +(num(ZONA_REF_120M2.walls[o]) * s).toFixed(1); z.glass[o] = +(num(ZONA_REF_120M2.glass[o]) * s).toFixed(1); });
   }
   return z;
 }
@@ -14307,26 +14297,38 @@ function cxCarasExteriores(p, util) {
   return ex;
 }
 const CX_MAX_ZONAS = 80;
-/* Zonas del lote: la geometría del DXF manda; el texto completa lo que falte. */
-function cxZonasDelLote(A) {
-  const out = [];
-  if (!Array.isArray(A.avisosPropuesta)) A.avisosPropuesta = [];
-  const avisa = (t) => { if (!A.avisosPropuesta.includes(t)) A.avisosPropuesta.push(t); };
-  /* Textos de cada plano que caen DENTRO de un cuarto: son del cuarto, no del
-     edificio, y su altura no se reparte a los demás. */
+/* Textos de cada plano que caen DENTRO de un cuarto: son del cuarto, no del edificio. Se calcula una vez por análisis. */
+function cxTextosDentro(A) {
+  if (A._dentro) return A._dentro;
   const dentro = new Map();
-  A.dxf.forEach(({ archivo, r }) => {
+  (A.dxf || []).forEach(({ archivo, r }) => {
     const util = cxPoligonosUtiles(r);
     const set = new Set();
     (r.textos || []).forEach((t) => {
       if (t.x == null || t.y == null) return;
       if (util.base.some((p) => t.x >= p.bbox.x0 && t.x <= p.bbox.x1 && t.y >= p.bbox.y0 && t.y <= p.bbox.y1 && cxPuntoEnPoligono([t.x, t.y], p.v || []))) set.add(String(t.texto).trim().slice(0, 200));
     });
-    dentro.set(archivo, set);
+    dentro.set(archivo, { textos: set, raices: util.raices.length });
   });
+  A._dentro = dentro;
+  return dentro;
+}
+/* H-272c · Una magnitud rotulada dentro de un cuarto es de ese cuarto: no es el área total, la altura general ni los ocupantes
+   del edificio (antes «NAVE 300 m2» y «h=3.20 m» de un cuarto se volvían área a proteger y altura general). Con un solo espacio
+   en el plano, el cuarto ES el local y sus rótulos valen para el conjunto, salvo que se pida `aunSolo`. */
+function cxTextoDeCuarto(A, m, aunSolo) {
+  const d = cxTextosDentro(A).get(m.archivo);
+  if (!d || !d.textos.has(String(m.texto).trim().slice(0, 200))) return false;
+  return aunSolo ? true : d.raices >= 2;
+}
+/* Zonas del lote: la geometría del DXF manda; el texto completa lo que falte. */
+function cxZonasDelLote(A) {
+  const out = [];
+  if (!Array.isArray(A.avisosPropuesta)) A.avisosPropuesta = [];
+  const avisa = (t) => { if (!A.avisosPropuesta.includes(t)) A.avisosPropuesta.push(t); };
   const deUnCuarto = (m) => /\d\s*(m2|m²)/i.test(m.texto) && !/total|general|nave|edificio|libre/i.test(m.texto);
   const candG = A.magnitudes.filter((m) => m.clave === "altura_m" && typeof m.valor === "number" && m.valor >= 2 && m.valor <= 30 &&
-    m.confianza >= .8 && !m.ambiguo && !deUnCuarto(m) && !((dentro.get(m.archivo) || new Set()).has(String(m.texto).trim().slice(0, 200))));
+    m.confianza >= .8 && !m.ambiguo && !deUnCuarto(m) && !cxTextoDeCuarto(A, m, true));
   /* Una sola altura general, o ninguna: si el documento trae varias distintas
      no se escoge la mayor por las demás. */
   const distintas = new Set(candG.map((m) => Math.round(m.valor * 100)));
@@ -14358,7 +14360,8 @@ function cxZonasDelLote(A) {
   });
   A.zonasTexto.forEach((z) => {
     const dup = out.some((o) => Math.abs(o.m2 - z.m2) < 0.5 || o.nombre.toLowerCase() === String(z.nombre).toLowerCase());
-    if (dup) return;
+    /* H-272c (D16): «Área total» o «superficie del edificio» no es una zona: es el total del documento. */
+    if (dup || /\b(total|general|edificio)\b/i.test(String(z.nombre))) return;
     const iso = (cxAnalizarTexto([z.texto]).magnitudes.find((m) => m.clave === "iso_clase") || {}).valor || null;
     out.push({ nombre: z.nombre, m2: z.m2, altura: rango(z.altura, 2, 40) || (alturaG ? alturaG.valor : null), personas: rango(z.personas, 1, 5000), iso, bbox: null, TR: z.TR,
       fuente: { archivo: z.archivo, pagina: z.pagina, texto: z.texto, confianza: z.ambiguo ? .6 : .75 } });
@@ -14439,9 +14442,10 @@ function cxAreaTotal(A) {
      paño que se supone operando a la vez, y tiene su propio campo. */
   const EXCL = /predio|terreno|\blote\b|estacionamiento|vialidad|jard[ií]n|banqueta|patio de maniobras|\bparcela\b|dise[nñ]o|design|densidad|gpm\s*\/\s*ft/i;
   const PRIO = /a proteger|construida|\btotal\b|\bnave\b|edificio|cubierta|techada|desplante/i;
-  const cands = A.magnitudes.filter((m) => m.clave === "area_m2" && typeof m.valor === "number" && m.valor >= 4 && m.confianza >= .6 && !EXCL.test(m.texto));
-  let dxfSum = 0, arch = "";
-  A.dxf.forEach(({ archivo, r }) => { const { raices } = cxPoligonosUtiles(r); const s = raices.reduce((a, p) => a + p.m2, 0); if (s > dxfSum) { dxfSum = s; arch = archivo; } });
+  /* H-272c: el rótulo de UN cuarto («NAVE 300 m2» dentro de la nave de un plano con varios espacios) no es el área total. */
+  const cands = A.magnitudes.filter((m) => m.clave === "area_m2" && typeof m.valor === "number" && m.valor >= 4 && m.confianza >= .6 && !EXCL.test(m.texto) && !cxTextoDeCuarto(A, m));
+  let dxfSum = 0, arch = "", nRaices = 0;
+  A.dxf.forEach(({ archivo, r }) => { const { raices } = cxPoligonosUtiles(r); const s = raices.reduce((a, p) => a + p.m2, 0); if (s > dxfSum) { dxfSum = s; arch = archivo; nRaices = raices.length; } });
   const prio = cands.filter((m) => PRIO.test(m.texto));
   if (prio.length) {
     const orden = prio.slice().sort((a, b) => (b.confianza - a.confianza) || (b.valor - a.valor));
@@ -14449,7 +14453,7 @@ function cxAreaTotal(A) {
     const best = orden[0];
     return { valor: best.valor, fuente: best, marcado: distintos.size === 1 && best.confianza >= .8 && !best.ambiguo, opciones: distintos.size > 1 ? cxOpcionesArea(prio) : [] };
   }
-  if (dxfSum > 0) return { valor: +dxfSum.toFixed(2), fuente: { archivo: arch, pagina: null, texto: "suma de polilíneas cerradas exteriores del plano", confianza: .85 }, marcado: true, opciones: [] };
+  if (dxfSum > 0) return { valor: +dxfSum.toFixed(2), fuente: { archivo: arch, pagina: null, texto: `suma de ${nRaices} polilínea(s) cerrada(s) exteriores del plano`, confianza: .85 }, marcado: true, opciones: [] };
   if (!cands.length) return null;
   const ops = cxOpcionesArea(cands);
   if (ops.length === 1) return { valor: ops[0].valor, fuente: ops[0], marcado: ops[0].confianza >= .8 && !ops[0].ambiguo, opciones: [] };
@@ -14504,8 +14508,10 @@ function cxPropuestasPara(tab, A, fuentes) {
   A.avisosPropuesta = [];
   const set = (path) => (v) => setPath(path, v);
   const area = cxAreaTotal(A);
-  const altura = cxMejor(A, "altura_m", (m) => m.valor >= 2 && m.valor <= 40 && !m.ambiguo);
-  const ocup = cxMayor(A, "ocupantes", (m) => m.valor >= 1 && m.valor <= 20000);
+  /* H-272c: la altura y los ocupantes generales del documento; lo rotulado dentro de un cuarto (en un plano con varios) es de
+     ese cuarto y no se vuelve dato del edificio (D6). */
+  const altura = cxMejor(A, "altura_m", (m) => m.valor >= 2 && m.valor <= 40 && !m.ambiguo && !cxTextoDeCuarto(A, m));
+  const ocup = cxMayor(A, "ocupantes", (m) => m.valor >= 1 && m.valor <= 20000 && !cxTextoDeCuarto(A, m));
   /* El área total se ofrece una vez si es clara, o como opciones sin marcar si
      el documento trae varias que no se pueden desempatar. */
   const proponerArea = (etiqueta, destino, fn) => {
@@ -14521,18 +14527,27 @@ function cxPropuestasPara(tab, A, fuentes) {
     cxZonasDelLote(A).forEach((z) => {
       const ext = z.exteriores ? ["N", "E", "S", "W"].filter((o) => z.exteriores[o]) : null;
       const muros = !z.bbox ? "" : ext.length ? ` · muros exteriores ${ext.join(", ")}` : " · sin muros exteriores";
-      P.push(cxProp(`Zona · ${z.nombre}`, `${n(z.m2, 1)} m²${z.altura ? ` · h ${n(z.altura, 2)} m` : ""}${z.personas ? ` · ${z.personas} personas` : ""}${muros}`, "", z.fuente,
+      /* H-272c (regla 6): la zona entra sólo con lo que el archivo trae; lo demás queda pendiente y se dice aquí y en el motor. */
+      const pend = [!(z.altura > 0) && "altura", !(z.personas > 0) && "ocupantes", "luces y equipo"].filter(Boolean);
+      P.push(cxProp(`Zona · ${z.nombre}`, `${n(z.m2, 1)} m²${z.altura ? ` · h ${n(z.altura, 2)} m` : ""}${z.personas ? ` · ${z.personas} personas` : ""}${muros}${z.bbox && !(z.altura > 0) ? " (muro pendiente de altura)" : ""} · pendientes: ${pend.join(", ")}`, "", z.fuente,
         { grupo: "zona", destino: "zones", fn: () => ({ zona: cxZonaDesde(z.nombre, z.m2, z.altura, z.personas, z.bbox, z.exteriores) }) }));
     });
+    if (P.some((p) => p.grupo === "zona")) A.avisosPropuesta.push("Carga térmica: cada zona entra sólo con lo que el archivo trae (área, altura y personas rotuladas, muros exteriores a la altura rotulada). Ocupantes, luces, equipo y vidrio no se suponen: quedan en 0, pendientes de captura, y el motor lo dice.");
   } else if (tab === "limpios") {
+    /* H-272c (regla 6): sin clase ISO escrita no se supone ninguna (antes ISO 7 con confianza 0.9, y entraba solo): el cuarto se
+       ofrece SIN marcar con la clase pendiente. Los cambios de aire del documento sólo si trae UNO (varios distintos no se
+       reparten a todos los cuartos). */
     const isoG = cxMejor(A, "iso_clase");
-    const achG = cxMejor(A, "ach", (m) => m.valor >= 5 && m.valor <= 700 && !m.ambiguo);
+    const achsDoc = A.magnitudes.filter((m) => m.clave === "ach" && typeof m.valor === "number" && m.valor >= 5 && m.valor <= 700 && !m.ambiguo);
+    const achG = achsDoc.length && new Set(achsDoc.map((m) => Math.round(m.valor))).size === 1 ? achsDoc[0] : null;
+    if (achsDoc.length && !achG) A.avisosPropuesta.push("Cuartos limpios: el documento trae varios cambios de aire distintos; no se asigna ninguno a los cuartos (captúralos por cuarto).");
     cxZonasDelLote(A).filter((z) => z.iso || /limpio|clean|ISO/i.test(z.nombre + " " + z.fuente.texto)).forEach((z) => {
-      const iso = z.iso || (isoG ? isoG.valor : 7);
-      P.push(cxProp(`Cuarto · ${z.nombre}`, `ISO ${iso} · ${n(z.m2, 1)} m²${z.altura ? ` · h ${n(z.altura, 2)} m` : ""}`, "", z.fuente,
-        { grupo: "cuarto", destino: "clean.rooms", fn: () => {
+      const iso = z.iso || (isoG ? isoG.valor : null);
+      P.push(cxProp(`Cuarto · ${z.nombre}`, `${iso ? `ISO ${iso}` : "clase ISO pendiente (revisar)"} · ${n(z.m2, 1)} m²${z.altura ? ` · h ${n(z.altura, 2)} m` : " · altura: pendiente"}${achG ? ` · ${n(achG.valor, 0)} cambios/h` : ""}`, "", z.fuente,
+        { grupo: "cuarto", destino: "clean.rooms", marcado: iso ? undefined : false, confianza: iso ? undefined : Math.min(.6, z.fuente.confianza || .6), fn: () => {
           const c = defaultRoom(z.nombre);
-          c.iso = ISO_CLASSES["iso" + iso] ? "iso" + iso : c.iso; c.area = +z.m2.toFixed(2);
+          if (iso && ISO_CLASSES["iso" + iso]) c.iso = "iso" + iso;   // sin clase escrita se queda la de un cuarto nuevo: la propuesta la declara pendiente
+          c.area = +z.m2.toFixed(2);
           if (z.altura) c.height = +z.altura; if (z.personas) c.occ = z.personas;
           if (achG) c.achSet = achG.valor;
           return { cuarto: c };
@@ -14636,8 +14651,12 @@ function cxPropuestasPara(tab, A, fuentes) {
     const res = cxMejor(A, "mca", (m) => /residual/i.test(m.texto));
     if (res) P.push(cxProp("Presión residual", res.valor, "mca", res, { destino: "hidro.presResidual", fn: set("hidro.presResidual") }));
   } else if (tab === "fuego") {
-    proponerArea("Área a proteger", "fuego.area", (v) => { setPath("fuego.area", Math.round(v)); marcarPropio("fuego.area"); });
-    if (altura) P.push(cxProp("Altura libre", altura.valor, "m", altura, { destino: "fuego.altura", fn: (v) => { setPath("fuego.altura", v); marcarPropio("fuego.altura"); } }));
+    proponerArea("Área a proteger", "fuego.area", (v) => setPath("fuego.area", Math.round(v)));
+    /* H-272c: la altura general del documento; si sólo hay alturas rotuladas por cuarto, la del cuarto más alto (H-205: el
+       rociador más alto dimensiona la estática), dicho así en el origen. marcarPropio() era código muerto (HEREDA = {}). */
+    const cuartosH = cxEspaciosDelPlano(A).filter((e) => e.altura > 0).sort((a, b) => b.altura - a.altura);
+    if (altura) P.push(cxProp("Altura libre", altura.valor, "m", altura, { destino: "fuego.altura", fn: set("fuego.altura") }));
+    else if (cuartosH.length) P.push(cxProp("Altura libre · la mayor de los cuartos del plano", cuartosH[0].altura, "m", { ...cuartosH[0].fuente, texto: `${cuartosH[0].nombre}: h ${n(cuartosH[0].altura, 2)} m${cuartosH.length > 1 ? ` (el más alto de ${cuartosH.length} cuartos con altura rotulada)` : ""}` }, { destino: "fuego.altura", fn: set("fuego.altura") }));
     const rg = A.magnitudes.find((m) => m.clave === "riesgo_nfpa");
     if (rg) {
       const v = String(rg.valor);
@@ -14668,9 +14687,11 @@ function cxPropuestasPara(tab, A, fuentes) {
         const q = factor ? q0 * factor : q0;
         const nombre = cxCeldaTxt(r, f, i, cN) || `Consumo ${i + 1}`;
         const cant = cxCeldaNum(r, f, i, cC);
-        P.push(cxProp(`Consumo · ${nombre}`, `${n(q, 0)} l/min${factor && factor !== 1 ? ` (de ${n(q0, 2)} ${cQ})` : ""}${factor ? "" : " · unidad no reconocida"}${cant ? ` × ${cant}` : ""}`, "",
+        /* H-272c: sin columna de cantidad, cada renglón de la lista es UN consumidor (lectura, no estimación): antes cant quedaba en
+           0 y la demanda pico del archivo era 0. Con columna de cantidad vacía o en 0 se respeta el archivo (0 = pendiente). */
+        P.push(cxProp(`Consumo · ${nombre}`, `${n(q, 0)} l/min${factor && factor !== 1 ? ` (de ${n(q0, 2)} ${cQ})` : ""}${factor ? "" : " · unidad no reconocida"}${cant ? ` × ${cant}` : cC ? " · cantidad en 0 en el archivo (pendiente)" : " · 1 por renglón (sin columna de cantidad)"}`, "",
           { archivo, texto: Object.entries(cruda).map(([k, v]) => `${k}: ${v}`).join(" · "), confianza: factor ? .9 : .5 },
-          { grupo: "consumo", destino: "aire.consumos", marcado: !!factor, fn: () => { const c = defaultConsumo(nombre.slice(0, 60)); c.lmin = +q.toFixed(1); if (cant > 0) c.cant = Math.max(1, Math.round(cant)); return { consumo: c }; } }));
+          { grupo: "consumo", destino: "aire.consumos", marcado: !!factor, fn: () => { const c = defaultConsumo(nombre.slice(0, 60)); c.lmin = +q.toFixed(1); c.cant = cant > 0 ? Math.max(1, Math.round(cant)) : (cC ? 0 : 1); return { consumo: c }; } }));
       });
     });
   } else if (tab === "civil") {

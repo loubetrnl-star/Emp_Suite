@@ -1824,7 +1824,7 @@ t("16.7 la misma área repartida en las ocho da una carga solar coherente con la
     par(0, "SECTION") + par(2, "ENTITIES") +
     lw("A-MURO", [[0, 0], [12000, 0], [12000, 8000], [0, 8000]]) +
     lw("A-MURO", [[12000, 0], [20000, 0], [20000, 8000], [12000, 8000]]) +
-    par(0, "TEXT") + par(8, "A-TEXTO") + par(10, 6000) + par(20, 4000) + par(40, 250) + par(1, "OFICINA ABIERTA 96 m2") +
+    par(0, "TEXT") + par(8, "A-TEXTO") + par(10, 6000) + par(20, 4000) + par(40, 250) + par(1, "OFICINA ABIERTA 96 m2 h=2.80 m") +   /* H-272c: la altura viene rotulada; sin rótulo ya no se supone */
     par(0, "TEXT") + par(8, "A-TEXTO") + par(10, 16000) + par(20, 4000) + par(40, 250) + par(1, "CUARTO LIMPIO ISO 8 64 m2 h=3.20 m") +
     par(0, "LINE") + par(8, "M-DUCTO-SA") + par(10, 0) + par(20, 0) + par(11, 30000) + par(21, 0) +
     par(0, "ENDSEC") + par(0, "EOF");
@@ -1927,10 +1927,12 @@ t("16.7 la misma área repartida en las ocho da una carga solar coherente con la
     if (!lista.find((p) => p.id === S.pid)) throw new Error("el proyecto nuevo no quedó guardado como proyecto independiente");
     eq(viejo.data.cx ? viejo.data.cx.lotes.length : 0, 0, "el registro de carga se escribió en el proyecto equivocado:");
   });
-  t("17.8 la zona nacida del plano calcula: muros exteriores a la altura real, el muro compartido en cero y sin vidrio inventado", () => {
+  t("17.8 la zona nacida del plano calcula con lo que el plano trae: muros exteriores a la altura ROTULADA, el muro compartido en cero, y sin vidrio, ocupantes, luces ni equipo inventados (H-272c)", () => {
     const z = S.zones[0];
-    cerca(z.walls.N, 12 * 2.8, .2, "muro norte = ancho × altura:");
-    cerca(z.walls.W, 8 * 2.8, .2, "muro poniente = fondo × altura:");
+    cerca(z.height, 2.8, 1e-9, "altura rotulada en el plano:");
+    cerca(z.walls.N, 12 * 2.8, .2, "muro norte = ancho × altura rotulada:");
+    cerca(z.walls.W, 8 * 2.8, .2, "muro poniente = fondo × altura rotulada:");
+    eq(z.occ, 0, "ocupantes no rotulados no se suponen (antes 10 por escala de una oficina de 120 m²):"); eq(z.lights, 0, "luces (antes 960 W supuestos):"); eq(z.equip, 0, "equipo (antes 1152 W supuestos):");
     /* La oficina comparte su cara oriente con el cuarto limpio del mismo plano. */
     eq(z.walls.E, 0, "muro oriente compartido con otro cuarto:");
     eq(["N", "NE", "E", "SE", "S", "SW", "W", "NW"].reduce((a, o) => a + z.glass[o], 0), 0, "vidrio:");
@@ -7900,6 +7902,47 @@ t("S.102 (H-266) soportería es autónoma: sin la instantánea aceptada no cuent
       const cuadros = Array.from({ length: 34 }, (_, i) => archivo(`cuadro-${i + 1}.csv`, `circuito,descripcion,Potencia (kW),Tension,Fases\nC-${i + 1},Tablero ${i + 1},${(i + 1) * 0.5},220 V,3F\n`, `Electrico/cuadro-${i + 1}.csv`));
       await cargar(cuadros);
       eq(S.elec.cargas.length, 34, "cargas:"); eq(G("cxLotesDe")("electrico").length, 34, "registros de origen (uno por archivo):");
+      eq(w.__errs.length, 0, "errores de ventana:");
+    });
+    await tA("S.122 (H-272c) nada se supone al cargar: la zona de carga térmica entra sólo con lo que el plano trae (altura y personas rotuladas, muros exteriores a esa altura; ocupantes, luces, equipo y vidrio en 0 = pendientes); un cuarto sin clase ISO escrita queda sin marcar con la clase pendiente; el área a proteger de un plano de varios cuartos es la suma de sus polígonos exteriores y la altura la del cuarto más alto, con su origen; un consumo de aire sin columna de cantidad es 1 por renglón", async () => {
+      limpio("S.122");
+      await cargar([archivo("levantamiento.dxf", DXF_LEV, "Carga termica/levantamiento.dxf")]);
+      const f = filasT()[0]; eq(f.motor, "carga", "motor:"); eq(f.estado, "listo", f.detalle);
+      /* Las zonas son los cuartos «hoja» del plano (la nave contiene al cuarto limpio y no se duplica como zona). */
+      const ofi = S.zones.find((z) => /OFICINA/.test(z.name)), k = S.zones.find((z) => /LIMPIO/.test(z.name));
+      if (!ofi || !k) throw new Error("zonas del plano: " + S.zones.map((z) => z.name).join(","));
+      cerca(ofi.height, 3, 1e-9, "altura rotulada de la oficina:"); eq(ofi.occ, 0, "ocupantes no rotulados no se suponen:"); eq(ofi.lights, 0, "luces no se suponen:"); eq(ofi.equip, 0, "equipo no se supone:");
+      cerca(ofi.walls.N, 10 * 3, .2, "muro norte = ancho × altura rotulada:"); eq(ofi.walls.W, 0, "cara compartida con la nave:");
+      eq(["N", "NE", "E", "SE", "S", "SW", "W", "NW"].reduce((a, o) => a + ofi.glass[o], 0), 0, "el vidrio no se deduce de un plano:");
+      eq(k.height, 0, "sin altura rotulada no se supone ninguna:"); eq(["N", "E", "S", "W"].reduce((a, o) => a + k.walls[o], 0), 0, "sin altura no hay muro que calcular:");
+      const pK = G("CXZ_LOTES")[f.id].propuestas.find((p) => /LIMPIO/.test(p.etiqueta));
+      contiene(pK.valor, "pendientes", "la propuesta dice qué queda pendiente:"); contiene(pK.valor, "altura", "…incluida la altura:");
+      contiene((G("CXZ_LOTES")[f.id].analisis.avisosPropuesta || []).join(" "), "no se suponen", "el aviso de la carga lo dice:");
+      G("recompute")();
+      const Lofi = G("LOADS")[S.zones.indexOf(ofi)];
+      if (!(Lofi && Lofi.tons > 0)) throw new Error("la oficina con altura rotulada debe producir carga (muros y envolvente): " + JSON.stringify(Lofi && Lofi.tons));
+      /* Cuartos limpios: sin clase ISO escrita no se supone ISO 7: el cuarto se ofrece sin marcar y lo dice. */
+      limpio("S.122b");
+      const DXF_SINISO = dxfDe(rect("A-MURO", 0, 0, 8000, 5000) + txt("A-TEXTO", 4000, 2500, "CUARTO LIMPIO LLENADO 40 m2"));
+      await cargar([archivo("llenado.dxf", DXF_SINISO, "Cuartos limpios/llenado.dxf")]);
+      const f2 = filasT()[0]; eq(f2.motor, "limpios", "motor:");
+      const p2 = G("CXZ_LOTES")[f2.id].propuestas.find((p) => p.grupo === "cuarto");
+      if (!p2) throw new Error("no se propuso el cuarto: " + f2.detalle);
+      eq(p2.marcado, false, "sin clase ISO escrita no entra solo:"); eq(!!p2.aplicado, false, "…ni se aplicó:"); contiene(p2.valor, "pendiente", "la propuesta dice que la clase queda pendiente:");
+      if ((S.clean.rooms || []).some((r) => /LLENADO/.test(r.name))) throw new Error("el cuarto sin clase entró solo con una clase supuesta");
+      contiene(f2.detalle, "por revisar", "la fila lo deja por revisar:");
+      /* Contra incendio: el área a proteger es la suma de los espacios exteriores del plano, no el rótulo de un cuarto; la altura, la del más alto. */
+      limpio("S.122c");
+      await cargar([archivo("levantamiento.dxf", DXF_LEV, "Contra incendio/levantamiento.dxf")]);
+      eq(S.fuego.area, 380, "área a proteger = nave + oficina (antes 300, el rótulo de un cuarto):"); cerca(S.fuego.altura, 6, 1e-9, "altura del cuarto más alto:");
+      const apH = ultimoLote("fuego").aplicados.find((a) => a.destino === "fuego.altura");
+      if (!apH) throw new Error("la altura no quedó registrada con su origen"); contiene(apH.texto, "NAVE", "el origen dice de qué cuarto salió la altura:");
+      /* Aire comprimido: sin columna de cantidad, cada renglón es un consumidor; la demanda pico ya no es 0. */
+      limpio("S.122d");
+      await cargar([archivo("consumos.csv", "Equipo,Consumo (l/min)\nPistola de soplado,400\nCilindro,250\n", "Aire comprimido/consumos.csv")]);
+      eq(filasT()[0].motor, "aire", "motor:"); eq(S.aire.consumos.length, 2, "consumos:");
+      eq(S.aire.consumos.map((c) => c.cant).join(","), "1,1", "un consumidor por renglón:");
+      G("recompute")(); cerca(G("AIRE").pico, 650, .5, "demanda pico:");
       eq(w.__errs.length, 0, "errores de ventana:");
     });
     /* [H-272: siguientes] */
