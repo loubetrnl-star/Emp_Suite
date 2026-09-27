@@ -1,8 +1,39 @@
-# PAUSA · 26-sep-2026
+# PAUSA
+
+## Estado al 27-sep-2026 (vigente)
+El dueño dijo «continúa» y se trabajó la independencia de motores. **Para retomar: leer `CONTINUACION.md`, que manda**
+sobre este archivo y sobre `RELEVO.md`. Detalle por hallazgo: `Bitacora-independencia-motores.md`.
+
+- Último commit: `63a2794` «CONTINUACIÓN: punto de retome del 27-sep-2026». Rama de trabajo:
+  `claude/focused-euler-f9knvw` (mismo HEAD que `origin/claude/pausa-desarrollo-7tz93x`, donde se hizo el trabajo);
+  `master` sigue en `801a326` (esta PAUSA).
+- Bancos en `63a2794`: `node pruebas.mjs index.html` → **521/521**; con `--base
+  respaldo-rev-2.9.8/index-2.9.21-inicio-20260921-221100.html` → **527/527**. No correr más de dos bancos a la vez
+  (`/home/user/turno.sh`): con más fallan 18.10 y 18.16 sin razón.
+- `MOTOR_VER`: load 6 · clean 3 · equip 2 · duct 4 · vent 4 · quote 24 · valor 1 · kaizen 1 · elec 9 · hidro 8 ·
+  fuego 4 · aire 5 · civil 6 · soporte 12.
+- Decisión del dueño (27-sep-2026): todos los motores independientes; cada disciplina calcula sólo con lo capturado en
+  su pestaña; lo de otra entra sólo como propuesta aceptada (instantánea) que no se mueve sola; la regla 1 de herencia
+  queda RETIRADA (`HEREDA` vacío). Ventilación → carga térmica sólo por el ventilador seleccionado (HP × 745.7 W, como
+  misceláneos, en la zona que elige el usuario).
+- **Terminado:** H-262 (vent), H-263 (load), H-264 (fuego), H-265 (civil), H-266 (soporte), H-268 (elec), H-267 (equip),
+  con sus complementos; H-272a–f (carga de archivos a la captura propia de cada disciplina); H-270 y H-271 (unifilar y
+  trifilar); H-269a/b (materiales y consideraciones de cálculo del eléctrico); H-277 (temperatura ambiente en los
+  documentos del eléctrico). Los proyectos guardados abren con las mismas cifras.
+- **Punto exacto de lo pendiente:** tarea 1 de la cola de `CONTINUACION.md` §6, la revisión adversarial de H-264, H-265
+  y H-266 (`continuacion/flujos/01-revision-h264-h266.js`, sólo lectura; se detuvo al corte sin dejar cambios); cada
+  hallazgo confirmado, commit complemento con prueba primero. Luego la cola en orden, una tarea a la vez. Decisiones del
+  dueño abiertas: `CONTINUACION.md` §5.
+- Lo de abajo (26-sep-2026) queda como **histórico**: H-134 sigue abierto con sus 5 decisiones, pero el punto de retome y
+  el estado del repositorio ya no son los de ese día.
+
+---
+
+## Histórico · PAUSA del 26-sep-2026
 
 Punto de archivo antes de decidir si se continúa. Nada se relanza hasta que el dueño diga «continúa».
 
-## Estado del repositorio
+### Estado del repositorio
 - Último commit de trabajo: `5b3d903` «PAUSA: relevo de sesión» (sobre `baf14c9` H-154 y `0fd9392` rev 2.9.24).
 - Etiqueta: `pausa-2026-09-26` (apunta a `5b3d903`; este archivo se commitea encima).
 - Rama: `master`. Árbol limpio al etiquetar. Sin remoto configurado (el dueño creará `loubetrnl-star/emp-suite-hvac`
@@ -11,7 +42,7 @@ Punto de archivo antes de decidir si se continúa. Nada se relanza hasta que el 
 - Bancos en verde en `5b3d903`: `node pruebas.mjs index.html` y `--base respaldo-rev-2.9.8/index-2.9.21-inicio-20260921-221100.html`.
 - Respaldo completo: `respaldo-rev-2.9.24/Emp_Suite-completo-20260926-183442-baf14c9.tar.gz` (ignorado por git).
 
-## Hitos terminados
+### Hitos terminados
 - Rev 2.9.24: corrección de los críticos de la auditoría (`0fd9392`, tag `rev-2.9.24-candidata`), REPORTE-CRITICOS.md, bitácora.
 - H-154 · vent: la pantalla sin modelo ya no truena (`baf14c9`, prueba S.88).
 - H-224 · soporte: red contra incendio soportada con su material (parte no bloqueada).
@@ -21,7 +52,7 @@ Punto de archivo antes de decidir si se continúa. Nada se relanza hasta que el 
 - Regla imperativa del dueño registrada: cada disciplina es independiente (motor, selección, memoria y cotización propios;
   cruces sólo como propuesta).
 
-## H-134 (Cuartos limpios → zona de Carga térmica): punto exacto
+### H-134 (Cuartos limpios → zona de Carga térmica): punto exacto
 Decisión del dueño (AskUserQuestion): «Mover el cálculo a la zona». Flujo `wf_8451851d-a14`
 (script `…\40f3f4c9-…\workflows\scripts\h134-limpios-a-zona-wf_8451851d-a14.js`, fases Especificación → Prueba primero →
 Implementación → Verificación → Corrección).
@@ -42,7 +73,7 @@ Decisiones que la especificación deja al dueño (cambian resultados o autorizac
 4. Arista «FFU de cuartos limpios» del diagrama: renombrar (propuesto) o eliminar (13.6 baja de 3 a 2).
 5. Duplicidad al migrar un cuarto sin `zonaId` junto a una zona limpia capturada a mano: aviso y borrado manual (propuesto) o fusión por nombre+área+altura.
 
-## Flujos interrumpidos
+### Flujos interrumpidos
 - `wf_8451851d-a14` (H-134): detenido en Especificación; reanudable con `resumeFromRunId` (la espec «limpieza» se reutiliza de caché).
 - Tarea de fondo `task_ad8fd733` («Fix viewVent crash») fue borrada: su contenido ya está en `baf14c9` (H-154), nada pendiente.
 - Plugin `security-guidance` 2.0.8: su hook `security_reminder_hook.py` no abre y genera avisos en bucle. No se toca desde aquí
@@ -50,7 +81,7 @@ Decisiones que la especificación deja al dueño (cambian resultados o autorizac
   `…\AppData\Roaming\Claude\local-agent-mode-sessions\64f7dde2-…\c8bbd2b5-…\rpm\plugin_01YBNfaNwQztYsnUydt8m47G\hooks\`
   y reiniciar la app, o quitar el plugin en Configuración → Plugins.
 
-## Pendientes fuera de H-134 (sin tocar)
+### Pendientes fuera de H-134 (sin tocar)
 - Estructural / Soportería: el dueño ordenó borrar «esas dos disciplinas»; falta confirmar si sólo Estructural (no calcula nada) o
   también Soportería (calcula sola y alimenta la sección G de cotización). Hasta entonces, ninguna se toca.
 - Cascada de módulos (acordeón en la ventana principal, sin paneles laterales), con prueba de que ningún módulo abre en panel lateral.
@@ -58,7 +89,7 @@ Decisiones que la especificación deja al dueño (cambian resultados o autorizac
   5d (BLOQUEADO: faltan textos AISC 360 / CFE viento / NTC sismo), 5e (proyecto piloto + PDF).
 - Paquetes externos StructCalc / SoporteCalc en `Desktop\Nueva carpeta (3)` y `Downloads`: no se borran hasta que el dueño decida.
 
-## Cómo retomar
+### Cómo retomar
 1. `git status` limpio y `git log --oneline -1` = commit de PAUSA.md sobre `5b3d903`; bancos en verde.
 2. Si el dueño ya creó el repo: `git remote add origin https://github.com/loubetrnl-star/emp-suite-hvac.git` y `git push -u origin HEAD --tags`.
 3. Resolver con el dueño las 5 decisiones de H-134 listadas arriba.
