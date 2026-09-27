@@ -8017,6 +8017,62 @@ t("S.102 (H-266) soportería es autónoma: sin la instantánea aceptada no cuent
       eq(pSinV.marcado, false, "sin tensión ni fases en el archivo la carga no entra sola:"); contiene(pSinV.valor, "pendiente", "…y dice que quedan pendientes:");
       eq(w.__errs.length, 0, "errores de ventana:");
     });
+    await tA("S.124 (H-272e) catálogos y listas de precios quedan como referencia consultable con archivo, hoja/página y fila (marca, modelo, capacidad, precio con moneda y vigencia); no entran solos a ningún motor ni dejan registro de datos aplicados; el tablero los muestra y «Consultar» los abre; una lista de precios de tubería se ofrece para importarla a hidrosanitario con sus reglas; quitar el archivo retira sus referencias", async () => {
+      limpio("S.124");
+      const h0 = huellas(), f0 = foto();
+      const XLSX_CAT = xlsxDe("Catalogo", [["Marca", "Modelo", "Capacidad (TR)", "kW", "Precio (MXN)", "Vigencia"], ["Carrier", "RTU-10", 10, 11.5, 185000, "2026-08-01"], ["Carrier", "RTU-15", 15, 16.8, 240000, ""]]);
+      await cargar([archivo("catalogo-rtu.xlsx", XLSX_CAT, "Catalogos/catalogo-rtu.xlsx")]);
+      const f = filasT()[0];
+      eq(f.motor, "catalogo", "un catálogo es referencia consultable, no selección:"); eq(f.estado, "listo", f.detalle); contiene(f.detalle, "referencia"); contiene(f.detalle, "no entran a ningún motor");
+      const R = S.cx.referencias || [];
+      eq(R.length, 2, "renglones de referencia:");
+      eq(R[0].marca, "Carrier", "marca:"); eq(R[0].modelo, "RTU-10", "modelo:"); contiene(R[0].capacidad, "10 TR", "capacidad con su unidad del encabezado:"); contiene(R[0].capacidad, "kW");
+      eq(R[0].precio, 185000, "precio:"); eq(R[0].moneda, "MXN", "moneda del encabezado:"); eq(R[0].fecha, "2026-08-01", "vigencia:");
+      contiene(R[0].archivo, "catalogo-rtu.xlsx", "archivo:"); contiene(R[0].archivo, "Catalogo", "hoja:"); eq(R[0].fila, 2, "fila de la hoja:"); eq(R[1].fila, 3); eq(R[1].fecha, null, "sin vigencia queda null, no una fecha supuesta:");
+      eq(cambiaron(f0, foto()).join(","), "", "ningún motor recibe nada de un catálogo:"); eq(huellasMovidas(h0, huellas()).join(","), "", "ninguna huella se mueve:");
+      eq((S.cx.lotes || []).length, 0, "no hay registro de datos aplicados: nada entró a un motor:");
+      eq(G("cxzEstadoMotores")().some((m) => m.id === "catalogo"), false, "el catálogo no es un motor:");
+      S.tab = "tablero"; G("render")();
+      const v = w.document.getElementById("view"), txt = v.textContent;
+      contiene(txt, "Referencias del proyecto ejecutivo", "el tablero muestra las referencias:"); contiene(txt, "RTU-10"); contiene(txt, "catalogo-rtu.xlsx"); contiene(txt, "fila 3"); contiene(txt, "sin fecha de vigencia", "el precio sin vigencia se declara referencia:");
+      const btn = v.querySelector('[data-act="cxz-catalogo"]');
+      if (!btn) throw new Error("la fila del catálogo no ofrece «Consultar»");
+      btn.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+      contiene(w.document.getElementById("modal").textContent, "RTU-15", "«Consultar» abre el catálogo:"); G("closeModal")();
+      /* Reprocesar no duplica las referencias. */
+      delete G("CXZ_LOTES")[f.id]; f.estado = "espera"; await G("cxzProcesarPendientes")(); await esperaCola();
+      eq((S.cx.referencias || []).length, 2, "reprocesar duplicó las referencias:");
+      /* Cédula de equipos en PDF: cada equipo con marca y capacidad, con su página. */
+      limpio("S.124b");
+      const PDF_CED = pdfDe(["BT /F1 12 Tf 72 720 Td (CEDULA DE EQUIPOS) Tj 0 -16 Td (UMA-01 Carrier 39M 12 TR 4500 CFM) Tj ET"]);
+      await cargar([archivo("cedula.pdf", PDF_CED, "Catalogos/cedula.pdf")]);
+      eq(filasT()[0].motor, "catalogo", "motor:"); eq(filasT()[0].estado, "listo", filasT()[0].detalle);
+      const uma = (S.cx.referencias || []).find((r) => r.tag === "UMA-01");
+      if (!uma) throw new Error("la cédula en PDF no dejó al equipo como referencia: " + JSON.stringify(S.cx.referencias));
+      eq(uma.marca, "Carrier", "marca:"); eq(uma.pagina, 1, "página:"); contiene(uma.capacidad, "12", "capacidad del mismo renglón:");
+      eq((S.cx.lotes || []).length, 0, "nada entró a selección ni a otro motor:");
+      /* Lista de precios de tubería: referencia, y se ofrece importarla a hidrosanitario con las reglas del importador. */
+      limpio("S.124c");
+      /* El diámetro 1/2" va entrecomillado como lo exporta cualquier hoja de cálculo ("1/2"""). */
+      await cargar([archivo("precios-tuberia.csv", "material,diametro,precio,moneda,fuente,fecha\ncpvc,\"1/2\"\"\",85,MXN,proveedor local,2026-09-01\n", "Catalogos/precios-tuberia.csv")]);
+      const fp = filasT()[0];
+      eq(fp.motor, "catalogo", "una lista de precios es catálogo:"); eq(fp.estado, "listo", fp.detalle); eq(fp.info.preciosHidro, true, "se reconoce como lista de precios de tubería:");
+      eq((S.cx.referencias || []).length, 1, "un renglón de referencia:"); eq(S.cx.referencias[0].precio, 85);
+      const clave = G("claveHidroPU")("cpvc", '1/2"');
+      if (S.quote.hidroPU && S.quote.hidroPU[clave]) throw new Error("el precio entró solo a hidrosanitario: debe esperar la orden del usuario");
+      S.tab = "tablero"; G("render")();
+      w.document.querySelector('#view [data-act="cxz-catalogo"]').dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+      const bImp = w.document.querySelector('#modal [data-act="cxz-catalogo-hidro"]');
+      if (!bImp) throw new Error("la ventana no ofrece importar la lista a precios de hidrosanitario");
+      bImp.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+      for (let i = 0; i < 100 && !(S.quote.hidroPU && S.quote.hidroPU[clave]); i++) await new Promise((r) => setTimeout(r, 10));
+      if (!(S.quote.hidroPU && S.quote.hidroPU[clave] && S.quote.hidroPU[clave].precio === 85)) throw new Error("la importación a precios de hidro no ocurrió: " + JSON.stringify(S.quote.hidroPU));
+      G("closeModal")();
+      /* Quitar el archivo retira sus referencias (no son datos aplicados). */
+      await G("cxzQuitar")(fp.id);
+      eq((S.cx.referencias || []).length, 0, "quitar el archivo retira sus referencias:");
+      eq(w.__errs.length, 0, "errores de ventana:");
+    });
     /* [H-272: siguientes] */
   } finally { G("closeModal")(); G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 }

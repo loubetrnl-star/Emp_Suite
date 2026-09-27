@@ -13919,6 +13919,7 @@ const CX_DISC = {
 const CX_MAX_BYTES_ARCHIVO = 60 * 1024 * 1024;
 /* H-272b: cada archivo aplicado es un registro de origen; con 30 un ZIP de 34 cuadros dejaba 4 sin trazado (regla 8). */
 const CX_MAX_LOTES = 300;
+const CX_MAX_REFERENCIAS = 2000;   // H-272e: renglones de catálogos y listas de precios como referencia consultable
 const CX_CFM_A_LS = 0.471947;
 let CX_LOTE = null;          // lote leído y todavía no aplicado (no viaja con el proyecto)
 
@@ -15377,6 +15378,8 @@ const CXZ_MOTORES = [
   ["ventilacion", "HVAC · Ventilación"], ["ductos", "HVAC · Ductos y calibres"],
   ["electrico", "Eléctrico"], ["hidro", "Hidrosanitario"], ["fuego", "Contra incendio"], ["aire", "Aire comprimido"],
   ["civil", "Obra civil"], ["soporte", "Soportería"], ["estructural", "Estructural"],
+  /* H-272e: catálogos de equipo y listas de precios quedan como referencia consultable; no entran solos a ningún motor. */
+  ["catalogo", "Catálogo / lista de precios · referencia consultable"],
   ["referencia", "Referencia (adjunto, sin motor)"], ["sin", "Sin asignar"],
 ];
 const CXZ_MOTOR_NOMBRE = Object.fromEntries(CXZ_MOTORES);
@@ -15449,7 +15452,8 @@ const CXZ_PISTAS = [
   [/\b(estruct|acero|cimentac)/i, "estructural"],
   [/\b(levantamiento|arq|arquitect|as.?built)/i, "levantamiento"],   // H-272d: el levantamiento es de todas las disciplinas
   [/\b(civil|obra.?civil|acabados|albañil|albanil)/i, "civil"],
-  [/\b(equipo|c[eé]dula|submittal|catalogo|cat[aá]logo)/i, "seleccion"],
+  [/\b(catalogos?|cat[aá]logos?|precios?|lista.?de.?precios|cotizaci[oó]n|proveedor(es)?)/i, "catalogo"],   // H-272e: referencia consultable
+  [/\b(equipo|c[eé]dula|submittal)/i, "seleccion"],
 ];
 const CXZ_DISC_MOTOR = { hvac: "carga", limpios: "limpios", electrico: "electrico", hidro: "hidro", fuego: "fuego", aire: "aire", civil: "civil", soporte: "soporte", estructural: "estructural", ventilacion: "ventilacion", ductos: "ductos", seleccion: "seleccion" };
 function cxzPistaCarpeta(ruta) {
@@ -15470,6 +15474,8 @@ function cxzMotorPorTexto(lineas) {
 }
 function cxzMotorPorEncabezados(texto) {
   const cab = String(texto || "").split(/\r?\n/).slice(0, 3).join(" ").toLowerCase();
+  /* H-272e: una columna de precio dice «lista de precios / catálogo» antes que cualquier otra cosa: referencia consultable. */
+  if (/precio|costo|p\.?\s?u\.?(\s|$|\()|unitario|importe|\bmxn\b|\busd\b|vigencia/.test(cab)) return "catalogo";
   if (/kw|\bw\b|watts|tensi|volt|fases|circuito|interruptor|amper/.test(cab)) return "electrico";
   if (/hidr[aá]ulic|sanitari|plomer|\bmueble|\bwc\b|lavabo|regadera|inodoro|mingitorio|cisterna|presion.?residual|\bmca\b/.test(cab)) return "hidro";
   if (/rociador|sprinkl|hidrante|gabinete|\bnfpa\b|contra.?incendio|extintor/.test(cab)) return "fuego";
@@ -15717,6 +15723,99 @@ async function cxzProcesarLevantamiento(fila, bytes, vigente) {
     fila.estado = "error"; fila.detalle = "El archivo no se pudo leer completo: " + String(e && e.message || e).slice(0, 100) + ". Vuelve a exportarlo o cárgalo en otro formato.";
   }
 }
+/* H-272e (decisión del dueño, 27-sep-2026) · Catálogos de equipo y listas de precios: se leen y quedan como REFERENCIA consultable
+   (S.cx.referencias) con archivo, hoja/página y fila; NO entran solos a ningún motor (regla 6: un precio sin fuente y fecha es
+   «Por cotizar»; un equipo de catálogo no es una selección). Se consultan en el tablero y se capturan a mano donde apliquen.
+   Una lista de precios de tubería en CSV con las columnas del importador de hidrosanitario (material, diametro, precio, …) se
+   ofrece para importarla con sus mismas reglas (H-251). Antes el lector los leía y los tiraba («sin datos para …»). */
+function cxzReferencias() { if (!S.cx || typeof S.cx !== "object") S.cx = { lotes: [], archivos: [] }; if (!Array.isArray(S.cx.referencias)) S.cx.referencias = []; return S.cx.referencias; }
+function cxReferenciasDeTabla(archivo, r, fila) {
+  const out = [];
+  if (!r || !Array.isArray(r.columnas)) return out;
+  const col = (re, no) => r.columnas.find((c) => re.test(c) && !(no && no.test(c)));
+  const cMarca = col(/marca|fabricante|brand/i), cModelo = col(/modelo|model|clave|c[oó]digo|sku|part/i), cDesc = col(/desc|concepto|nombre|equipo|material|art[ií]culo|producto/i, /marca|modelo/i);
+  const cPrecio = col(/precio|costo|p\.?\s?u\.?(\s|$|\()|unitario|importe/i), cMon = col(/moneda|currency|divisa/i), cFecha = col(/fecha|vigencia|valid/i), cDiam = col(/di[aá]metro|diam/i);
+  const caps = r.columnas.filter((c) => c !== cPrecio && /(^|[^a-z])(tr|ton|cfm|kw|hp|l\s*\/\s*min|lpm|gpm|m3\s*\/\s*h|m³\s*\/\s*h|btu|kcal|w)([^a-z]|$)|capacidad|caudal/i.test(c));
+  if ((!cPrecio && !caps.length) || (!cMarca && !cModelo && !cDesc)) return out;
+  const hojaFila = (r.filaEncabezado || 0) + 2;
+  (r.filasCrudas || r.filas).forEach((cruda, i) => {
+    const f = r.filas[i] || cruda;
+    const marca = cxCeldaTxt(r, f, i, cMarca), modelo = cxCeldaTxt(r, f, i, cModelo), desc = cxCeldaTxt(r, f, i, cDesc);
+    if (!marca && !modelo && !desc) return;
+    const capacidad = caps.map((c) => { const v = cxCeldaNum(r, f, i, c); if (!(v > 0)) return ""; const u = (/\(([^)]+)\)/.exec(c) || [])[1] || c.replace(/capacidad|caudal/i, "").trim(); return `${n(v, v % 1 ? 2 : 0)} ${u}`.trim(); }).filter(Boolean).join(" · ");
+    const precio = cPrecio ? cxCeldaNum(r, f, i, cPrecio) : null;
+    const monTxt = (cxCeldaTxt(r, f, i, cMon) || cPrecio || "").toUpperCase();
+    const fecha = cFecha ? cxCeldaTxt(r, f, i, cFecha) : "", diam = cDiam ? cxCeldaTxt(r, f, i, cDiam) : "";
+    out.push({ id: "r" + Math.random().toString(36).slice(2, 8), filaId: fila.id, huella: fila.huella || "", archivoNombre: fila.nombre, archivo, ruta: fila.ruta, fila: hojaFila + i, pagina: null,
+      tipo: precio > 0 ? "precio" : "equipo", marca: marca.slice(0, 60), modelo: modelo.slice(0, 60), descripcion: [desc, diam].filter(Boolean).join(" · ").slice(0, 120), capacidad: capacidad.slice(0, 80),
+      precio: precio > 0 ? +precio : null, moneda: precio > 0 ? (/USD|D[OÓ]LAR|US\$/.test(monTxt) ? "USD" : "MXN") : "", fecha: fecha || null,
+      texto: Object.entries(cruda).map(([k, v]) => `${k}: ${v}`).join(" · ").slice(0, 160), ts: Date.now() });
+  });
+  return out;
+}
+async function cxzProcesarCatalogo(fila, bytes, vigente) {
+  try {
+    const { fuentes, A } = await cxLeerLote([cxzArchivoDe(fila, bytes)]);
+    if (!vigente()) return;
+    const F = fuentes[0] || { avisos: [] };
+    const nuevas = [];
+    A.csv.forEach(({ archivo, r }) => nuevas.push(...cxReferenciasDeTabla(archivo, r, fila)));
+    /* Cédula o catálogo en PDF/texto: cada equipo con su marca, modelo y capacidades del mismo renglón, con su página. Las hojas
+       (CSV/XLSX) ya entraron renglón por renglón arriba: sus etiquetas no se repiten como equipos. */
+    const tabulares = new Set(fuentes.filter((F2) => F2.csv || (Array.isArray(F2.csvs) && F2.csvs.length)).map((F2) => F2.nombre));
+    A.equipos.filter((e) => !tabulares.has(e.archivo)).forEach((e) => {
+      const cap = A.magnitudes.filter((m) => m.archivo === e.archivo && m.linea === e.linea && ["TR", "CFM", "kW", "HP", "l_min", "gpm"].includes(m.clave) && !m.ambiguo).map((m) => `${n(m.valor, m.valor % 1 ? 2 : 0)} ${m.unidad || m.clave}`).join(" · ");
+      nuevas.push({ id: "r" + Math.random().toString(36).slice(2, 8), filaId: fila.id, huella: fila.huella || "", archivoNombre: fila.nombre, archivo: e.archivo, ruta: fila.ruta, fila: null, pagina: e.pagina || null, tipo: "equipo", tag: e.tag, marca: e.marca || "", modelo: e.modelo || "", descripcion: e.tag, capacidad: cap, precio: null, moneda: "", fecha: null, texto: String(e.texto || "").slice(0, 160), ts: Date.now() });
+    });
+    /* Sin duplicar: lo que ya se leyó de esta fila o del mismo archivo (huella + nombre) se sustituye. */
+    const resto = cxzReferencias().filter((x) => x.filaId !== fila.id && !(fila.huella && x.huella === fila.huella && x.archivoNombre === fila.nombre));
+    S.cx.referencias = resto.concat(nuevas).slice(-CX_MAX_REFERENCIAS);
+    const sinAcento = (t) => String(t || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    fila.info = fila.info && typeof fila.info === "object" ? fila.info : {};
+    fila.info.preciosHidro = ["csv", "tsv"].includes(fila.ext) && A.csv.some(({ r }) => r && Array.isArray(r.columnas) && ["material", "diametro", "precio"].every((k) => r.columnas.some((c) => sinAcento(c).startsWith(k))));
+    fila.propuestas = 0; fila.aplicados = 0; fila.referencias = nuevas.length;
+    fila.avisos = (F.avisos || []).slice(0, 6);
+    const claro = cxzMensajeClaro(F.avisos, fila);
+    const conPrecio = nuevas.filter((x) => x.precio > 0).length, sinFecha = nuevas.filter((x) => x.precio > 0 && !x.fecha).length;
+    if (!nuevas.length && claro) { fila.estado = "error"; fila.detalle = claro; }
+    else if (!nuevas.length) { fila.estado = "listo"; fila.detalle = "sin renglones de catálogo (marca, modelo o descripción con capacidad o precio) · revísalo a mano"; }
+    else { fila.estado = "listo"; fila.detalle = `catálogo · ${nuevas.length} renglón(es) de referencia${conPrecio ? ` · ${conPrecio} con precio${sinFecha ? ` (${sinFecha} sin fecha de vigencia: referencia, no cotización)` : ""}` : ""} · no entran a ningún motor: se consultan y se capturan a mano donde apliquen${fila.info.preciosHidro ? " · lista de precios de tubería: se puede importar a hidrosanitario" : ""}${claro ? " · " + claro : ""}`; }
+  } catch (e) {
+    if (!vigente()) return;
+    fila.estado = "error"; fila.detalle = "El archivo no se pudo leer completo: " + String(e && e.message || e).slice(0, 100) + ". Vuelve a exportarlo o cárgalo en otro formato.";
+  }
+}
+function cxzReferenciasTabla(lista) {
+  const fila = (x) => {
+    const donde = [x.archivo, x.pagina ? `p. ${x.pagina}` : "", x.fila ? `fila ${x.fila}` : ""].filter(Boolean).join(" · ");
+    const precio = x.precio > 0 ? `${n(x.precio, 2)} ${esc(x.moneda)}${x.fecha ? ` · vigencia ${esc(x.fecha)}` : " · sin fecha de vigencia: referencia, no cotización"}` : "sin precio";
+    return `<tr><td>${esc([x.marca, x.modelo].filter(Boolean).join(" ") || "—")}</td><td>${esc(x.descripcion || x.tag || "")}</td><td>${esc(x.capacidad || "—")}</td><td class="num">${precio}</td><td><div class="sub">${esc(donde)}</div></td></tr>`;
+  };
+  return `<div class="tw"><table class="cxz-tabla"><thead><tr><th>Marca · modelo</th><th>Descripción</th><th>Capacidad</th><th class="num">Precio</th><th>Archivo · página / fila</th></tr></thead><tbody>${lista.slice(0, 200).map(fila).join("")}</tbody></table></div>${lista.length > 200 ? `<div class="sub">Y ${lista.length - 200} renglón(es) más.</div>` : ""}`;
+}
+function cxzReferenciasHtml() {
+  const R = cxzReferencias();
+  if (!R.length) return "";
+  return `<div class="card" style="margin-top:14px"><h3>Referencias del proyecto ejecutivo<span class="tag">${R.length} renglón(es) de catálogos y listas de precios · no entran a ningún motor</span></h3><div class="body">
+    <div class="hint" style="margin-bottom:10px">Catálogos de equipo y listas de precios leídos de los archivos cargados. Se consultan aquí y se capturan a mano donde apliquen; un precio sin fecha de vigencia es referencia, no cotización (regla 6).</div>
+    ${cxzReferenciasTabla(R)}</div></div>`;
+}
+function cxzReferenciasModal(filaId) {
+  const f = cxzArchivos().find((x) => x.id === filaId) || { id: filaId, nombre: "archivo", info: {} };
+  const R = cxzReferencias().filter((x) => x.filaId === filaId);
+  return `<div class="sheet cx-sheet"><div class="sheet-head"><div><h3>Catálogo · ${esc(f.nombre)}</h3><div class="sub">${R.length} renglón(es) de referencia · no entran a ningún motor</div></div><button class="toolbtn" style="margin-left:auto" data-act="close">Cerrar</button></div>
+    <div style="padding:14px">${R.length ? cxzReferenciasTabla(R) : `<div class="hint">Sin renglones de catálogo en este archivo.</div>`}
+    ${f.info && f.info.preciosHidro ? `<div class="row" style="margin-top:12px"><button class="btn-ghost" data-act="cxz-catalogo-hidro" data-id="${esc(f.id)}">Importar a precios de tubería (hidrosanitario)</button><span class="sub">Con las reglas del importador: material, diámetro, precio, moneda, fuente y fecha (H-251).</span></div>` : ""}
+    </div></div>`;
+}
+async function cxzImportarPreciosHidro(id) {
+  const bytes = await cxzBytes(id);
+  if (!bytes) { toast("Los bytes del archivo ya no están en este dispositivo. Vuelve a cargarlo."); return; }
+  let texto = ""; try { texto = cxDecodificaTexto(bytes); } catch { texto = ""; }
+  const res = hidroPUImportarCsv(texto);
+  toast(`${res.ok} precio(s) de tubería importados a hidrosanitario${res.malas && res.malas.length ? ` · ${res.malas.length} fila(s) rechazadas: ${res.malas.slice(0, 2).join("; ")}` : ""}`, 8000);
+  projAutosave(); render();
+}
 async function cxzProcesarFila(fila) {
   if (!fila || fila.motor === "sin" || fila.motor === "referencia" || fila.estado === "norec") return;
   const motorUsado = fila.motor;
@@ -15728,6 +15827,7 @@ async function cxzProcesarFila(fila) {
   fila.estado = "procesando"; fila.detalle = "";
   if (S.tab === "tablero") render();
   if (motorUsado === "levantamiento") { await cxzProcesarLevantamiento(fila, bytes, vigente); return; }
+  if (motorUsado === "catalogo") { await cxzProcesarCatalogo(fila, bytes, vigente); return; }
   try {
     const lote = await cxProcesarArchivos([cxzArchivoDe(fila, bytes)], motorUsado);
     /* Si en lo que tardó la lectura el usuario reasignó, quitó la fila o
@@ -15781,7 +15881,8 @@ function cxzReasignar(id, motor) {
   const f = cxzArchivos().find((x) => x.id === id); if (!f) return;
   f.motor = CXZ_MOTOR_NOMBRE[motor] ? motor : "sin";
   delete CXZ_LOTES[id];
-  f.propuestas = 0; f.aplicados = 0; delete f.porMotor;
+  f.propuestas = 0; f.aplicados = 0; delete f.porMotor; delete f.referencias;
+  if (S.cx && Array.isArray(S.cx.referencias)) S.cx.referencias = S.cx.referencias.filter((x) => x.filaId !== id);   // H-272e
   if (f.motor === "sin") { f.estado = f.estado === "norec" ? "norec" : "espera"; f.detalle = f.estado === "norec" ? f.detalle : "sin motor: elige uno para leerlo"; }
   else if (f.motor === "referencia") { f.estado = "listo"; f.detalle = "adjunto de referencia"; }
   else { f.estado = "espera"; f.detalle = ""; }
@@ -15796,6 +15897,7 @@ async function cxzQuitar(id) {
   const f = filas[i];
   filas.splice(i, 1);
   delete CXZ_LOTES[id];
+  if (S.cx && Array.isArray(S.cx.referencias)) S.cx.referencias = S.cx.referencias.filter((x) => x.filaId !== id);   // H-272e: sus referencias se van con él
   /* H-272b (regla 8): quitar el archivo de la tabla no retira lo que entró desde él (puede estar ya editado); su registro de origen
      se conserva marcado «archivo retirado» y se avisa en qué disciplina quedaron esos datos, para quitarlos ahí si hace falta. */
   const suyos = cxLotesDe().filter((l) => (l.filaId && l.filaId === id) || (f.huella && l.huella === f.huella && (l.archivos || []).some((a) => a && a.nombre === f.nombre)));
@@ -15853,7 +15955,7 @@ document.addEventListener("click", (e) => {
 function cxzEstadoMotores() {
   const filas = cxzArchivos();
   /* H-272d: un levantamiento cuenta en cada disciplina a la que aplicó (fila.porMotor); no es un motor en sí. */
-  return CXZ_MOTORES.filter(([id]) => id !== "sin" && id !== "referencia" && id !== "levantamiento").map(([id, nombre]) => {
+  return CXZ_MOTORES.filter(([id]) => id !== "sin" && id !== "referencia" && id !== "levantamiento" && id !== "catalogo").map(([id, nombre]) => {
     const mias = filas.filter((f) => f.motor === id || (f.motor === "levantamiento" && f.porMotor && f.porMotor[id]));
     const cuenta = (f, k) => ((f.motor === "levantamiento" && f.porMotor && f.porMotor[id]) ? f.porMotor[id][k] : f[k]) || 0;
     let estado = "espera";
@@ -16108,7 +16210,7 @@ function cxzTablaHtml() {
         <td class="num">${cxzTam(f.tam || 0)}</td>
         <td>${sel(f)}${f.motivo ? `<div class="sub">${esc(f.motivo)}</div>` : ""}</td>
         <td>${badge(f)}${f.detalle ? `<div class="sub cxz-det">${esc(f.detalle)}</div>` : ""}</td>
-        <td class="cxz-acc">${f.info && (f.info.paquete || f.info.respaldo) ? `<button class="toolbtn mini" data-act="cxz-abrir" data-id="${esc(f.id)}">Abrir como proyecto</button>` : ""}${f.propuestas > 0 && f.estado === "listo" ? `<button class="toolbtn mini" data-act="cxz-revisar" data-id="${esc(f.id)}">${f.aplicados ? "Volver a revisar" : "Revisar y aplicar"}</button>` : ""}${f.estado === "listo" && !f.propuestas && f.motor !== "referencia" && !(f.info && (f.info.paquete || f.info.respaldo)) ? `<button class="toolbtn mini" data-act="cxz-revisar" data-id="${esc(f.id)}">Ver lectura</button>` : ""}<button class="toolbtn mini" data-act="cxz-quitar" data-id="${esc(f.id)}" title="Quitar de la carga">Quitar</button></td>
+        <td class="cxz-acc">${f.info && (f.info.paquete || f.info.respaldo) ? `<button class="toolbtn mini" data-act="cxz-abrir" data-id="${esc(f.id)}">Abrir como proyecto</button>` : ""}${f.motor === "catalogo" && f.estado === "listo" ? `<button class="toolbtn mini" data-act="cxz-catalogo" data-id="${esc(f.id)}">Consultar</button>` : ""}${f.propuestas > 0 && f.estado === "listo" ? `<button class="toolbtn mini" data-act="cxz-revisar" data-id="${esc(f.id)}">${f.aplicados ? "Volver a revisar" : "Revisar y aplicar"}</button>` : ""}${f.estado === "listo" && !f.propuestas && f.motor !== "referencia" && !(f.info && (f.info.paquete || f.info.respaldo)) ? `<button class="toolbtn mini" data-act="cxz-revisar" data-id="${esc(f.id)}">Ver lectura</button>` : ""}<button class="toolbtn mini" data-act="cxz-quitar" data-id="${esc(f.id)}" title="Quitar de la carga">Quitar</button></td>
       </tr>`).join("")}</tbody>
     </table></div>
   </div></div>`;
@@ -16166,6 +16268,8 @@ document.addEventListener("click", (e) => {
   else if (act === "cxz-carpeta") { const i = cxzInput("cxz-dir", true); i.value = ""; i.click(); }
   else if (act === "cxz-importar") { const i = cxzInput("cxz-paquete", false); i.accept = ".zip,.json"; i.multiple = false; i.value = ""; i.click(); }
   else if (act === "cxz-quitar") cxzQuitar(b.dataset.id);
+  else if (act === "cxz-catalogo") openModal(cxzReferenciasModal(b.dataset.id));
+  else if (act === "cxz-catalogo-hidro") cxzImportarPreciosHidro(b.dataset.id);
   else if (act === "cxz-revisar") cxzRevisar(b.dataset.id);
   else if (act === "cxz-abrir") cxzAbrirFila(b.dataset.id);
   else if (act === "cxz-abrir-proyecto") cxzCambiarProyecto(b.dataset.id);
@@ -19010,6 +19114,7 @@ function viewTablero() {
     ${cxzZonaCargaHtml()}
     ${cxzTablaHtml()}
     ${cxzMotoresHtml()}
+    ${cxzReferenciasHtml()}
     ${guiaHtml("tablero")}
 
     <div class="grp">Flujo del proyecto</div>
@@ -22832,6 +22937,7 @@ function sanearEstado(d) {
   if (!BASES_PRECIO[s.quote.basePrecio]) s.quote.basePrecio = "casa";
   if (!s.cx || typeof s.cx !== "object" || !Array.isArray(s.cx.lotes)) s.cx = { lotes: [], archivos: [] };
   if (!Array.isArray(s.cx.archivos)) s.cx.archivos = [];
+  s.cx.referencias = (Array.isArray(s.cx.referencias) ? s.cx.referencias : []).filter((x) => x && typeof x === "object").slice(-CX_MAX_REFERENCIAS);   // H-272e
   s.cx.archivos = s.cx.archivos.filter((a) => a && typeof a === "object" && typeof a.id === "string" && typeof a.nombre === "string").map((a) => ({ ...a, motor: CXZ_MOTOR_NOMBRE[a.motor] ? a.motor : "sin", estado: CXZ_ESTADOS[a.estado] ? (a.estado === "procesando" ? "espera" : a.estado) : "espera", info: a.info && typeof a.info === "object" ? a.info : {} })).slice(-CX_ZIP_MAX_ENTRADAS);
   s.cx.lotes = s.cx.lotes.filter((l) => l && typeof l === "object" && Array.isArray(l.archivos) && Array.isArray(l.aplicados)).map((l) => ({ ...l, archivos: l.archivos.filter((x) => x && typeof x === "object"), aplicados: l.aplicados.filter((x) => x && typeof x === "object"), equipos: Array.isArray(l.equipos) ? l.equipos.filter((x) => x && typeof x === "object") : [] })).slice(-CX_MAX_LOTES);
   if (!Array.isArray(s.quote.items)) s.quote.items = [];
