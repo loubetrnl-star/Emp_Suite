@@ -387,11 +387,11 @@ t("3.5 el usuario puede capturar el suyo y entonces deja de seguir al origen", (
   G("setPath")("fuego.area", 250); G("marcarPropio")("fuego.area");
   G("recompute")();
   eq(S.fuego.area, 250, "respeta lo capturado:");
-  S.zones[1].area = 300; G("recompute")();
+  S.zones[1].area = 300; S.zones[1].height = 8; G("recompute")();
   eq(S.fuego.area, 250, "el cambio de origen no lo pisa:");
-  eq(S.fuego.altura, 6, "los demás campos siguen heredando:");
+  eq(S.fuego.altura, 8, "los demás campos siguen heredando (la altura máxima sigue a la zona que creció):");
   contiene(G("herenciaHtml")("fuego.area"), "capturada a mano");
-  S.zones[1].area = 100; G("recompute")();
+  S.zones[1].area = 100; S.zones[1].height = 3; G("recompute")();
 });
 t("3.6 se puede volver a heredar sin perder el rastro", () => {
   const r = G("herDe")("fuego.area");
@@ -422,10 +422,15 @@ t("4.3 al aceptar entra, y queda registrado el origen y la fecha", () => {
   eq(G("estadoPropuesta")("load>duct").nivel, "aceptado");
 });
 t("4.4 el usuario puede declarar que captura lo suyo, y también queda escrito", () => {
-  G("propPropio")("load>vent");
-  const v = G("vinculoDe")("load>vent");
-  eq(v.estado, "propio");
-  eq(G("estadoPropuesta")("load>vent").nivel, "propio");
+  /* H-262: la propuesta load>vent ya no existe; se prueba con la de la cédula eléctrica, sin dejar rastro en el estado. */
+  const guardado = JSON.stringify(S);
+  try {
+    G("propPropio")("cedula>elec");
+    const v = G("vinculoDe")("cedula>elec");
+    eq(v.estado, "propio");
+    eq(G("estadoPropuesta")("cedula>elec").nivel, "propio");
+    eq(G("PROPUESTAS")["load>vent"], undefined, "H-262: no queda propuesta carga térmica → ventilación:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 t("4.5 la cédula de equipos no entra al cuadro de cargas sin aceptarla", () => {
   eq(S.elec.tomarHVAC, false, "el modo automático viene apagado:");
@@ -1475,7 +1480,7 @@ t("13.7 las demás disciplinas siguen siendo nodos independientes", () => {
 });
 t("13.8 el semáforo del nodo HVAC es el PEOR de las cinco", () => {
   const área0 = Number(S.zones[0].area);
-  G("chainToDuct")(true); G("chainToVent")(true);
+  G("chainToDuct")(true);   /* H-262: chainToVent ya no existe (ventilación captura lo suyo) */
   G("recompute")();
   const RANGO = G("SEM_RANGO");
   /* La regla, comprobada contra el estado real que haya en este momento: el
@@ -7458,6 +7463,16 @@ t("S.98 (H-262) ventilación calcula sólo con sus propios datos: el área, la a
     S.tab = "ventilacion"; G("render")();
     const txt = w.document.getElementById("view").textContent;
     if (/heredada de Carga térmica|se heredará de Carga térmica/.test(txt)) throw new Error("la pantalla de ventilación todavía anuncia herencia de carga térmica");
+    eq(G("PROPUESTAS")["load>vent"], undefined, "no queda propuesta carga térmica → ventilación:");
+    eq(G("LINKS")["load>vent"], undefined, "no queda cruce load>vent:");
+    if (/como reposición/.test(txt)) throw new Error("la pantalla de ventilación sigue ofreciendo el aire exterior de carga térmica como propuesta");
+    if (/hered/i.test(txt)) throw new Error("la pantalla de ventilación sigue hablando de herencia: " + (/.{0,60}hered.{0,60}/i.exec(txt) || [""])[0]);
+    /* Sin local capturado (el estado inicial de todo proyecto nuevo) se dice «pendiente», no se calcula 0 en silencio. */
+    S.vent.area = 0; S.vent.height = 0; G("recompute")(); S.tab = "ventilacion"; G("render")();
+    if (!G("VENT").avisos.some((a) => /pendiente de la captura/.test(a.msg))) throw new Error("ventilación sin área ni altura no avisa que el caudal queda pendiente de captura");
+    contiene(w.document.getElementById("view").textContent, "pendiente de captura", "la pantalla de ventilación dice que el caudal queda pendiente:");
+    S.vent.area = 120; S.vent.height = 4; G("recompute")();
+    if (G("VENT").avisos.some((a) => /pendiente de la captura/.test(a.msg))) throw new Error("con área y altura capturadas no debe quedar el aviso de pendiente");
     /* Contra incendio no es parte de este hallazgo: sigue como estaba. */
     eq(S.fuego.area, 800, "contra incendio no cambia en este hallazgo:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
