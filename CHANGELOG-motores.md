@@ -23,11 +23,12 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 | 2 | 2.9.16 | sin pisos de 1 m² ni 2.2 m; 5 Pa de ISO 14644-4 con aviso; ceros capturados respetados |
 | 3 | 2.9.24 | H-127: se respeta el signo de la presión diferencial capturada (un cuarto de contención va en negativa: EU GMP Anexo 1 (2022) §4.14, texto en parches/normas-texto); antes −10 Pa se volvían +5 Pa y el Excel imprimía «5 · Capturado». Piso de 5 Pa y fuga por rendijas sobre \|ΔP\|; `dPcap`, `dPneg`, `dPsigno` en el resultado; memoria, PDF y Excel imprimen el signo y citan los 10 Pa guía del Anexo 1. Proyecto fijo (positiva): sin cambio de cifras |
 
-## Selección de equipo (`equip`) · v1
+## Selección de equipo (`equip`) · v2
 
 | Versión | Rev | Hallazgo / cambio de lógica |
 |---|---|---|
 | 1 | 2.9.15 | lógica de partida |
+| 2 | 2.9.24 | H-267 (decisión del dueño, 27-sep-2026): la selección de equipo es autónoma. `buildSystem` (con `peakMatrix`, `zoneTerminals` y `totalsSel`) y `requisitoFam` calculan sólo con las zonas de selección de `S.equip.zonas`: capturadas en su pestaña (nombre, TR, CFM, aire exterior, área, sensible, latente, hora pico) o aceptadas de carga térmica como propuesta `load>equip` (instantánea con origen `{motor: "load", fecha, zona}` que además trae el perfil horario 8–18 h, el nivel de ADP y el sensible del local). Ya no lee `LOADS` en vivo: salió del núcleo térmico (`DOMAINS.equip.cluster = "autonomo"`; cruce nuevo `load>equip` que concede aceptar la propuesta). Ya aceptada no se mueve sola: si la carga cambia la propuesta sale «desactualizada» (con «Ver diferencias» zona por zona). Una zona sin perfil horario (capturada a mano, o con su TR u hora editada) deja la simultaneidad por hora pendiente: el bloque es la suma de picos, sin diversidad supuesta; sin hora pico no cuenta en la ventana ni en la dispersión; sin sensible del local no se aplica ese criterio a las familias terminales (pendiente). Un proyecto guardado se migra UNA vez al abrir (`sanearEstado` marca; `recompute` acepta la instantánea después de la carga y antes de la selección, con vínculo y fecha, sin conceder el cruce): mismas cifras. Huella del sello: zonas de selección (sin id, origen ni fecha), diversidad del edificio, sitio, tecnología, modelos por familia y ductos; ya no anida la de carga (la cotización la toma directo). Proyecto fijo (migrado al abrir): VRF, objetivo de planta 16.8989 TR, planta instalada 19.8518 TR, sin cambio; esperado regenerado sólo de versión (v2). Pruebas: S.104 (nueva); mutantes `equip.m1`–`m4`. |
 
 ## Ductos y calibres (`duct`) · v4
 

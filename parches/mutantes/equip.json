@@ -1,0 +1,34 @@
+[
+ {
+  "id": "equip.m1",
+  "que": "H-267: la selección vuelve a leer la carga térmica EN VIVO (LOADS) en vez de sus zonas de selección",
+  "logica": true,
+  "buscar": "  const Z = zonasCalcSel();",
+  "reemplazar": "  const Z = LOADS.map((r, i) => ({ ...r, name: (S.zones[i] && S.zones[i].name) || `Zona ${i + 1}` }));",
+  "estado": "vigente"
+ },
+ {
+  "id": "equip.m2",
+  "que": "H-267: la migración de un proyecto anterior no acepta la instantánea (abre sin zonas de selección)",
+  "logica": true,
+  "buscar": "    if (zs.some((z) => num(z.tons) > 0)) { aceptarZonasEquip(zs, Date.now()); registrarVinculo(\"load>equip\", \"aceptado\"); }",
+  "reemplazar": "    if (false && zs.length) { aceptarZonasEquip(zs, Date.now()); registrarVinculo(\"load>equip\", \"aceptado\"); }",
+  "estado": "vigente"
+ },
+ {
+  "id": "equip.m3",
+  "que": "H-267: editar la TR u hora pico de una zona con perfil conserva el perfil de la carga (simultaneidad calculada con un perfil que ya no corresponde)",
+  "logica": true,
+  "buscar": "  if ((campo === \"tons\" || campo === \"hour\") && Array.isArray(z.profile)) z.profile = null;",
+  "reemplazar": "  if (false && Array.isArray(z.profile)) z.profile = null;",
+  "estado": "vigente"
+ },
+ {
+  "id": "equip.m4",
+  "que": "H-267: la huella de selección vuelve a anidar la de carga térmica (un cambio de carga sin aceptar diría «la captura cambió»)",
+  "logica": true,
+  "buscar": "  equip: () => ({ zonas: zonasSel().map((z) => sinClaves(z, [\"id\", \"origen\", \"editada\"])), bldDiv: S.bldDiv,",
+  "reemplazar": "  equip: () => ({ load: ENTRADAS.load(), zonas: zonasSel().map((z) => sinClaves(z, [\"id\", \"origen\", \"editada\"])), bldDiv: S.bldDiv,",
+  "estado": "vigente"
+ }
+]

@@ -1692,9 +1692,12 @@ function buildCedulaEquiposPdf() {
   (c.terms || []).filter((tm) => tm.sinModelo).forEach((tm, i) => rows.push([`SM-${i + 1}`, "SIN MODELO EN LA FAMILIA", "0", "-", "-", tm.zone]));
   pdfTable(d, ["Clave", "Equipo", "Cant", "TR c/u", "TR tot", "Servicio"], rows, [42, 150, 32, 40, 42, 126]);
   pdfHeading(d, "4. Desglose por zona");
+  /* H-267: las zonas de SELECCIÓN (las mismas que dimensionan los terminales), no la carga en vivo. */
+  const zsel = zonasCalcSel();
   pdfTable(d, ["Zona", "Area m2", "TR", "CFM", "Terminal"],
-    c.terms.map((tm, i) => [tm.zone, (LOADS[i]?.area || 0).toFixed(0), (LOADS[i]?.tons || 0).toFixed(2), (LOADS[i]?.cfm || 0).toFixed(0), tm.model ? `${tm.qty} x ${tm.model.model}` : "sin modelo en la familia"]),
+    c.terms.map((tm, i) => [tm.zone, (zsel[i]?.area || 0).toFixed(0), (zsel[i]?.tons || 0).toFixed(2), (zsel[i]?.cfm || 0).toFixed(0), tm.model ? `${tm.qty} x ${tm.model.model}` : "sin modelo en la familia"]),
     [130, 60, 55, 60, 127]);
+  pdfParagraph(d, `Procedencia de las zonas: ${resumenProcedenciaEquip(false, true)}.`);
   pdfHeading(d, "5. Recomendacion de la app contra seleccion del proyecto");
   pdfRows(d, [
     ["Recomendado por la suite", y.recomendado ? `${y.recomendado.label} · ${y.recomendado.score} puntos · ${y.recomendado.why}` : "-"],
@@ -1986,7 +1989,8 @@ function buildCargaPdf() {
 function buildSeleccionPdf() {
   recompute();
   const y = SYS, c = y.chosen, d = PdfDoc("Memoria de seleccion de equipo");
-  const vacio = !LOADS.length || c.id === "none";
+  /* H-267: la memoria trabaja con las zonas de SELECCIÓN (capturadas o aceptadas de carga térmica, con su procedencia). */
+  const vacio = !zonasSel().length || c.id === "none";
   const zn = (i) => (S.zones[i] && S.zones[i].name) || `Zona ${i + 1}`;
   const N = NORMAS.equip;
   pdfTitle(d, "Memoria de seleccion de equipo", `${S.meta.name || "Proyecto"} · ${vacio ? "sin zonas capturadas" : c.label}`);
@@ -2005,23 +2009,28 @@ function buildSeleccionPdf() {
   ]);
   if (vacio) {
     pdfHeading(d, "3. Resultado");
-    pdfParagraph(d, "[AVISO] " + (c.note || "Captura al menos una zona en Carga termica para que la suite pueda seleccionar equipo."));
+    pdfParagraph(d, "[AVISO] Sin zonas de seleccion: acepta en Seleccion de equipo la propuesta de Carga termica (instantanea con fecha) o captura ahi las zonas.");
     pdfHeading(d, "4. Alcance de este calculo");
-    pdfParagraph(d, "Sin zonas capturadas no hay carga que dimensionar ni equipo que seleccionar. Este documento se emite en blanco para dejar constancia de los criterios y de la version del catalogo.");
+    pdfParagraph(d, "Sin zonas de seleccion no hay carga que dimensionar ni equipo que seleccionar. Este documento se emite en blanco para dejar constancia de los criterios y de la version del catalogo.");
     pdfFirmas(d);
     pdfTrazabilidad(d, ["equip", "load"]);
     return d.end();
   }
 
-  /* 3 · Datos de entrada: lo que la carga termica entrega a la seleccion */
-  pdfHeading(d, "3. Datos de entrada (carga termica)");
+  /* 3 · Datos de entrada: las zonas de selección, con su procedencia (regla 8). H-267: la carga térmica ya no entra en vivo. */
+  pdfHeading(d, "3. Datos de entrada (zonas de seleccion)");
   pdfRows(d, [
-    ["Zonas capturadas", String(y.nz)],
+    ["Zonas de seleccion", String(y.nz)],
+    ["Procedencia", resumenProcedenciaEquip(false, true)],
     ["Suma de picos por zona", `${n(y.sumPeaks, 1)} TR`],
     ["Carga de bloque", y.haveProf && y.blockHour != null ? `${n(y.blockTons, 1)} TR a las ${y.blockHour}:00 solares (barrido horario de todas las zonas)` : `${n(y.blockTons, 1)} TR (sin barrido horario: igual a la suma de picos)`],
     ["Diversidad calculada", `${n(y.diversity * 100, 0)} % de la suma de picos`],
     ["Zonas que pican a +/- 1 h del bloque", `${y.inWindow} de ${y.nz} · dispersion de horas pico ${n(y.hourSpread, 0)} h`],
   ]);
+  pdfTable(d, ["Zona", "TR", "CFM", "Sens. kW", "Lat. kW", "Area m2", "Procedencia"],
+    zonasSel().map((z, i) => [z.name || `Zona ${i + 1}`, n(num(z.tons), 2), n(num(z.cfm), 0), n(num(z.grandS) / 1000, 2), n(num(z.grandL) / 1000, 2), n(num(z.area), 0), procedenciaZonaEquip(z, false, true)]),
+    [96, 38, 44, 44, 44, 44, 140]);
+  pendientesEquip().forEach((m) => pdfParagraph(d, "[PENDIENTE] " + m.normalize("NFD").replace(/[\u0300-\u036f]/g, "")));
   if (y.peaks.length) {
     pdfTable(d, ["Zona", "Hora pico", "TR pico", "TR a hora bloque", "CFM", "Coincide"],
       y.peaks.map((p) => [p.zone, p.hour != null ? `${p.hour}:00` : "-", n(p.tons, 2), n(p.coincident, 2), n(p.cfm, 0), p.coincides ? "Si" : "No"]),
@@ -2102,6 +2111,7 @@ function buildSeleccionPdf() {
       [110, 40, 110, 110, 44, 44]);
     LOADS.forEach((r, i) => { if (r.eq && r.eq.sizingNote) pdfParagraph(d, `${zn(i)}: ${r.eq.sizingNote}`); });
     pdfParagraph(d, "Esta preseleccion evalua cada zona por separado y elige la tecnologia por area, carga y calor sensible. Puede diferir del sistema integrado del punto 7, que elige una familia para todo el edificio; para la cedula y la cotizacion rige el punto 7.");
+    pdfParagraph(d, "Viene de Carga termica tal como esta calculada hoy y no entra a esta seleccion, que usa solo las zonas de la seccion 3 (H-267).");
   }
 
   /* 9 · Memoria y observaciones */
@@ -3840,26 +3850,27 @@ function groupUnits(rows) {
 let SYS_HOUR_HINT = P.HOUR;
 
 /* Matriz de picos: qué zona pica a qué hora, cuánto aporta a la hora del bloque
-   y cuánto se pierde por no coincidir. Es el insumo de la selección de equipo. */
-function peakMatrix(blockHour) {
-  return LOADS.map((r, i) => {
+   y cuánto se pierde por no coincidir. Es el insumo de la selección de equipo.
+   H-267: recibe las zonas de SELECCIÓN (zonasCalcSel), no LOADS: la carga térmica ya no se lee en vivo. */
+function peakMatrix(blockHour, zs) {
+  return zs.map((r, i) => {
     const coinc = r.profile ? (r.profile.find((p) => p.hour === blockHour)?.tons ?? r.tons) : r.tons;
     return {
-      zone: S.zones[i]?.name || `Zona ${i + 1}`,
-      hour: r.hour,                 // hora pico propia de la zona
+      zone: r.name || `Zona ${i + 1}`,
+      hour: r.hour,                 // hora pico propia de la zona (null: capturada sin hora, pendiente)
       tons: r.tons,                 // carga en SU hora pico
       cfm: r.cfm,
       coincident: coinc,            // carga a la hora del bloque
       slack: r.tons - coinc,        // lo que no coincide
-      coincides: r.hour === blockHour,
+      coincides: r.hour != null && r.hour === blockHour,
       adpLevel: r.adpLevel || "ok",
       profile: r.profile || [],
     };
   }).sort((a, b) => b.tons - a.tons);
 }
 
-function zoneTerminals(pool, maxU = 3) {
-  return LOADS.map((r, i) => {
+function zoneTerminals(pool, maxU, zs) {
+  return zs.map((r, i) => {
     /* H-01 · Sin equipo disponible en la familia, o con carga cero, no hay nada
        que elegir: se devuelve la zona SIN MODELO en vez de reventar más adelante
        al leer .qty. Esta es la guarda que el comentario ya prometía y que nunca
@@ -3868,7 +3879,7 @@ function zoneTerminals(pool, maxU = 3) {
     const p = modularPick(pool, tgt, maxU) || { ...PICK_VACIO };
     /* El terminal de zona se dimensiona con el PICO DE LA ZONA, no con el del bloque:
        una zona al poniente pica a las 16 h aunque la planta pique a las 15. */
-    return { zone: S.zones[i]?.name || `Zona ${i + 1}`, model: p.model || null, qty: p.model ? p.qty : 0,
+    return { zone: r.name || `Zona ${i + 1}`, model: p.model || null, qty: p.model ? p.qty : 0,
       need: tgt, sinModelo: !p.model, cfm: r.cfm, hour: r.hour, tons: r.tons };
   });
 }
@@ -3971,6 +3982,8 @@ const ENGINES = {
       if (fuera.length) w.push({ lvl: "info", msg: `${fuera.length} modelo(s) del catálogo caen fuera del rango del Product Data que los respalda (${fuera.slice(0, 3).map((e) => e.model).join(", ")}${fuera.length > 3 ? "…" : ""}). La capacidad es nominal de línea: ratificar contra la selección del fabricante.` });
       if (SYS && SYS.recomendado && !SYS.esRecomendacion)
         w.push({ lvl: "info", msg: `Sistema seleccionado a mano: ${SYS.chosen.label}. La app recomendaba ${SYS.recomendado.label} (${SYS.recomendado.score} contra ${SYS.chosen.score} puntos). Queda registrado en la cédula.` });
+      /* H-267: lo que las zonas de selección no traen queda declarado pendiente (regla 6), no supuesto. */
+      seguro(() => pendientesEquip(), []).forEach((m) => w.push({ lvl: "warn", msg: `Selección de equipo · ${m}` }));
       return w;
     },
   },
@@ -4135,9 +4148,11 @@ function validateAll() {
    Los motores no son un solo cálculo encadenado. Cada uno es autónomo, corre
    con su propia metadata y responde por sus propios números.
 
-   Hay UN núcleo térmico —carga térmica, cuartos limpios y selección de
-   equipo— cuyos tres motores comparten libremente entre sí, porque resuelven
-   el mismo problema físico: cuánto calor hay que retirar y con qué máquina.
+   Hay UN núcleo térmico —carga térmica y cuartos limpios— cuyos motores
+   comparten entre sí, porque resuelven el mismo problema físico: cuánto calor
+   hay que retirar. H-267 (decisión del dueño, 27-sep-2026): la selección de
+   equipo salió del núcleo; es autónoma y las zonas de carga le llegan sólo como
+   propuesta aceptada (load>equip, instantánea con fecha).
 
    Todo lo demás —ductos, ventilación, cotización, y los que se agreguen
    después— vive aparte. Puede tomar datos del núcleo, pero solo si el usuario
@@ -4149,7 +4164,7 @@ function validateAll() {
 const CLUSTERS = {
   termico: {
     label: "Núcleo térmico",
-    note: "Estos tres resuelven el mismo problema físico y comparten datos entre sí sin pedir permiso.",
+    note: "Carga térmica y cuartos limpios resuelven el mismo problema físico y comparten datos entre sí sin pedir permiso. La selección de equipo ya no está aquí (H-267): toma las zonas de carga sólo como propuesta aceptada.",
   },
   autonomo: {
     label: "Motores autónomos",
@@ -4164,8 +4179,8 @@ const DOMAINS = {
   clean: { cluster: "termico",  label: "Cuartos limpios",     method: "ISO 14644 / GMP anexo 1",
            owns: "Clase ISO, cambios de aire, cobertura de filtros, cascada de presión.",
            emits: ["caudal", "módulos HEPA", "reposición", "TR"] },
-  equip: { cluster: "termico",  label: "Selección de equipo", method: "Catálogo Carrier",
-           owns: "Catálogo de equipo, economía de escala, redundancia.",
+  equip: { cluster: "autonomo", label: "Selección de equipo", method: "Catálogo Carrier",
+           owns: "Zonas de selección (capturadas en su pestaña o aceptadas de carga térmica como instantánea), catálogo de equipo, economía de escala, redundancia.",
            emits: ["modelo", "cantidad", "TR instalados", "cédula"] },
 
   duct:  { cluster: "autonomo", label: "Ductos y calibres",   method: "SMACNA / ASHRAE",
@@ -4210,6 +4225,14 @@ const LINKS = {
     what: "Caudal total de suministro, caudal por zona y aire exterior, para generar los tramos.",
     why: "Sin esto tendrías que capturar a mano el caudal de cada tramo. El motor de ductos no calcula carga: solo dimensiona el caudal que le des.",
     cost: "Si lo niegas, el motor de ductos sigue funcionando igual, pero capturas tú el caudal de cada tramo.",
+  },
+  /* H-267 (decisión del dueño, 27-sep-2026): selección de equipo dejó el núcleo térmico. Las zonas de carga le llegan sólo
+     como propuesta aceptada (instantánea con fecha); aceptarla concede este cruce. Autorizarlo solo no mueve nada. */
+  "load>equip": {
+    from: "load", to: "equip",
+    what: "Nombre, TR pico, CFM, aire exterior, área, sensible y latente, hora pico y perfil horario de 8 a 18 h de cada zona, como instantánea con fecha.",
+    why: "Sin esto capturas tú las zonas de selección (TR, CFM, área, sensible y latente, hora pico). La selección no calcula carga: selecciona equipo para las zonas que le des.",
+    cost: "Si lo niegas, la selección sigue funcionando con las zonas que captures en su pestaña; sin perfil horario la simultaneidad por hora queda pendiente.",
   },
   /* H-262 (decisión del dueño, 27-sep-2026): el cruce load>vent se retiró. Entre carga térmica y ventilación la única
      relación va al revés: el ventilador seleccionado entrega el calor de su motor a una zona (H-263). */
@@ -4439,40 +4462,50 @@ function linkModal(id) {
 }
 
 function buildSystem(force) {
-  /* Sin zonas capturadas no hay nada que seleccionar. Antes se seguía adelante y se
+  /* H-267 (decisión del dueño, 27-sep-2026): la selección calcula SÓLO con sus zonas de selección —capturadas en su pestaña o
+     aceptadas de Carga térmica como propuesta (instantánea con fecha, regla 2)—, no con LOADS en vivo. Si la carga cambia, la
+     propuesta sale «desactualizada» y esto no se mueve hasta volver a aceptar (regla 3). */
+  const Z = zonasCalcSel();
+  /* Sin zonas de selección no hay nada que seleccionar. Antes se seguía adelante y se
      leía .qty de un resultado nulo, lo que tumbaba la aplicación en cuanto se
      vaciaba un proyecto o se abría uno recién creado sin zonas. */
-  if (!LOADS.length) {
-    const vacio = { id: "none", key: "none", label: "Sin zonas capturadas", score: 0, plant: [], groups: [], terms: [], notes: [], instPlant: 0, instTerm: 0, units: "",
-      note: "Captura al menos una zona en Carga térmica para que la suite pueda seleccionar equipo.",
+  if (!Z.length) {
+    const vacio = { id: "none", key: "none", label: "Sin zonas de selección", score: 0, plant: [], groups: [], terms: [], notes: [], instPlant: 0, instTerm: 0, units: "",
+      note: "Sin zonas de selección: acepta en Selección de equipo la propuesta de Carga térmica (instantánea con fecha) o captura ahí las zonas (TR, CFM, área, sensible y latente, hora pico).",
       installed: 0, instTerm: 0, why: "", pros: [], cons: [] };
-    return { opts: [], chosen: vacio, blockTons: 0, sumPeaks: 0, plantTarget: 0, nz: 0,
+    /* H-267: sin zonas de selección con la carga ya capturada, las vistas y la validación leen recomendado/esRecomendacion:
+       declarados (contrato de selfCheck), no ausentes. */
+    return { opts: [], chosen: vacio, recomendado: null, esRecomendacion: true, blockTons: 0, sumPeaks: 0, plantTarget: 0, nz: 0,
       blockHour: P.HOUR, blockProfile: [], userDiv: S.bldDiv, haveProf: false,
-      peaks: [], inWindow: 0, hourSpread: 0, diversity: 1, t: totals() };
+      peaks: [], inWindow: 0, hourSpread: 0, diversity: 1, t: totalsSel([]) };
   }
-  const t = totals();
-  const nz = LOADS.length;
-  const sumPeaks = LOADS.reduce((a, r) => a + r.tons, 0);
+  const t = totalsSel(Z);
+  const nz = Z.length;
+  const sumPeaks = Z.reduce((a, r) => a + r.tons, 0);
   /* Carga de bloque REAL: se suman todas las zonas hora por hora y se toma el
      máximo de esa suma. Como cada zona pica a distinta hora, el bloque sale
      naturalmente menor que la suma de picos: eso es la diversidad, calculada
      en vez de supuesta. */
+  /* H-267: una zona sin perfil horario (capturada a mano, o editada su TR u hora) deja la simultaneidad por hora «pendiente»:
+     el bloque es la suma de picos, sin diversidad supuesta. No se inventa perfil (regla 6). */
   let blockTons = sumPeaks, blockHour = null, blockProfile = [];
-  const haveProf = LOADS.length > 0 && LOADS.every((r) => Array.isArray(r.profile));
+  const haveProf = Z.length > 0 && Z.every((r) => Array.isArray(r.profile));
   if (haveProf) {
-    blockProfile = HOURS.map((hr, i) => ({ hour: hr, tons: LOADS.reduce((a, r) => a + (r.profile[i]?.tons || 0), 0) }));
+    blockProfile = HOURS.map((hr, i) => ({ hour: hr, tons: Z.reduce((a, r) => a + (r.profile[i]?.tons || 0), 0) }));
     const mx = Math.max(...blockProfile.map((p) => p.tons));
     const bp = blockProfile.filter((p) => p.tons >= mx * 0.998)
       .reduce((a, b) => (Math.abs(b.hour - 15) < Math.abs(a.hour - 15) ? b : a));
     blockTons = bp.tons; blockHour = bp.hour;
   }
   SYS_HOUR_HINT = blockHour;
-  const peaks = peakMatrix(blockHour);
+  const peaks = peakMatrix(blockHour, Z);
   /* Ventana de coincidencia: cuántas zonas pican dentro de ±1 h del bloque.
      Si casi todas coinciden, la diversidad real es baja y no conviene
-     castigar la planta con un factor optimista. */
-  const inWindow = peaks.filter((p) => Math.abs(p.hour - blockHour) <= 1).length;
-  const hourSpread = peaks.length ? Math.max(...peaks.map((p) => p.hour)) - Math.min(...peaks.map((p) => p.hour)) : 0;
+     castigar la planta con un factor optimista. H-267: una zona sin hora pico
+     capturada (pendiente) no cuenta ni para la ventana ni para la dispersión. */
+  const conHora = peaks.filter((p) => p.hour != null);
+  const inWindow = conHora.filter((p) => Math.abs(p.hour - blockHour) <= 1).length;
+  const hourSpread = conHora.length ? Math.max(...conHora.map((p) => p.hour)) - Math.min(...conHora.map((p) => p.hour)) : 0;
   {
   }
   const userDiv = Math.min(1, Math.max(.5, S.bldDiv || 1));
@@ -4483,8 +4516,8 @@ function buildSystem(force) {
   // 1) Agua helada: un chiller (o banco) + manejadora por zona
   {
     const plant = modularPick(poolOf(LINE.chiller), plantTarget, 3);
-    const bigZones = LOADS.filter((r) => r.tons >= 4.5).length;
-    const terms = zoneTerminals(poolOf((e) => LINE.ahu(e) || LINE.fcu(e)), 3);
+    const bigZones = Z.filter((r) => r.tons >= 4.5).length;
+    const terms = zoneTerminals(poolOf((e) => LINE.ahu(e) || LINE.fcu(e)), 3, Z);
     const g = groupUnits(terms);
     opts.push({
       id: "chiller", label: "Planta de agua helada", sub: "Chiller + manejadoras por zona",
@@ -4511,7 +4544,7 @@ function buildSystem(force) {
   // 2) VRF modular: condensadoras combinadas + unidades interiores
   {
     const plant = modularPick(poolOf(LINE.vrfOut), plantTarget, 6);
-    const terms = zoneTerminals(poolOf(LINE.vrfIn), 6);
+    const terms = zoneTerminals(poolOf(LINE.vrfIn), 6, Z);
     const g = groupUnits(terms);
     opts.push({
       id: "vrf", label: "VRF modular", sub: "Condensadoras en cascada + unidades interiores",
@@ -4531,7 +4564,7 @@ function buildSystem(force) {
   }
   // 3) Paquetes rooftop por zona
   {
-    const terms = zoneTerminals(poolOf(LINE.rtu), 2);
+    const terms = zoneTerminals(poolOf(LINE.rtu), 2, Z);
     const g = groupUnits(terms);
     const inst = g.reduce((a, x) => a + x.tons, 0);
     opts.push({
@@ -4549,7 +4582,7 @@ function buildSystem(force) {
   }
   // 4) Split ducted por zona
   {
-    const terms = zoneTerminals(poolOf(LINE.split), 2);
+    const terms = zoneTerminals(poolOf(LINE.split), 2, Z);
     const g = groupUnits(terms);
     opts.push({
       id: "split", label: "Split ducted por zona", sub: "Evaporadora + condensadora 1:1",
@@ -5270,8 +5303,8 @@ function buildPropuestaXlsx(opt) {
   p_(L(`Por medio de la presente ponemos a su consideracion nuestra propuesta ${P0.no} Rev. ${P0.rev} para el proyecto ${S.meta.name || ""}, ubicado en ${P0.sitio || S.meta.location || "el sitio indicado"}.`,
     `We are pleased to submit our proposal ${P0.no} Rev. ${P0.rev} for the ${S.meta.name || ""} project, located at ${P0.sitio || S.meta.location || "the indicated site"}.`));
   lf.push([]);
-  p_(L(`El alcance cubre ${cat.secciones.length} disciplina(s) bajo un solo contrato llave en mano, sobre una superficie de ${n(t.area, 0)} m2 y una carga termica calculada de ${n(t.tons, 1)} TR con hora pico a las ${SYS ? SYS.blockHour : "—"}:00 horas. La ingenieria que sustenta cada importe viene incluida en este mismo libro: no es una lista de precios, es una propuesta de ingenieria.`,
-    `The scope covers ${cat.secciones.length} discipline(s) under a single turnkey contract, over a ${n(t.area, 0)} m2 floor area and a calculated cooling load of ${n(t.tons, 1)} TR peaking at ${SYS ? SYS.blockHour : "—"}:00 hours. The engineering behind every amount is included in this same workbook: this is not a price list, it is an engineering proposal.`));
+  p_(L(`El alcance cubre ${cat.secciones.length} disciplina(s) bajo un solo contrato llave en mano, sobre una superficie de ${n(t.area, 0)} m2 y una carga termica calculada de ${n(t.tons, 1)} TR con hora pico a las ${SYS && SYS.nz > 0 && SYS.blockHour != null ? SYS.blockHour : "—"}:00 horas. La ingenieria que sustenta cada importe viene incluida en este mismo libro: no es una lista de precios, es una propuesta de ingenieria.`,
+    `The scope covers ${cat.secciones.length} discipline(s) under a single turnkey contract, over a ${n(t.area, 0)} m2 floor area and a calculated cooling load of ${n(t.tons, 1)} TR peaking at ${SYS && SYS.nz > 0 && SYS.blockHour != null ? SYS.blockHour : "—"}:00 hours. The engineering behind every amount is included in this same workbook: this is not a price list, it is an engineering proposal.`));
   lf.push([]);
   p_(L("Lo que nos distingue es simple: un solo responsable tecnico calcula, construye, balancea y certifica. No hay reparto de culpas entre el que disena y el que instala, porque son el mismo. Cada valor de este documento se puede rastrear hasta la disciplina que lo calculo y hasta el dato de origen del que se heredo.",
     "What sets us apart is simple: one technical lead calculates, builds, balances and certifies. There is no blame shifting between designer and installer, because they are the same party. Every value in this document can be traced back to the discipline that calculated it and to the source datum it was inherited from."));
@@ -5568,10 +5601,11 @@ function buildPropuestaXlsx(opt) {
       hf.push([xT(L("TOTAL", "TOTAL"), XS.SUBT), xT(`${LOADS.length} ${L("zona(s)", "zone(s)")}`, XS.SUBT),
         xF(`SUM(C${ini}:C${fin})`, XS.SUBT), xF(`SUM(D${ini}:D${fin})`, XS.SUBT), xF(`SUM(E${ini}:E${fin})`, XS.SUBT),
         xF(`SUM(F${ini}:F${fin})`, XS.SUBT), xF(`SUM(G${ini}:G${fin})`, XS.SUBT), xV(XS.SUBT), xV(XS.SUBT)]);
-      if (SYS && SYS.blockTons != null) {
+      if (SYS && SYS.blockTons != null && SYS.nz > 0) {
         hf.push([]);
-        hf.push([xT(L(`Bloque diversificado: ${n(SYS.blockTons, 2)} TR a las ${SYS.blockHour}:00 contra ${n(SYS.sumPeaks, 2)} TR de suma de picos (diversidad ${n(SYS.diversity, 3)}). La planta se dimensiona con el bloque, los terminales con el pico de su propia zona.`,
-          `Diversified block: ${n(SYS.blockTons, 2)} TR at ${SYS.blockHour}:00 against ${n(SYS.sumPeaks, 2)} TR sum of peaks (diversity ${n(SYS.diversity, 3)}). The plant is sized on the block, terminals on their own zone peak.`), XS.NOTA)]);
+        /* H-267 (regla 8): el bloque sale de las zonas de SELECCIÓN; se dice de dónde vienen (aceptadas de la carga con fecha o capturadas). */
+        hf.push([xT(L(`Bloque diversificado: ${n(SYS.blockTons, 2)} TR${SYS.blockHour != null ? ` a las ${SYS.blockHour}:00` : " (simultaneidad por hora pendiente: suma de picos)"} contra ${n(SYS.sumPeaks, 2)} TR de suma de picos (diversidad ${n(SYS.diversity, 3)}). La planta se dimensiona con el bloque, los terminales con el pico de su propia zona. Zonas de seleccion: ${resumenProcedenciaEquip(false, true)}.`,
+          `Diversified block: ${n(SYS.blockTons, 2)} TR${SYS.blockHour != null ? ` at ${SYS.blockHour}:00` : " (hourly coincidence pending: sum of peaks)"} against ${n(SYS.sumPeaks, 2)} TR sum of peaks (diversity ${n(SYS.diversity, 3)}). The plant is sized on the block, terminals on their own zone peak. Selection zones: ${resumenProcedenciaEquip(true)}.`), XS.NOTA)]);
       }
       hf.push([]);
     }
@@ -11274,14 +11308,16 @@ const selloNorma = (id) => {
    contra la carga de bloque del edificio; las TERMINALES contra la zona más
    grande, que es la que manda el tamaño del terminal. Se dice cuál se usó. */
 function requisitoFam(famId) {
-  const t = totals();
+  /* H-267: con las zonas de SELECCIÓN (capturadas o aceptadas), no con la carga en vivo. */
+  const Z = zonasCalcSel(), t = totalsSel(Z);
   const term = ["ahu", "fcu", "vrf_in", "ptac"].includes(famId);
   let ref = null, base = { tons: 0, cfm: 0, sensible: 0 };
-  if (term && LOADS.length) {
+  if (term && Z.length) {
     let ix = 0;
-    LOADS.forEach((r, i) => { if (r.tons > LOADS[ix].tons) ix = i; });
-    ref = S.zones[ix]?.name || `Zona ${ix + 1}`;
-    base = { tons: LOADS[ix].tons, cfm: LOADS[ix].cfm, sensible: LOADS[ix].roomS };
+    Z.forEach((r, i) => { if (r.tons > Z[ix].tons) ix = i; });
+    ref = Z[ix].name || `Zona ${ix + 1}`;
+    /* El sensible del local viaja en la instantánea de carga; una zona capturada a mano no lo trae: pendiente (no se supone). */
+    base = { tons: Z[ix].tons, cfm: Z[ix].cfm, sensible: Z[ix].roomS, sensiblePendiente: Z[ix].roomS == null };
   } else {
     ref = SYS && SYS.blockHour != null ? `bloque del edificio a las ${SYS.blockHour}:00` : "proyecto completo";
     base = { tons: SYS ? SYS.blockTons : t.tons, cfm: t.cfm, sensible: t.s };
@@ -11342,6 +11378,9 @@ function defaultState() { return {
      y `abierto` qué ramas dejó abiertas el usuario. */
   cat: { q: "", src: "carrier", tech: "all", vista: "arbol", abierto: {} },
   sysForce: null,
+  /* H-267 · Selección de equipo autónoma: sus zonas de selección (capturadas en su pestaña o aceptadas de carga térmica como
+     instantánea) y la marca de migración de un proyecto anterior (null salvo al abrir uno; la consume recompute). */
+  equip: defaultEquip(),
   /* Lo que la app recomendó contra lo que se eligió. Viaja con el proyecto y se
      imprime en la cédula: es la diferencia entre "la app dijo" y "yo decidí", y
      es lo que hay que poder sostener frente a un cliente meses después. */
@@ -11528,6 +11567,17 @@ function recompute() {
   VENT = computeVent(S.vent);
   DUCT = calcDuct(S.duct);
   CLEAN = computeCleanAll();
+  /* H-267 (decisión del dueño, 27-sep-2026): la selección de equipo calcula sólo con sus zonas de selección. Un proyecto anterior
+     (sin ellas) que la leía EN VIVO de la carga toma UNA vez, al abrir, la instantánea de esa carga y la deja como propuesta
+     aceptada con fecha: abre con las mismas cifras y desde ahí no se mueve sola (regla 3). La marca la deja sanearEstado y se
+     consume aquí, después de la carga y antes de la selección. No concede el cruce: cambiaría la huella de otros motores. */
+  if (!S.equip || typeof S.equip !== "object" || Array.isArray(S.equip)) S.equip = defaultEquip();
+  if (!Array.isArray(S.equip.zonas)) S.equip.zonas = [];
+  if (S.equip.tomarDeCarga === true) {
+    S.equip.tomarDeCarga = null;
+    const zs = zonasPropuestasEquip();
+    if (zs.some((z) => num(z.tons) > 0)) { aceptarZonasEquip(zs, Date.now()); registrarVinculo("load>equip", "aceptado"); }
+  }
   SYS = buildSystem(S.sysForce);
   /* Los tres motores nuevos corren DESPUÉS de la selección de equipo y ANTES de la
      cotización, que tiene renglones que salen de los tres. El eléctrico corre AL
@@ -17008,12 +17058,14 @@ function viewCarga() {
 /* ---------- Sistema integrado del edificio ---------- */
 function sysCardHtml() {
   const y = SYS, c = y.chosen;
-  /* Con el proyecto vacío no hay selección que describir. */
-  if (!y.chosen || y.chosen.id === "none") {
-    return `<div class="card"><h3>Sistema integrado del edificio</h3><div class="body">
-      <div class="sub">${esc((y.chosen && y.chosen.note) || "Captura al menos una zona en Carga térmica para que la suite pueda seleccionar equipo.")}</div>
+  /* Sin zonas de selección no hay sistema que describir. H-267: eso ya no sólo pasa con el proyecto vacío (la carga puede estar
+     capturada y la propuesta sin aceptar), así que el panel de permisos, la validación y la comprobación siguen a la vista. */
+  const sinSistema = !y.chosen || y.chosen.id === "none";
+  const vacioHtml = () => `<div class="card"><h3>Sistema integrado del edificio</h3><div class="body">
+      <div class="sub">${esc((y.chosen && y.chosen.note) || "Sin zonas de selección: acepta la propuesta de Carga térmica o captura las zonas en Selección de equipo.")}</div>
+      <div class="row" style="margin-top:10px"><button class="btn-ghost" data-act="go-tab" data-tab="seleccion">Ir a Selección de equipo</button></div>
     </div></div>`;
-  }
+  if (sinSistema && !(S.zones || []).some((z) => z && num(z.area) > 0)) return vacioHtml();   /* proyecto vacío: como antes */
   const single = y.nz < 2;
   /* Panel de dominios: quién comparte con quién y bajo qué permiso */
   const grupos = Object.entries(CLUSTERS).map(([cid, c]) => {
@@ -17087,13 +17139,13 @@ function sysCardHtml() {
     ${V.errs ? `<div class="hint" style="margin-top:10px;border-color:var(--alerta)"><b>Hay resultados que no son válidos.</b> Resuelve lo marcado como crítico antes de mandar la cédula de equipos o la cotización: un ADP bajo el piso termodinámico no se arregla subiendo la tonelada.</div>` : ""}
   </div></div>`;
 
-  const pk = y.peaks && y.peaks.length > 1 ? `<div class="card"><h3>Matriz de picos<span class="tag">bloque a las ${y.blockHour}:00</span></h3><div class="body">
+  const pk = y.peaks && y.peaks.length > 1 ? `<div class="card"><h3>Matriz de picos<span class="tag">${y.blockHour != null ? `bloque a las ${y.blockHour}:00` : "simultaneidad por hora pendiente"}</span></h3><div class="body">
     <div class="sub" style="margin-bottom:10px">Cada zona pica a su propia hora. El terminal de cada zona se dimensiona con <b>su</b> pico; la planta, con la suma a la hora del bloque. La diferencia entre las dos columnas es la diversidad, y es lo que no conviene pagar dos veces.</div>
     <div class="tw"><table>
-      <thead><tr><th>Zona</th><th class="num">Hora pico</th><th class="num">TR en su pico</th><th class="num">TR a las ${y.blockHour}h</th><th class="num">No coincide</th></tr></thead>
+      <thead><tr><th>Zona</th><th class="num">Hora pico</th><th class="num">TR en su pico</th><th class="num">${y.blockHour != null ? `TR a las ${y.blockHour}h` : "TR a la hora del bloque (pendiente)"}</th><th class="num">No coincide</th></tr></thead>
       <tbody>${y.peaks.map((p) => `<tr${p.coincides ? ' class="group-total"' : ""}>
         <td>${esc(p.zone)}${p.adpLevel === "critico" ? ' <span class="badge warn">ADP crítico</span>' : p.adpLevel === "riesgo" ? ' <span class="badge">ADP bajo</span>' : ""}</td>
-        <td class="num">${p.hour}:00</td><td class="num">${n(p.tons, 2)}</td>
+        <td class="num">${p.hour != null ? `${p.hour}:00` : "pendiente"}</td><td class="num">${n(p.tons, 2)}</td>
         <td class="num">${n(p.coincident, 2)}</td>
         <td class="num">${p.slack > 0.005 ? `−${n(p.slack, 2)}` : "—"}</td></tr>`).join("")}
         <tr class="group-total"><td>SUMA DE PICOS</td><td class="num">—</td><td class="num">${n(y.sumPeaks, 2)}</td>
@@ -17108,7 +17160,9 @@ function sysCardHtml() {
     ${y.inWindow >= y.peaks.length - 1 && y.hourSpread <= 2 ? `<div class="hint" style="margin-top:8px">Casi todas las zonas pican a la misma hora: la diversidad real es baja. Aplicar aquí un factor de bloque optimista deja la planta corta.</div>`
       : y.diversity < 0.85 ? `<div class="hint" style="margin-top:8px">Los picos están repartidos a lo largo del día: la planta puede quedar ${n((1 - y.diversity) * 100, 0)} % por debajo de la suma de picos sin quedarse corta. Los terminales no: cada uno necesita su propio pico.</div>` : ""}
   </div></div>` : "";
+  if (sinSistema) return permisos + diag + val + vacioHtml();
   return permisos + diag + val + pk + `<div class="card"><h3>Sistema integrado del edificio<span class="tag">${y.nz} zona(s) · ${n(y.blockTons, 1)} TR de bloque</span></h3><div class="body">
+    <div class="sub" style="margin-bottom:10px">Zonas de selección (H-267): ${esc(resumenProcedenciaEquip())}. <button class="toolbtn mini" data-act="go-tab" data-tab="seleccion">Ver en Selección de equipo</button></div>
     ${single ? `<div class="hint" style="margin-bottom:12px">Con una sola zona la selección integrada equivale a la selección de la zona. Agrega más zonas para que el sistema se consolide en una planta central.</div>` : ""}
     <div class="metrics" style="margin-bottom:12px">
       <div class="metric"><div class="k">Suma de picos</div><div class="v">${n(y.sumPeaks, 1)} <small>TR</small></div></div>
@@ -17252,7 +17306,11 @@ function kaizenLazy() {
        invalidaba cuando cambiaba la capacidad instalada sin cambiar de
        arquitectura: podía mostrar un Kaizen viejo tras aceptar otro sistema
        del mismo tipo con distinto tonelaje. */
-    "|" + S.site.key + "|" + S.bldDiv + "|" + (SYS && SYS.chosen ? SYS.chosen.key + "|" + num(SYS.chosen.instPlant) + "|" + num(SYS.chosen.instTerm) : "");
+    "|" + S.site.key + "|" + S.bldDiv + "|" + (SYS && SYS.chosen ? SYS.chosen.key + "|" + num(SYS.chosen.instPlant) + "|" + num(SYS.chosen.instTerm) : "") +
+    /* H-267: el sistema integrado ya no sigue a las zonas de carga: sale de las zonas de selección (capturadas o aceptadas). Sin
+       ellas en la firma, aceptar otra instantánea o editar una zona de selección con la misma capacidad instalada dejaba un Kaizen
+       calculado con la carga de bloque anterior. */
+    "|" + JSON.stringify(S.equip ? S.equip.zonas : null);
   if (KZ_CACHE.key === key && KZ_CACHE.val) return KZ_CACHE.val;
   const val = computeKaizen();
   KZ_CACHE = { key, val };
@@ -18144,6 +18202,176 @@ function computeSoporteGobernado(G) {
   finally { [DUCT, HIDRO, FUEGO, AIRE, QUOTE, S.hidro, S.aire] = prev; }
 }
 
+/* =========================================================================
+   H-267 · SELECCIÓN DE EQUIPO AUTÓNOMA (decisión del dueño, 27-sep-2026)
+   La selección calcula sólo con SUS zonas de selección: las capturadas en su
+   pestaña o las aceptadas de Carga térmica como propuesta (load>equip,
+   instantánea con origen y fecha, regla 2). Ya aceptadas no se mueven solas:
+   si la carga cambia, la propuesta sale «desactualizada» y el usuario decide
+   (regla 3). Cada zona lleva lo que leen buildSystem, peakMatrix,
+   zoneTerminals y totalsSel —TR, perfil horario, hora pico, CFM, nivel de ADP,
+   total, sensible y latente, área y aire exterior— más el sensible del local
+   (criterio de las familias terminales) y su nombre. Sin perfil horario (zona
+   capturada a mano) la simultaneidad por hora queda pendiente: no se inventa.
+   ========================================================================= */
+function defaultEquip() { return { zonas: [], tomarDeCarga: null }; }
+function zonasSel() { return (S.equip && Array.isArray(S.equip.zonas) ? S.equip.zonas : []).filter((z) => z && typeof z === "object"); }
+function numONulo(v) { return v === null || v === undefined || v === "" || !Number.isFinite(Number(v)) ? null : Number(v); }
+/* Las zonas con la forma que lee el motor. Sale sólo de S.equip.zonas: la carga térmica no se lee aquí. */
+function zonasCalcSel() {
+  return zonasSel().map((z, i) => ({
+    name: z.name || `Zona ${i + 1}`, tons: num(z.tons), cfm: num(z.cfm), oa: num(z.oa), area: num(z.area),
+    grand: num(z.grand), grandS: num(z.grandS), grandL: num(z.grandL), hour: numONulo(z.hour),
+    profile: Array.isArray(z.profile) && z.profile.length ? z.profile : null, adpLevel: z.adpLevel || null, roomS: numONulo(z.roomS),
+  }));
+}
+function totalsSel(zs) {
+  return zs.reduce((a, r) => ({
+    grand: a.grand + r.grand, tons: a.tons + r.tons, cfm: a.cfm + r.cfm, oa: a.oa + r.oa,
+    s: a.s + r.grandS, l: a.l + r.grandL, area: a.area + r.area,
+  }), { grand: 0, tons: 0, cfm: 0, oa: 0, s: 0, l: 0, area: 0 });
+}
+/* La PROPUESTA: la arma Carga térmica con lo que calculó en este ciclo; no entra a nada hasta que el usuario la acepta. */
+function zonasPropuestasEquip() { return memo("equipZonas", zonasPropuestasEquipCalc); }
+function zonasPropuestasEquipCalc() {
+  return (Array.isArray(LOADS) ? LOADS : []).map((r, i) => {
+    const z = (S.zones || [])[i] || {};
+    return { name: z.name || `Zona ${i + 1}`, zona: "id" in z ? z.id || null : null, tons: r.tons, cfm: r.cfm, oa: r.oa, area: r.area,
+      grand: r.grand, grandS: r.grandS, grandL: r.grandL, hour: r.hour,
+      profile: "profile" in r && Array.isArray(r.profile) ? r.profile.map((p) => ({ ...p })) : null,
+      adpLevel: r.adpLevel || null, roomS: Number.isFinite(r.roomS) ? r.roomS : null };
+  });
+}
+const firmaZonasEquip = (zs) => JSON.stringify(zs.map((z) => [z.name, +num(z.tons).toFixed(3), Math.round(num(z.cfm)), Math.round(num(z.oa)), +num(z.area).toFixed(1),
+  Math.round(num(z.grandS)), Math.round(num(z.grandL)), Math.round(num(z.roomS)), z.hour == null ? null : num(z.hour),
+  Array.isArray(z.profile) ? z.profile.map((p) => +num(p.tons).toFixed(3)) : null, z.adpLevel || null]));
+const resumenZonasEquip = (zs, en) => {
+  const tr = zs.reduce((a, z) => a + num(z.tons), 0), nombres = zs.map((z) => z.name).slice(0, 4).join(", ") + (zs.length > 4 ? "…" : "");
+  return en ? `${zs.length} zone(s) · ${n(tr, 2)} TR · ${nombres}` : `${zs.length} zona(s) · ${n(tr, 2)} TR · ${nombres}`;
+};
+function equipSigId() { return 1 + zonasSel().reduce((a, z) => { const m = /^e(\d+)$/.exec(String(z.id || "")); return m ? Math.max(a, +m[1]) : a; }, 0); }
+/* Escribe la instantánea aceptada (con origen y fecha). La usan aceptar la propuesta y la migración de un proyecto anterior
+   (recompute). Lo capturado en esta pestaña se conserva; lo aceptado antes de Carga térmica se sustituye. */
+function aceptarZonasEquip(zs, ts) {
+  if (!S.equip || typeof S.equip !== "object" || Array.isArray(S.equip)) S.equip = defaultEquip();
+  const propias = zonasSel().filter((z) => !(z.origen && z.origen.motor === "load"));
+  let k = equipSigId();
+  S.equip.zonas = zs.map((z) => ({ id: `e${k++}`, name: z.name, tons: z.tons, cfm: z.cfm, oa: z.oa, area: z.area, grand: z.grand, grandS: z.grandS, grandL: z.grandL,
+    hour: z.hour == null ? null : z.hour, profile: Array.isArray(z.profile) ? z.profile.map((p) => ({ ...p })) : null, adpLevel: z.adpLevel || null,
+    roomS: z.roomS == null ? null : z.roomS, origen: { motor: "load", fecha: ts, zona: z.zona || null }, editada: false })).concat(propias);
+}
+function agregarZonaEquip() {
+  if (!S.equip || typeof S.equip !== "object" || Array.isArray(S.equip)) S.equip = defaultEquip();
+  if (!Array.isArray(S.equip.zonas)) S.equip.zonas = [];
+  const k = equipSigId();
+  S.equip.zonas.push({ id: `e${k}`, name: `Zona de selección ${S.equip.zonas.length + 1}`, tons: 0, cfm: 0, oa: 0, area: 0, grand: 0, grandS: 0, grandL: 0,
+    hour: null, profile: null, adpLevel: null, roomS: null, origen: null, editada: false });
+  return S.equip.zonas.length - 1;
+}
+const EQZ_CAMPOS = ["name", "tons", "cfm", "oa", "area", "sensKW", "latKW", "hour"];
+function editarZonaEquip(i, campo, valor) {
+  const z = S.equip && Array.isArray(S.equip.zonas) ? S.equip.zonas[i] : null;
+  if (!z || typeof z !== "object" || !EQZ_CAMPOS.includes(campo)) return false;
+  if (campo === "name") z.name = String(valor == null ? "" : valor).slice(0, 80);
+  else if (campo === "hour") { const h = numONulo(valor); z.hour = h == null ? null : Math.min(23, Math.max(0, Math.round(h))); }
+  else if (campo === "sensKW" || campo === "latKW") {
+    const w = Math.max(0, num(valor)) * 1000;
+    if (campo === "sensKW") z.grandS = w; else z.grandL = w;
+    z.grand = num(z.grandS) + num(z.grandL);
+  } else z[campo] = Math.max(0, num(valor));
+  /* La TR o la hora pico capturadas a mano ya no corresponden al perfil horario de la carga: el perfil se quita y la simultaneidad
+     por hora queda pendiente (no se reescala ni se inventa, regla 6). */
+  if ((campo === "tons" || campo === "hour") && Array.isArray(z.profile)) z.profile = null;
+  if (campo !== "name" && z.origen && z.origen.motor === "load") z.editada = true;
+  return true;
+}
+function quitarZonaEquip(i) { if (S.equip && Array.isArray(S.equip.zonas) && S.equip.zonas[i]) S.equip.zonas.splice(i, 1); }
+/* «Ver diferencias»: lo aceptado contra lo que hoy propone Carga térmica, zona por zona. */
+const EQZ_DIF = [["tons", "TR", 2, 1], ["cfm", "CFM", 0, 1], ["oa", "m³/h aire exterior", 0, 1], ["area", "m²", 1, 1], ["grandS", "kW sensibles", 2, 1000], ["grandL", "kW latentes", 2, 1000], ["hour", "hora pico", 0, 1]];
+function diferenciasEquip() {
+  const acept = zonasSel().filter((z) => z.origen && z.origen.motor === "load");
+  const prop = seguro(() => zonasPropuestasEquip(), []) || [];
+  const clave = (z) => (z.origen && z.origen.zona) || z.zona || z.name;
+  const val = (v, d, f) => (v == null ? null : +(num(v) / f).toFixed(d));
+  const perfil = (z) => JSON.stringify(Array.isArray(z.profile) ? z.profile.map((p) => +num(p.tons).toFixed(3)) : null);
+  const out = [];
+  prop.forEach((p) => {
+    const a = acept.find((z) => clave(z) === clave(p));
+    if (!a) { out.push({ zona: p.name, tipo: "nueva", cambios: [] }); return; }
+    const cambios = EQZ_DIF.filter(([k, , d, f]) => val(a[k], d, f) !== val(p[k], d, f)).map(([k, u, d, f]) => ({ campo: k, unidad: u, antes: val(a[k], d, f), ahora: val(p[k], d, f), d }));
+    if (perfil(a) !== perfil(p)) cambios.push({ campo: "profile", unidad: "perfil horario", antes: null, ahora: null, d: 0 });
+    if (a.name !== p.name) cambios.unshift({ campo: "name", unidad: "nombre", antes: a.name, ahora: p.name, d: 0 });
+    if (cambios.length) out.push({ zona: p.name, tipo: "cambio", cambios, editada: !!a.editada });
+  });
+  acept.forEach((a) => { if (!prop.some((p) => clave(p) === clave(a))) out.push({ zona: a.name, tipo: "retirada", cambios: [] }); });
+  return out;
+}
+/* Procedencia de cada zona (regla 8). pdf: sin acentos, como el resto de las memorias (fuente base14). */
+function procedenciaZonaEquip(z, en, pdf) {
+  if (z && z.origen && z.origen.motor === "load") {
+    if (en) return `Thermal load · accepted ${fechaCorta(z.origen.fecha)}${z.editada ? " · edited in this tab" : ""}`;
+    return pdf ? `Carga termica, aceptada el ${fechaCorta(z.origen.fecha)}${z.editada ? ", editada en esta pestana" : ""}`
+      : `Carga térmica · aceptada el ${fechaCorta(z.origen.fecha)}${z.editada ? " · editada en esta pestaña" : ""}`;
+  }
+  return en ? "captured in this tab" : pdf ? "capturada en esta pestana" : "capturada en esta pestaña";
+}
+function resumenProcedenciaEquip(en, pdf) {
+  const zs = zonasSel(), ac = zs.filter((z) => z.origen && z.origen.motor === "load"), ed = ac.filter((z) => z.editada).length, man = zs.length - ac.length;
+  if (!zs.length) return en ? "no selection zones" : pdf ? "sin zonas de seleccion" : "sin zonas de selección";
+  const f = ac.length ? fechaCorta(Math.max(...ac.map((z) => num(z.origen.fecha)))) : "";
+  if (en) return [ac.length ? `${ac.length} from the thermal load, accepted ${f}${ed ? ` (${ed} edited in this tab)` : ""}` : "", man ? `${man} captured in this tab` : ""].filter(Boolean).join("; ");
+  const pe = pdf ? "pestana" : "pestaña", ct = pdf ? "Carga termica" : "Carga térmica";
+  return [ac.length ? `${ac.length} de ${ct}, aceptadas el ${f}${ed ? ` (${ed} editada(s) en esta ${pe})` : ""}` : "", man ? `${man} capturada(s) en esta ${pe}` : ""].filter(Boolean).join("; ");
+}
+/* Lo que la selección no puede resolver con lo capturado: se declara «pendiente», no se supone (regla 6). */
+function pendientesEquip() {
+  const Z = zonasCalcSel(), out = [];
+  const lista = (xs) => xs.map((z) => z.name).join(", ");
+  const sinPerfil = Z.filter((z) => !z.profile), sinHora = Z.filter((z) => z.hour == null), sinSL = Z.filter((z) => z.tons > 0 && !(z.grand > 0)), sinLocal = Z.filter((z) => z.roomS == null);
+  if (Z.length && sinPerfil.length) out.push(`Simultaneidad por hora pendiente: ${lista(sinPerfil)} sin perfil horario (capturada a mano, con TR u hora editada, o aceptada de una carga calculada sin barrido horario); la carga de bloque se toma como la suma de picos, sin diversidad calculada.`);
+  if (sinHora.length) out.push(`Hora pico pendiente: ${lista(sinHora)}; no cuenta en la ventana de coincidencia ni en la dispersión de horas.`);
+  if (sinSL.length) out.push(`Sensible y latente pendientes: ${lista(sinSL)}; el SHF del edificio se calcula sólo con las zonas que los traen${Z.every((z) => !(z.grand > 0)) ? " y, sin ninguna, la calificación de rooftop usa 0.85 de respaldo (criterio de la casa)" : ""}.`);
+  if (sinLocal.length) out.push(`Sensible del local pendiente: ${lista(sinLocal)}; el criterio de capacidad sensible de las familias terminales no se aplica a esa zona.`);
+  return out;
+}
+/* Tarjeta de la pestaña Selección: la propuesta de Carga térmica, sus diferencias y la lista editable de zonas de selección. */
+function tarjetaZonasEquip() {
+  const zs = S.equip && Array.isArray(S.equip.zonas) ? S.equip.zonas : [];
+  const Z = zonasCalcSel(), t = totalsSel(Z);
+  const e = estadoPropuesta("load>equip");
+  const dif = e.rec && e.rec.estado === "aceptado" && e.disponible ? diferenciasEquip() : [];
+  const r = (v, d) => (v == null || v === "" ? "" : +num(v).toFixed(d));
+  const campo = (i, c, v, tipo) => `<input ${tipo === "text" ? 'type="text"' : 'type="number" step="any" min="0" inputmode="decimal"'} data-eqz="${i}.${c}" value="${esc(v)}" aria-label="${c}" style="min-width:${tipo === "text" ? 9 : 4.5}em" />`;
+  const filas = zs.map((z, i) => `<tr>
+      <td>${campo(i, "name", z.name || "", "text")}</td>
+      <td class="num">${campo(i, "tons", r(z.tons, 3))}</td>
+      <td class="num">${campo(i, "cfm", r(z.cfm, 0))}</td>
+      <td class="num">${campo(i, "oa", r(z.oa, 0))}</td>
+      <td class="num">${campo(i, "area", r(z.area, 1))}</td>
+      <td class="num">${campo(i, "sensKW", r(num(z.grandS) / 1000, 2))}</td>
+      <td class="num">${campo(i, "latKW", r(num(z.grandL) / 1000, 2))}</td>
+      <td class="num">${campo(i, "hour", z.hour == null ? "" : z.hour)}</td>
+      <td class="sub" style="min-width:12em">${esc(procedenciaZonaEquip(z))}${Array.isArray(z.profile) && z.profile.length ? " · con perfil horario" : " · perfil horario pendiente"}</td>
+      <td><button class="toolbtn mini" data-act="eqz-del" data-i="${i}">Quitar</button></td></tr>`).join("");
+  const difHtml = dif.length ? `<details style="margin-top:10px"><summary>Ver diferencias contra lo que hoy propone Carga térmica (${dif.length} zona(s))</summary>
+      <div class="tw"><table><thead><tr><th>Zona</th><th>Qué cambió</th><th>Aceptado</th><th>Hoy propone</th></tr></thead><tbody>
+      ${dif.map((d) => d.tipo !== "cambio" ? `<tr><td>${esc(d.zona)}</td><td colspan="3">${d.tipo === "nueva" ? "zona nueva en Carga térmica: no está en la selección" : "ya no está en Carga térmica: sigue en la selección con lo aceptado"}</td></tr>`
+        : d.cambios.map((c, k) => `<tr><td>${k ? "" : esc(d.zona) + (d.editada ? " <small>(editada aquí)</small>" : "")}</td><td>${esc(c.unidad)}</td><td class="num">${c.campo === "profile" ? "—" : esc(c.antes == null ? "pendiente" : c.campo === "name" ? c.antes : n(c.antes, c.d))}</td><td class="num">${c.campo === "profile" ? "cambió" : esc(c.ahora == null ? "pendiente" : c.campo === "name" ? c.ahora : n(c.ahora, c.d))}</td></tr>`).join("")).join("")}
+      </tbody></table></div><div class="sub">La selección sigue con lo aceptado hasta que pulses «Actualizar con la propuesta».</div></details>` : "";
+  const pend = pendientesEquip();
+  return `<div class="card"><h3>Zonas de selección<span class="tag">${zs.length} zona(s) · ${n(t.tons, 1)} TR</span></h3><div class="body">
+    <div class="sub" style="margin-bottom:10px">La selección calcula sólo con estas zonas: aceptadas de Carga térmica (instantánea con fecha) o capturadas aquí. Si la carga cambia, la propuesta lo avisa y estas zonas no se mueven solas.</div>
+    ${propuestaHtml("load>equip")}
+    ${difHtml}
+    ${zs.length ? `<div class="tw" style="margin-top:12px"><table><thead><tr><th>Zona</th><th class="num">TR</th><th class="num">CFM</th><th class="num">Aire ext. m³/h</th><th class="num">Área m²</th><th class="num">Sensible kW</th><th class="num">Latente kW</th><th class="num">Hora pico</th><th>Procedencia</th><th></th></tr></thead>
+      <tbody>${filas}</tbody></table></div>`
+      : `<div class="hint" style="margin-top:12px">Sin zonas de selección: acepta la propuesta de Carga térmica o captura aquí cada zona (TR, CFM, aire exterior, área, sensible, latente y hora pico).</div>`}
+    <div class="row" style="margin-top:10px"><button class="btn-ghost" data-act="eqz-add">+ Zona capturada aquí</button></div>
+    <div class="sub" style="margin-top:8px">Diversidad de edificio ${n(num(S.bldDiv, 1), 2)} (Proyecto · datos del proyecto): se aplica una sola vez, en el objetivo de planta (H-141).</div>
+    ${pend.map((p) => `<div class="warnline">${esc(p)}</div>`).join("")}
+  </div></div>`;
+}
+
 const PROPUESTAS = {
   "load>duct": {
     destino: "duct", origen: "load", permisos: ["load>duct"],
@@ -18185,6 +18413,24 @@ const PROPUESTAS = {
     enVivo: () => false,   /* H-266: ya no existe el conteo en vivo */
     aplicar: () => { S.soporte.snap = snapshotSoporte(); S.soporte.usarMotores = true; },
     propio: () => { S.soporte.usarMotores = false; delete S.soporte.snap; },
+  },
+  /* H-267 (decisión del dueño, 27-sep-2026): selección de equipo autónoma. Carga térmica ARMA la propuesta con lo que calculó;
+     al aceptarla se escribe la instantánea (zonas de selección con origen y fecha) y ya no se mueve sola. */
+  "load>equip": {
+    destino: "equip", origen: "load", permisos: ["load>equip"],
+    titulo: "Zonas de selección desde la carga térmica",
+    que: "Cada zona de Carga térmica entra a la selección con su nombre, TR pico, CFM, aire exterior, área, sensible y latente, hora pico y perfil horario de 8 a 18 h. Al aceptar se guarda una instantánea con origen y fecha: si después cambia la carga, la selección lo avisa y no se mueve sola. Lo capturado en esta pestaña se conserva.",
+    disponible: () => zonasPropuestasEquip().some((z) => num(z.tons) > 0),
+    firma: () => firmaZonasEquip(zonasPropuestasEquip()),
+    resumen: () => resumenZonasEquip(zonasPropuestasEquip()),
+    actual: () => { const zs = zonasSel(), ac = zs.filter((z) => z.origen && z.origen.motor === "load").length; return `${zs.length} zona(s) de selección · ${ac} aceptada(s) de Carga térmica · ${zs.length - ac} capturada(s) en esta pestaña`; },
+    enVivo: () => false,   /* H-267: la selección ya no lee la carga en vivo */
+    aplicar: () => aceptarZonasEquip(zonasPropuestasEquip(), Date.now()),
+    propio: () => {},   /* las zonas se quedan como están y se editan en esta pestaña */
+    /* Regla 7: la fila llega al libro de la propuesta con su espejo en inglés. */
+    en: (e) => ({ destino: "Equipment selection", campo: "Selection zones from the thermal load",
+      valor: e.rec ? (e.rec.estado === "aceptado" ? resumenZonasEquip(zonasSel().filter((z) => z.origen && z.origen.motor === "load"), true) : "captured by the user") : "not decided",
+      origen: "Thermal load", estado: { "sin-datos": "No data at the source", pendiente: "Proposal available", aceptado: "Accepted · current", desactualizado: "Out of date · the source changed", propio: "Captured by hand", vivo: "Live (previous mode)" }[e.nivel] || e.nivel }),
   },
 };
 /* H-263 · El ventilador que se ofrece para seleccionar: el modelo que cubre el caudal, con los HP de su submittal. */
@@ -18255,7 +18501,7 @@ function registrarVinculo(id, estado = "aceptado") {
    aceptado       se aceptó y el origen no ha cambiado desde entonces
    desactualizado se aceptó y el origen cambió: el usuario decide
    propio         el usuario capturó lo suyo (se avisa si el origen cambió, sin tocar nada) */
-const REQUIERE_CAPTURA_PROP = { "cedula>elec": ["equip", "aire", "hidro", "fuego", "clean"], "motores>soporte": ["duct", "hidro", "fuego", "aire"] };
+const REQUIERE_CAPTURA_PROP = { "cedula>elec": ["equip", "aire", "hidro", "fuego", "clean"], "motores>soporte": ["duct", "hidro", "fuego", "aire"], "load>equip": ["load"] };   /* H-267 */
 function estadoPropuesta(id) { return memo("prop:" + id, () => estadoPropuestaCalc(id)); }
 function estadoPropuestaCalc(id) {
   const P = PROPUESTAS[id]; if (!P) return { nivel: "sin-datos" };
@@ -18375,7 +18621,9 @@ function trazaHerencia() {
     filas.push({ destinoId: P.destino, destino: (DOMAINS[P.destino] || {}).label || P.destino, campo: P.titulo,
       valor: rec ? (rec.estado === "aceptado" ? rec.resumen : "lo capturado por el usuario") : (e.nivel === "vivo" ? "entra en vivo (modo anterior)" : "sin decidir"),
       origen: (DOMAINS[P.origen] || {}).label || P.origen, fecha: rec ? fechaCorta(rec.ts) : "—",
-      estado: NIVEL_PROP[e.nivel][0], regla: 2, nivel: e.nivel });
+      estado: NIVEL_PROP[e.nivel][0], regla: 2, nivel: e.nivel,
+      /* H-267 · regla 7: las propuestas nuevas traen su espejo en inglés para el libro de la propuesta. */
+      ...(P.en ? { en: seguro(() => P.en(e), undefined) } : {}) });
   });
   return filas;
 }
@@ -18398,7 +18646,9 @@ const conSemaforo = (s) => !!s && s.nivel !== "externo" && s.nivel !== "gestion"
 const MOTORES_CAPTURA = ["load", "clean", "equip", "duct", "vent", "elec", "hidro", "fuego", "aire", "civil", "soporte"];
 function capturaReal(id) {
   switch (id) {
-    case "load": case "equip": return S.zones.length > 0 && totals().area > 0 && !S.zones.some((z) => (SPACES[z.spaceType] ? z.spaceType : "office") === "cleanroom" && num(z.area) > 0 && !(num(z.achClean, 0) > 0));
+    /* H-267: la captura de selección son sus zonas de selección (capturadas o aceptadas de carga térmica) con alguna carga. */
+    case "equip": return zonasSel().some((z) => num(z.tons) > 0);
+    case "load": return S.zones.length > 0 && totals().area > 0 && !S.zones.some((z) => (SPACES[z.spaceType] ? z.spaceType : "office") === "cleanroom" && num(z.area) > 0 && !(num(z.achClean, 0) > 0));
     case "clean": return cleanRooms().some((r) => num(r.area) > 0 && num(r.height) > 0);
     case "duct": return S.duct.segments.some((g) => num(g.flow) > 0);
     case "vent": {
@@ -18446,7 +18696,7 @@ function semaforoDisciplina(d) {
     case "clean": { const rooms = cleanRooms(); datos = real && rooms.length > 0 && CLEAN && CLEAN.sum.supply > 0;
       R.texto = datos ? `${rooms.length} cuarto(s) · ${n(CLEAN.sum.supply, 0)} m³/h` : "sin cuartos con área y altura"; break; }
     case "equip": datos = real && !!(SYS && SYS.chosen && SYS.chosen.id !== "none"); checks = seguro(() => ENGINES.equip.checks(), []);
-      R.texto = datos ? SYS.chosen.label : "esperando zonas"; break;
+      R.texto = datos ? SYS.chosen.label : "sin zonas de selección"; break;
     case "vent": datos = real && !!(VENT && VENT.m3h > 0); checks = seguro(() => ENGINES.vent.checks(VENT), []);
       R.texto = datos ? `${n(VENT.m3h, 0)} m³/h · ${VENT.eq && VENT.eq.primary ? VENT.eq.primary.model : ""}` : "sin caudal"; break;
     case "duct": datos = real && S.duct.segments.length > 0 && !!DUCT; checks = seguro(() => ENGINES.duct.checks(DUCT), []);
@@ -18753,8 +19003,8 @@ const MOTOR_ACC = {
     falta: () => (capturaReal("load") ? "" : "Falta al menos una zona con área") },
   clean: { donde: "Cuartos limpios", archivo: "Memoria-cuartos-limpios", memoria: () => buildLimpioSuitePdf(), cot: "clean",
     falta: () => (capturaReal("clean") && CLEAN && CLEAN.sum && CLEAN.sum.supply > 0 ? "" : "Falta al menos un cuarto con área, altura y clase ISO") },
-  equip: { donde: "Carga térmica › zonas", archivo: "Memoria-seleccion-equipo", memoria: () => buildSeleccionPdf(), cot: "equip",
-    falta: () => (capturaReal("equip") && SYS && SYS.chosen && SYS.chosen.id !== "none" ? "" : "Falta la carga térmica: la selección parte de las zonas") },
+  equip: { donde: "Selección de equipo › zonas de selección", archivo: "Memoria-seleccion-equipo", memoria: () => buildSeleccionPdf(), cot: "equip",
+    falta: () => (capturaReal("equip") && SYS && SYS.chosen && SYS.chosen.id !== "none" ? "" : "Faltan las zonas de selección: acepta la propuesta de Carga térmica o captúralas") },
   duct: { donde: "Ductos y calibres", archivo: "Cedula-ductos", memoria: () => buildCedulaPdf(), cot: "duct",
     falta: () => (capturaReal("duct") && DUCT ? "" : "Faltan tramos de ducto") },
   vent: { donde: "Ventilación", archivo: "Memoria-ventilacion", memoria: () => buildVentPdf(), cot: "vent",
@@ -18841,7 +19091,11 @@ const ENTRADAS = {
      un proyecto sellado con la versión anterior no sale «la captura cambió» sin haber cambiado nada. */
   load: () => ({ zones: (S.zones || []).map((z) => !z || !("miscVent" in z) ? z : z.miscVent ? { ...z, miscVent: sinClaves(z.miscVent, ["ts"]) } : sinClaves(z, ["miscVent"])), site: S.site, bldDiv: S.bldDiv, forceTech: S.forceTech, peakScan: S.peakScan }),
   clean: () => ({ rooms: cleanRooms(), site: S.site }),
-  equip: () => ({ load: ENTRADAS.load(), sysForce: S.sysForce, sel: eSel(), duct: ENTRADAS.duct() }),
+  /* H-267: sólo lo que la selección calcula: sus zonas de selección (la instantánea aceptada va dentro, sin id, origen, fecha ni
+     marca de edición, que no cambian el cálculo), la diversidad del edificio, el sitio (capacidad en sitio), la tecnología elegida,
+     los modelos por familia y la presión de ductos (cruce duct>equip). Ya no anida ENTRADAS.load(): la carga entra sólo al
+     aceptar la propuesta load>equip. La marca de migración es pasajera: fuera. */
+  equip: () => ({ zonas: zonasSel().map((z) => sinClaves(z, ["id", "origen", "editada"])), bldDiv: S.bldDiv, site: S.site, sysForce: S.sysForce, sel: eSel(), duct: ENTRADAS.duct() }),
   duct: () => ({ duct: S.duct, site: S.site }),
   vent: () => ({ vent: sinClaves(S.vent, ["seleccion"]), site: S.site }),   /* H-263: la selección no la lee computeVent */
   hidro: () => ({ hidro: sinClaves(S.hidro, ["equipoHN"]), site: S.site }),
@@ -18853,7 +19107,8 @@ const ENTRADAS = {
   elec: () => ({ elec: sinClaves(S.elec, ["tomarHVAC", "tomarPropuesta"]), perms: ePerms() }),
   soporte: () => ({ soporte: sinClaves(S.soporte, ["tomarInstantanea", "tomarBases"]) }),   /* H-266: sólo su captura (la instantánea va dentro) */
   quote: () => ({ quote: sinClaves(S.quote, ["prop"]), qfam: S.qfam, perms: ePerms(),
-    motores: ["equip", "duct", "vent", "clean", "elec", "hidro", "fuego", "aire", "civil", "soporte"].map((k) => ENTRADAS[k]()) }),
+    /* H-267: la cotización lee la carga (caudal de difusores, cruce load>quote); antes le llegaba anidada en la de selección. */
+    motores: ["load", "equip", "duct", "vent", "clean", "elec", "hidro", "fuego", "aire", "civil", "soporte"].map((k) => ENTRADAS[k]()) }),
   kaizen: () => ({ kaizen: S.kaizen, load: ENTRADAS.load(), duct: ENTRADAS.duct(), equip: ENTRADAS.equip(), quote: ENTRADAS.quote(),
     elec: ENTRADAS.elec(), hidro: ENTRADAS.hidro(), fuego: ENTRADAS.fuego(), perms: ePerms() }),
   valor: () => ({ kaizen: S.kaizen, vinculos: eVinc(), her: eHer(), equip: ENTRADAS.equip(), quote: ENTRADAS.quote() }),
@@ -18863,7 +19118,7 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "6", clean: "3", equip: "1", duct: "4", vent: "4", quote: "24", valor: "1", kaizen: "1", elec: "9", hidro: "8", fuego: "4", aire: "5", civil: "6", soporte: "12" };
+const MOTOR_VER = { load: "6", clean: "3", equip: "2", duct: "4", vent: "4", quote: "24", valor: "1", kaizen: "1", elec: "9", hidro: "8", fuego: "4", aire: "5", civil: "6", soporte: "12" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
@@ -18871,6 +19126,7 @@ const MOTOR_CAMBIOS = {
     { ver: "4", rev: "2.9.24", que: "H-120: el DET de muros y cubierta se corrige por la condición de diseño del sitio, (25.6 − ti) + (tm − 29.4) K con tm = to − rango/2 (corrección CLTD, ASHRAE Fundamentals 1997 cap. 28; ratificar con Carrier Tabla 20A)" },
     { ver: "5", rev: "2.9.24", que: "H-141 (decisión (a) del dueño): la diversidad del edificio se aplica una sola vez, en el objetivo de planta; las ganancias internas de cada zona van al pico sin el factor (antes ×bldDiv en la zona y otra vez en la planta: con 0.8 el objetivo quedaba ×0.713). Criterio Carrier, ratificar con texto" },
     { ver: "6", rev: "2.9.24", que: "H-263 (decisión del dueño, 27-sep-2026): el ventilador SELECCIONADO en Ventilación entra a la zona elegida como misceláneos, HP de referencia del submittal Greenheck (ESTIMADO por la casa en el punto medio del catálogo: rendimiento 0.65, +15 %, ¼ HP; ratificar con placa) × 745.7 W sensibles, como instantánea (si ventilación cambia después, la carga no se mueve sola; se vuelve a seleccionar). Sin selección la carga no cambia" }],
+  equip: [{ ver: "2", rev: "2.9.24", que: "H-267 (decisión del dueño, 27-sep-2026): la selección de equipo es autónoma: calcula sólo con sus zonas de selección (capturadas en su pestaña o aceptadas de carga térmica como propuesta load>equip, instantánea con origen y fecha; nombre, TR, CFM, aire exterior, área, sensible y latente, hora pico y perfil horario). Ya no lee la carga EN VIVO (salió del núcleo térmico); ya aceptada no se mueve sola (si la carga cambia sale «desactualizada»). Una zona sin perfil horario deja la simultaneidad por hora pendiente (bloque = suma de picos, sin diversidad supuesta) y sin hora pico no cuenta en la ventana ni en la dispersión. Un proyecto guardado toma una vez la instantánea al abrir: mismas cifras (proyecto fijo: VRF, 16.8989 / 19.8518 TR)" }],
   vent: [{ ver: "2", rev: "2.9.24", que: "H-154 + H-156: la cobertura real manda en la selección Greenheck (cfmMin ≤ objetivo ≤ cfmMax, sin tolerancia ×0.9); la familia del modo sólo ordena entre los que cubren; si nadie cubre no hay modelo (proyecto fijo: GB-360 → CSW-30 para 11,643 CFM)" },
     { ver: "3", rev: "2.9.24", que: "H-155: sin medidas no hay caudal: campana sin largo o fondo y rejilla sin ancho, alto, área libre o velocidad dan demanda 0 con aviso (antes pisos de 0.1 ft, 5 % y 100 fpm fabricaban 30 y 258 CFM y sus partidas)" },
     { ver: "4", rev: "2.9.24", que: "H-262 (decisión del dueño, 27-sep-2026): ventilación calcula sólo con sus propios datos: el área, la altura y los ocupantes ya no se copian de carga térmica (se capturan en su pestaña; un proyecto guardado conserva los valores que ya tenía copiados). Se retira la propuesta load>vent (aire exterior de carga térmica como reposición: con el local sin capturar fabricaba cambios/h sobre 1 m² × 0.1 m). Sin área o altura capturadas, el caudal por cambios de aire queda pendiente de captura, con aviso. La relación con carga térmica va al revés: el ventilador seleccionado entrega el calor de su motor a una zona (H-263)" }],
@@ -19155,7 +19411,7 @@ function viewTablero() {
         <div class="metric"><div class="k">Incompletas</div><div class="v">${cuenta("incompleta")}</div></div>
         <div class="metric"><div class="k">Desactualizadas</div><div class="v" style="color:${cuenta("desactualizada") > 0 ? "var(--alerta-txt)" : "var(--dato)"}">${cuenta("desactualizada")}</div></div>
         <div class="metric"><div class="k">Sin datos</div><div class="v">${cuenta("vacia")}</div></div>
-        <div class="metric"><div class="k">Área · carga</div><div class="v">${n(t.area, 0)} <small>m²</small> · ${n(SYS.blockTons, 1)} <small>TR</small></div></div>
+        <div class="metric"><div class="k">Área · carga</div><div class="v">${n(t.area, 0)} <small>m²</small> · ${SYS && SYS.nz > 0 ? n(SYS.blockTons, 1) : "—"} <small>TR</small></div></div>
       </div>
       <div class="row" style="margin-top:14px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
         <button class="btn-accion" data-act="go-tab" data-tab="proyecto">Ver el proyecto</button>
@@ -19908,7 +20164,9 @@ function valorLazy() {
   const k = [S.tab === "kaizen" ? "k" : "", SYS ? SYS.chosen.key + SYS.chosen.instPlant + SYS.chosen.instTerm : "",
     QUOTE ? Math.round(QUOTE.mxnTRequipo || 0) : 0, KAIZEN ? KAIZEN.ops.length : 0,
     JSON.stringify(S.kaizen && S.kaizen.ve), JSON.stringify(S.vinculos), JSON.stringify(S.her),
-    S.sysForce, S.site.key, num(S.quote && S.quote.tarifaKWh), num(S.quote && S.quote.horasAno)].join("|");
+    S.sysForce, S.site.key, num(S.quote && S.quote.tarifaKWh), num(S.quote && S.quote.horasAno),
+    /* H-267: las zonas de selección mueven el sistema integrado sin tocar la carga ni los vínculos. */
+    JSON.stringify(S.equip ? S.equip.zonas : null)].join("|");
   if (VZ_CACHE.key === k && VZ_CACHE.val) return VZ_CACHE.val;
   const val = seguro(() => computeIngValor(), null) || VALOR_VACIO();
   VZ_CACHE = { key: k, val };
@@ -19985,7 +20243,7 @@ function pdfPortadaIntegral(d, sem) {
     ["Altura media ponderada por area", `${n(g.altura, 2)} m`],
     ["Volumen", `${n(g.volumen, 0)} m3`],
     ["Ocupacion de diseno", `${g.personas} persona(s)`],
-    ["Carga de bloque", `${n(t.tons, 2)} TR · hora pico ${SYS ? SYS.blockHour : "-"}:00`],
+    ["Carga de bloque", `${n(t.tons, 2)} TR · hora pico ${SYS && SYS.nz > 0 && SYS.blockHour != null ? SYS.blockHour + ":00" : "pendiente (seleccion sin zonas o sin perfil horario)"}`],
   ]);
   pdfParagraph(d, "Estos datos son la geometria capturada en las zonas de carga termica. Las demas disciplinas ya no la heredan: cada una captura la suya en su pestana (decision del dueno, 27-sep-2026; H-262 a H-268).", { color: [0.294, 0.333, 0.388] });
   pdfHeading(d, "Estado de completitud por disciplina");
@@ -20356,7 +20614,8 @@ function viewCotizacion() {
 }
 
 function viewSeleccion() {
-  const q = S.quote, Q = QUOTE, t = totals(), fam = familyOf(S.qfam) || FAMILIES[0];
+  /* H-267: la pestaña trabaja con SUS zonas de selección (capturadas o aceptadas de carga térmica), no con la carga en vivo. */
+  const q = S.quote, Q = QUOTE, t = totalsSel(zonasCalcSel()), fam = familyOf(S.qfam) || FAMILIES[0];
   const target = t.tons * (1 + P.MARGIN);
   const pool = familyPool(fam.id).slice().sort((a, b) => a.TR - b.TR);
   const M = (v) => money(v, Q.div, Q.cur);
@@ -20369,7 +20628,8 @@ function viewSeleccion() {
 
   return `<div class="grid two">
     <div class="grid" style="gap:14px">
-      <div class="card"><h3>Familias de equipo<span class="tag">${n(t.tons, 1)} TR de proyecto</span></h3><div class="body">
+      ${tarjetaZonasEquip()}
+      <div class="card"><h3>Familias de equipo<span class="tag">${n(t.tons, 1)} TR de las zonas de selección</span></h3><div class="body">
         <div class="famgrid">
           ${FAMILIES.map((f) => `<button class="fam ${f.id === fam.id ? "on" : ""}" data-act="qfam" data-id="${f.id}">
             ${imgOf(f.img) ? `<img src="${imgOf(f.img)}" alt="" loading="lazy" />` : ""}
@@ -20384,7 +20644,8 @@ function viewSeleccion() {
             <div class="sub">${req.term ? "la zona más grande manda el terminal" : "la carga de bloque manda la planta"}</div></div>
           ${R.criterio.usa.includes("TR") ? `<div class="metric"><div class="k">Capacidad pedida</div><div class="v">${n(R.req.objetivo, 1)} <small>TR</small></div><div class="sub">carga ${n(req.tons, 1)} + ${P.MARGIN * 100} % margen</div></div>` : ""}
           ${R.criterio.usa.includes("cfm") ? `<div class="metric"><div class="k">Caudal pedido</div><div class="v">${n(req.cfm, 0)} <small>CFM</small></div></div>` : ""}
-          ${R.criterio.usa.includes("sensible") ? `<div class="metric"><div class="k">Sensible del local</div><div class="v">${n(req.sensible / 1000, 1)} <small>kW</small></div><div class="sub">SHR nominal de familia ${R.criterio.shr}</div></div>` : ""}
+          ${R.criterio.usa.includes("sensible") ? (req.sensiblePendiente ? `<div class="metric"><div class="k">Sensible del local</div><div class="v">pendiente</div><div class="sub">zona capturada a mano sin sensible del local: el criterio no se aplica</div></div>`
+            : `<div class="metric"><div class="k">Sensible del local</div><div class="v">${n(req.sensible / 1000, 1)} <small>kW</small></div><div class="sub">SHR nominal de familia ${R.criterio.shr}</div></div>`) : ""}
           ${R.criterio.usa.includes("esp") ? `<div class="metric"><div class="k">Presión estática</div><div class="v">${req.esp > 0 ? n(req.esp, 2) : "—"} <small>in.wg</small></div>
             <div class="sub">${req.esp > 0 ? `la familia entrega ~${n(R.criterio.esp, 2)}` : "sin dato de ductos"}</div></div>` : ""}
         </div>
@@ -22307,10 +22568,10 @@ const GUIA = {
     cuando: "Cuando hay más de dos zonas, antes de emitir: es donde se ve la que está fuera de familia.",
     ojo: "Los indicadores se comparan contra la mediana del propio proyecto, no contra una tabla externa: los valores en ámbar se salen del patrón —más de 1.8 veces la mediana de las zonas del proyecto, o menos de esa mediana entre 1.8 (≈ 56 %)—. No están mal por definición: están fuera de familia, y eso vale la pena revisarlo." },
   carga: { que: "La carga térmica de cada zona por el método Carrier/HAP, con barrido horario de 8 a 18 h para hallar la hora pico.",
-    cuando: "Siempre primero: de aquí salen las toneladas, el caudal y el aire exterior que alimentan a los demás motores.",
+    cuando: "Siempre primero: de aquí salen las toneladas, el caudal y el aire exterior que se proponen a los demás motores; cada uno los toma sólo al aceptar la propuesta (instantánea con fecha).",
     ojo: "Una zona es cada espacio con su propio termostato, no cada cuarto: un cuarto con termostato propio, un área abierta o una nave. La selección de equipo de esta pestaña es la aislada de cada zona: con varias zonas, el sistema consolidado del edificio —chiller con manejadoras, o condensadoras con unidades interiores— está en Proyecto → Sistema integrado, junto con la cédula de equipos." },
-  seleccion: { que: "Compara sistemas completos —agua helada, VRF, rooftop, split— y arma la cédula de equipos con la capacidad corregida por el sitio.",
-    cuando: "Cuando la carga de todas las zonas ya está capturada y hay que decidir con qué se resuelve.",
+  seleccion: { que: "Compara sistemas completos —agua helada, VRF, rooftop, split— y arma la cédula de equipos con la capacidad corregida por el sitio. Es un motor autónomo: calcula sólo con sus zonas de selección (H-267).",
+    cuando: "Cuando ya tienes las zonas de selección —aceptadas de Carga térmica como propuesta (instantánea con fecha; si la carga cambia, la propuesta avisa y la selección no se mueve sola) o capturadas aquí— y hay que decidir con qué se resuelven. Una zona capturada a mano sin perfil horario deja la simultaneidad por hora pendiente: el bloque es la suma de picos.",
     ojo: "La app recomienda, pero la selección la haces tú: lo que se cotiza es tu selección, no la recomendación. Antes de mandar una cotización: los precios que traen de fábrica salen de una referencia interna de la casa de grado cuarto limpio, con filtración HEPA y variadores, y para una nave o una oficina normal quedan altos. Ajusta el factor de lista o captura tu lista vigente por familia; en cualquier caso valida contra la cotización del distribuidor antes de firmar. Los precios se guardan dentro del proyecto." },
   cotizacion: { que: "Convierte la cédula y los cálculos de los otros motores en una cotización con indirectos, utilidad, flete, fianzas e IVA. La memoria de cálculo de la barra de acciones es su desglose interno; la propuesta integral es el documento que se le manda al cliente, en el formato de la casa: encabezado con número y revisión, resumen ejecutivo, catálogo de conceptos con clave, unidad, cantidad y precio unitario abierto por sección de disciplina, esquema de pagos, matriz de alcance y condiciones. Sale en Excel y en PDF, en español con pesos y en inglés con dólares, espejo exacto entre sí y con la misma identidad gráfica que las memorias de cálculo (misma portada, jerarquía de encabezados, tablas y pie); el contenido es el mismo en los cuatro archivos y sólo cambia cómo se presenta, salvo las partidas pendientes de un dato, que se declaran sólo en el PDF. Cada libro tiene hasta quince hojas —las bases de HVAC y la memoria eléctrica sólo salen cuando esas disciplinas tienen datos—: el resumen, los indirectos, la utilidad, el IVA, el total y los hitos de pago son fórmulas que apuntan a los importes del catálogo de conceptos, pero el importe de cada concepto es el valor que calculó la suite, no cantidad × P.U.; para recotizar una cantidad se cambia en la suite y se vuelve a exportar. Incluye las bases de HVAC, la memoria eléctrica y la ingeniería de valor de Kaizen. La propuesta para licitación pública lleva el mismo catálogo con el precio demostrado: tarjeta de análisis por concepto, análisis del FASAR, integración del sobrecosto en cascada y explosión de insumos.",
     cuando: "Al final, cuando el alcance ya no se mueve.",
@@ -22628,6 +22889,14 @@ document.addEventListener("change", (e) => {
   toast(el.value ? "Comparativo activado: la hoja CAMBIOS_REV entra al libro" : "Comparativo desactivado");
 });
 
+/* H-267 · Captura de las zonas de selección (nombre, TR, CFM, aire exterior, área, sensible, latente, hora pico). */
+document.addEventListener("change", (e) => {
+  const el = e.target;
+  if (!el.dataset || !el.dataset.eqz) return;
+  const [i, campo] = el.dataset.eqz.split(".");
+  histSnap("zona de selección");
+  if (editarZonaEquip(+i, campo, el.value)) { projAutosave(); render(); }
+});
 document.addEventListener("change", (e) => {
   const el = e.target;
   if (!el.dataset || !el.dataset.mueble) return;
@@ -22799,6 +23068,9 @@ document.addEventListener("click", (e) => {
     case "civil-del": { const tipo = b.dataset.tipo === "cuartos" ? "cuartos" : "areas"; histSnap(tipo === "areas" ? "quitar área de obra" : "quitar cuarto clasificado");
       if (Array.isArray(S.civil[tipo])) S.civil[tipo].splice(+b.dataset.i, 1);
       recompute(); projAutosave(); render(); break; }
+    /* H-267: zonas de selección capturadas en su pestaña. */
+    case "eqz-add": histSnap("agregar zona de selección"); agregarZonaEquip(); projAutosave(); render(); break;
+    case "eqz-del": histSnap("quitar zona de selección"); quitarZonaEquip(+b.dataset.i); projAutosave(); render(); break;
     case "aire-add": S.aire.consumos.push(defaultConsumo(`Consumo ${S.aire.consumos.length + 1}`)); projAutosave(); render(); break;
     case "aire-del": S.aire.consumos = S.aire.consumos.filter((c) => c.id !== b.dataset.id); projAutosave(); render(); break;
     case "perms-todos": {
@@ -22948,7 +23220,7 @@ document.addEventListener("click", (e) => {
     case "go-quote": irATab("cotizacion"); break;
     case "go-tab": irATab(b.dataset.tab); break;
     /* rev 2.7.0 · Decisiones sobre las propuestas entre disciplinas. */
-    case "prop-aceptar": propAceptar(b.dataset.id); break;
+    case "prop-aceptar": histSnap("aceptar propuesta"); propAceptar(b.dataset.id); break;   /* H-267: se puede deshacer */
     /* rev 2.9.0 · Decisiones sobre las medidas de ingenieria de valor. Cada
        una se anota en el historial de la casa, que reordena las siguientes. */
     case "ve-aceptar": veDecidir(b.dataset.id, "aceptada"); break;
@@ -23056,6 +23328,8 @@ document.addEventListener("click", (e) => {
     }
     case "go-sel": irATab("seleccion"); break;
     case "q-fromsys": {
+      /* H-267: sin zonas de selección no hay sistema que traer; no se vacían las partidas capturadas. */
+      if (!SYS || !SYS.chosen || SYS.chosen.id === "none") { toast("Sin sistema integrado: acepta en Selección de equipo la propuesta de Carga térmica o captura ahí las zonas de selección"); break; }
       if ((S.quote.items || []).length) {
         const items = S.quote.items.slice();
         confirmarSiHayDatos({
@@ -23294,6 +23568,13 @@ function sanearEstado(d) {
      estado por omisión sin perder lo que sí venga bien. */
   s.sel = { sistema: null, motivo: "", ts: null, recAlElegir: null, modelos: {}, ...(s.sel && typeof s.sel === "object" ? s.sel : {}) };
   if (!s.sel.modelos || typeof s.sel.modelos !== "object") s.sel.modelos = {};
+  /* H-267 (decisión del dueño, 27-sep-2026): la selección de equipo calcula sólo con sus zonas de selección. Un proyecto guardado
+     antes (sin ellas) se marca para tomar UNA vez, al abrir, la instantánea de la carga que la selección leía en vivo (la consume
+     recompute): abre con las mismas cifras. Las zonas mal formadas se descartan. */
+  const equipPrevio = d && typeof d === "object" && d.equip && typeof d.equip === "object" && !Array.isArray(d.equip) ? d.equip : null;
+  s.equip = { ...defaultEquip(), ...(equipPrevio || {}) };
+  s.equip.zonas = (Array.isArray(s.equip.zonas) ? s.equip.zonas : []).filter((z) => z && typeof z === "object" && !Array.isArray(z));
+  s.equip.tomarDeCarga = !equipPrevio || !Array.isArray(equipPrevio.zonas) || equipPrevio.tomarDeCarga === true ? true : null;
   /* H-179 (rev 2.9.24): un proyecto guardado antes trae como dato los valores por omisión viejos (distancia al tablero 30 m,
      transformador 150 kVA, Z 4 %) y las distancias automáticas de las cargas aceptadas de otros motores (distancia al tablero
      + 10 a 30 m). Se conservan (no se mueve ningún número) pero se marcan «sin confirmar» con el valor que traían; la marca
