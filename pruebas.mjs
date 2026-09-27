@@ -77,6 +77,8 @@ function proyectoDePrueba() {
   /* H-262: ventilación ya no hereda de carga térmica; el proyecto de prueba le captura sus propios datos, los mismos que antes
      heredaba (área 500 m², altura media 5.4 m, 40 ocupantes), para que las cifras del resto del banco no cambien. */
   Object.assign(S.vent, { area: 500, height: 5.4, occ: 40 });
+  /* H-264: contra incendio tampoco hereda; captura lo que antes heredaba (500 m², altura máxima 6 m). */
+  Object.assign(S.fuego, { area: 500, altura: 6 });
   /* H-250: el banco emite espejos EN-USD; sin tipo de cambio fechado ya no se emiten, así que el proyecto de prueba lo captura. */
   S.quote.fx = 18.5; S.quote.fxFecha = "2026-09-22"; S.quote.fxFuente = "banco de pruebas";
   G("recompute")();
@@ -279,11 +281,12 @@ t("2.0.5 las flechas son las herencias declaradas, no adorno", () => {
 });
 t("2.0.6 la flecha se pinta vigente cuando el dato heredado está al día", () => {
   /* rev 2.9.2 · La herencia que se mira aquí es una que CRUZA hacia fuera del
-     módulo: HVAC → contra incendio hereda el área a proteger. Las que corrían
-     entre las cinco pantallas del aire ya no son flechas del plano. */
+     módulo. H-264: contra incendio ya no hereda (su flecha salió del plano); se
+     mira la de HVAC → obra civil, la que queda de regla 1. */
   S.tab = "inicio"; G("render")();
-  const ar = G("ARISTAS").find((x) => x.de === "hvac" && x.a === "fuego");
-  if (!ar) throw new Error("no existe la flecha de HVAC a contra incendio");
+  if (G("ARISTAS").some((x) => x.a === "fuego" && x.regla === 1)) throw new Error("H-264: quedó una flecha de herencia hacia contra incendio");
+  const ar = G("ARISTAS").find((x) => x.de === "hvac" && x.a === "civil" && x.regla === 1);
+  if (!ar) throw new Error("no existe la flecha de herencia de HVAC a obra civil");
   eq(G("estadoArista")(ar), "vigente");
   contiene(vista(), "dar-vigente");
 });
@@ -365,38 +368,35 @@ t("3.1 la geometría del proyecto se suma de las zonas, no se recalcula", () => 
   cerca(g.altura, 2700 / 500, 0.01, "altura media ponderada:");
   cerca(g.area * g.altura, g.volumen, 1, "área × altura debe dar el volumen:");
 });
-t("3.2 contra incendio hereda área y altura; ventilación ya no hereda: calcula con lo capturado en su pestaña (H-262)", () => {
+t("3.2 ninguna disciplina hereda: ventilación (H-262) y contra incendio (H-264) calculan con lo capturado en su pestaña", () => {
   G("recompute")();
-  eq(S.fuego.area, 500); eq(S.fuego.altura, 6, "H-205: contra incendio hereda la altura máxima (rociador más alto), no la media 5.4:");
-  eq(G("HEREDA")["vent.area"], undefined, "H-262: ventilación no declara herencia de área:");
-  eq(G("HEREDA")["vent.height"], undefined, "H-262: ventilación no declara herencia de altura:");
-  eq(G("HEREDA")["vent.occ"], undefined, "H-262: ventilación no declara herencia de ocupantes:");
+  eq(Object.keys(G("HEREDA")).length, 0, "HEREDA queda vacío:");
+  eq(S.fuego.area, 500, "contra incendio: el área capturada:"); eq(S.fuego.altura, 6, "contra incendio: la altura capturada:");
+  eq(S.vent.area, 500, "ventilación: el área capturada:");
 });
-t("3.3 si cambia la geometría, el destino que hereda la sigue sin intervención; ventilación no se mueve (H-262)", () => {
-  S.zones[1].area = 300; G("recompute")();
-  eq(S.fuego.area, 700); eq(S.vent.area, 500, "H-262: ventilación se queda con lo capturado:");
-  S.zones[1].area = 100; G("recompute")();
-  eq(S.fuego.area, 500);
-});
-t("3.4 la herencia se declara en pantalla con su origen y su fecha", () => {
-  const h = G("herenciaHtml")("fuego.area");
-  contiene(h, "heredada"); contiene(h, "Carga térmica");
-  if (!/\d{4}/.test(h)) throw new Error("no imprime la fecha desde cuándo vale ese número");
-});
-t("3.5 el usuario puede capturar el suyo y entonces deja de seguir al origen", () => {
-  G("setPath")("fuego.area", 250); G("marcarPropio")("fuego.area");
-  G("recompute")();
-  eq(S.fuego.area, 250, "respeta lo capturado:");
+t("3.3 si cambia la geometría de las zonas, ningún destino se mueve (H-262, H-264)", () => {
   S.zones[1].area = 300; S.zones[1].height = 8; G("recompute")();
-  eq(S.fuego.area, 250, "el cambio de origen no lo pisa:");
-  eq(S.fuego.altura, 8, "los demás campos siguen heredando (la altura máxima sigue a la zona que creció):");
-  contiene(G("herenciaHtml")("fuego.area"), "capturada a mano");
+  eq(S.fuego.area, 500, "H-264: contra incendio se queda con lo capturado:"); eq(S.fuego.altura, 6, "H-264: la altura tampoco sigue a la zona más alta:");
+  eq(S.vent.area, 500, "H-262: ventilación se queda con lo capturado:");
   S.zones[1].area = 100; S.zones[1].height = 3; G("recompute")();
 });
-t("3.6 se puede volver a heredar sin perder el rastro", () => {
-  const r = G("herDe")("fuego.area");
-  r.modo = "heredado"; G("recompute")();
+t("3.4 la pantalla ya no anuncia herencia: un campo que no está en HEREDA no pinta aviso (H-264)", () => {
+  eq(G("herenciaHtml")("fuego.area"), "", "fuego.area:"); eq(G("herenciaHtml")("vent.area"), "", "vent.area:");
+});
+t("3.5 lo capturado manda: cambiarlo mueve el cálculo y las zonas no lo pisan (H-264)", () => {
+  G("setPath")("fuego.area", 250); G("recompute")();
+  eq(S.fuego.area, 250, "respeta lo capturado:");
+  S.zones[1].area = 300; G("recompute")();
+  eq(S.fuego.area, 250, "el cambio de zonas no lo pisa:");
+  S.zones[1].area = 100; G("setPath")("fuego.area", 500); G("recompute")();
   eq(S.fuego.area, 500);
+});
+t("3.6 no queda registro de herencia: sincronizarHerencia no copia nada y el saneado retira los registros viejos (H-264)", () => {
+  const her0 = JSON.stringify(S.her || {});
+  G("sincronizarHerencia")();
+  eq(JSON.stringify(S.her || {}), her0, "sincronizarHerencia no escribe:");
+  const s = G("sanearEstado")(JSON.parse(JSON.stringify({ ...S, her: { "fuego.area": { modo: "heredado", ts: 1, valor: 500 }, "vent.area": { modo: "propio", ts: 1, valor: 500 } } })));
+  eq(Object.keys(s.her).length, 0, "registros viejos retirados:");
 });
 
 /* ====== 4. Regla 2 · ningún resultado calculado entra solo =============== */
@@ -1059,14 +1059,14 @@ t("9.1 un proyecto viejo abre sin cambiar ni un número capturado", () => {
     meta: { name: "Proyecto rev 2.5", client: "x", location: "Tijuana", engineer: "", date: "2026-01-01" },
     zones: [{ ...G("defaultZone")("Nave"), area: 800, height: 8, occ: 25 }],
     vent: { ...G("defaultState")().vent, area: 120, height: 4, occ: 8 },
-    fuego: { ...G("defaultState")().fuego, area: 800, tomarArea: true },
+    fuego: { ...G("defaultState")().fuego, area: 800, tomarArea: true },   /* H-264: tomarArea ya no se usa */
     civil: { ...G("defaultState")().civil, usarZonas: "false" },
     soporte: { ...G("defaultState")().soporte, sismico: "false" },
   };
   const s = G("sanearEstado")(JSON.parse(JSON.stringify(viejo)));
   eq(s.vent.area, 120, "el área de ventilación capturada a mano se respeta:");
   eq(s.her["vent.area"], undefined, "H-262: ventilación ya no lleva registro de herencia:");
-  eq(s.her["fuego.area"].modo, "heredado", "la que sí coincidía sigue heredando:");
+  eq(s.her["fuego.area"], undefined, "H-264: contra incendio ya no lleva registro de herencia:"); eq(s.fuego.area, 800, "H-264: el área de contra incendio guardada se respeta:");
   eq(s.civil.usarZonas, false, "el menú de sí/no guardado como texto se corrige:");
   eq(s.soporte.sismico, false);
 });
@@ -1458,7 +1458,7 @@ t("13.5 en el diagrama los cinco nodos son uno solo", () => {
 t("13.6 las flechas que salían de las cinco ahora salen del nodo HVAC", () => {
   const A = G("ARISTAS");
   const de = (a, b) => A.filter((x) => x.de === a && x.a === b).length;
-  eq(de("hvac", "fuego"), 1, "hacia contra incendio:");
+  eq(de("hvac", "fuego"), 0, "hacia contra incendio (H-264: ya no hereda; es autónomo):");
   eq(de("hvac", "civil"), 2, "hacia obra civil (área/altura y envolvente clasificada):");
   eq(de("hvac", "elec"), 3, "hacia eléctrico (cédula de equipos, ventilador y FFU de cuartos limpios):");
   eq(de("hvac", "soporte"), 1, "hacia soportería:");
@@ -1944,7 +1944,7 @@ t("16.7 la misma área repartida en las ocho da una carga solar coherente con la
     contiene(de("Área a proteger").texto, "Area total: 1,250 m2");
     G("cxAplicar")(lote, "abierto");
     eq(S.fuego.area, 1250, "fuego.area:"); eq(S.fuego.altura, 6.5); eq(S.fuego.riesgo, "ord2");
-    eq(G("herDe")("fuego.area").modo, "propio", "el área cargada debe dejar de heredarse:");
+    /* H-264: ya no hay herencia que pueda pisar el dato cargado (antes: herDe("fuego.area") pasaba a «propio»). */
     G("recompute")(); G("render")();
     eq(S.fuego.area, 1250, "la herencia pisó el dato cargado:");
   });
@@ -4320,7 +4320,7 @@ t("M.2 con los cuatro permisos autorizados, las cuatro cargas llegan con la tens
     /* Arranque en ceros: defaultHidro() ya no trae muebles de ejemplo; sin
        ellos H.kWbomba sale 0 y el caso no aísla la bomba de agua. */
     S.hidro = { ...G("defaultHidro")(), muebles: [{ id: "wc_flux", cant: 4 }, { id: "ming_flux", cant: 2 }, { id: "lavabo", cant: 4 }, { id: "fregadero", cant: 1 }, { id: "manguera", cant: 2 }] };
-    S.fuego = G("defaultFuego")();
+    S.fuego = { ...G("defaultFuego")(), area: 500, altura: 6 };   /* H-264: contra incendio ya no hereda área ni altura: se capturan */
     S.clean = { rooms: [{ ...G("defaultRoom")(), area: 60, height: 2.7, occ: 4, procW: 25 }], ci: 0 };
     S.elec.sistema = "3F4H-220"; S.elec.tomarHVAC = true;
     limpiarPermisosElecBalance();
@@ -5471,10 +5471,13 @@ t("S.18 semáforo: un proyecto vacío muestra «Sin datos» en TODAS las discipl
     const con = (id, msg) => { if (n[id] === "vacia") throw new Error(msg || `${id} debía tener datos`); };
     con("clean"); con("civil", "civil hereda la geometría del cuarto:");
     ["load", "equip", "duct", "vent", "elec", "hidro", "aire"].forEach((id) => eq(n[id], "vacia", `${id} sigue vacío:`));
-    /* Una zona con área: carga, equipo, ventilación y contra incendio heredan. */
+    /* Una zona con área: carga y equipo se prenden. H-262/H-264: ventilación y contra incendio ya no heredan: siguen vacíos. */
     S.zones[0].area = 200; S.zones[0].height = 4; G("recompute")();
     n = niveles();
-    ["load", "equip", "fuego"].forEach((id) => { if (n[id] === "vacia") throw new Error(`${id} con zona capturada sigue en «Sin datos» (${n[id]})`); });
+    ["load", "equip"].forEach((id) => { if (n[id] === "vacia") throw new Error(`${id} con zona capturada sigue en «Sin datos» (${n[id]})`); });
+    eq(n.fuego, "vacia", "H-264: contra incendio no se prende con la zona de carga térmica:");
+    S.fuego.area = 200; G("recompute")(); n = niveles();
+    if (n.fuego === "vacia") throw new Error("contra incendio con área capturada sigue en «Sin datos»");
     /* Los motores que dependen de la captura de los demás tampoco se prenden solos. */
     G("reemplazarEstado")(G("defaultState")()); S.meta.name = "Proyecto vacío de prueba";
     Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "prueba S.18" }; }); G("recompute")();
@@ -6554,19 +6557,22 @@ t("S.58 (H-205) contra incendio hereda la altura MÁXIMA de las zonas (rociador 
     G("recompute")();
     cerca(G("geoProyecto")().altura, 5.4, 0.01, "la media ponderada sigue existiendo (volumen = área × altura):");
     eq(S.vent.height, 0, "H-262: ventilación ya no hereda la altura; calcula con la suya:");
-    eq(S.fuego.altura, 6, "contra incendio hereda la altura máxima (zona más alta):");
+    eq(S.fuego.altura, 0, "H-264: contra incendio ya no hereda la altura de las zonas:");
+    /* H-264: la altura al rociador más alto se captura; con 6 m (la zona más alta) la estática va a ese rociador. */
+    S.fuego.area = 500; S.fuego.altura = 6; G("recompute")();
     let F = G("FUEGO");
     eq(F.estatica, 7, "estática = altura al rociador más alto + 1 m:");
     if (!F.memo.some((m) => /rociador más alto/.test(m))) throw new Error("la memoria no dice que la estática va al rociador más alto");
     if (F.avisos.some((a) => /rack/.test(a.msg))) throw new Error("con 6 m no debe salir el aviso de rack");
-    /* Almacén de 13 m: la altura heredada es 13 (el promedio sería 3.91 y escondía el rack). */
+    /* Almacén de 13 m: se captura 13 (el promedio sería 3.91 y escondía el rack); las zonas no la mueven (H-264). */
     S.zones = [{ ...G("defaultZone")("Oficinas"), area: 2000, height: 3 }, { ...G("defaultZone")("Almacén"), area: 200, height: 13 }]; G("recompute")();
-    eq(S.fuego.altura, 13, "zona de 13 m: altura heredada 13:");
+    eq(S.fuego.altura, 6, "H-264: cambiar las zonas no mueve la altura capturada:");
+    S.fuego.altura = 13; G("recompute")();
     F = G("FUEGO");
     eq(F.estatica, 14, "estática 14 m:");
     if (!F.avisos.some((a) => /rack/.test(a.msg) && /13/.test(a.msg))) throw new Error("con 13 m debe salir el aviso de almacenamiento en rack con la altura real");
-    /* Captura propia: si el usuario escribe la altura del rociador más alto, la herencia no la pisa. */
-    S.fuego.altura = 9; G("marcarPropio")("fuego.altura"); G("recompute")();
+    /* Otra captura: manda en la estática. */
+    S.fuego.altura = 9; G("recompute")();
     eq(S.fuego.altura, 9, "la captura propia se respeta:"); eq(G("FUEGO").estatica, 10, "y manda en la estática:");
     /* La pantalla y la guía nombran el campo por lo que es. */
     S.tab = "fuego"; G("render")();
@@ -7474,7 +7480,7 @@ t("S.98 (H-262) ventilación calcula sólo con sus propios datos: el área, la a
     S.vent.area = 120; S.vent.height = 4; G("recompute")();
     if (G("VENT").avisos.some((a) => /pendiente de la captura/.test(a.msg))) throw new Error("con área y altura capturadas no debe quedar el aviso de pendiente");
     /* Contra incendio no es parte de este hallazgo: sigue como estaba. */
-    eq(S.fuego.area, 800, "contra incendio no cambia en este hallazgo:");
+    eq(S.fuego.area, 0, "H-264: contra incendio tampoco hereda el área de las zonas:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
@@ -7579,6 +7585,34 @@ t("S.99 (H-263) al seleccionar el ventilador, el calor de su motor (HP de refere
     const falt = G("selfCheck")().faltantes.filter((f) => /seleccion|miscVent/.test(f.ruta));
     if (falt.length) throw new Error("contrato 16.4 tras quitar: " + falt.map((f) => f.ruta).join(", "));
   } finally { H.pila = hist0.pila; H.ix = hist0.ix; G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+t("S.100 (H-264) contra incendio es autónomo: el área a proteger y la altura al rociador más alto se capturan en su pestaña; no se heredan de carga térmica ni se toman en vivo (decisión del dueño, 27-sep-2026: todos los motores independientes)", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.100";
+    Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.100" }; });
+    S.zones = [{ ...G("defaultZone")("Nave"), area: 400, height: 6, occ: 30 }, { ...G("defaultZone")("Oficina"), area: 100, height: 3, occ: 10 }];
+    S.fuego = { ...G("defaultFuego")(), riesgo: "ord2", Lramal: 30, Lmontante: 12, tomarArea: true };
+    G("recompute")();
+    if (!(G("geoProyecto")().area > 0)) throw new Error("el caso no aísla lo que se quiere probar: carga térmica debe tener geometría");
+    eq(S.fuego.area, 0, "el área a proteger no se copia de carga térmica:");
+    eq(S.fuego.altura, 0, "la altura no se copia de carga térmica:");
+    eq(G("FUEGO").area, 0, "ni se toma en vivo aunque haya permisos y tomarArea:");
+    if (!G("FUEGO").memo.some((m) => /Sin área protegida capturada/.test(m))) throw new Error("sin área capturada la memoria debe decirlo");
+    eq(G("LINKS")["load>fuego"], undefined, "no queda cruce load>fuego:");
+    eq(Object.keys(G("HEREDA")).length, 0, "ninguna disciplina hereda:");
+    if (G("ARISTAS").some((a) => a.a === "fuego" && a.regla === 1)) throw new Error("el diagrama sigue dibujando una herencia hacia contra incendio");
+    /* Lo capturado manda y las zonas no lo mueven. */
+    S.fuego.area = 700; S.fuego.altura = 6; G("recompute")();
+    S.zones[0].area = 900; S.zones[0].height = 9; G("recompute")();
+    eq(S.fuego.area, 700, "carga térmica no mueve el área capturada:"); eq(S.fuego.altura, 6, "ni la altura capturada:");
+    eq(G("FUEGO").estatica, 7, "la estática va a la altura capturada + 1 m:");
+    S.tab = "fuego"; G("render")();
+    const txt = w.document.getElementById("view").textContent;
+    if (/heredada de|se heredará de/i.test(txt)) throw new Error("la pantalla de contra incendio todavía anuncia herencia");
+    contiene(txt, "no las toma de Carga térmica", "la pantalla dice que se capturan aquí:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
 /* ===== R. Regresión por motor (rev 2.9.22, decisión del dueño): un proyecto fijo con cifras esperadas por disciplina ===== */

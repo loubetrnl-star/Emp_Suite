@@ -42,7 +42,8 @@ w.eval(String.raw`
   /* rev 2.9.23 (decisión del dueño 22-sep-2026): la red es de COBRE tipo L para que el golden ejercite la ruta de precios de referencia (con IVA/por tramo → MXN/m) y, en un diámetro, la de proveedor local numérico. */
   S.hidro = { ...defaultHidro(), material: "cobre", tramos: [{ ...defaultTramoAgua("AF-GENERAL"), um: 72, L: 25, alt: 3 }, { ...defaultTramoAgua("AF-RAMAL BAÑOS"), um: 20, L: 18, alt: 0 }],
     muebles: [{ id: "wc_flux", cant: 4 }, { id: "ming_flux", cant: 2 }, { id: "lavabo", cant: 4 }, { id: "fregadero", cant: 1 }, { id: "manguera", cant: 2 }] };
-  S.fuego = { ...defaultFuego(), area: 600, altura: 6, Lramal: 30, Lmontante: 12, presFuente: 30 };
+  /* H-264: contra incendio ya no hereda; captura lo que la herencia le imponía al abrir (700 m² = suma de zonas, 6 m = zona más alta). */
+  S.fuego = { ...defaultFuego(), area: 700, altura: 6, Lramal: 30, Lmontante: 12, presFuente: 30 };
   S.aire = { ...defaultAire(), Lprincipal: 60, consumos: [{ ...defaultConsumo("Sopleteo"), cant: 2, lmin: 400, bar: 6, uso: .5 }, { ...defaultConsumo("Actuadores"), cant: 4, lmin: 250, bar: 6, uso: .3 }] };
   S.civil = { ...defaultCivil(), firmeM2: 120, puertasSimples: 3, puertasLimpias: 2, demoler: true, demolMuroM2: 40 };
   S.soporte = { ...defaultSoporte(), rielM: 60, mesesElevacion: 3 };

@@ -34,8 +34,8 @@ export default async function ({ t, G, S, REG_PROY, CM }) {
   });
   const permisos = () => G('Object.keys(LINKS).forEach((k) => { S.perms[k] = { ts: 1, via: "casos a mano" }; })');
   const zona = (nombre, area, height) => ({ ...G("defaultZone")(nombre), area, height });
-  /* Proyecto limpio con nombre (para que el semáforo tenga proyecto), zonas dadas (área y altura se HEREDAN a fuego si hay
-     zonas), captura de fuego sobre defaultFuego() y todos los cruces autorizados (la cotización lee fuego>quote). */
+  /* Proyecto limpio con nombre (para que el semáforo tenga proyecto), zonas dadas (H-264: contra incendio ya no hereda de
+     ellas; el área y la altura van en la captura), captura de fuego sobre defaultFuego() y todos los cruces autorizados. */
   const armar = (zonas, fuego) => {
     G("reemplazarEstado")(G("defaultState")());
     S.meta.name = "Casos a mano · contra incendio";
@@ -46,14 +46,14 @@ export default async function ({ t, G, S, REG_PROY, CM }) {
   };
 
   caso("CM.fuego.1 (NFPA 13-2016 Tabla 19.3.3.1.1 curva densidad-área y Tabla 10.2.4.2.1; criterio de la casa 1.15/30 %/+1 m; H-205) proyecto de regresión: ordinario 2, 700 m² y 6 m (MÁXIMA) HEREDADOS de 4 zonas, 30+12 m, K80, cisterna", "CM.fuego.1", () => {
-    /* El mismo arranque que R.1: el fixture declara 600 m²/6 m, pero fuego.area/altura heredan de las zonas: 700 m² y, desde
-       H-205, la altura máxima (6 m; antes el promedio 4.71 m). */
+    /* El mismo arranque que R.1. H-264: contra incendio ya no hereda; el fixture CAPTURA 700 m² y 6 m, los valores que la
+       herencia le imponía al abrir (suma de zonas y, desde H-205, la altura máxima; antes el promedio 4.71 m). */
     G("importarRespaldo")(REG_PROY); S.tab = "tablero"; G("KZ_CACHE").key = null; G("VZ_CACHE").key = null; G("recompute")();
-    if (!(S.fuego.area === 700 && S.fuego.altura === 6)) throw new Error(`el fixture no heredó 700 m² / 6 m (máxima, H-205): ${S.fuego.area} / ${S.fuego.altura}`);
+    if (!(S.fuego.area === 700 && S.fuego.altura === 6)) throw new Error(`el fixture no trae 700 m² / 6 m capturados (H-205, H-264): ${S.fuego.area} / ${S.fuego.altura}`);
   });
-  caso("CM.fuego.2 (NFPA 13-2016; H-205) nave con almacén de 13 m: zonas 2000 m²/3 m + 200 m²/13 m, ordinario 2, 30+12 m: la estática sale de la altura máxima 13 m (antes del promedio 3.91)", "CM.fuego.2", () => {
-    armar([zona("Oficinas", 2000, 3), zona("Almacén", 200, 13)], { riesgo: "ord2", Lramal: 30, Lmontante: 12 });
-    if (!(S.fuego.area === 2200 && S.fuego.altura === 13)) throw new Error(`no heredó 2200 m² / 13 m (máxima, H-205): ${S.fuego.area} / ${S.fuego.altura}`);
+  caso("CM.fuego.2 (NFPA 13-2016; H-205, H-264) nave con almacén de 13 m: 2200 m² y altura al rociador más alto 13 m capturados (no el promedio 3.91 de las zonas 2000 m²/3 m + 200 m²/13 m), ordinario 2, 30+12 m", "CM.fuego.2", () => {
+    armar([zona("Oficinas", 2000, 3), zona("Almacén", 200, 13)], { riesgo: "ord2", area: 2200, altura: 13, Lramal: 30, Lmontante: 12 });
+    if (!(S.fuego.area === 2200 && S.fuego.altura === 13)) throw new Error(`no quedó la captura 2200 m² / 13 m (H-205, H-264): ${S.fuego.area} / ${S.fuego.altura}`);
   });
   caso("CM.fuego.3 (NFPA 13-2016 riesgo ligero; NFPA 20-2016 Tabla 4.9; H-208, H-211) 300 m², 3.5 m, 20+6 m, K80, red municipal de 35 mca que no alcanza", "CM.fuego.3", () => {
     armar([], { riesgo: "ligero", area: 300, altura: 3.5, Lramal: 20, Lmontante: 6, fuente: "municipal", presFuente: 35 });

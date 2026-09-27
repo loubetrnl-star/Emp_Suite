@@ -25,8 +25,6 @@
     "buscar": "dens: 8.1,  areaMin: 139, areaMax: 372, cobertura: 12.1, espac: 4.6, manguera: 950, dur: 60", "reemplazar": "dens: 8.1,  areaMin: 139, areaMax: 372, cobertura: 12.1, espac: 4.6, manguera: 950, dur: 30", "estado": "vigente" },
   { "id": "fuego.m13", "que": "lista de bombas de prediseño sin el escalón de 2,500 L/min", "logica": true,
     "buscar": "[500, 750, 1000, 1500, 2000, 2500, 3000, 3800, 5000].find((x) => x >= qTotal) || 5000", "reemplazar": "[500, 750, 1000, 1500, 2000, 3000, 3800, 5000].find((x) => x >= qTotal) || 5000", "estado": "vigente" },
-  { "id": "fuego.m14", "que": "H-205: la altura heredada por contra incendio vuelve al promedio ponderado (antes de H-205) en vez de la máxima", "logica": true,
-    "buscar": "unidad: \"m\", dec: 2, de: (g) => g.alturaMax },", "reemplazar": "unidad: \"m\", dec: 2, de: (g) => g.altura },", "estado": "vigente" },
   { "id": "fuego.m15", "que": "presión del rociador (Q/K)² → Q/K", "logica": true,
     "buscar": "const pRoc = Math.pow(qRoc / roc.K, 2);", "reemplazar": "const pRoc = qRoc / roc.K;", "estado": "vigente" },
   { "id": "fuego.m16", "que": "presión mínima de descarga del K160: 0.5 → 0.1 bar", "logica": true,
@@ -62,5 +60,7 @@
   { "id": "fuego.m31", "que": "C de Hazen-Williams del cobre: 150 → 120", "logica": true,
     "buscar": "cobre:     { C: 150, label: \"Cobre\", labelEn: \"Copper\" },", "reemplazar": "cobre:     { C: 120, label: \"Cobre\", labelEn: \"Copper\" },", "estado": "vigente" },
   { "id": "fuego.m32", "que": "densidad extra 2: 16.3 → 12.2 mm/min y duración 120 → 90 min", "logica": true,
-    "buscar": "dens: 16.3, areaMin: 232, areaMax: 465, cobertura: 9.3, espac: 3.7, manguera: 1900, dur: 120,", "reemplazar": "dens: 12.2, areaMin: 232, areaMax: 465, cobertura: 9.3, espac: 3.7, manguera: 1900, dur: 90,", "estado": "vigente" }
+    "buscar": "dens: 16.3, areaMin: 232, areaMax: 465, cobertura: 9.3, espac: 3.7, manguera: 1900, dur: 120,", "reemplazar": "dens: 12.2, areaMin: 232, areaMax: 465, cobertura: 9.3, espac: 3.7, manguera: 1900, dur: 90,", "estado": "vigente" },
+  { "id": "fuego.m33", "que": "H-264: contra incendio vuelve a tomar el área de las zonas de carga térmica cuando no hay captura (herencia retirada; sustituye a m14, cuya línea HEREDA[\"fuego.altura\"] ya no existe)", "logica": true,
+    "buscar": "  const area = Math.max(0, num(F.area, 0));", "reemplazar": "  const area = Math.max(0, num(F.area, 0)) || (typeof totals === \"function\" ? totals().area : 0);", "estado": "vigente" }
 ]

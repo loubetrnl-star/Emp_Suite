@@ -114,13 +114,14 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 | 7 | 2.9.24 | H-197: sin pisos sin norma. Días de reserva capturados se respetan (0 o negativos = cisterna pendiente con aviso; antes piso de 0.5 día: 0 días daban 3 m³); ΔT ≤ 0 = calentador pendiente con aviso (antes piso de 5 K); la pendiente del colector se respeta y sólo sube, con aviso, a la mínima de IPC 2015 §704.1 para su diámetro (¼ in/ft hasta 2½", ⅛ de 3" a 6", 1/16 de 8" en adelante; antes piso de 0.5 % sin norma). Memoria y PDF dicen si la pendiente es la capturada o la mínima de norma. Proyecto fijo: sin cambio de cifras (1 día, 18 → 45 °C, 2 %) |
 | 8 | 2.9.24 | H-198: CPVC sin los renglones de 2 1/2", 3" y 4" «SIN VERIFICAR» (CTS SDR-11 llega a 2"; la familia IPS queda pendiente de fuente); un tramo cuyo gasto no cabe en el mayor diámetro verificado queda fuera de catálogo con error visible (la hidráulica usa el tope sólo para mostrar el exceso); PEAD (diámetros genéricos sin SDR ni fuente) da error visible. Aguas abajo: quote v7 («Por cotizar») y la soportería sigue contando el tramo con el tope (dependencia registrada). Proyecto fijo: sin cambio de cifras (cobre) |
 
-## Contra incendio (`fuego`) · v3
+## Contra incendio (`fuego`) · v4
 
 | Versión | Rev | Hallazgo / cambio de lógica |
 |---|---|---|
 | 1 | 2.9.15 | lógica de partida |
 | 2 | 2.9.16 | sin área no hay demanda, bomba ni reserva; área mínima de operación NFPA 13 con aviso |
 | 3 | 2.9.24 | H-205: la altura que contra incendio hereda de las zonas es la MÁXIMA (rociador más alto), no la media ponderada por área (que sigue para ventilación, que trabaja por volumen): estática y presión requerida al rociador más alto, aviso de almacenamiento en rack con la altura real, campo «Altura libre al rociador más alto». Proyecto fijo: 4.71 → 6 m, presión requerida +1.29 m (37.815 → 39.105 m), 35 HP sin cambio |
+| 4 | 2.9.24 | H-264 (decisión del dueño, 27-sep-2026): contra incendio es autónomo. El área a proteger y la altura al rociador más alto se capturan en su pestaña; ya no se heredan de carga térmica (regla 1 retirada: HEREDA queda vacío) ni se toma el área en vivo (cruce load>fuego y F.tomarArea retirados). Un proyecto guardado conserva los valores que ya tenía copiados y deja de seguir a las zonas. Proyecto fijo: captura 700 m² y 6 m, los valores que la herencia le imponía al abrir (esperado sin cambio de cifras). |
 
 ## Aire comprimido (`aire`) · v5
 

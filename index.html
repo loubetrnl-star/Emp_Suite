@@ -4282,12 +4282,7 @@ const LINKS = {
     why: "Es un aviso de coherencia, no un cálculo nuevo: si comparten tanque, el consumo doméstico no debe poder vaciar el compartimento de incendio (NFPA 22).",
     cost: "Si lo niegas, la validación no compara los dos volúmenes de agua del proyecto.",
   },
-  "load>fuego": {
-    from: "load", to: "fuego",
-    what: "Área acondicionada total del proyecto.",
-    why: "Para no recapturar la superficie a proteger. El área de DISEÑO —la que se supone operando— no sale de aquí: la fija la clase de riesgo.",
-    cost: "Si lo niegas, capturas el área a proteger por tu cuenta, que es lo normal cuando la protección cubre más que lo climatizado.",
-  },
+  /* H-264: el cruce load>fuego se retiró; contra incendio captura su área a proteger. */
   "elec>quote": {
     from: "elec", to: "quote",
     what: "Alimentador general, protección principal, canalización y número de circuitos derivados.",
@@ -10811,7 +10806,7 @@ function defaultFuego() {
     Lramal: 0, Lmontante: 0,    // cabezal del área de diseño y montante
     presFuente: 0,              // presión disponible en la toma municipal, mca
     fuente: "cisterna",         // cisterna con bomba, o red municipal directa
-    tomarArea: false,           // rev 2.7.0: el área se HEREDA en fuego.area (regla 1), no se toma en vivo
+    tomarArea: false,           // sin uso desde H-264: el área es sólo la capturada (se conserva por proyectos anteriores)
   };
 }
 
@@ -10821,13 +10816,12 @@ function computeFuego(F) {
   const roc = rociadorDe(F.rociador);
   const tub = TUB_FUEGO[F.material] ? F.material : "acero_neg";
 
-  /* Área protegida: propia o tomada del proyecto de carga térmica, con permiso. */
-  const verArea = linkAllowed("load>fuego");
-  const areaProy = verArea && typeof totals === "function" ? totals().area : 0;
+  /* H-264 (decisión del dueño, 27-sep-2026): el área protegida es la capturada en esta pestaña. Ya no se toma de carga
+     térmica, ni heredada ni en vivo (el cruce load>fuego y F.tomarArea se retiraron; el campo queda sin uso). */
   /* rev 2.9.16 · DECISIÓN DEL DUEÑO (pisos internos): sólo se quedan los pisos con norma, y cuando se aplican se avisan y quedan en la memoria; los que no tenían sustento salieron.
      Salió el área mínima de 1 m²: con el área en cero armaba un sistema completo (bomba de 2,500 L/min, 138 m³ de
      reserva) que nadie capturó. Sin área no hay demanda y se dice. */
-  const area = F.tomarArea && verArea && areaProy > 0 ? areaProy : Math.max(0, num(F.area, 0));
+  const area = Math.max(0, num(F.area, 0));
   const sinArea = !(area > 0);
   if (sinArea) memo.push("Sin área protegida capturada: no se calcula demanda, bomba ni reserva, y no se supone ninguna (rev 2.9.16).");
 
@@ -10865,9 +10859,11 @@ function computeFuego(F) {
      lo que se usa en prediseño. */
   const hfRam = hazen(qRociadores / 60, ram.d, ram.C) * Lram * 1.3;
   const hfMon = hazen(qTotal / 60, mon.d, mon.C) * Lmon * 1.3;
-  /* H-205 (fuego v3, regla del dueño): la estática va al rociador más alto: F.altura hereda la altura MÁXIMA de las zonas (antes
-     la media ponderada, que escondía el rack) o es la capturada; +1 m de la casa. */
+  /* H-205 (fuego v3, regla del dueño): la estática va al rociador más alto (no a la media ponderada, que escondía el rack);
+     +1 m de la casa. H-264: la altura es la capturada en esta pestaña; sin captura queda en 0 y se avisa (no se hereda ni se supone). */
   const estatica = Math.max(0, num(F.altura, 6)) + 1;
+  if (!sinArea && !(num(F.altura, 0) > 0))
+    avisos.push({ lvl: "warn", msg: "Contra incendio: altura al rociador más alto sin capturar: la estática se calcula sólo con el +1 m de la casa y queda corta. Captura la altura del rociador más alto (ya no se toma de Carga térmica, H-264)." });
   /* Todo en metros de columna de agua y al final a bar: 1 bar = 10.2 mca. */
   const mcaRoc = pDiseno * 10.2;
   const mcaTotal = mcaRoc + hfRam + hfMon + estatica;
@@ -10904,7 +10900,7 @@ function computeFuego(F) {
   memo.push(`Cobertura máxima por rociador ${n(r.cobertura, 1)} m² y separación máxima ${n(r.espac, 1)} m: ${nDiseno} rociadores en el área de diseño y ${nTotal} en los ${n(area, 0)} m² protegidos, a una retícula de ${n(espaciamiento, 2)} m.`);
   memo.push(`Rociador ${roc.label}: para la densidad pedida descarga ${n(qRoc, 0)} L/min, que exige ${n(pRoc, 2)} bar en la boquilla; rige ${pRoc < roc.pMin ? "el mínimo de norma" : "la densidad"} → ${n(pDiseno, 2)} bar y ${n(qReal, 0)} L/min.`);
   memo.push(`Demanda: ${nDiseno} × ${n(qReal, 0)} L/min × ${sobre} de sobredescarga = ${n(qRociadores, 0)} L/min de rociadores, más ${n(qManguera, 0)} L/min de reserva de manguera = ${n(qTotal, 0)} L/min (${n(qTotal / 3.785, 0)} gpm).`);
-  memo.push(`Trayectoria más desfavorable: cabezal del área de diseño ${ram.nom} (${n(ram.V, 2)} m/s, ${n(hfRam, 2)} m de pérdida en ${n(Lram, 0)} m) y montante ${mon.nom} (${n(mon.V, 2)} m/s, ${n(hfMon, 2)} m en ${n(Lmon, 0)} m), con 30 % de longitud equivalente por accesorios. Estática ${n(estatica, 1)} m al rociador más alto (${n(num(F.altura, 6), 2)} m ${(herDe("fuego.altura").modo === "propio") ? "capturados" : "heredados: la zona más alta del proyecto"} + 1 m de la casa; H-205).`);
+  memo.push(`Trayectoria más desfavorable: cabezal del área de diseño ${ram.nom} (${n(ram.V, 2)} m/s, ${n(hfRam, 2)} m de pérdida en ${n(Lram, 0)} m) y montante ${mon.nom} (${n(mon.V, 2)} m/s, ${n(hfMon, 2)} m en ${n(Lmon, 0)} m), con 30 % de longitud equivalente por accesorios. Estática ${n(estatica, 1)} m al rociador más alto (${n(num(F.altura, 6), 2)} m capturados en esta pestaña + 1 m de la casa; H-205, H-264).`);
   memo.push("El cabezal se calcula con el caudal COMPLETO del área de diseño en toda su longitud. Es conservador a propósito: en la red real el caudal se va repartiendo entre rociadores y la pérdida es menor. El cálculo formal nodo por nodo lo resuelve exacto; este prediseño se queda del lado seguro para dimensionar bomba y toma.");
   memo.push(`Presión requerida en la base del montante: ${n(mcaTotal, 1)} m de columna de agua = ${n(barTotal, 2)} bar (${n(barTotal * 14.5, 0)} psi).`);
   memo.push(`Bomba contra incendio NFPA 20: nominal ${n(qBomba, 0)} L/min (${n(qBomba / 3.785, 0)} gpm)${bombaNoCubre ? ` — POR DEBAJO de la demanda de ${n(qTotal, 0)} L/min (${n(qTotal / 3.785, 0)} gpm), no cubre` : ""} a ${n(presBomba, 1)} m · ${n(hpBomba, 0)} HP estimados con 65 % de eficiencia. Verificar que la curva no pase de 140 % de la presión nominal a caudal cero y entregue al menos 65 % al 150 % del caudal.`);
@@ -10920,7 +10916,7 @@ function computeFuego(F) {
   return { r, roc, tub, area, areaDis, nDiseno, nTotal, espaciamiento, qRoc, pRoc, pDiseno, qReal,
     sobre, qRociadores, qManguera, qTotal, ram, mon, Lram, Lmon, hfRam, hfMon, estatica,
     mcaRoc, mcaTotal, barTotal, presFuente, alcanza, qBomba, presBomba, kWbomba, hpBomba, reserva,
-    verArea, memo, avisos };
+    memo, avisos };   /* H-264: sin verArea (el área ya no se toma de carga térmica) */
 }
 
 
@@ -16159,7 +16155,7 @@ Object.assign(REF, {
   "fuego.riesgo":  { ref: "Clase de riesgo de NFPA 13. Define densidad, área de operación, cobertura por rociador y reserva de manguera.", rec: "Ordinario grupo 2 para manufactura y cuarto limpio de proceso · ligero solo para oficina pura" },
   "fuego.area":    { ref: "Superficie total a proteger con rociadores.", rec: "Toda el área bajo techo, no solo la climatizada" },
   "fuego.areaDis": { ref: "Área de operación: la parte que se supone en incendio simultáneo. NFPA 13 permite moverse sobre la curva densidad-área.", rec: "0 para usar el mínimo de la clase, que es lo más común en proyecto nuevo" },
-  "fuego.altura":  { ref: "Altura libre al rociador más alto del proyecto (heredada: la zona más alta, no el promedio; H-205).", rec: "Arriba de 12 m hay que revisar si aplica protección en rack o rociadores de almacenamiento" },
+  "fuego.altura":  { ref: "Altura libre al rociador más alto del proyecto, capturada aquí (la del rociador más alto, no el promedio; H-205, H-264).", rec: "Arriba de 12 m hay que revisar si aplica protección en rack o rociadores de almacenamiento" },
   "fuego.cabezal": { ref: "Longitud del cabezal que alimenta el área de diseño, desde el montante hasta el rociador más lejano.", rec: "Se calcula con el caudal completo del área de diseño: es conservador, la red real reparte el caudal" },
   "fuego.pres":    { ref: "Presión disponible en la fuente, en metros de columna de agua.", rec: "Con cisterna y bomba, la presión de la fuente es cero: la pone la bomba" },
   "quote.indirect":  { ref: "Indirectos: oficina, supervisión y seguros. Fianzas y financiamiento van en renglones propios sobre el costo directo.", rec: "12–22 % del costo directo en obra de especialidad." },
@@ -17456,10 +17452,9 @@ function geoProyecto() { return geoProyectoDe(S.zones); }
 /* H-262 (decisión del dueño, 27-sep-2026): cada disciplina calcula con sus propios datos. Ventilación ya no hereda área, altura
    ni ocupantes de Carga térmica: los captura en su pestaña. La única relación entre las dos va al revés: el ventilador que se
    SELECCIONA entrega el calor de su motor a una zona de carga térmica como misceláneos (H-263). */
-const HEREDA = {
-  "fuego.area":   { destino: "fuego", etiqueta: "Área a proteger", unidad: "m²", dec: 0, de: (g) => Math.max(1, Math.round(g.area)) },
-  "fuego.altura": { destino: "fuego", etiqueta: "Altura libre al rociador más alto (máxima de las zonas)", unidad: "m", dec: 2, de: (g) => g.alturaMax },
-};
+/* H-264 (decisión del dueño, 27-sep-2026): contra incendio es autónomo; captura su área y su altura. Con eso ninguna
+   disciplina hereda: HEREDA queda vacío y sincronizarHerencia no copia nada (se conserva para proyectos anteriores). */
+const HEREDA = {};
 function herDe(path) {
   if (!S.her || typeof S.her !== "object") S.her = {};
   if (!S.her[path] || typeof S.her[path] !== "object") S.her[path] = { modo: "heredado", ts: null, valor: null };
@@ -18347,7 +18342,7 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "6", clean: "3", equip: "1", duct: "4", vent: "4", quote: "24", valor: "1", kaizen: "1", elec: "8", hidro: "8", fuego: "3", aire: "5", civil: "5", soporte: "11" };
+const MOTOR_VER = { load: "6", clean: "3", equip: "1", duct: "4", vent: "4", quote: "24", valor: "1", kaizen: "1", elec: "8", hidro: "8", fuego: "4", aire: "5", civil: "5", soporte: "11" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
@@ -18373,7 +18368,8 @@ const MOTOR_CAMBIOS = {
     { ver: "7", rev: "2.9.24", que: "H-197: sin pisos sin norma. Días de reserva capturados se respetan (0 = cisterna pendiente con aviso; antes piso de 0.5 día); ΔT ≤ 0 = calentador pendiente con aviso (antes piso de 5 K); la pendiente del colector se respeta y sólo sube, con aviso, a la mínima de IPC 2015 §704.1 para su diámetro (antes piso de 0.5 % sin norma)" },
     { ver: "8", rev: "2.9.24", que: "H-198: CPVC sin los renglones de 2 1/2\", 3\" y 4\" «SIN VERIFICAR» (CTS SDR-11 llega a 2\"); un tramo que no cabe en el mayor diámetro verificado queda fuera de catálogo con error visible, y PEAD (diámetros genéricos sin SDR ni fuente) da error visible" }],
   fuego: [{ ver: "2", rev: "2.9.16", que: "sin área no hay demanda, bomba ni reserva; área mínima de operación NFPA 13 con aviso" },
-    { ver: "3", rev: "2.9.24", que: "H-205: la altura heredada de las zonas es la MÁXIMA (rociador más alto), no la media ponderada: estática y CDT al rociador más alto y aviso de rack con la altura real (proyecto fijo: 4.71 → 6 m, +1.29 m de CDT)" }],
+    { ver: "3", rev: "2.9.24", que: "H-205: la altura heredada de las zonas es la MÁXIMA (rociador más alto), no la media ponderada: estática y CDT al rociador más alto y aviso de rack con la altura real (proyecto fijo: 4.71 → 6 m, +1.29 m de CDT)" },
+    { ver: "4", rev: "2.9.24", que: "H-264 (decisión del dueño, 27-sep-2026): contra incendio es autónomo: el área a proteger y la altura al rociador más alto se capturan en su pestaña; ya no se heredan de carga térmica ni se toma el área en vivo (cruce load>fuego retirado). Un proyecto guardado conserva los valores que ya tenía copiados; sin área capturada no hay demanda" }],
   aire: [{ ver: "2", rev: "2.9.16", que: "sin demanda no se cuentan unidades" },
     { ver: "3", rev: "2.9.24", que: "H-215: secador por ISO 7183:2007 Tabla 2 opción A1: capacidad = todo el caudal del compresor a las condiciones nominales (35 °C, 7 bar(e)), factor 1.0; fuera de A1 la corrección es del fabricante y queda pendiente con aviso (antes FAD requerido / (0.92 × 0.90) de memoria: proyecto fijo 2.46 → 2.43 m³/min)" },
     { ver: "4", rev: "2.9.24", que: "H-216: el tanque pulmón no se trunca a 5,000 L en silencio: si el teórico rebasa el mayor de la lista comercial se instalan varios de 5,000 L en paralelo (capacidad instalada ≥ teórica), con aviso y memoria veraz (13,103 L → 3 × 5,000 = 15,000 L; antes 5,000). Proyecto fijo: sin cambio (3,000 L)" },
@@ -18816,7 +18812,6 @@ const ARISTAS = [
   { de: "proyecto", a: "civil", regla: 0, lane: 217, que: "Alcance de obra y áreas del proyecto" },
   { de: "proyecto", a: "estr",  regla: 0, lane: 233, que: "Alcance estructural del proyecto" },
 
-  { de: "hvac", a: "fuego", regla: 1, path: "fuego.area", lane: 694, que: "Área a proteger y altura libre" },
   { de: "hvac", a: "civil", regla: 1, path: "civil.zonas", que: "Área, altura y desarrollo de muro por zona", carril: 0, atras: true },
   { de: "hvac", a: "civil", regla: 1, path: "civil.zonas", que: "Acabados y envolvente de área clasificada", carril: 16, atras: true },
 
@@ -21195,7 +21190,7 @@ function viewFuego() {
         ${inp("Área a proteger (m²)", "fuego.area", "number", "10", "fuego.area", F)}
         ${inp("Altura libre al rociador más alto (m)", "fuego.altura", "number", "0.5", "fuego.altura", F)}
       </div>
-      ${herenciaHtml("fuego.area")}${herenciaHtml("fuego.altura")}
+      <div class="hint" style="margin:0 0 12px">Área y altura se capturan aquí: contra incendio no las toma de Carga térmica (H-264). Sin área no hay demanda.</div>
       ${inp(`Área de diseño (m², 0 = mínima de la clase: ${R.r.areaMin})`, "fuego.areaDiseno", "number", "10", "fuego.areaDis", F, "fuego_area")}
       <div class="row">
         ${sel("Rociador", "fuego.rociador", ROCIADOR.map((r) => [r.id, r.label]))}

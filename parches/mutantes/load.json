@@ -686,5 +686,13 @@
     "buscar": "const CLTD_BASE_TR = 25.556, CLTD_BASE_TM = 29.444;",
     "reemplazar": "const CLTD_BASE_TR = 24, CLTD_BASE_TM = 29.444;",
     "estado": "vigente"
+  },
+  {
+    "id": "load.m87",
+    "que": "H-263 · el calor del motor del ventilador seleccionado (misceláneos) deja de sumarse a la carga de la zona",
+    "logica": true,
+    "buscar": "eqS + miscS + ffuS + infS;",
+    "reemplazar": "eqS + ffuS + infS;",
+    "estado": "vigente"
   }
 ]

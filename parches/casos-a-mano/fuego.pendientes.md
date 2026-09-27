@@ -5,6 +5,7 @@
 | Hallazgo | Estado | Qué cambió |
 |---|---|---|
 | H-205 (altura heredada = promedio ponderado; escondía el rack) | **Cerrado** (fuego v2 → v3, 25-sep-2026) | `geoProyectoDe` entrega también `alturaMax`; `HEREDA["fuego.altura"]` toma la máxima (ventilación sigue con la media, que es la que renueva volumen). Estática y presión requerida al rociador más alto; aviso de rack con la altura real; campo, guía, PDF y memoria dicen «al rociador más alto». La captura propia se respeta. Prueba S.58; 3.2 corregida (6 m); CM.fuego.1 y 2 con la máxima (6 y 13 m), filas .F1–.F4 de fase2 a vigentes; mutante m14 reapuntado (máxima → promedio) y MUERTO. Proyecto fijo: 37.815 → 39.105 m, 35 HP sin cambio. |
+| H-264 (decisión del dueño, 27-sep-2026: contra incendio autónomo) | **Cerrado** (fuego v3 → v4, 27-sep-2026) | Contra incendio ya no hereda área ni altura de carga térmica (`HEREDA` queda vacío) ni toma el área en vivo (cruce `load>fuego` y `F.tomarArea` retirados): se capturan en su pestaña. La altura al rociador más alto sigue siendo la del rociador más alto (H-205), ahora capturada; sin captura se avisa. CM.fuego.1 usa el fixture con 700 m² y 6 m capturados; CM.fuego.2 captura 2,200 m² y 13 m. Mutante `fuego.m14` (sobre `HEREDA["fuego.altura"]`) sustituido por `fuego.m33` (el área vuelve a tomarse de las zonas). |
 | H-206 (bomba a 385,000 fijos + 9,500/m³ sin fuente) | **Cerrado** (quote v8 → v9, 25-sep-2026; fuego sin cambio de cifras) | `QUOTE_SEED.bombaFuego` y `cisternaM3` retirados. Bomba «Por cotizar» (LOTE, sección D) con gpm, L/min, presión, HP; reserva «Por cotizar» (M3) con L/min × min. Con red municipal que alcanza no hay ninguna de las dos (la red que NO alcanza sigue sin partida: H-211, pendiente). Prueba S.59; CM.fuego.1.v redefinida (0 partidas LOTE con importe), F5 vigente y F5b nueva; S.20 con las cifras nuevas (−1,697,446.66 directos). Sin mutante propio: la lógica es de quote (S.59 y R.1 la vigilan). |
 
 Hoja: `fuego.csv` (191 filas: 181 vigentes, 10 fase2) · cálculo: `fuego.calc.mjs` · módulo: `pruebas-motores/fuego.mjs` ·
@@ -46,6 +47,7 @@ visible; su `descripcion` dice «hoy; cambia con H-nnn»): `CM.fuego.*.m/.n` (es
 `fuego.m14` quedó `fase2:H-205` en la Fase 1 (promedio → máxima; lo mataban `3.2` y `CM.fuego.1.m/.n`, `2.m/.n` afirmando el
 promedio). **Al cerrar H-205 (25-sep-2026) se invirtió** (máxima → promedio, sobre `HEREDA["fuego.altura"]`) y es lógica vigente:
 MUERTO (S.58, 3.2, CM.fuego.1/2, R.1).
+**H-264 (27-sep-2026):** la herencia de altura se retiró (contra incendio captura su altura); `fuego.m14` ya no tiene línea que mutar y se sustituyó por `fuego.m33`.
 
 ## Lo que NO cubre esta fase (y por qué)
 
