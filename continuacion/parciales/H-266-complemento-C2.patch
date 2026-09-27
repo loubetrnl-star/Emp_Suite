@@ -1,0 +1,138 @@
+From 883ce2297d09aae9fb53d5418a294408114e20fa Mon Sep 17 00:00:00 2001
+From: EMP Suite <suite@emdelpacifico.local>
+Date: Sun, 27 Sep 2026 17:30:56 +0000
+Subject: [PATCH] =?UTF-8?q?H-266=20=C2=B7=20soporte=20=C2=B7=20complemento?=
+ =?UTF-8?q?:=20la=20migraci=C3=B3n=20lee=20el=20s=C3=AD/no=20guardado=20co?=
+ =?UTF-8?q?mo=20texto=20(H-42):=20un=20proyecto=20a=20mano=20abre=20a=20ma?=
+ =?UTF-8?q?no?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Norma: decisión del dueño (27-sep-2026): soportería autónoma; los metros de otros motores entran sólo al aceptar su
+propuesta y, ya cuantificados, no se mueven; un proyecto guardado abre con las mismas cifras (regla 6: nada se estima).
+Revisión adversarial de H-266 sobre 63a2794, hallazgo C2 (confirmado).
+
+Antes → después (sanearEstado, bloque H-266): la migración decidía con el valor crudo sopPrevio.usarMotores. Un respaldo
+con usarMotores:"false" (texto: revisiones anteriores a 2.7.0 o un JSON editado a mano) entraba por la rama «contaba en
+vivo»: usarMotores=true, instantánea tomada al abrir y vínculo motores>soporte «aceptado» con la fecha de apertura, sin que
+nadie lo aceptara. El boolear de H-42 corre después y ya encontraba el booleano. Ahora el sí/no se normaliza (H-42) antes
+de decidir:
+- «false» en texto, 30 m capturados y 100 m en Ductos: 100 m / 42 soportes / 73,794 MXN con vínculo «aceptado» →
+  30 m / 14 soportes / 25,998 MXN, sin vínculo (lo que daba antes de H-266).
+- «false» en texto con una instantánea vieja guardada y 2 equipos Carrier: 0 bases / 25,998 MXN → 2 bases / 62,998 MXN
+  (toma una vez las que contaba, como todo proyecto a mano sin bases).
+- Sin la clave o con «true» en texto: sigue migrando a instantánea (sin cambio).
+computeSoporte no cambia y el proyecto fijo (usarMotores booleano) no se mueve: MOTOR_VER.soporte y los esperados quedan
+igual (R.1 sin cambio). Si el integrador lo cuenta como cambio de motor, va en la línea de v13 (siguiente commit).
+
+Prueba: S.130 (H-266), nueva: falló con el código anterior («el sí/no guardado como texto se respeta: esperado false,
+obtenido true») y pasa. Mutante soporte.m57 (vuelve a decidir con el valor crudo): MUERTO por S.130.
+parches/casos-a-mano/soporte.pendientes.md: renglón de los complementos de H-266.
+
+Banco: node pruebas.mjs index.html → 522/522; con --base → 528/528.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01VqGDLbvsYVpR5UZKnMQ2jZ
+---
+ index.html                                 |  8 +++--
+ parches/casos-a-mano/soporte.pendientes.md |  1 +
+ parches/mutantes/soporte.json              |  3 +-
+ pruebas.mjs                                | 38 ++++++++++++++++++++++
+ 4 files changed, 47 insertions(+), 3 deletions(-)
+
+diff --git a/index.html b/index.html
+index 486299e..a6d78be 100644
+--- a/index.html
++++ b/index.html
+@@ -24024,8 +24024,12 @@ function sanearEstado(d) {
+     const hZ = (Array.isArray(s.zones) ? s.zones : []).reduce((a, z) => Math.max(a, num(z && z.height, 0)), 0);
+     s.soporte.alturaEstructura = hZ;
+     if (!(num(s.soporte.alturaTrabajo, 0) > 0)) s.soporte.alturaTrabajo = Math.max(3, hZ + 1.2);
+-    if (sopPrevio.usarMotores !== false && !(sopPrevio.snap && typeof sopPrevio.snap === "object")) { s.soporte.usarMotores = true; s.soporte.tomarInstantanea = true; }
+-    else if (sopPrevio.usarMotores === false && !(num(sopPrevio.basesEquipo, 0) > 0)) s.soporte.tomarBases = true;
++    /* H-42: el sí/no guardado como texto («true»/«false», revisiones anteriores) se lee aquí, ANTES de decidir; el boolear de
++       más abajo corre después y ya encontraría el booleano que puso esta migración: un proyecto a mano con «false» abría
++       como instantánea aceptada con otros metros (revisión adversarial C2). Sin la clave = contaba en vivo, como antes. */
++    const umPrevio = typeof sopPrevio.usarMotores === "string" ? sopPrevio.usarMotores === "true" : sopPrevio.usarMotores;
++    if (umPrevio !== false && !(sopPrevio.snap && typeof sopPrevio.snap === "object")) { s.soporte.usarMotores = true; s.soporte.tomarInstantanea = true; }
++    else if (umPrevio === false && !(num(sopPrevio.basesEquipo, 0) > 0)) s.soporte.tomarBases = true;
+   }
+   if (!Array.isArray(s.aire.consumos)) s.aire.consumos = defaultAire().consumos;
+   if (!s.clean || typeof s.clean !== "object" || Array.isArray(s.clean)) s.clean = { rooms: [defaultRoom()], ci: 0 };
+diff --git a/parches/casos-a-mano/soporte.pendientes.md b/parches/casos-a-mano/soporte.pendientes.md
+index 685d35b..8f96576 100644
+--- a/parches/casos-a-mano/soporte.pendientes.md
++++ b/parches/casos-a-mano/soporte.pendientes.md
+@@ -14,6 +14,7 @@ módulo `pruebas-motores/soporte.mjs` (12 pruebas), compuerta `parches/mutantes/
+ | H-230 (modo «valores propios» inventaba 50/100/32 mm y 400×300) | **Cerrado** (soporte v6 → v7, 25-sep-2026) | Campos de medidas del ducto y diámetro + material por tubería en el modo manual; `manualPendientes` (aviso y pendiente en la cotización) cuando falta el dato; la memoria dice «capturados a mano». Prueba S.75 (sin fila CM: la señal es nSoportes = 0 con aviso, como se anticipó). |
+ | H-229 (cobre ½"–¾" a 1.8 m y 2½" a 3.0 m con fuente «MSS» que no los daba) | **Cerrado** (soporte v7 → v8, quote v14 → v15, 25-sep-2026) | `ESPAC_COBRE` al mínimo de MSS SP-58-2018 (PHD) e IPC 2009 T308.5 (MCP), secundarias con URL en el código y declaradas en la memoria (ratificar con texto). Prueba S.76; L.2 reescrita; filas 3.b/3.c y 4.a–4.d de fase2 a vigentes (4.m/4.n de acero siguen fase2:H-233, fuera del plan). Mutante m05 reapuntado (vuelve a 1.8 / 2.4): MUERTO. |
+ | H-231 (bases 3 → 2 al aceptar la instantánea) | **Cerrado** (soporte v3 → v4, 25-sep-2026) | En modo gobernado `nEquipos = snap.nEquip` (el sustituto QUOTE lleva `deSnap`). Prueba S.72; fila 11d.a de fase2 a vigente; mutante m47 reapuntado (deSnap falso): MUERTO. |
++| H-266 · complementos de la revisión adversarial (27-sep-2026) | En curso (rama `claude/h266-complementos`) | C2: la migración lee el sí/no guardado como texto (H-42) antes de decidir; un proyecto a mano con «false» abre a mano (30 m, sin vínculo) y con instantánea vieja recupera sus bases. Prueba S.130; mutante m57 MUERTO. |
+ 
+ ## 0. Cambios de entrada por otros motores
+ 
+diff --git a/parches/mutantes/soporte.json b/parches/mutantes/soporte.json
+index e317416..97938b9 100644
+--- a/parches/mutantes/soporte.json
++++ b/parches/mutantes/soporte.json
+@@ -53,5 +53,6 @@
+   { "id": "soporte.m53", "que": "a mano, la red contra incendio en CPVC vuelve a los claros de plomería del IPC (H-224)", "logica": true, "buscar": "if (disciplina === \"contra_incendio\" && num(d, 0) > 0 && mat !== \"acero\" && mat !== \"cobre\") { manualPendientes.push(", "reemplazar": "if (false) { manualPendientes.push(", "estado": "vigente" },
+   { "id": "soporte.m54", "que": "la instantánea pierde el material de la red contra incendio (H-224)", "logica": true, "buscar": "    tub: (snap.fuego && snap.fuego.tub) || \"acero_neg\",   // H-224", "reemplazar": "    tub: \"acero_neg\",   // H-224", "estado": "vigente" },
+   { "id": "soporte.m55", "que": "H-266: la altura de trabajo sin captura vuelve a suponerse (7.2 m; sustituye a m43, cuya fórmula «altura de zona + 1.2» ya no existe)", "logica": true, "buscar": "  const hTrab = Math.max(0, num(Gc.alturaTrabajo, 0));", "reemplazar": "  const hTrab = Math.max(0, num(Gc.alturaTrabajo, 0)) || 7.2;", "estado": "vigente" },
+-  { "id": "soporte.m56", "que": "H-266: sin instantánea aceptada la soportería vuelve a contar EN VIVO los metros de los motores", "logica": true, "buscar": "    const Rm = computeSoporte({ ...G, usarMotores: false });", "reemplazar": "    const Rm = computeSoporte(G);", "estado": "vigente" }
++  { "id": "soporte.m56", "que": "H-266: sin instantánea aceptada la soportería vuelve a contar EN VIVO los metros de los motores", "logica": true, "buscar": "    const Rm = computeSoporte({ ...G, usarMotores: false });", "reemplazar": "    const Rm = computeSoporte(G);", "estado": "vigente" },
++  { "id": "soporte.m57", "que": "H-266 (C2): la migración vuelve a decidir con el sí/no crudo: un proyecto a mano guardado con «false» en texto abre como instantánea aceptada", "logica": true, "buscar": "const umPrevio = typeof sopPrevio.usarMotores === \"string\" ? sopPrevio.usarMotores === \"true\" : sopPrevio.usarMotores;", "reemplazar": "const umPrevio = sopPrevio.usarMotores;", "estado": "vigente" }
+ ]
+diff --git a/pruebas.mjs b/pruebas.mjs
+index 5dc2a16..a67ca13 100644
+--- a/pruebas.mjs
++++ b/pruebas.mjs
+@@ -7811,6 +7811,44 @@ t("S.102 (H-266) soportería es autónoma: sin la instantánea aceptada no cuent
+   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+ });
+ 
++/* ===== S.130 (H-266) la migración de soportería lee el sí/no guardado como texto (H-42) antes de decidir ===== */
++t("S.130 (H-266) un proyecto a mano con el sí/no de soportería guardado como texto («false», H-42) abre a mano: no toma una instantánea ni registra una aceptación que nadie hizo y conserva sus metros; con una instantánea vieja recupera las bases que contaba; «true» en texto o sin la clave sigue migrando a instantánea (revisión adversarial C2; decisión del dueño, 27-sep-2026)", () => {
++  const guardado = JSON.stringify(S);
++  try {
++    const nave = { ...G("defaultZone")("Nave"), area: 400, height: 6 };
++    /* Sin alturaEstructura: guardado antes de H-266, así que la migración corre. */
++    const saneado = (sop) => G("sanearEstado")(JSON.parse(JSON.stringify({ zones: [nave], soporte: sop })));
++    let s = saneado({ usarMotores: "false", ductoM: 30, ductoAnchoMm: 400, ductoAltoMm: 300 });
++    eq(s.soporte.usarMotores, false, "el sí/no guardado como texto se respeta:");
++    eq(s.soporte.tomarInstantanea, undefined, "no se marca una instantánea que el usuario no aceptó:");
++    eq(s.soporte.tomarBases, true, "como todo proyecto a mano sin bases, toma una vez las que contaba:");
++    eq(s.soporte.ductoM, 30, "los metros capturados se conservan:");
++    /* Controles: el booleano false da lo mismo; «true» en texto, o sin la clave (contaba en vivo), toma la instantánea. */
++    s = saneado({ usarMotores: false, ductoM: 30 });
++    eq(s.soporte.tomarInstantanea, undefined, "booleano false:"); eq(s.soporte.tomarBases, true, "booleano false, bases:");
++    s = saneado({ usarMotores: "true", ductoM: 30 });
++    eq(s.soporte.usarMotores, true, "«true» en texto:"); eq(s.soporte.tomarInstantanea, true, "«true» en texto toma la instantánea:");
++    s = saneado({ ductoM: 30 });
++    eq(s.soporte.tomarInstantanea, true, "sin la clave (contaba en vivo) toma la instantánea:");
++    /* Por el camino real (importarRespaldo): los 100 m que hay en Ductos no entran; quedan los 30 m capturados, sin vínculo. */
++    const p = JSON.parse(JSON.stringify(G("defaultState")())); p.meta.name = "S.130";
++    p.zones = [nave]; p.duct.segments = [{ ...G("defaultSegment")("TR-1", 3000), length: 100 }];
++    p.soporte = { usarMotores: "false", ductoM: 30, ductoAnchoMm: 400, ductoAltoMm: 300 };
++    G("importarRespaldo")(JSON.stringify(p)); G("recompute")();
++    eq(S.soporte.usarMotores, false, "abierto con importarRespaldo sigue a mano:");
++    eq(G("SOPORTE").mDucto, 30, "cuenta los 30 m capturados, no los 100 m de Ductos:");
++    eq(S.vinculos["motores>soporte"], undefined, "no queda registrada una aceptación que nadie hizo:");
++    /* Con «false» en texto, una instantánea vieja guardada y dos equipos Carrier en la cotización: recupera sus dos bases. */
++    const fam = G("FAMILIES")[0], m = G("familyPool")(fam.id)[0];
++    if (!m || !G("CARRIER").some((x) => x.id === m.id)) throw new Error("el caso no aísla lo que se quiere probar: hace falta un equipo Carrier cotizable");
++    p.duct.segments = []; p.quote.items = [{ id: m.id, fam: fam.id, qty: 2, unit: null }];
++    p.soporte.snap = { duct: [], hidro: [], hidroMat: "acero", fuego: { nTotal: 0, Lram: 0, ramD: 100, Lmon: 0, monD: 100 }, aire: [], aireMat: "acero", nEquip: 0, ts: 1 };
++    G("importarRespaldo")(JSON.stringify(p)); G("recompute")();
++    eq(S.soporte.basesEquipo, 2, "a mano con instantánea vieja: toma las 2 bases que contaba (antes 0):");
++    eq(G("SOPORTE").nEquipos, 2, "y las cuenta:");
++  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
++});
++
+ /* ===== S.103 (H-268) eléctrico autónomo: las cargas de otros motores entran sólo como propuesta aceptada (instantánea) ===== */
+ t("S.103 (H-268) eléctrico es autónomo: con permisos y tomarHVAC, sin aceptar la propuesta, la cédula, el ventilador, el compresor, las bombas y los FFU NO entran al cuadro (se retiró el modo en vivo); aceptar concede los cruces y deja una instantánea con fecha que no se mueve sola; un proyecto guardado en vivo migra al abrir con las mismas cifras (sólo con los cruces que tenía); el sello no cambia al reabrir (decisión del dueño, 27-sep-2026)", () => {
+   const guardado = JSON.stringify(S);
+-- 
+2.43.0
+
