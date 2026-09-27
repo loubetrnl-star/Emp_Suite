@@ -1766,7 +1766,7 @@ function buildElecPdf() {
     ["Origen de las cargas", `${R.calc.filter((c) => c.origen === "cedula").length} aceptada(s) de los demas motores como propuesta (instantanea con origen y fecha; no se mueven solas si el origen cambia) y ${R.calc.filter((c) => c.origen !== "cedula").length} capturada(s) en la pestana Electrico. Ninguna entra sin aceptarse (H-268)`],
     ["Sistema", SISTEMAS.find(([k]) => k === E.sistema)?.[1] || ""],
     ["Conductor", `${R.mat === "aluminio" ? "Aluminio" : "Cobre"} tipo ${AISLAMIENTOS[aislamientoDe((S.elec || {}).aislamiento)].pdf} (ampacidad a 75 C, Tabla 310-15(b)(16)) · canalizacion con las areas de ese mismo conductor (NOM-001-SEDE, Cap. 10, Tabla 5)`],
-    ["Temperatura ambiente", `${num(E.tempAmb, 40)} C · factor ${n(fTemp(E.tempAmb), 2)} (Tabla 310-15(b)(2)(a))`],
+    ["Temperatura ambiente", `${tempAmbDe(E.tempAmb)} C · factor ${n(fTemp(E.tempAmb), 2)} (Tabla 310-15(b)(2)(a))`],
     ["Agrupamiento", `${num(E.nCond, 3)} portadores · factor ${n(fGrupo(E.nCond), 2)} (Tabla 310-15(b)(3)(a))`],
     ["Factor de potencia", `por carga: el capturado o, sin el, el que trae el motor de origen o el del tipo (criterio de la casa: ${Object.values(TIPO_CARGA).map((x) => `${x.label} ${n(x.fp, 2)}`).join(", ")}); alimentador ${n(R.fpAlim, 2)} (${R.fpAlimOrigen === "casa" ? "criterio de la casa" : "capturado"})`],
     ["Caida de tension", `${n(num(E.dvRamal, 3), 1)} % en derivado y ${n(num(E.dvTotal, 5), 1)} % acumulada (recomendacion de los art. 210-19 y 215-2)`],
@@ -5639,8 +5639,8 @@ function buildPropuestaXlsx(opt) {
   if (ELEC && ELEC.calc.length) {
     const ef = [];
     ef.push([xT(L("MEMORIA ELECTRICA — CEDULA DE CARGAS Y ALIMENTADORES", "ELECTRICAL CALCULATION — PANEL SCHEDULE AND FEEDERS"), XS.TIT)]);
-    ef.push([xT(L(`NOM-001-SEDE: art. 220 (cargas y demanda), 430 (motores), 440 (motocompresores), 310-15 (ampacidad), 250-122 (tierra) · sistema ${ELEC.sis.V} V ${ELEC.sis.ph}F · conductor de ${ELEC.mat} tipo ${AISLAMIENTOS[aislamientoDe(S.elec.aislamiento)].pdf} · ${num(S.elec.tempAmb, 40)} °C ambiente`,
-      `NOM-001-SEDE (Mexican electrical code): art. 220 (loads and demand), 430 (motors), 440 (motor-compressors), 310-15 (ampacity), 250-122 (grounding) · ${ELEC.sis.V} V ${ELEC.sis.ph}-phase system · ${ELEC.mat} ${AISLAMIENTOS[aislamientoDe(S.elec.aislamiento)].pdf} conductor · ${num(S.elec.tempAmb, 40)} °C ambient`), XS.SUB)]);
+    ef.push([xT(L(`NOM-001-SEDE: art. 220 (cargas y demanda), 430 (motores), 440 (motocompresores), 310-15 (ampacidad), 250-122 (tierra) · sistema ${ELEC.sis.V} V ${ELEC.sis.ph}F · conductor de ${ELEC.mat} tipo ${AISLAMIENTOS[aislamientoDe(S.elec.aislamiento)].pdf} · ${tempAmbDe(S.elec.tempAmb)} °C ambiente`,
+      `NOM-001-SEDE (Mexican electrical code): art. 220 (loads and demand), 430 (motors), 440 (motor-compressors), 310-15 (ampacity), 250-122 (grounding) · ${ELEC.sis.V} V ${ELEC.sis.ph}-phase system · ${ELEC.mat} ${AISLAMIENTOS[aislamientoDe(S.elec.aislamiento)].pdf} conductor · ${tempAmbDe(S.elec.tempAmb)} °C ambient`), XS.SUB)]);
     ef.push([]);
     ef.push([xT(L("CEDULA DE CARGAS", "PANEL SCHEDULE"), XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC)]);
     ef.push([L("CARGA", "LOAD"), L("TIPO", "TYPE"), L("CANT", "QTY"), L("kW UNIT", "kW EACH"), L("kW TOT", "kW TOTAL"),
@@ -9896,7 +9896,10 @@ function motorFilaTexto(c, en) {
     : (en ? `current ESTIMATED with ${formulaKw(c.ph)} = ${n(c.I, 1)} A (not the code value)` : `corriente ESTIMADA con ${formulaKw(c.ph)} = ${n(c.I, 1)} A (no es la de la norma)`)}`;
 }
 
-const fTemp = (t) => { const x = F_TEMP.find(([lim]) => num(t, 30) <= lim); return x ? x[1] : 0.35; };
+/* H-277: la temperatura ambiente con la que calcula el motor (sin captura, 30 °C, el valor que ya usaba fTemp). La memoria,
+   el PDF y el libro la imprimen con esta misma función: dicen la temperatura que se calculó, no otra. */
+const tempAmbDe = (t) => num(t, 30);
+const fTemp = (t) => { const x = F_TEMP.find(([lim]) => tempAmbDe(t) <= lim); return x ? x[1] : 0.35; };
 const fGrupo = (nc) => { const x = F_GRUPO.find(([lim]) => Math.max(1, num(nc, 3)) <= lim); return x ? x[1] : 0.35; };
 const ocpdArriba = (I) => OCPD_STD.find((x) => x >= I - 1e-9) ?? OCPD_STD[OCPD_STD.length - 1];
 const ocpdAbajo = (I) => [...OCPD_STD].reverse().find((x) => x <= I) ?? OCPD_STD[0];
@@ -10430,7 +10433,7 @@ function computeElec(E) {
     avisos.push({ lvl: "warn", msg: `Valores que este proyecto guardó por omisión en una revisión anterior, sin confirmar: ${[sinConf.Ltablero ? `distancia al tablero ${n(Lalim, 0)} m` : "", sinConf.trafoKVA ? `transformador ${n(kVAtr, 0)} kVA` : "", sinConf.trafoZ ? `Z ${n(z, 1)} %` : "", calc.some((c) => c.Lsin) ? `distancia de ${calc.filter((c) => c.Lsin).length} carga(s) aceptadas de otros motores` : ""].filter(Boolean).join(", ")}. Confírmalos o captura los reales: hoy nada se supone (H-179).` });
   if (kVAtr > 0 && kVAdemanda > kVAtr * .8) avisos.push({ lvl: "err", msg: `La demanda calculada (${n(kVAdemanda, 1)} kVA) supera el 80 % del transformador capturado (${n(kVAtr, 0)} kVA). El transformador queda corto: revisar capacidad contratada antes de seguir.` });
 
-  memo.push(`Sistema ${SISTEMAS.find(([k]) => k === E.sistema)?.[1] || sis.V + " V"} · conductor de ${mat} tipo ${AISLAMIENTOS[aislamientoDe(E.aislamiento)].nombre} con ampacidad de la columna de 75 °C · relleno de canalización con las áreas de ese mismo conductor (NOM-001-SEDE, Capítulo 10, Tabla 5) · temperatura ambiente de diseño ${num(E.tempAmb, 40)} °C (factor ${n(fTemp(E.tempAmb), 2)}) · ${num(E.nCond, 3)} portadores por canalización (factor ${n(fGrupo(E.nCond), 2)}).`);
+  memo.push(`Sistema ${SISTEMAS.find(([k]) => k === E.sistema)?.[1] || sis.V + " V"} · conductor de ${mat} tipo ${AISLAMIENTOS[aislamientoDe(E.aislamiento)].nombre} con ampacidad de la columna de 75 °C · relleno de canalización con las áreas de ese mismo conductor (NOM-001-SEDE, Capítulo 10, Tabla 5) · temperatura ambiente de diseño ${tempAmbDe(E.tempAmb)} °C (factor ${n(fTemp(E.tempAmb), 2)}) · ${num(E.nCond, 3)} portadores por canalización (factor ${n(fGrupo(E.nCond), 2)}).`);
   memo.push(`Carga conectada ${n(kVAconectada, 2)} kVA · demanda ${n(kVAdemanda, 2)} kVA (factor de demanda ${n(fdem, 2)}), incluyendo el 25 % adicional del motor mayor que pide el art. 430-24 (${n(extraMotor, 2)} kVA).`);
   memo.push(`Balanceo: fase A ${n(fases.A, 2)} · B ${n(fases.B, 2)} · C ${n(fases.C, 2)} kVA · desbalance ${n(desbalance, 1)} %.`);
   memo.push(`Alimentador general: ${alim.nota}. Caída de tensión ${alim.dv == null ? "PENDIENTE (falta la distancia al tablero)" : `${n(alim.dv, 2)} % en ${n(Lalim, 0)} m${sinConf.Ltablero ? " (sin confirmar)" : ""}`} de los ${n(num(E.dvTotal, 5), 1)} % acumulados admisibles. Interruptor principal ${principal} A.`);
@@ -22188,7 +22191,7 @@ function consideracionesElec(R, E, en = false) {
   P("ampacidad", L("Columna de ampacidad", "Ampacity column"), "75 °C", "casa",
     L("criterio de la casa declarado en el código con 110-14(c): manda la terminal del equipo comercial (columna de 75 °C de la Tabla 310-15(b)(16))", "house criterion declared in the code with 110-14(c): the commercial equipment terminal governs (75 °C column of Table 310-15(b)(16))"));
   t = deCampo("tempAmb");
-  P("tempAmb", L("Temperatura ambiente", "Ambient temperature"), `${n(num(E0.tempAmb, 30), 1)} °C · ${L("factor", "factor")} ${n(ft, 2)}`, t === "vacio" ? "casa" : t,
+  P("tempAmb", L("Temperatura ambiente", "Ambient temperature"), `${n(tempAmbDe(E0.tempAmb), 1)} °C · ${L("factor", "factor")} ${n(ft, 2)}`, t === "vacio" ? "casa" : t,
     t === "vacio" ? L("campo vacío: se usa 30 °C, factor 1 (criterio del código)", "empty field: 30 °C is used, factor 1 (code criterion)") : `${O[t]} · ${L("factor de la Tabla 310-15(b)(2)(a)", "factor from Table 310-15(b)(2)(a)")}`);
   t = deCampo("nCond");
   P("nCond", L("Portadores de corriente por canalización (agrupamiento)", "Current-carrying conductors per raceway (grouping)"), `${n(Math.max(1, num(E0.nCond, 3)), 0)} · ${L("factor", "factor")} ${n(fg, 2)}`, t === "vacio" ? "casa" : t,

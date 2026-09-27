@@ -292,5 +292,9 @@
   { "id": "elec.m146", "que": "H-269: una norma sin texto en parches/normas-texto se cita igual con edición, sección y página (se salta la regla 4)", "logica": true, "estado": "vigente",
     "buscar": "  if (!x.texto) return `${x.familia}: ${en ? \"BLOCKED: the text of the standard is missing\" : \"BLOQUEADO: falta el texto de la norma\"}`;", "reemplazar": "  if (false) return `${x.familia}: ${en ? \"BLOCKED: the text of the standard is missing\" : \"BLOQUEADO: falta el texto de la norma\"}`;" },
   { "id": "elec.m147", "que": "H-269: el valor inicial de la pestaña (defaultElec) se declara «capturado en esta pestaña»", "logica": true, "estado": "vigente",
-    "buscar": "  const deCampo = (k) => (E0[k] == null || E0[k] === \"\" ? \"vacio\" : String(E0[k]) === String(d[k]) ? \"inicial\" : \"capturado\");", "reemplazar": "  const deCampo = (k) => (E0[k] == null || E0[k] === \"\" ? \"vacio\" : \"capturado\");" }
+    "buscar": "  const deCampo = (k) => (E0[k] == null || E0[k] === \"\" ? \"vacio\" : String(E0[k]) === String(d[k]) ? \"inicial\" : \"capturado\");", "reemplazar": "  const deCampo = (k) => (E0[k] == null || E0[k] === \"\" ? \"vacio\" : \"capturado\");" },
+  { "id": "elec.m148", "que": "H-277: el PDF de eléctrico vuelve a imprimir 40 °C de temperatura ambiente aunque el motor calculó con otra", "logica": true, "estado": "vigente",
+    "buscar": "[\"Temperatura ambiente\", `${tempAmbDe(E.tempAmb)} C · factor", "reemplazar": "[\"Temperatura ambiente\", `${num(E.tempAmb, 40)} C · factor" },
+  { "id": "elec.m149", "que": "H-277: la memoria del motor y el libro vuelven a imprimir 40 °C de temperatura ambiente sin captura", "logica": true, "estado": "vigente",
+    "buscar": "temperatura ambiente de diseño ${tempAmbDe(E.tempAmb)} °C", "reemplazar": "temperatura ambiente de diseño ${num(E.tempAmb, 40)} °C" }
 ]

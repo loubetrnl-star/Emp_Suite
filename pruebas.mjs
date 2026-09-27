@@ -9523,6 +9523,31 @@ t("S.153 (H-269) consideraciones de cálculo del eléctrico: los parámetros que
   } finally { S.elec = JSON.parse(guardado); S.tab = tab0; G("recompute")(); }
 });
 
+/* ===== S.154 (H-277) · la temperatura ambiente que declaran la memoria, el PDF y el libro es la que usó el cálculo =====
+   Con el campo vacío, fTemp calcula con 30 °C (factor de la tabla a 30 °C), pero la memoria del motor, el PDF (2. Bases de
+   cálculo) y el libro (MEMORIA_ELECTRICA, ES/EN) imprimían 40 °C junto al factor de 30 °C: el documento no decía lo que se
+   calculó (regla 8). Con captura, los cuatro dicen la capturada. */
+t("S.154 (H-277) eléctrico: con la temperatura ambiente sin capturar, la memoria del motor, el PDF y el libro (ES/EN) dicen la temperatura con la que calculó (30 °C), no 40 °C; con captura, la capturada", () => {
+  const guardado = JSON.stringify(S.elec), tab0 = S.tab;
+  try {
+    proyectoMateriales();
+    S.elec.tempAmb = ""; G("recompute")();
+    const fT = G("fTemp");
+    eq(fT(""), fT(30), "sin captura el motor calcula con el factor de 30 °C:");
+    const revisa = (grados, que) => {
+      const memo = G("ELEC").memo.join(" "), pdf = txtPdfE(G("buildElecPdf")());
+      const es = leerXlsx(G("buildPropuestaXlsx")({ lang: "es", mon: "MXN" })).txt, en = leerXlsx(G("buildPropuestaXlsx")({ lang: "en", mon: "USD" })).txt;
+      contiene(memo, `temperatura ambiente de diseño ${grados} °C`, `${que} memoria del motor:`);
+      contiene(pdf, `Temperatura ambiente ${grados} C`, `${que} PDF:`);
+      contiene(es, `${grados} °C ambiente`, `${que} libro ES:`);
+      contiene(en, `${grados} °C ambient`, `${que} libro EN:`);
+    };
+    revisa(30, "sin captura:");
+    S.elec.tempAmb = 45; G("recompute")();
+    revisa(45, "capturada 45 °C:");
+  } finally { S.elec = JSON.parse(guardado); S.tab = tab0; G("recompute")(); }
+});
+
 /* ===== CM · casos calculados a mano por motor (Fase 1, rev 2.9.24) =====
    Cada motor tiene su módulo en pruebas-motores/<motor>.mjs y su hoja en parches/casos-a-mano/<motor>.csv. El módulo
    recibe el arnés (t, eq, cerca, contiene, G, S, w, …) y las filas de su hoja; compara NÚMEROS con tolerancia, no textos.
