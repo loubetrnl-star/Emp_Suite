@@ -1,0 +1,32 @@
+/* H-90 · estr · prueba S.89 escrita ANTES de la corrección (regla 1 de CLAUDE.md). Falla hoy por la conducta: Estructural sigue como módulo externo.
+   Al empalmar StructCalc se inserta en pruebas.mjs antes del bloque «R. Regresión por motor» y debe pasar. Ver RELEVO.md. */
+t("S.89 (H-90) Estructural es un motor nativo: con el marco y sus cargas capturados la pestaña calcula (StructCalc v0.1.2 empalmado), da la reacción de mano y entra al semáforo; sin carga muerta capturada queda pendiente, sin números", () => {
+  const guardado = JSON.stringify(S);
+  const marco = { claro: 20, alturaHombro: 6, pendiente: 10, separacion: 6, perfilColumna: "IR 305x59.5", perfilTrabe: "IR 305x59.5",
+    material: "A36", apoyo: "articulado", rodilla: "rigida", cumbrera: "rigida", pesoPropio: false, pDelta: false, segC: 4, segT: 8,
+    cmCubierta: 30, cvCubierta: null, vientoMuro: null, vientoCubierta: null, sismoCortante: null, colgadaKgm2: null, equipos: [] };
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.89";
+    S.estr = { ...(S.estr || {}), ...marco }; G("recompute")();
+    S.tab = "estructural"; G("render")();
+    const v = w.document.getElementById("view").textContent;
+    if (/módulo externo|archivo aparte/i.test(v)) throw new Error("la pestaña Estructural sigue declarada como módulo externo: no calcula el marco capturado");
+    const R = G("ESTR");
+    eq(R.ok, true, "el marco capturado se analiza:");
+    /* A mano: p = 30 kgf/m² × 9.80665 = 294.1995 Pa; w = p × 6 m = 1,765.197 N/m sobre la trabe inclinada;
+       Lt = hypot(10, 1) = 10.04988 m; reacción vertical por lado bajo 1.4D = 1.4 × w × Lt = 24,836.0 N (marco simétrico). */
+    const c14 = R.filas.find((f) => f.nombre === "1.4D");
+    if (!c14) throw new Error("falta la combinación 1.4D (ASCE 7-22 §2.3.1): " + R.filas.map((f) => f.nombre).join(", "));
+    cerca(c14.reacciones.B1.Fz, 24836.0, 24836.0 * 0.005, "reacción vertical en B1 bajo 1.4D:");
+    cerca(c14.reacciones.B2.Fz, 24836.0, 24836.0 * 0.005, "reacción vertical en B2 bajo 1.4D:");
+    contiene(v, "Reacciones", "la pantalla muestra resultados:");
+    const sem = G("semaforoSuite")().find((x) => x.id === "estr");
+    eq(sem.nivel, "datos", "Estructural entra al semáforo con datos:");
+    eq(G("accEstado")("estr").memo.ok, true, "la memoria de cálculo se puede emitir:");
+    /* Sin carga muerta capturada: pendiente, nunca un valor por omisión. */
+    S.estr.cmCubierta = null; G("recompute")();
+    eq(G("ESTR").ok, false, "sin carga muerta no se analiza:");
+    if (!G("ESTR").pendientes.some((p) => /carga muerta/i.test(p))) throw new Error("debe quedar pendiente de carga muerta: " + JSON.stringify(G("ESTR").pendientes));
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
