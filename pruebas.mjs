@@ -8153,6 +8153,42 @@ t("S.136 (H-266) «Capturo lo mío» con una instantánea de soportería ya cuan
   } finally { G("closeModal")(); w.eval("clearTimeout(autoT)"); G("reemplazarEstado")(JSON.parse(guardado)); G("histReiniciar")(); G("recompute")(); }
 });
 
+/* ===== S.137 (H-266) las bases de equipo que la migración copia al abrir quedan «de la migración, sin confirmar» ===== */
+t("S.137 (H-266) las bases de equipo que la migración de soportería copia al abrir un proyecto anterior (el conteo de equipos de la cotización que se hacía: a mano sin bases capturadas, o en vivo sin nada que soportar) conservan la cifra pero no quedan como captura: la memoria, las observaciones y la pantalla dicen «de la migración, sin confirmar» y de dónde salen mientras la cifra sea esa; capturar el campo (setPath) las confirma aunque sea la misma cifra (revisión adversarial de U10; reglas 6 y 8, precedente H-179)", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    const fam = G("FAMILIES")[0], m = G("familyPool")(fam.id)[0];
+    if (!m || !G("CARRIER").some((x) => x.id === m.id)) throw new Error("el caso no aísla lo que se quiere probar: hace falta un equipo Carrier cotizable");
+    const mB = () => G("SOPORTE").memo.find((x) => /^Bases de equipo/.test(x)) || "(sin memoria de bases)";
+    const avisoB = () => G("SOPORTE").avisos.find((a) => /sin confirmar/.test(a.msg) && /bases de equipo \d+ \(/.test(a.msg));
+    for (const um of [false, true]) {
+      /* Guardado antes de H-266 (sin alturaEstructura), sin bases capturadas y con dos equipos Carrier en la cotización: la
+         migración copia las 2 bases que contaba (a mano: tomarBases; en vivo sin nada que soportar: U8, abre a mano). */
+      const caso = um ? "en vivo sin nada que soportar:" : "a mano sin bases:";
+      const p = JSON.parse(JSON.stringify(G("defaultState")())); p.meta.name = "S.137";
+      p.duct.segments = []; p.quote.items = [{ id: m.id, fam: fam.id, qty: 2, unit: null }];
+      p.soporte = { usarMotores: um, mesesElevacion: 2 };
+      G("importarRespaldo")(JSON.stringify(p)); G("recompute")();
+      eq(G("SOPORTE").nEquipos, 2, `${caso} la cifra no cambia al abrir:`); const total = G("SOPORTE").total;
+      if (!/de la migración al abrir, sin confirmar: conteo de equipos de la cotización al abrir/.test(mB()) || /capturadas/.test(mB())) throw new Error(`${caso} la memoria debe decir que las bases son de la migración, sin confirmar, y de dónde salen: ${mB()}`);
+      if (!avisoB() || !/bases de equipo 2 \(conteo de equipos de la cotización al abrir\)/.test(avisoB().msg)) throw new Error(`${caso} las observaciones deben listar las bases que puso la migración: ${JSON.stringify(G("SOPORTE").avisos.map((a) => a.msg))}`);
+      S.tab = "soporte"; G("render")();
+      if (!/Bases de equipo 2: de la migración al abrir, sin confirmar: conteo de equipos de la cotización al abrir/.test(w.document.body.textContent)) throw new Error(`${caso} la pantalla debe decir el origen de las bases`);
+      const sc = (S.soporte.sinConfirmar || {}).basesEquipo || {};
+      eq(`${sc.valor} · ${sc.origen}`, "2 · conteo de equipos de la cotización al abrir", `${caso} la marca guarda la cifra y su origen:`);
+      /* Otra cifra quita la marca; de vuelta a la cifra de la migración sin capturarla, sigue siendo de la migración. */
+      S.soporte.basesEquipo = 3; G("recompute")();
+      if (!/\(capturadas; H-266\)/.test(mB()) || avisoB()) throw new Error(`${caso} con otra cifra ya no es de la migración: ${mB()}`);
+      S.soporte.basesEquipo = 2; G("recompute")();
+      if (!/sin confirmar/.test(mB())) throw new Error(`${caso} la misma cifra sin capturar sigue siendo de la migración: ${mB()}`);
+      /* Capturada en pantalla o desde un plano (setPath), la misma cifra queda confirmada; la marca no mueve la cifra. */
+      G("setPath")("soporte.basesEquipo", 2); G("recompute")();
+      if (!/\(capturadas; H-266\)/.test(mB()) || avisoB()) throw new Error(`${caso} capturadas, la misma cifra queda confirmada: ${mB()}`);
+      eq(G("SOPORTE").total, total, `${caso} la marca no mueve la cifra:`);
+    }
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 /* ===== S.103 (H-268) eléctrico autónomo: las cargas de otros motores entran sólo como propuesta aceptada (instantánea) ===== */
 t("S.103 (H-268) eléctrico es autónomo: con permisos y tomarHVAC, sin aceptar la propuesta, la cédula, el ventilador, el compresor, las bombas y los FFU NO entran al cuadro (se retiró el modo en vivo); aceptar concede los cruces y deja una instantánea con fecha que no se mueve sola; un proyecto guardado en vivo migra al abrir con las mismas cifras (sólo con los cruces que tenía); el sello no cambia al reabrir (decisión del dueño, 27-sep-2026)", () => {
   const guardado = JSON.stringify(S);

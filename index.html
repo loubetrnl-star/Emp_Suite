@@ -8252,10 +8252,15 @@ const PU_SOP_PERFIL = { P1000: 180, P1001: 320, PTR2x125: 230, PTR2x1875: 310, C
 const PU_SOP_ANCLAJE = { M10: 95, M12: 135, M16: 215, M20: 325 };
 const PU_SOP_ABRAZADERA = 285, PU_SOP_TUERCA_RONDANA = 9, PU_SOP_RIOSTRA = 4200;
 /* H-266 (revisión adversarial U10): de dónde salió una altura que la migración copió o supuso al abrir un proyecto anterior a
-   H-266 (sanearEstado, soporte.sinConfirmar). «corto» da sólo el «antes …», para listarla en las observaciones. ES/EN (regla 7). */
+   H-266 (sanearEstado, soporte.sinConfirmar). «corto» da sólo el «antes …», para listarla en las observaciones. ES/EN (regla 7).
+   También las bases de equipo que copió al abrir (recompute, tomarBases): el conteo de equipos de la cotización (y de unidades
+   de aire comprimido) que hacía la revisión anterior. */
 function origenMigradoSop(k, m, en, corto) {
   const hZ = num(m && m.hZona, 0);
-  const antes = k === "alturaTrabajo"
+  const antes = k === "basesEquipo"
+    ? (en ? (num(m && m.aire, 0) > 0 ? `count of quoted equipment (${n(num(m.equipos, 0), 0)}) and of compressed air units (${n(num(m.aire, 0), 0)}) on opening` : "count of quoted equipment on opening")
+      : String((m && m.origen) || "conteo de equipos de la cotización al abrir"))
+    : k === "alturaTrabajo"
     ? (hZ + 1.2 >= 3 ? (en ? `formerly the highest zone (${n(hZ, 1)} m) + 1.2 m, a house assumption` : `antes la zona más alta (${n(hZ, 1)} m) + 1.2 m, supuesto de la casa`)
       : (en ? `formerly the house minimum of 3 m (highest zone ${n(hZ, 1)} m + 1.2 m), a house assumption` : `antes el mínimo de 3 m (zona más alta ${n(hZ, 1)} m + 1.2 m), supuesto de la casa`))
     : (en ? `formerly the highest Thermal load zone (${n(hZ, 1)} m), a house criterion` : `antes la zona más alta de Carga térmica (${n(hZ, 1)} m), criterio de la casa`);
@@ -8520,7 +8525,12 @@ function computeSoporte(Gc) {
   const nEquipos = num(Gc.basesEquipo, 0) > 0 ? num(Gc.basesEquipo)
     : (typeof QUOTE !== "undefined" && QUOTE && QUOTE.deSnap) ? num(QUOTE.nEquip, 0)
     : 0;
-  if (nEquipos > 0) memo.push(`Bases de equipo: ${nEquipos} (${num(Gc.basesEquipo, 0) > 0 ? "capturadas" : "de la instantánea aceptada"}; H-266).`);
+  /* H-266 (revisión adversarial de U10; reglas 6 y 8): las bases que la migración copió al abrir se usan con la misma cifra,
+     pero se dice de dónde salieron («sin confirmar») en la memoria, las observaciones y la pantalla, hasta que el usuario las
+     capture (setPath) o capture otra cifra. */
+  const basesMigradas = deMigracion(num(Gc.basesEquipo, 0), scSop.basesEquipo);
+  const origenBases = basesMigradas ? origenMigradoSop("basesEquipo", scSop.basesEquipo) : "";
+  if (nEquipos > 0) memo.push(`Bases de equipo: ${nEquipos} (${num(Gc.basesEquipo, 0) > 0 ? (basesMigradas ? origenBases : "capturadas") : "de la instantánea aceptada"}; H-266).`);
 
   /* ---- Partidas: despiece real de SoporteCalc (varilla, perfil, anclaje,
      abrazadera, tornillería, riostras) + lo del termoplástico + lo que
@@ -8601,11 +8611,11 @@ function computeSoporte(Gc) {
   if (Gc.sismico !== false && tramosSC.length && !(hEstructura > 0)) avisos.push({ lvl: "warn", msg: `Soportería: altura de la estructura sin capturar: la amplificación sísmica (ASCE 7-16 §13.3.1) se predimensiona sin altura (z/h = 0), que queda corta${anclajePendiente ? ", y por eso el anclaje va «Por cotizar»" : ""}. Captura la altura de la estructura de la que cuelga la instalación (ya no se toma de las zonas, H-266).` });
   if (part.length && !hTrabPendiente) memo.push(`Elevación: ${equipo.label.toLowerCase()} por altura de trabajo de ${n(hTrab, 1)} m${hTrabMigrada ? ` (${origenHTrab})` : ""}. ${equipo.nota} NOM-009-STPS exige equipo certificado y personal capacitado para trabajos en altura.`);
 
-  if (hTrabMigrada || hEstructuraMigrada) avisos.push({ lvl: "warn", msg: `Soportería: valores que la migración copió o supuso al abrir este proyecto (H-266), sin confirmar: ${[hTrabMigrada ? `altura de trabajo ${n(hTrab, 1)} m (${origenMigradoSop("alturaTrabajo", scSop.alturaTrabajo, false, true)})` : "", hEstructuraMigrada ? `altura de la estructura ${n(hEstructura, 1)} m (${origenMigradoSop("alturaEstructura", scSop.alturaEstructura, false, true)})` : ""].filter(Boolean).join("; ")}. Se usan con la misma cifra; captura el valor de la obra para confirmarlo.` });
+  if (hTrabMigrada || hEstructuraMigrada || basesMigradas) avisos.push({ lvl: "warn", msg: `Soportería: valores que la migración copió o supuso al abrir este proyecto (H-266), sin confirmar: ${[hTrabMigrada ? `altura de trabajo ${n(hTrab, 1)} m (${origenMigradoSop("alturaTrabajo", scSop.alturaTrabajo, false, true)})` : "", hEstructuraMigrada ? `altura de la estructura ${n(hEstructura, 1)} m (${origenMigradoSop("alturaEstructura", scSop.alturaEstructura, false, true)})` : "", basesMigradas ? `bases de equipo ${n(nEquipos, 0)} (${origenMigradoSop("basesEquipo", scSop.basesEquipo, false, true)})` : ""].filter(Boolean).join("; ")}. Se usan con la misma cifra; captura el valor de la obra para confirmarlo.` });
 
   return { porTuberia, mDucto, mTub, nSoportes, nLong, nTrans, mArriostrable,
     hTrab, hTrabPendiente, hEstructura, equipo, meses, mesesPendiente, nEquipos, part, total, avisos, memo, alturaColgado, colgadoCapturado, colgadoPendiente, colgadoSugerido,
-    hTrabMigrada, hEstructuraMigrada, origenHTrab, origenHEst,
+    hTrabMigrada, hEstructuraMigrada, origenHTrab, origenHEst, basesMigradas, origenBases,
     manualPendientes, sdsCapturado, estructuraCapturada, alturaEstructuraCapturada, anclajeCapturado, anclajePendiente, anclajesPza: Object.entries(anclMerge).map(([id, cnt]) => ({ id, cnt })),
     sopcalc: R };   // corrida completa de SoporteCalc, por si se quiere el detalle fino
 }
@@ -11733,8 +11743,15 @@ function recompute() {
   }
   if (S.soporte.tomarBases) {
     delete S.soporte.tomarBases;
-    const nb = equiposCotizados() + (AIRE ? num(AIRE.totalUnidades, 0) : 0);
-    if (nb > 0) S.soporte.basesEquipo = nb;
+    const nq = equiposCotizados(), na = AIRE ? num(AIRE.totalUnidades, 0) : 0, nb = nq + na;
+    if (nb > 0) {
+      S.soporte.basesEquipo = nb;
+      /* H-266 (revisión adversarial de U10; reglas 6 y 8): las bases que copia la migración conservan la cifra, pero no como
+         captura del usuario: quedan «de la migración, sin confirmar» con su origen (como las alturas, sanearEstado) mientras el
+         campo tenga esa cifra; capturarlo (setPath) las confirma. */
+      if (!S.soporte.sinConfirmar || typeof S.soporte.sinConfirmar !== "object") S.soporte.sinConfirmar = {};
+      S.soporte.sinConfirmar.basesEquipo = { valor: nb, origen: na > 0 ? `conteo de equipos de la cotización (${nq}) y de unidades de aire comprimido (${na}) al abrir` : "conteo de equipos de la cotización al abrir", equipos: nq, aire: na };
+    }
   }
   SOPORTE = computeSoporteGobernado(S.soporte);
   if (!S.quote) S.quote = JSON.parse(JSON.stringify(QUOTE_SEED));
@@ -11783,9 +11800,9 @@ function setPath(path, val) {
   }
   for (let i = 0; i < parts.length - 1; i++) { if (o[parts[i]] == null || typeof o[parts[i]] !== "object") o[parts[i]] = {}; o = o[parts[i]]; }
   o[parts[parts.length - 1]] = val;
-  /* H-266 (U10): capturar una altura que la migración copió o supuso (en pantalla o desde un plano) la confirma, aunque sea la
-     misma cifra: deja de ser «de la migración, sin confirmar». */
-  if (parts[0] === "soporte" && (parts[1] === "alturaTrabajo" || parts[1] === "alturaEstructura") && S.soporte && S.soporte.sinConfirmar && typeof S.soporte.sinConfirmar === "object")
+  /* H-266 (U10): capturar una altura que la migración copió o supuso (en pantalla o desde un plano), o las bases de equipo que
+     copió, la confirma, aunque sea la misma cifra: deja de ser «de la migración, sin confirmar». */
+  if (parts[0] === "soporte" && (parts[1] === "alturaTrabajo" || parts[1] === "alturaEstructura" || parts[1] === "basesEquipo") && S.soporte && S.soporte.sinConfirmar && typeof S.soporte.sinConfirmar === "object")
     delete S.soporte.sinConfirmar[parts[1]];
 }
 function getPath(path) { return path.split(".").reduce((o, k) => (o == null ? o : o[k]), S); }
@@ -22812,6 +22829,7 @@ function viewSoporte() {
         ${inp("Bases de equipo (0 = sin bases; con la instantánea aceptada, las de la instantánea)", "soporte.basesEquipo", "number", "1", "sop.be", G)}
         ${inp("Riel tipo canal (ml)", "soporte.rielM", "number", "1", "sop.ri", G)}
       </div>
+      ${R.basesMigradas ? `<div class="note warn" style="margin-top:6px">Bases de equipo ${n(R.nEquipos, 0)}: ${esc(R.origenBases)}. Captura las de la obra para confirmarlas (H-266).</div>` : ""}
       <div class="hint" style="margin-top:10px">${esc(R.equipo.label)}: ${esc(R.equipo.nota)}</div>
     </div></div>
 
