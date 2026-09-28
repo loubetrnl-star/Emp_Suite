@@ -7890,6 +7890,21 @@ t("S.116 (H-265) obra civil: un área de obra o un cuarto clasificado sin altura
     if (P().some((p) => /pendiente de altura/.test(p.motivo))) throw new Error("con las alturas capturadas ya no queda pendiente de altura");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
+t("S.117 (H-265) un proyecto anterior a H-265 con una zona sin área pero con tabiquería capturada en obra civil abre con la misma obra civil: la migración también copia esa zona (misma cifra al abrir)", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    const base = G("defaultState")();
+    const zNave = { ...G("defaultZone")("Nave"), area: 400, height: 6 }, zPasillo = { ...G("defaultZone")("Pasillo"), area: 0, height: 3 };
+    const civil = { ...base.civil, usarZonas: true, perimZonas: { [zPasillo.id || "z2"]: 50 } };
+    delete civil.areas; delete civil.cuartos;
+    G("importarRespaldo")(JSON.stringify({ ...base, meta: { name: "S.117" }, zones: [zNave, zPasillo], civil })); G("recompute")();
+    const pas = (S.civil.areas || []).find((a) => a.nombre === "Pasillo");
+    if (!pas) throw new Error("la migración descartó el pasillo con 50 ml de tabiquería capturados");
+    eq(pas.perimetro, 50, "con su tabiquería capturada:"); eq(pas.altura, 3, "y su altura:");
+    const nave = G("CIVIL").zonasCivil.find((z) => z.name === "Nave");
+    cerca(G("CIVIL").muroM2, nave.muro + 50 * 3, 1e-6, "el muro suma la tabiquería del pasillo (50 ml × 3 m), como antes de H-265:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
 t("S.102 (H-266) soportería es autónoma: sin la instantánea aceptada no cuenta metros de otros motores (se retiró el conteo en vivo); aceptarla los cuantifica y ya no se mueven solos; alturas y bases se capturan; un proyecto anterior se migra al abrir con las mismas cifras (decisión del dueño, 27-sep-2026)", () => {
   const guardado = JSON.stringify(S);
   try {

@@ -7412,7 +7412,8 @@ function civilNuevoId(tipo) {
 function migrarCivilAutonoma(s, previo) {
   const pz = previo && previo.perimZonas && typeof previo.perimZonas === "object" ? previo.perimZonas : {};
   const pc = previo && previo.perimCuartos && typeof previo.perimCuartos === "object" ? previo.perimCuartos : {};
-  s.civil.areas = (s.zones || []).map((z, i) => ({ z, i })).filter(({ z }) => z && num(z.area, 0) > 0).map(({ z, i }) => {
+  /* H-265 (complemento, civil v8): también la zona sin área con tabiquería capturada, que ya sumaba su muro (perímetro × altura). */
+  s.civil.areas = (s.zones || []).map((z, i) => ({ z, i })).filter(({ z, i }) => z && (num(z.area, 0) > 0 || num(pz[z.id || `z${i + 1}`], 0) > 0)).map(({ z, i }) => {
     const clave = z.id || `z${i + 1}`;
     return { id: clave, nombre: z.name || clave, area: num(z.area, 0), altura: num(z.height, 0), perimetro: Math.max(0, num(pz[clave], 0)) };
   });
@@ -19189,7 +19190,7 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "6", clean: "3", equip: "2", duct: "4", vent: "4", quote: "24", valor: "1", kaizen: "1", elec: "9", hidro: "8", fuego: "6", aire: "5", civil: "7", soporte: "12" };
+const MOTOR_VER = { load: "6", clean: "3", equip: "2", duct: "4", vent: "4", quote: "24", valor: "1", kaizen: "1", elec: "9", hidro: "8", fuego: "6", aire: "5", civil: "8", soporte: "12" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
@@ -19227,7 +19228,8 @@ const MOTOR_CAMBIOS = {
     { ver: "5", rev: "2.9.24", que: "H-218: diámetro interior por material: cobre tipo L con los DI de ASTM B88 (TUB_AGUA.cobre: 55 m de cobre 1\" → 1 1/4\"), acero con cédula 40, aluminio e inoxidable con cédula 40 sólo como indicativo y el DI del fabricante pendiente (aviso, memoria, PDF y partida). Proyecto fijo (aluminio): sin cambio de cifras, con la pendencia declarada" }],
   civil: [{ ver: "2", rev: "2.9.16", que: "sin área clasificada no hay partidas de área clasificada" }, { ver: "3", rev: "2.9.19", que: "un cuarto limpio vacío no cuenta como área clasificada" }, { ver: "4", rev: "2.9.24", que: "H-243: muro clasificado y media caña cuarto por cuarto (perímetro capturado o rectángulo 3:2 declarado «estimado» en la partida) × su altura; antes la fracción de área del edificio entre la altura media (proyecto fijo 31.11 ml / 73.32 m² → 89.44 ml / 134.16 m²)" }, { ver: "5", rev: "2.9.24", que: "H-244 (decisión 5): la tabiquería es un perímetro capturable por zona; sin captura, rectángulo 3:2 × altura marcado «estimado» en la partida; los muros de carga térmica ya no entran (capturar un muro exterior bajaba el muro civil)" },
     { ver: "6", rev: "2.9.24", que: "H-265 (decisión del dueño, 27-sep-2026): obra civil es autónoma: sus áreas de obra (área, altura, perímetro de tabiquería) y sus cuartos clasificados (área, altura, perímetro) se capturan en su pestaña; ya no se leen las zonas de carga térmica ni los cuartos limpios (cruces load>civil y clean>civil retirados). Un proyecto guardado los copia una vez al abrirlo, con las mismas cifras. Sin altura capturada no se suponen 2.8 m: el muro queda pendiente" },
-    { ver: "7", rev: "2.9.24", que: "H-265 (complemento): con «De las áreas de obra capturadas aquí» y la lista vacía el área es 0 y no se cotiza nada; antes se usaban los totales a mano que la pantalla oculta en ese modo (500 m² y 300 m² de muro → 1,690,210 MXN en la cotización)" }],
+    { ver: "7", rev: "2.9.24", que: "H-265 (complemento): con «De las áreas de obra capturadas aquí» y la lista vacía el área es 0 y no se cotiza nada; antes se usaban los totales a mano que la pantalla oculta en ese modo (500 m² y 300 m² de muro → 1,690,210 MXN en la cotización)" },
+    { ver: "8", rev: "2.9.24", que: "H-265 (complemento): al abrir un proyecto anterior, la migración también copia la zona sin área que tenía tabiquería capturada en obra civil (su muro, perímetro × altura, ya se cuantificaba); antes se descartaba y el proyecto abría con menos muro (p. ej. −150 m², −252,750 MXN)" }],
   soporte: [{ ver: "2", rev: "2.9.16", que: "renta de elevación sólo con algo que montar" },
     { ver: "3", rev: "2.9.24", que: "H-232: 0 meses de renta capturados se respetan (sin renta) y sin captura la renta queda pendiente con aviso (antes el 0 se volvía 1 mes y la omisión 3)" },
     { ver: "4", rev: "2.9.24", que: "H-231: con la instantánea motores>soporte aceptada las bases de equipo salen de snap.nEquip (antes el conteo en vivo perdía el compresor: 3 → 2)" },

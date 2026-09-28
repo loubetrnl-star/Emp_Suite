@@ -142,7 +142,7 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 | 4 | 2.9.24 | H-216: el tanque pulmón no se trunca a 5,000 L en silencio: si el teórico rebasa el mayor de la lista comercial de la casa se instalan varios de 5,000 L en paralelo (capacidad instalada ≥ teórica; `tanqueUnit`, `nTanques`), con aviso; memoria, PDF, pantalla y partida lo declaran (13,103 L → 3 × 5,000 = 15,000 L; antes 5,000 L y «se sube al comercial inmediato superior»). Proyecto fijo: sin cambio (3,000 L). Cifras de regresión: entra `nTanques` |
 | 5 | 2.9.24 | H-218: el diámetro interior es del material: cobre tipo L con los DI de ASTM B88 (los mismos de `TUB_AGUA.cobre`; 55 m de cobre: 1" → 1 1/4"), acero con cédula 40 (ASME B36.10), aluminio e inoxidable con cédula 40 sólo como indicativo y el DI real del fabricante pendiente (aviso, memoria, PDF, pantalla y partida). Proyecto fijo (aluminio): sin cambio de cifras, con la pendencia declarada |
 
-## Obra civil (`civil`) · v7
+## Obra civil (`civil`) · v8
 
 | Versión | Rev | Hallazgo / cambio de lógica |
 |---|---|---|
@@ -153,6 +153,7 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 | 5 | 2.9.24 | H-244 (decisión 5 del dueño, opción a): la tabiquería es un perímetro capturable por zona en la pestaña de obra civil (`civil.perimZonas.<id de zona>`); sin captura, rectángulo 3:2 del área × altura de la zona, marcado «estimado» en la partida (ES/EN). Los muros de carga térmica (envolvente por orientación) ya no entran: antes se tomaban cuando existían y capturar un muro exterior de 30 m² bajaba el muro civil (−400,446 MXN). Proyecto fijo: desarrollo 427.71 → 856.08 m² (todo estimado), muro no clasificado 354.39 → 709.32 m² |
 | 6 | 2.9.24 | H-265 (decisión del dueño, 27-sep-2026): obra civil es autónoma. Sus áreas de obra (nombre, área, altura, perímetro de tabiquería) y sus cuartos clasificados (nombre, área, altura, perímetro) se capturan en su pestaña; ya no se leen las zonas de carga térmica ni los cuartos limpios (cruces load>civil y clean>civil retirados; flechas de regla 1 hvac → civil fuera del diagrama). Un proyecto guardado los copia una vez al abrirlo (con los perímetros que ya tenía capturados): abre con las mismas cifras y desde ahí no sigue a las zonas. Sin altura capturada ya no se suponen 2.8 m: el muro de esa área queda en 0 con aviso. Proyecto fijo: cifras sin cambio. |
 | 7 | 2.9.24 | H-265 (complemento; regla 6): con «De las áreas de obra capturadas aquí» y la lista vacía el área es 0 (aviso «No hay área») y no se cotiza nada. Antes el motor usaba los totales a mano que la pantalla oculta en ese modo: área 500 m², muro 300 m² → 5 partidas por 1,690,210 MXN y el PDF decía «suma de 0 áreas de obra». Proyecto fijo: sin cambio de cifras. |
+| 8 | 2.9.24 | H-265 (complemento; «un proyecto guardado abre con las mismas cifras»): la migración a las áreas propias de civil copia también la zona sin área que tenía tabiquería capturada (perimZonas), cuyo muro (perímetro × altura) ya se cuantificaba. Antes: Nave 400 m² × 6 m + Pasillo 0 m² × 3 m con 50 ml capturados abría sin el pasillo (−150 m² de muro, −252,750 MXN). Proyecto fijo: sin cambio de cifras. |
 
 ## Soportería (`soporte`) · v12
 
