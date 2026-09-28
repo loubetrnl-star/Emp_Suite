@@ -19156,7 +19156,7 @@ const ENTRADAS = {
   duct: () => ({ duct: S.duct, site: S.site }),
   vent: () => ({ vent: sinClaves(S.vent, ["seleccion"]), site: S.site }),   /* H-263: la selección no la lee computeVent */
   hidro: () => ({ hidro: sinClaves(S.hidro, ["equipoHN"]), site: S.site }),
-  fuego: () => ({ fuego: S.fuego, perms: ePerms(), site: S.site }),
+  fuego: () => ({ fuego: S.fuego, site: S.site }),   /* H-264: computeFuego ya no lee permisos (salió load>fuego): conceder o retirar uno no toca su sello */
   aire: () => ({ aire: S.aire, site: S.site }),
   civil: () => ({ civil: S.civil }),   /* H-265: obra civil sólo depende de su propia captura */
   /* H-268: sólo su captura (las cargas aceptadas de otros motores van dentro, como instantánea) y los permisos; tomarHVAC ya no

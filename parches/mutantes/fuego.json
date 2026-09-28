@@ -76,5 +76,7 @@
   { "id": "fuego.m39", "que": "H-264 (complemento): la memoria vuelve a llamar «capturada» la altura tomada al abrir", "logica": true,
     "buscar": "${altSinConf ? \"tomados al abrir de la zona más alta de Carga térmica (proyecto anterior a H-264), sin confirmar\" : \"capturados en esta pestaña\"}", "reemplazar": "${\"capturados en esta pestaña\"}", "estado": "vigente" },
   { "id": "fuego.m40", "que": "H-264 (complemento): un proyecto con tomarArea y load>fuego abre con el área capturada, no con la que se tomaba en vivo", "logica": true,
-    "buscar": "if (s.fuego.tomarArea === true && s.perms[\"load>fuego\"]) {", "reemplazar": "if (false) {", "estado": "vigente" }
+    "buscar": "if (s.fuego.tomarArea === true && s.perms[\"load>fuego\"]) {", "reemplazar": "if (false) {", "estado": "vigente" },
+  { "id": "fuego.m41", "que": "H-264 (sello): la huella de contra incendio vuelve a llevar los permisos (aceptar la propuesta de soportería la marcaría «la captura cambió»)", "logica": true,
+    "buscar": "  fuego: () => ({ fuego: S.fuego, site: S.site }),", "reemplazar": "  fuego: () => ({ fuego: S.fuego, perms: ePerms(), site: S.site }),", "estado": "vigente" }
 ]

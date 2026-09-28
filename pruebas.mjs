@@ -7785,6 +7785,28 @@ t("S.106 (H-264) un proyecto guardado antes de H-264 abre con la altura y el ár
     eq(F().nTotal, Math.ceil(800 / F().r.cobertura), "rociadores con esa área:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
+t("S.107 (H-264) el sello de contra incendio sólo depende de su captura: aceptar la propuesta de soportería (que concede fuego>soporte) o cambiar cualquier permiso no lo marca «desactualizado · la captura cambió» (computeFuego ya no lee permisos)", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.107";
+    S.fuego = { ...G("defaultFuego")(), riesgo: "ord2", area: 500, altura: 6, Lramal: 30, Lmontante: 12 };
+    S.duct.segments = [G("defaultSegment")("SA-1", 2500)];
+    G("recompute")();
+    S.sellos = S.sellos || {}; S.sellos.fuego = { ts: 1, huella: G("huellaMotor")("fuego"), ver: G("motorVer")("fuego") };
+    eq(G("selloDe")("fuego").estado, "calculado", "recién sellado:");
+    const antes = JSON.stringify([G("FUEGO").memo, G("FUEGO").hpBomba, G("FUEGO").nTotal]);
+    /* Aceptar la propuesta de soportería (lo que hace propAceptar, sin autoguardar ni pintar). */
+    const P = G("PROPUESTAS")["motores>soporte"];
+    (P.permisos || []).forEach((k) => { S.perms[k] = { ts: 1, via: "S.107" }; }); G("recompute")(); P.aplicar(); G("registrarVinculo")("motores>soporte", "aceptado"); G("recompute")();
+    if (!S.perms["fuego>soporte"]) throw new Error("el caso no aísla lo que se quiere probar: aceptar debe conceder fuego>soporte");
+    eq(JSON.stringify([G("FUEGO").memo, G("FUEGO").hpBomba, G("FUEGO").nTotal]), antes, "contra incendio no cambia:");
+    eq(G("selloDe")("fuego").estado, "calculado", "aceptar la propuesta de soportería no marca contra incendio:");
+    S.perms["fuego>quote"] = { ts: 1, via: "S.107" }; delete S.perms["fuego>soporte"]; G("recompute")();
+    eq(G("selloDe")("fuego").estado, "calculado", "ni conceder o retirar otros permisos:");
+    S.fuego.altura = 7; G("recompute")();
+    eq(G("selloDe")("fuego").estado, "desactualizado", "cambiar su captura sí lo marca:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
 t("S.101 (H-265) obra civil es autónoma: sus áreas de obra y sus cuartos clasificados se capturan en su pestaña; no toma las zonas de carga térmica ni los cuartos limpios; un proyecto anterior los copia una vez al abrirlo, con las mismas cifras (decisión del dueño, 27-sep-2026)", () => {
   const guardado = JSON.stringify(S);
   try {
