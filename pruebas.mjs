@@ -7858,6 +7858,21 @@ t("S.101 (H-265) obra civil es autónoma: sus áreas de obra y sus cuartos clasi
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+t("S.115 (H-265) obra civil: con «De las áreas de obra capturadas aquí» y la lista vacía el motor no usa los totales a mano que la pantalla no muestra: área 0, aviso y nada a la cotización (regla 6)", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.115";
+    Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.115" }; });
+    S.civil = { ...G("defaultCivil")(), usarZonas: false, areaManual: 500, alturaManual: 3, murosManual: 300 };
+    G("recompute")();
+    if (!(G("CIVIL").total > 0)) throw new Error("el caso no aísla lo que se quiere probar: con totales a mano hay obra civil");
+    S.civil.usarZonas = true; S.civil.areas = []; S.civil.cuartos = []; G("recompute")();
+    eq(G("CIVIL").area, 0, "sin áreas de obra capturadas no hay área (los totales a mano, ocultos, no se usan):");
+    eq(G("CIVIL").total, 0, "ni importe:");
+    if (G("QUOTE").aux.some((a) => a.mot === "civil")) throw new Error("la cotización no lleva partidas de civil sin áreas capturadas");
+    if (!G("CIVIL").avisos.some((a) => /No hay área/.test(a.msg))) throw new Error("falta el aviso de que no hay área");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
 t("S.102 (H-266) soportería es autónoma: sin la instantánea aceptada no cuenta metros de otros motores (se retiró el conteo en vivo); aceptarla los cuantifica y ya no se mueven solos; alturas y bases se capturan; un proyecto anterior se migra al abrir con las mismas cifras (decisión del dueño, 27-sep-2026)", () => {
   const guardado = JSON.stringify(S);
   try {
