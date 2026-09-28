@@ -1716,7 +1716,7 @@ function buildCedulaEquiposPdf() {
   c.notes.forEach((x) => pdfParagraph(d, "- " + x));
   pdfHeading(d, "6. Alternativas evaluadas");
   pdfRows(d, y.opts.map((o) => [o.label, `${o.score} pts · ${o.units} equipos · ${o.why}`]));
-  pdfTrazabilidad(d, ["equip", "load"]);
+  pdfTrazabilidad(d, ["equip"]);
   return d.end();
 }
 
@@ -2105,16 +2105,11 @@ function buildSeleccionPdf() {
     ["Equipos en total", String(c.units)],
   ]);
 
-  /* 8 · Equipo por zona: preseleccion individual del motor de carga */
-  pdfHeading(d, "8. Preseleccion por zona (motor de carga termica)");
-  if (LOADS.length) {
-    pdfTable(d, ["Zona", "TR", "Tecnologia", "Modelo", "TR placa", "TR sitio"],
-      LOADS.map((r, i) => r.eq && r.eq.primary ? [zn(i), n(r.tons, 2), r.eq.techLabel, r.eq.primary.model, n(r.eq.primary.TR, 1), n(r.eq.capSitio, 1)] : [zn(i), n(r.tons, 2), "-", "sin modelo", "-", "-"]),
-      [110, 40, 110, 110, 44, 44]);
-    LOADS.forEach((r, i) => { if (r.eq && r.eq.sizingNote) pdfParagraph(d, `${zn(i)}: ${r.eq.sizingNote}`); });
-    pdfParagraph(d, "Esta preseleccion evalua cada zona por separado y elige la tecnologia por area, carga y calor sensible. Puede diferir del sistema integrado del punto 7, que elige una familia para todo el edificio; para la cedula y la cotizacion rige el punto 7.");
-    pdfParagraph(d, "Viene de Carga termica tal como esta calculada hoy y no entra a esta seleccion, que usa solo las zonas de la seccion 3 (H-267).");
-  }
+  /* 8 · Presion estatica externa (H-274): se captura en Seleccion; nada viene de Ductos ni de Carga termica en vivo */
+  pdfHeading(d, "8. Presion estatica externa");
+  const espPdf = espCapturada();
+  pdfRows(d, [["Presion estatica externa que debe vencer el equipo", espPdf > 0 ? `${n(espPdf, 2)} in.wg · capturada en Seleccion` : "pendiente de captura: el criterio de presion no se evalua (no se supone)"]]);
+  pdfParagraph(d, "Seleccion no toma ningun dato de Ductos. La preseleccion individual de cada zona es un resultado de Carga termica y sale en su propia memoria; esta seleccion usa solo las zonas de la seccion 3 (H-267).");
 
   /* 9 · Memoria y observaciones */
   pdfHeading(d, "9. Memoria");
@@ -2135,7 +2130,7 @@ function buildSeleccionPdf() {
   pdfHeading(d, `${av.length ? 11 : 10}. Alcance de este calculo`);
   pdfParagraph(d, "Resuelve la comparacion de sistemas contra el catalogo Carrier con capacidad corregida por sitio, la recomendacion contra la seleccion del proyecto, y el modelo y cantidad de planta, terminales y equipo por zona. NO incluye costos ni la comparacion economica (ver Cotizacion e Ingenieria de valor), ni redes hidraulicas o de refrigerante, ni la verificacion contra el programa de seleccion del fabricante: la correccion por sitio es de primer orden y debe confirmarse con la seleccion del fabricante antes de comprar.");
   pdfFirmas(d);
-  pdfTrazabilidad(d, ["equip", "load"]);
+  pdfTrazabilidad(d, ["equip"]);
   return d.end();
 }
 
@@ -3848,9 +3843,6 @@ function groupUnits(rows) {
   });
   return [...map.values()].sort((a, b) => b.model.TR - a.model.TR);
 }
-/* Hora de bloque de la corrida en curso. La fija buildSystem antes de seleccionar,
-   para que cada terminal pueda reportar su carga coincidente a esa hora. */
-let SYS_HOUR_HINT = P.HOUR;
 
 /* Matriz de picos: qué zona pica a qué hora, cuánto aporta a la hora del bloque
    y cuánto se pierde por no coincidir. Es el insumo de la selección de equipo.
@@ -4373,12 +4365,6 @@ const LINKS = {
     why: "En obra industrial la red contra incendio es de las partidas más caras y casi siempre se cotiza aparte y tarde.",
     cost: "Si lo niegas, la cotización no incluye la partida de protección contra incendio.",
   },
-  "duct>equip": {
-    from: "duct", to: "equip",
-    what: "Caída de presión de la red y presión de ventilador requerida.",
-    why: "Para avisar cuando el equipo elegido no puede empujar el ducto que se diseñó: un rooftop con 1.5 in.wg disponibles no mueve una red que pide 2.2, por muchas toneladas que tenga.",
-    cost: "Si lo niegas, la selección no verifica presión estática y hay que compararla a mano contra la curva del ventilador.",
-  },
   "duct>load": {
     from: "duct", to: "load",
     what: "Caudal de los troncales, para contrastarlo contra el que pide la carga.",
@@ -4500,7 +4486,6 @@ function buildSystem(force) {
       .reduce((a, b) => (Math.abs(b.hour - 15) < Math.abs(a.hour - 15) ? b : a));
     blockTons = bp.tons; blockHour = bp.hour;
   }
-  SYS_HOUR_HINT = blockHour;
   const peaks = peakMatrix(blockHour, Z);
   /* Ventana de coincidencia: cuántas zonas pican dentro de ±1 h del bloque.
      Si casi todas coinciden, la diversidad real es baja y no conviene
@@ -11337,12 +11322,12 @@ function selPorFamilia(famId, req) {
       limita = "capacidad sensible";
       marcas.push(`sensible ${n(senE / 1000, 1)} kW contra ${n(sensW / 1000, 1)} kW del local`);
     }
-    /* Presión estática: si el equipo trae su propio ventilador y el ducto pide
-       más de lo que entrega, no importa cuántas toneladas tenga. */
+    /* Presión estática: si el equipo trae su propio ventilador y la presión estática externa capturada en esta pestaña
+       pide más de lo que entrega, no importa cuántas toneladas tenga (H-274: no viene de Ductos). */
     if (c.usa.includes("esp") && espReq > 0 && c.esp != null && espReq > c.esp) {
       puntos -= Math.min(40, (espReq / c.esp - 1) * 60);
       limita = "presión estática";
-      marcas.push(`el ducto pide ${n(espReq, 2)} in.wg (suma de tramos; ${cotaDuctTexto(DUCT)}) y la familia entrega del orden de ${n(c.esp, 2)}`);
+      marcas.push(`la presión estática externa capturada es ${n(espReq, 2)} in.wg y la familia entrega del orden de ${n(c.esp, 2)}`);
     }
     return { model: e, cap, cfm: cfmE, sensible: senE, fit: Math.round(Math.max(0, Math.min(100, puntos))),
       limita, marcas, fuera: fueraDeRango(e), fuente: fuenteDe(e) };
@@ -11395,13 +11380,10 @@ function requisitoFam(famId) {
     ref = SYS && SYS.blockHour != null ? `bloque del edificio a las ${SYS.blockHour}:00` : "proyecto completo";
     base = { tons: SYS ? SYS.blockTons : t.tons, cfm: t.cfm, sensible: t.s };
   }
-  /* La presión que pide el ducto es un dato de otro motor: pasa por permiso. */
-  let esp = 0, espNota = "";
-  if (linkAllowed("duct>equip") && DUCT && DUCT.path > 0) {
-    esp = DUCT.path * 1.15 / 249.089;   // Pa con 15 % de margen → in.wg
-    espNota = `la red de ductos pide ${n(esp, 2)} in.wg con 15 % de margen`;
-  }
-  return { ...base, esp, ref, term, espNota };
+  /* H-274: la presión estática externa es la capturada en esta pestaña; Selección no la toma de Ductos. */
+  const esp = espCapturada();
+  const espNota = esp > 0 ? `presión estática externa capturada en Selección: ${n(esp, 2)} in.wg` : "presión estática externa pendiente de captura: el criterio de presión no se evalúa";
+  return { ...base, esp, ref, term, espNota, espPendiente: !(esp > 0) };
 }
 
 function defaultState() { return {
@@ -16764,6 +16746,7 @@ Object.assign(REF, {
 
   /* Cotización */
   "quote.currency":  { ref: "Moneda en la que se presenta la cotización.", rec: "Si cotizas en dólares, deja asentado el tipo de cambio y su fecha." },
+  "equip.espCaptura": { ref: "Presión estática externa (in.wg) que el ventilador del equipo debe vencer fuera del gabinete: ductos, rejillas, difusores, filtros y accesorios externos. La captura el ingeniero aquí; Selección no la toma de Ductos (H-274). Sin captura queda pendiente y el criterio de presión no se evalúa." },
   "quote.fx":        { ref: "Tipo de cambio, pesos por dólar.", rec: "Fíjalo por escrito con vigencia: en equipo de importación el margen se va en el tipo de cambio." },
   "quote.priceFactor":{ ref: "Multiplica todos los precios de equipo de la lista base.", rec: "1.00 = precio semilla, que viene de una obra de grado cuarto limpio y corre alto. Para obra comercial suele quedar entre 0.55 y 0.75." },
   "quote.scaleExp":  { ref: "Exponente de la ley de potencia: el precio por tonelada baja en equipos grandes.", rec: "0.85 es el valor habitual en equipo HVAC. Más bajo castiga más al equipo chico." },
@@ -17190,7 +17173,7 @@ function sysCardHtml() {
     </div>
     <div class="hint" style="margin-top:10px">Con todos autorizados, la cotización unificada incluye cada sección que tenga partidas calculadas y cada motor muestra lo que aporta. Revocar uno no borra su cálculo: lo saca del catálogo y lo declara NO COTIZADO en la matriz de alcance.</div>
   </div></div>`;
-  const permisos = autorizarTodo + `<div class="card"><h3>Permisos entre motores<span class="tag">${Object.keys(S.perms || {}).length} autorizado(s)</span></h3><div class="body">
+  const permisos = autorizarTodo + `<div class="card"><h3>Permisos entre motores<span class="tag">${nDados} autorizado(s)</span></h3><div class="body">
     ${grupos}
     <h4 style="font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:18px 0 8px">Transferencias declaradas</h4>
     <div class="tw"><table><tbody>${permRows}</tbody></table></div>
@@ -18287,7 +18270,11 @@ function computeSoporteGobernado(G) {
    (criterio de las familias terminales) y su nombre. Sin perfil horario (zona
    capturada a mano) la simultaneidad por hora queda pendiente: no se inventa.
    ========================================================================= */
-function defaultEquip() { return { zonas: [], tomarDeCarga: null }; }
+function defaultEquip() { return { zonas: [], tomarDeCarga: null, espCaptura: null }; }
+/* H-274 (decisión del dueño, 28-sep-2026): Selección no tiene ningún vínculo con Ductos, ni lectura en vivo ni propuesta
+   aceptada, en ninguna dirección. La presión estática externa que debe vencer el equipo (in.wg) se captura aquí; sin captura,
+   o con un valor que no sea positivo, vale 0 y queda pendiente: el criterio de presión no se evalúa y no se supone. */
+function espCapturada() { const e = numONulo(S.equip && S.equip.espCaptura); return e != null && e > 0 ? e : 0; }
 function zonasSel() { return (S.equip && Array.isArray(S.equip.zonas) ? S.equip.zonas : []).filter((z) => z && typeof z === "object"); }
 function numONulo(v) { return v === null || v === undefined || v === "" || !Number.isFinite(Number(v)) ? null : Number(v); }
 /* Las zonas con la forma que lee el motor. Sale sólo de S.equip.zonas: la carga térmica no se lee aquí. */
@@ -19196,9 +19183,9 @@ const ENTRADAS = {
   clean: () => ({ rooms: cleanRooms(), site: S.site }),
   /* H-267: sólo lo que la selección calcula: sus zonas de selección (la instantánea aceptada va dentro, sin id, origen, fecha ni
      marca de edición, que no cambian el cálculo), la diversidad del edificio, el sitio (capacidad en sitio), la tecnología elegida,
-     los modelos por familia y la presión de ductos (cruce duct>equip). Ya no anida ENTRADAS.load(): la carga entra sólo al
-     aceptar la propuesta load>equip. La marca de migración es pasajera: fuera. */
-  equip: () => ({ zonas: zonasSel().map((z) => sinClaves(z, ["id", "origen", "editada"])), bldDiv: S.bldDiv, site: S.site, sysForce: S.sysForce, sel: eSel(), duct: ENTRADAS.duct() }),
+     los modelos por familia y la presión estática externa capturada en esta pestaña (H-274: nada de Ductos). Ya no anida
+     ENTRADAS.load(): la carga entra sólo al aceptar la propuesta load>equip. La marca de migración es pasajera: fuera. */
+  equip: () => ({ zonas: zonasSel().map((z) => sinClaves(z, ["id", "origen", "editada"])), bldDiv: S.bldDiv, site: S.site, sysForce: S.sysForce, sel: eSel(), esp: espCapturada() }),
   duct: () => ({ duct: S.duct, site: S.site }),
   vent: () => ({ vent: sinClaves(S.vent, ["seleccion"]), site: S.site }),   /* H-263: la selección no la lee computeVent */
   hidro: () => ({ hidro: sinClaves(S.hidro, ["equipoHN"]), site: S.site }),
@@ -19221,7 +19208,7 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "6", clean: "3", equip: "2", duct: "4", vent: "4", quote: "24", valor: "1", kaizen: "1", elec: "9", hidro: "8", fuego: "6", aire: "5", civil: "8", soporte: "12" };
+const MOTOR_VER = { load: "6", clean: "3", equip: "3", duct: "4", vent: "4", quote: "24", valor: "1", kaizen: "1", elec: "9", hidro: "8", fuego: "6", aire: "5", civil: "8", soporte: "12" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
@@ -19229,7 +19216,8 @@ const MOTOR_CAMBIOS = {
     { ver: "4", rev: "2.9.24", que: "H-120: el DET de muros y cubierta se corrige por la condición de diseño del sitio, (25.6 − ti) + (tm − 29.4) K con tm = to − rango/2 (corrección CLTD, ASHRAE Fundamentals 1997 cap. 28; ratificar con Carrier Tabla 20A)" },
     { ver: "5", rev: "2.9.24", que: "H-141 (decisión (a) del dueño): la diversidad del edificio se aplica una sola vez, en el objetivo de planta; las ganancias internas de cada zona van al pico sin el factor (antes ×bldDiv en la zona y otra vez en la planta: con 0.8 el objetivo quedaba ×0.713). Criterio Carrier, ratificar con texto" },
     { ver: "6", rev: "2.9.24", que: "H-263 (decisión del dueño, 27-sep-2026): el ventilador SELECCIONADO en Ventilación entra a la zona elegida como misceláneos, HP de referencia del submittal Greenheck (ESTIMADO por la casa en el punto medio del catálogo: rendimiento 0.65, +15 %, ¼ HP; ratificar con placa) × 745.7 W sensibles, como instantánea (si ventilación cambia después, la carga no se mueve sola; se vuelve a seleccionar). Sin selección la carga no cambia" }],
-  equip: [{ ver: "2", rev: "2.9.24", que: "H-267 (decisión del dueño, 27-sep-2026): la selección de equipo es autónoma: calcula sólo con sus zonas de selección (capturadas en su pestaña o aceptadas de carga térmica como propuesta load>equip, instantánea con origen y fecha; nombre, TR, CFM, aire exterior, área, sensible y latente, hora pico y perfil horario). Ya no lee la carga EN VIVO (salió del núcleo térmico); ya aceptada no se mueve sola (si la carga cambia sale «desactualizada»). Una zona sin perfil horario deja la simultaneidad por hora pendiente (bloque = suma de picos, sin diversidad supuesta) y sin hora pico no cuenta en la ventana ni en la dispersión. Un proyecto guardado toma una vez la instantánea al abrir: mismas cifras (proyecto fijo: VRF, 16.8989 / 19.8518 TR)" }],
+  equip: [{ ver: "2", rev: "2.9.24", que: "H-267 (decisión del dueño, 27-sep-2026): la selección de equipo es autónoma: calcula sólo con sus zonas de selección (capturadas en su pestaña o aceptadas de carga térmica como propuesta load>equip, instantánea con origen y fecha; nombre, TR, CFM, aire exterior, área, sensible y latente, hora pico y perfil horario). Ya no lee la carga EN VIVO (salió del núcleo térmico); ya aceptada no se mueve sola (si la carga cambia sale «desactualizada»). Una zona sin perfil horario deja la simultaneidad por hora pendiente (bloque = suma de picos, sin diversidad supuesta) y sin hora pico no cuenta en la ventana ni en la dispersión. Un proyecto guardado toma una vez la instantánea al abrir: mismas cifras (proyecto fijo: VRF, 16.8989 / 19.8518 TR)" },
+    { ver: "3", rev: "2.9.24", que: "H-274 (decisión del dueño, 28-sep-2026): Selección no tiene ningún vínculo con Ductos, ni lectura en vivo ni propuesta aceptada, en ninguna dirección. La presión estática externa que debe vencer el equipo se captura en la pestaña de Selección (S.equip.espCaptura, in.wg); sin captura queda «pendiente» y el criterio de presión no se evalúa (antes, con el permiso duct>equip, se tomaba en vivo la suma de tramos de ductos con 15 % de margen y castigaba el ajuste). Salió el cruce duct>equip, la huella ya no anida la de ductos y la memoria ya no imprime la preselección por zona leída en vivo de Carga térmica. Sin migración: sin captura, el criterio queda pendiente (proyecto fijo: mismas cifras de sistema; esp 0)" }],
   vent: [{ ver: "2", rev: "2.9.24", que: "H-154 + H-156: la cobertura real manda en la selección Greenheck (cfmMin ≤ objetivo ≤ cfmMax, sin tolerancia ×0.9); la familia del modo sólo ordena entre los que cubren; si nadie cubre no hay modelo (proyecto fijo: GB-360 → CSW-30 para 11,643 CFM)" },
     { ver: "3", rev: "2.9.24", que: "H-155: sin medidas no hay caudal: campana sin largo o fondo y rejilla sin ancho, alto, área libre o velocidad dan demanda 0 con aviso (antes pisos de 0.1 ft, 5 % y 100 fpm fabricaban 30 y 258 CFM y sus partidas)" },
     { ver: "4", rev: "2.9.24", que: "H-262 (decisión del dueño, 27-sep-2026): ventilación calcula sólo con sus propios datos: el área, la altura y los ocupantes ya no se copian de carga térmica (se capturan en su pestaña; un proyecto guardado conserva los valores que ya tenía copiados). Se retira la propuesta load>vent (aire exterior de carga térmica como reposición: con el local sin capturar fabricaba cambios/h sobre 1 m² × 0.1 m). Sin área o altura capturadas, el caudal por cambios de aire queda pendiente de captura, con aviso. La relación con carga térmica va al revés: el ventilador seleccionado entrega el calor de su motor a una zona (H-263)" }],
@@ -20761,11 +20749,10 @@ function viewSeleccion() {
           ${R.criterio.usa.includes("cfm") ? `<div class="metric"><div class="k">Caudal pedido</div><div class="v">${n(req.cfm, 0)} <small>CFM</small></div></div>` : ""}
           ${R.criterio.usa.includes("sensible") ? (req.sensiblePendiente ? `<div class="metric"><div class="k">Sensible del local</div><div class="v">pendiente</div><div class="sub">zona capturada a mano sin sensible del local: el criterio no se aplica</div></div>`
             : `<div class="metric"><div class="k">Sensible del local</div><div class="v">${n(req.sensible / 1000, 1)} <small>kW</small></div><div class="sub">SHR nominal de familia ${R.criterio.shr}</div></div>`) : ""}
-          ${R.criterio.usa.includes("esp") ? `<div class="metric"><div class="k">Presión estática</div><div class="v">${req.esp > 0 ? n(req.esp, 2) : "—"} <small>in.wg</small></div>
-            <div class="sub">${req.esp > 0 ? `la familia entrega ~${n(R.criterio.esp, 2)}` : "sin dato de ductos"}</div></div>` : ""}
+          ${R.criterio.usa.includes("esp") ? `<div class="metric"><div class="k">Presión estática externa</div><div class="v">${req.esp > 0 ? `${n(req.esp, 2)} <small>in.wg</small>` : "pendiente"}</div>
+            <div class="sub">${req.esp > 0 ? `capturada en esta pestaña · la familia entrega ~${n(R.criterio.esp, 2)}` : "sin captura no se evalúa (no se supone)"}</div></div>` : ""}
         </div>
-        ${R.criterio.usa.includes("esp") && !linkAllowed("duct>equip") ? `<div class="hint" style="margin-top:10px">La presión que pide la red de ductos no se está tomando en cuenta.
-          <button class="toolbtn" data-act="ask-link" data-id="duct>equip">Autorizar ductos → selección</button></div>` : ""}
+        <div class="row" style="margin-top:10px">${inp("Presión estática externa que debe vencer el equipo (in.wg) · se captura aquí; sin captura queda pendiente y no se evalúa", "equip.espCaptura", "number", "0.05")}</div>
         <div class="hint" style="margin-top:10px"><b>Procedencia de esta familia.</b> ${esc(procedencia(R.recomendado ? R.recomendado.model : pool[0]))}${F && F.dato ? ` · ${esc(F.dato)}` : ""}${F && F.ojo ? ` <b>Ojo:</b> ${esc(F.ojo)}` : ""}</div>
       </div></div>
 

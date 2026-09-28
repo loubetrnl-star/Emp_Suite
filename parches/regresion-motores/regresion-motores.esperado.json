@@ -63,7 +63,7 @@
    }
   },
   "equip": {
-   "ver": "2",
+   "ver": "3",
    "cifras": {
     "chosen": "vrf",
     "plantTarget": 16.898915307329595,

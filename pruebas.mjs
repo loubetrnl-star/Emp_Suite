@@ -3636,7 +3636,8 @@ t("22.5 2.2 la carga dinámica hidráulica no cuenta dos veces la altura (edific
 
 t("22.6 2.3 la presión de ductos se declara suma de tramos (cota superior solo de los tramos capturados, con aviso si no hay retorno) y ningún texto afirma que manda el recorrido crítico", () => {
   /* Sin topología de red el número sigue siendo la suma (pasa a la capa de motores);
-     lo que se fija aquí es que pantalla, guía, selección, memoria y libro lo digan. */
+     lo que se fija aquí es que pantalla, guía, memoria y libro lo digan. Selección ya no la lee (H-274, decisión del dueño
+     28-sep-2026): su presión estática externa se captura en su pestaña, así que aquí se revisa que la red no la mueva. */
   const ducto0 = JSON.parse(JSON.stringify(S.duct)), tab0 = S.tab, perms0 = JSON.parse(JSON.stringify(S.perms));
   try {
     Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "prueba 22.6" }; });
@@ -3660,7 +3661,7 @@ t("22.6 2.3 la presión de ductos se declara suma de tramos (cota superior solo 
       const sin = hayRetorno ? "" : SIN, sinEn = hayRetorno ? "" : SIN_EN;
       const falta = (txt, frase, donde) => { if (txt.includes(frase)) throw new Error(`${red} · ${donde} dice «${frase}» y la red sí trae retorno`); };
       cerca(D.path, D.segs.filter((s) => ["supply", "return"].includes(s.service)).reduce((a, s) => a + s.total, 0), 1e-9, `${red} · DUCT.path sigue siendo la suma de tramos en esta capa:`);
-      cerca(G("requisitoFam")("split_duct").esp, D.path * 1.15 / 249.089, 1e-9, `${red} · esp de selección con la suma:`);
+      eq(G("requisitoFam")("split_duct").esp, 0, `${red} · selección no toma la presión de la red de ductos (H-274):`);
       /* Pantalla de ductos */
       S.tab = "ductos"; G("render")();
       /* Solo lo que se ve: fuera el código de los <script>, que también trae las frases. */
@@ -3675,12 +3676,16 @@ t("22.6 2.3 la presión de ductos se declara suma de tramos (cota superior solo 
       contiene(pant, `la suite muestra la suma de los tramos de suministro y retorno, porque el recorrido crítico todavía no se calcula: es ${COTA}.`, `${red} · guía de ductos en la pantalla:`);
       contiene(pant, `+15 % de margen · suma de los tramos de suministro y retorno (extracción y grasa van en sus propios ventiladores), cota superior solo de los tramos capturados${hayRetorno ? "" : " · sin tramos de retorno capturados"}`, `${red} · sub de Presión del ventilador:`);
       if (hayRetorno) falta(pant, "sin tramos de retorno capturados", "la pantalla");
-      /* Marca de selección (se fuerza una presión alta para que haya castigo) */
+      /* Marca de selección (se fuerza una presión alta para que haya castigo): dice que la presión es la capturada en
+         Selección y no habla de ductos (H-274). */
       if (conMarca) {
         const sel = G("selPorFamilia")("split_duct", { ...G("requisitoFam")("split_duct"), esp: 5 });
         const marcas = sel.cands.flatMap((c) => c.marcas || []).filter((x) => /in\.wg/.test(x));
         if (!marcas.length) throw new Error(`${red} · el caso no castiga por presión: no se puede revisar la marca`);
-        marcas.forEach((x) => contiene(x, `in.wg (suma de tramos; ${COTA}${sin}) y la familia entrega`, `${red} · marca de selección:`));
+        marcas.forEach((x) => {
+          contiene(x, `la presión estática externa capturada es ${G("n")(5, 2)} in.wg y la familia entrega`, `${red} · marca de selección:`);
+          if (/suma de tramos|el ducto pide|red de ductos/.test(x)) throw new Error(`${red} · la marca de selección sigue hablando de ductos: ${x}`);
+        });
       }
       /* Memoria PDF */
       const txt = Buffer.from(G("buildMemoriaPdf")()).toString("latin1");
@@ -3701,10 +3706,10 @@ t("22.6 2.3 la presión de ductos se declara suma de tramos (cota superior solo 
     };
     /* Red 1: troncal + 8 ramales de suministro, capturada a mano */
     const D = revisar("red de suministro", false, false);
+    /* H-274: la red de ductos, por grande que sea, no le pone presión ni marca a la selección. */
     const sel = G("selPorFamilia")("split_duct", G("requisitoFam")("split_duct"));
-    const marcas = sel.cands.flatMap((c) => c.marcas || []).filter((x) => /in\.wg/.test(x));
-    if (!marcas.length) throw new Error("el caso no castiga por presión: no se puede revisar la marca");
-    marcas.forEach((x) => contiene(x, `in.wg (suma de tramos; ${COTA}${SIN}) y la familia entrega`, "marca de selección:"));
+    const conDucto = sel.cands.flatMap((c) => c.marcas || []).filter((x) => /in\.wg|suma de tramos|el ducto pide|red de ductos/.test(x));
+    if (conDucto.length) throw new Error(`la selección sigue marcando por la presión de ductos (H-274): ${conDucto[0]}`);
     if (!(D.path > 0)) throw new Error("red de suministro sin presión");
     /* Guía del módulo (texto fijo: debe acotar y avisar del retorno) */
     const ojo = G("GUIA").ductos.ojo;
@@ -4546,7 +4551,7 @@ t("O.1 la corrida completa de SoporteCalc queda expuesta y calcula varilla y anc
       tramos: [{ ...G("defaultTramoAgua")("AF-GENERAL"), um: 72, L: 25, alt: 3 }, { ...G("defaultTramoAgua")("AF-RAMAL BAÑOS"), um: 20, L: 18, alt: 3 }] };
     S.fuego = { ...G("defaultFuego")(), area: 600, altura: 6, Lramal: 30, Lmontante: 12, presFuente: 30 };
     Object.keys(S.perms).forEach((k) => delete S.perms[k]);
-    ["hidro>quote", "fuego>quote", "aire>quote", "duct>equip", "soporte>quote"].forEach((k) => { S.perms[k] = { ts: 1, via: "prueba O.1" }; });
+    ["hidro>quote", "fuego>quote", "aire>quote", "soporte>quote"].forEach((k) => { S.perms[k] = { ts: 1, via: "prueba O.1" }; });
     aceptarSoporte();   /* H-266: los tramos de los motores entran con la instantánea aceptada */
     const SOP = G("SOPORTE");
     eq(SOP.sopcalc.version, "0.1.0", "expone la corrida de SoporteCalc:");
@@ -5995,7 +6000,7 @@ t("S.24 propuestas entre disciplinas: un proyecto vacío no ofrece «Propuestas 
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
-t("S.25 (H-268) la huella del eléctrico es sólo su captura: no cambia con ventilación ni cuartos limpios (entran sólo como propuesta aceptada) y sí con sus propias cargas; la de la selección sí incluye lo que lee de ductos", () => {
+t("S.25 (H-268) la huella del eléctrico es sólo su captura: no cambia con ventilación ni cuartos limpios (entran sólo como propuesta aceptada) y sí con sus propias cargas; la de la selección tampoco cambia con ductos (H-274: no hay vínculo) y sí con su presión capturada", () => {
   llenarTodoS();
   const nombres = () => ["elec", "equip"].map((id) => G("huellaMotor")(id));
   const h0 = nombres();
@@ -6004,8 +6009,10 @@ t("S.25 (H-268) la huella del eléctrico es sólo su captura: no cambia con vent
   S.vent.ach += 2; G("recompute")(); const h1 = nombres(); if (h1[0] !== h0[0]) throw new Error("la huella de eléctrico no debe cambiar con ventilación (H-268)");
   S.vent.ach -= 2; G("cleanRooms")()[0].area += 10; G("recompute")(); const h2 = nombres(); if (h2[0] !== h0[0]) throw new Error("la huella de eléctrico no debe cambiar con cuartos limpios (H-268)");
   G("cleanRooms")()[0].area -= 10; S.elec.cargas[0].kW += 1; G("recompute")(); const h2b = nombres(); if (h2b[0] === h0[0]) throw new Error("la huella de eléctrico debe cambiar con sus propias cargas");
-  S.elec.cargas[0].kW -= 1; S.duct.segments[0].length += 5; G("recompute")(); const h3 = nombres(); if (h3[1] === h0[1]) throw new Error("la huella de la selección no cambia con ductos");
-  S.duct.segments[0].length -= 5; G("recompute")();
+  S.elec.cargas[0].kW -= 1; S.duct.segments[0].length += 5; G("recompute")(); const h3 = nombres(); if (h3[1] !== h0[1]) throw new Error("la huella de la selección no debe cambiar con ductos (H-274)");
+  S.duct.segments[0].length -= 5; const esp0 = S.equip.espCaptura; S.equip.espCaptura = 0.7; G("recompute")();
+  if (nombres()[1] === h0[1]) throw new Error("la huella de la selección debe cambiar con su presión capturada (H-274)");
+  S.equip.espCaptura = esp0; G("recompute")();
   /* El texto del pie no promete Calcular cuando está apagado. */
   const zs = S.zones;
   try {
@@ -6314,7 +6321,7 @@ t("S.36 (rev 2.9.20, decisión del dueño) versión por motor en el sello: sólo
      H-194: hidro v5 = presión mínima por mueble de la Tabla 604.3 del IPC 2015 y CDT con máx(residual, mínima); H-195: v6 = equipo de emergencia fuera de Hunter; H-197: v7 = sin pisos sin norma (días, ΔT, pendiente 704.1); H-198: v8 = CPVC sólo hasta 2" CTS, fuera de catálogo y PEAD sin SDR como error.
      H-263: carga v6 = calor del motor del ventilador seleccionado en Ventilación como misceláneos de la zona elegida; H-262: ventilación v4 = ya no hereda de carga térmica;
      H-268: eléctrico v9 = autónomo (las cargas de otros motores sólo como propuesta aceptada). */
-  eq(MV.elec, "9", "eléctrico v9 (H-268):"); eq(MV.hidro, "8", "hidro v8 (H-198):"); eq(MV.load, "6", "carga v6 (H-263):"); eq(MV.duct, "4", "ductos v4 (H-165):"); eq(MV.equip, "2", "selección v2 (H-267):"); eq(MV.kaizen, "1", "Kaizen sin cambio de lógica: v1:");
+  eq(MV.elec, "9", "eléctrico v9 (H-268):"); eq(MV.hidro, "8", "hidro v8 (H-198):"); eq(MV.load, "6", "carga v6 (H-263):"); eq(MV.duct, "4", "ductos v4 (H-165):"); eq(MV.equip, "3", "selección v3 (H-274):"); eq(MV.kaizen, "1", "Kaizen sin cambio de lógica: v1:");
   Object.keys(MV).forEach((id) => { const c = G("MOTOR_CAMBIOS")[id] || []; if (MV[id] !== "1" && !c.some((x) => x.ver === MV[id])) throw new Error(`${id}: la versión ${MV[id]} no tiene hallazgo registrado`); });
   const s0 = JSON.stringify(S.sellos || {});
   try {
@@ -8605,6 +8612,53 @@ t("S.104 (H-267) selección de equipo es autónoma: sin aceptar la propuesta, ca
 const REG_DIR = "parches/regresion-motores/";
 const REG_PROY = fs.readFileSync(REG_DIR + "regresion-motores.emp.json", "utf8");
 const REG_ESP = JSON.parse(fs.readFileSync(REG_DIR + "regresion-motores.esperado.json", "utf8"));
+t("S.126 (H-274) selección de equipo no tiene ningún vínculo con ductos, en ninguna dirección (decisión del dueño, 28-sep-2026): con todos los permisos, alargar el troncal no mueve la presión ni la huella de selección; no hay cruce, propuesta ni flecha entre los dos y la pantalla no habla de ductos", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.126";
+    Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.126" }; });
+    S.duct.segments = [{ ...G("defaultSegment")("SA-1", 2500), length: 20 }]; G("recompute")();
+    const antes = { esp: G("requisitoFam")("rtu").esp, huella: G("huellaMotor")("equip") };
+    S.duct.segments[0].length = 400; G("recompute")();
+    eq(G("requisitoFam")("rtu").esp, antes.esp, "la presión de selección no sigue a ductos:");
+    eq(G("huellaMotor")("equip"), antes.huella, "ni la huella de selección:");
+    const conDuct = (k) => /(^|>)duct(>|$)/.test(k) && /(^|>)equip(>|$)/.test(k);
+    eq(Object.keys(G("LINKS")).concat(Object.keys(G("PROPUESTAS"))).filter(conDuct).join(", "), "", "cruces o propuestas entre ductos y selección:");
+    if (G("ARISTAS").some((a) => (a.de === "duct" && a.a === "equip") || (a.de === "equip" && a.a === "duct"))) throw new Error("el diagrama une ductos y selección");
+    S.tab = "seleccion"; G("render")();
+    if (/Autorizar ductos|red de ductos|dato de ductos/i.test(w.document.getElementById("view").textContent)) throw new Error("la pantalla de selección sigue hablando de ductos");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+t("S.127 (H-274) la presión estática externa se captura en Selección: sin captura queda «pendiente» y no se supone; capturada, gobierna el requisito, su casilla está conectada y sobrevive a reabrir el proyecto", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.127"; G("recompute")();
+    eq(G("requisitoFam")("rtu").esp, 0, "sin captura no hay presión (no se supone):");
+    contiene(G("requisitoFam")("rtu").espNota, "pendiente", "y se dice:");
+    S.tab = "seleccion"; G("render")();
+    const casilla = w.document.querySelector('#view input[data-path="equip.espCaptura"]');
+    if (!casilla) throw new Error("la pestaña de selección no tiene la casilla de presión estática externa");
+    casilla.value = "0.8"; casilla.dispatchEvent(new w.Event("input", { bubbles: true }));
+    eq(S.equip.espCaptura, 0.8, "la casilla captura la presión:");
+    G("recompute")(); eq(G("requisitoFam")("rtu").esp, 0.8, "la capturada gobierna el requisito:");
+    G("importarRespaldo")(JSON.stringify(S)); G("recompute")();
+    eq(G("requisitoFam")("rtu").esp, 0.8, "y sobrevive a reabrir el proyecto:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+t("S.128 (H-274) la memoria de selección ya no imprime la preselección por zona leída en vivo de Carga térmica (la preselección es de carga y vive en su memoria)", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.128";
+    S.zones = [{ ...G("defaultZone")("Nave"), area: 400, height: 6, occ: 20, lights: 4000, equip: 8000 }]; G("recompute")();
+    /* Con zonas de selección (aceptadas como instantánea), para que la memoria salga completa y no en blanco. */
+    G("propAceptar")("load>equip"); G("recompute")();
+    if (!(G("zonasSel")().length > 0)) throw new Error("el caso no aísla lo que se quiere probar: la selección debe tener zonas");
+    const pdf = textoPdf(G("buildSeleccionPdf")());
+    contiene(pdf, "8. Presion estatica externa", "la memoria dice de dónde sale la presión:");
+    contiene(pdf, "pendiente de captura", "y sin captura la deja pendiente:");
+    if (/Preseleccion por zona/.test(pdf)) throw new Error("la memoria de selección sigue imprimiendo la preselección de carga en vivo");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {
   const guardado = JSON.stringify(S);
   try {

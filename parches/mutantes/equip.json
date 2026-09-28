@@ -30,5 +30,37 @@
   "buscar": "  equip: () => ({ zonas: zonasSel().map((z) => sinClaves(z, [\"id\", \"origen\", \"editada\"])), bldDiv: S.bldDiv,",
   "reemplazar": "  equip: () => ({ load: ENTRADAS.load(), zonas: zonasSel().map((z) => sinClaves(z, [\"id\", \"origen\", \"editada\"])), bldDiv: S.bldDiv,",
   "estado": "vigente"
+ },
+ {
+  "id": "equip.m5",
+  "que": "H-274: la selección vuelve a tomar la presión estática de la red de ductos en vivo (DUCT.path con 15 % de margen) en vez de la capturada en su pestaña",
+  "logica": true,
+  "buscar": "  const esp = espCapturada();\r\n  const espNota",
+  "reemplazar": "  const esp = espCapturada() || (DUCT && DUCT.path > 0 ? DUCT.path * 1.15 / 249.089 : 0);\r\n  const espNota",
+  "estado": "vigente"
+ },
+ {
+  "id": "equip.m6",
+  "que": "H-274: la huella de selección vuelve a anidar la de ductos (alargar un tramo diría «la captura cambió»)",
+  "logica": true,
+  "buscar": "sel: eSel(), esp: espCapturada() }),",
+  "reemplazar": "sel: eSel(), esp: espCapturada(), duct: ENTRADAS.duct() }),",
+  "estado": "vigente"
+ },
+ {
+  "id": "equip.m7",
+  "que": "H-274: sin captura se supone una presión (0.5 in.wg) en vez de dejarla pendiente",
+  "logica": true,
+  "buscar": "return e != null && e > 0 ? e : 0; }",
+  "reemplazar": "return e != null && e > 0 ? e : 0.5; }",
+  "estado": "vigente"
+ },
+ {
+  "id": "equip.m8",
+  "que": "H-274: la memoria de selección vuelve a imprimir la preselección por zona leída en vivo de Carga térmica",
+  "logica": false,
+  "buscar": "  pdfHeading(d, \"8. Presion estatica externa\");",
+  "reemplazar": "  pdfHeading(d, \"8. Presion estatica externa\"); pdfHeading(d, \"8b. Preseleccion por zona (motor de carga termica)\");",
+  "estado": "vigente"
  }
 ]
