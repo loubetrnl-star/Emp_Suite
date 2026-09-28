@@ -2580,7 +2580,7 @@ function buildFuegoPdf() {
     ["Ejemplos de la clase", R.r.ej],
     ["Densidad de diseno", `${n(R.r.dens, 2)} mm/min (${n(R.r.dens / 40.746, 3)} gpm/ft2)`],
     ["Area de operacion", `${n(R.areaDis, 0)} m2 (${n(R.areaDis * 10.764, 0)} ft2) · rango ${R.r.areaMin}-${R.r.areaMax} m2`],
-    ["Area protegida", `${n(R.area, 0)} m2 · ${R.hAlt > 0 ? `altura libre al rociador mas alto ${n(R.hAlt, 1)} m` : "altura libre al rociador mas alto pendiente de captura"}`],
+    ["Area protegida", `${n(R.area, 0)} m2${R.areaSinConf ? " (sin confirmar: tomada al abrir de Carga termica)" : ""} · ${R.hAlt > 0 ? `altura libre al rociador mas alto ${n(R.hAlt, 1)} m${R.altSinConf ? " (sin confirmar: la zona mas alta, tomada al abrir)" : ""}` : "altura libre al rociador mas alto pendiente de captura"}`],
     ["Rociador", R.roc.label],
     ["Tuberia", `${TUB_FUEGO[R.tub].label} · C = ${TUB_FUEGO[R.tub].C}`],
     ["Reserva de manguera", `${n(R.qManguera, 0)} L/min durante ${R.r.dur} min`],
@@ -11012,6 +11012,12 @@ function computeFuego(F) {
     if (!(Lmon > 0)) { faltan.push("longitud del montante"); faltanEn.push("riser length"); }
   }
   const bombaPendiente = faltan.length > 0;
+  /* H-264 (complemento): lo que un proyecto anterior tomó al abrir (herencia o área en vivo) sigue «sin confirmar» mientras el
+     valor sea el mismo; capturar otro valor quita la marca. */
+  const scF = F.sinConfirmar && typeof F.sinConfirmar === "object" ? F.sinConfirmar : {};
+  const altSinConf = hAlt > 0 && scF.altura != null && hAlt === num(scF.altura);
+  const areaSinConf = area > 0 && scF.area != null && area === num(scF.area);
+  if (altSinConf || areaSinConf) avisos.push({ lvl: "warn", msg: `Contra incendio: ${[areaSinConf ? `el área a proteger (${n(area, 0)} m²)` : "", altSinConf ? `la altura al rociador más alto (${n(hAlt, 2)} m)` : ""].filter(Boolean).join(" y ")} se tomó al abrir de Carga térmica (proyecto anterior a H-264) y está sin confirmar: confírmala o captura la tuya.` });
   /* 30 % de longitud equivalente por válvulas, tes y codos: en una red de
      rociadores con válvula de control y detector de flujo es conservador y es
      lo que se usa en prediseño. */
@@ -11054,10 +11060,10 @@ function computeFuego(F) {
   memo.push(`Clasificación: ${r.label}. Ejemplos de esta clase: ${r.ej}`);
   if (!sinArea) {
   memo.push(`Densidad de diseño ${n(r.dens, 2)} mm/min (${n(r.dens / 40.746, 3)} gpm/ft²) sobre un área de operación de ${n(areaDis, 0)} m² (${n(areaDis * 10.764, 0)} ft²), dentro del rango ${r.areaMin}–${r.areaMax} m² de la curva densidad-área de NFPA 13.`);
-  memo.push(`Cobertura máxima por rociador ${n(r.cobertura, 1)} m² y separación máxima ${n(r.espac, 1)} m: ${nDiseno} rociadores en el área de diseño y ${nTotal} en los ${n(area, 0)} m² protegidos, a una retícula de ${n(espaciamiento, 2)} m.`);
+  memo.push(`Cobertura máxima por rociador ${n(r.cobertura, 1)} m² y separación máxima ${n(r.espac, 1)} m: ${nDiseno} rociadores en el área de diseño y ${nTotal} en los ${n(area, 0)} m² protegidos${areaSinConf ? " (tomados al abrir de Carga térmica, proyecto anterior a H-264; sin confirmar)" : ""}, a una retícula de ${n(espaciamiento, 2)} m.`);
   memo.push(`Rociador ${roc.label}: para la densidad pedida descarga ${n(qRoc, 0)} L/min, que exige ${n(pRoc, 2)} bar en la boquilla; rige ${pRoc < roc.pMin ? "el mínimo de norma" : "la densidad"} → ${n(pDiseno, 2)} bar y ${n(qReal, 0)} L/min.`);
   memo.push(`Demanda: ${nDiseno} × ${n(qReal, 0)} L/min × ${sobre} de sobredescarga = ${n(qRociadores, 0)} L/min de rociadores, más ${n(qManguera, 0)} L/min de reserva de manguera = ${n(qTotal, 0)} L/min (${n(qTotal / 3.785, 0)} gpm).`);
-  memo.push(`Trayectoria más desfavorable: cabezal del área de diseño ${ram.nom} (${n(ram.V, 2)} m/s, ${Lram > 0 ? `${n(hfRam, 2)} m de pérdida en ${n(Lram, 0)} m` : "longitud pendiente de captura"}) y montante ${mon.nom} (${n(mon.V, 2)} m/s, ${Lmon > 0 ? `${n(hfMon, 2)} m en ${n(Lmon, 0)} m` : "longitud pendiente de captura"}), con 30 % de longitud equivalente por accesorios. ${hAlt > 0 ? `Estática ${n(estatica, 1)} m al rociador más alto (${n(hAlt, 2)} m capturados en esta pestaña + 1 m de la casa; H-205, H-264).` : "Estática pendiente: sin altura al rociador más alto capturada (H-210)."}`);
+  memo.push(`Trayectoria más desfavorable: cabezal del área de diseño ${ram.nom} (${n(ram.V, 2)} m/s, ${Lram > 0 ? `${n(hfRam, 2)} m de pérdida en ${n(Lram, 0)} m` : "longitud pendiente de captura"}) y montante ${mon.nom} (${n(mon.V, 2)} m/s, ${Lmon > 0 ? `${n(hfMon, 2)} m en ${n(Lmon, 0)} m` : "longitud pendiente de captura"}), con 30 % de longitud equivalente por accesorios. ${hAlt > 0 ? `Estática ${n(estatica, 1)} m al rociador más alto (${n(hAlt, 2)} m ${altSinConf ? "tomados al abrir de la zona más alta de Carga térmica (proyecto anterior a H-264), sin confirmar" : "capturados en esta pestaña"} + 1 m de la casa; H-205, H-264).` : "Estática pendiente: sin altura al rociador más alto capturada (H-210)."}`);
   memo.push("El cabezal se calcula con el caudal COMPLETO del área de diseño en toda su longitud. Es conservador a propósito: en la red real el caudal se va repartiendo entre rociadores y la pérdida es menor. El cálculo formal nodo por nodo lo resuelve exacto; este prediseño se queda del lado seguro para dimensionar bomba y toma.");
   if (bombaPendiente) memo.push(`Presión requerida en la base del montante: PENDIENTE de ${faltan.join(", ")}; sin esos datos no se supone (H-210).`);
   else memo.push(`Presión requerida en la base del montante: ${n(mcaTotal, 1)} m de columna de agua = ${n(barTotal, 2)} bar (${n(barTotal * 14.5, 0)} psi).`);
@@ -11076,6 +11082,7 @@ function computeFuego(F) {
     sobre, qRociadores, qManguera, qTotal, ram, mon, Lram, Lmon, hfRam, hfMon, estatica,
     mcaRoc, mcaTotal, barTotal, presFuente, alcanza, qBomba, presBomba, kWbomba, hpBomba, reserva,
     hAlt, bombaPendiente, faltan, faltanEn,   /* H-210 */
+    altSinConf, areaSinConf,   /* H-264 (complemento) */
     memo, avisos };   /* H-264: sin verArea (el área ya no se toma de carga térmica) */
 }
 
@@ -19168,7 +19175,7 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "6", clean: "3", equip: "2", duct: "4", vent: "4", quote: "24", valor: "1", kaizen: "1", elec: "9", hidro: "8", fuego: "5", aire: "5", civil: "6", soporte: "12" };
+const MOTOR_VER = { load: "6", clean: "3", equip: "2", duct: "4", vent: "4", quote: "24", valor: "1", kaizen: "1", elec: "9", hidro: "8", fuego: "6", aire: "5", civil: "6", soporte: "12" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
@@ -19198,7 +19205,8 @@ const MOTOR_CAMBIOS = {
   fuego: [{ ver: "2", rev: "2.9.16", que: "sin área no hay demanda, bomba ni reserva; área mínima de operación NFPA 13 con aviso" },
     { ver: "3", rev: "2.9.24", que: "H-205: la altura heredada de las zonas es la MÁXIMA (rociador más alto), no la media ponderada: estática y CDT al rociador más alto y aviso de rack con la altura real (proyecto fijo: 4.71 → 6 m, +1.29 m de CDT)" },
     { ver: "4", rev: "2.9.24", que: "H-264 (decisión del dueño, 27-sep-2026): contra incendio es autónomo: el área a proteger y la altura al rociador más alto se capturan en su pestaña; ya no se heredan de carga térmica ni se toma el área en vivo (cruce load>fuego retirado). Un proyecto guardado conserva los valores que ya tenía copiados; sin área capturada no hay demanda" },
-     { ver: "5", rev: "2.9.24", que: "H-210: sin altura al rociador más alto, cabezal o montante capturados la bomba no se dimensiona: presión en la base, carga y potencia quedan pendientes, con aviso de error y semáforo «incompleta»; la cotización la lleva a pendientes y no se ofrece a eléctrico. Sin 6 / 30 / 12 m ni 30 mca ocultos si el campo viene nulo. El caudal nominal y la reserva siguen" }],
+     { ver: "5", rev: "2.9.24", que: "H-210: sin altura al rociador más alto, cabezal o montante capturados la bomba no se dimensiona: presión en la base, carga y potencia quedan pendientes, con aviso de error y semáforo «incompleta»; la cotización la lleva a pendientes y no se ofrece a eléctrico. Sin 6 / 30 / 12 m ni 30 mca ocultos si el campo viene nulo. El caudal nominal y la reserva siguen" },
+     { ver: "6", rev: "2.9.24", que: "H-264 (complemento): un proyecto guardado antes de H-264 abre con la altura y el área que la herencia le daba al abrir (zona más alta y suma de zonas) o con el área que se tomaba en vivo (tomarArea con permiso load>fuego), marcadas «sin confirmar» en memoria, PDF y aviso hasta que se capture otro valor (antes abría con la media ponderada vieja, p. ej. 3.91 m en vez de 13 m, y la llamaba «capturada»)" }],
   aire: [{ ver: "2", rev: "2.9.16", que: "sin demanda no se cuentan unidades" },
     { ver: "3", rev: "2.9.24", que: "H-215: secador por ISO 7183:2007 Tabla 2 opción A1: capacidad = todo el caudal del compresor a las condiciones nominales (35 °C, 7 bar(e)), factor 1.0; fuera de A1 la corrección es del fabricante y queda pendiente con aviso (antes FAD requerido / (0.92 × 0.90) de memoria: proyecto fijo 2.46 → 2.43 m³/min)" },
     { ver: "4", rev: "2.9.24", que: "H-216: el tanque pulmón no se trunca a 5,000 L en silencio: si el teórico rebasa el mayor de la lista comercial se instalan varios de 5,000 L en paralelo (capacidad instalada ≥ teórica), con aviso y memoria veraz (13,103 L → 3 × 5,000 = 15,000 L; antes 5,000). Proyecto fijo: sin cambio (3,000 L)" },
@@ -24163,6 +24171,17 @@ function sanearEstado(d) {
   });
   /* H-262: ventilación ya no hereda; el registro de herencia de vent.area/height/occ de un proyecto anterior sobra y se retira
      (los valores capturados en s.vent se quedan como estaban). */
+  /* H-264 (complemento, fuego v6): un proyecto guardado antes de H-264 abre con la altura y el área que la herencia le daba al
+     abrirlo (la zona más alta, H-205, y la suma de zonas: lo que hacía sincronizarHerencia) o con el área que computeFuego tomaba
+     EN VIVO (tomarArea con el permiso load>fuego). Se copian una sola vez (her.* se retira aquí mismo y tomarArea se apaga) y quedan
+     marcados «sin confirmar» (patrón H-179) hasta que el usuario capture otro valor: misma cifra al abrir, sin llamarlos captura. */
+  if (s.fuego && typeof s.fuego === "object" && geo.hay) {
+    const hA = s.her["fuego.altura"], hS = s.her["fuego.area"], sc = {};
+    if (hA && hA.modo === "heredado") { s.fuego.altura = geo.alturaMax; sc.altura = geo.alturaMax; }
+    if (hS && hS.modo === "heredado") { s.fuego.area = Math.max(1, Math.round(geo.area)); sc.area = s.fuego.area; }
+    if (s.fuego.tomarArea === true && s.perms["load>fuego"]) { s.fuego.area = geo.area; sc.area = geo.area; s.fuego.tomarArea = false; }
+    if (Object.keys(sc).length) s.fuego.sinConfirmar = { ...(s.fuego.sinConfirmar && typeof s.fuego.sinConfirmar === "object" ? s.fuego.sinConfirmar : {}), ...sc };
+  }
   Object.keys(s.her).forEach((k) => { if (!HEREDA[k]) delete s.her[k]; });
   /* rev 2.9.22 · sitio: DP manual sólo numérico y con fuente de texto acotada */
   if (s.site && typeof s.site === "object") {

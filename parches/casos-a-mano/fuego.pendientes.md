@@ -1,4 +1,4 @@
-# Contra incendio (`fuego`, v5) · pendientes de la Fase 1 (rev 2.9.24)
+# Contra incendio (`fuego`, v6) · pendientes de la Fase 1 (rev 2.9.24)
 
 ## 0. Cierres de la Fase 2
 
@@ -8,6 +8,7 @@
 | H-264 (decisión del dueño, 27-sep-2026: contra incendio autónomo) | **Cerrado** (fuego v3 → v4, 27-sep-2026) | Contra incendio ya no hereda área ni altura de carga térmica (`HEREDA` queda vacío) ni toma el área en vivo (cruce `load>fuego` y `F.tomarArea` retirados): se capturan en su pestaña. La altura al rociador más alto sigue siendo la del rociador más alto (H-205), ahora capturada; sin captura se avisa. CM.fuego.1 usa el fixture con 700 m² y 6 m capturados; CM.fuego.2 captura 2,200 m² y 13 m. Mutante `fuego.m14` (sobre `HEREDA["fuego.altura"]`) sustituido por `fuego.m33` (el área vuelve a tomarse de las zonas). |
 | H-206 (bomba a 385,000 fijos + 9,500/m³ sin fuente) | **Cerrado** (quote v8 → v9, 25-sep-2026; fuego sin cambio de cifras) | `QUOTE_SEED.bombaFuego` y `cisternaM3` retirados. Bomba «Por cotizar» (LOTE, sección D) con gpm, L/min, presión, HP; reserva «Por cotizar» (M3) con L/min × min. Con red municipal que alcanza no hay ninguna de las dos (la red que NO alcanza sigue sin partida: H-211, pendiente). Prueba S.59; CM.fuego.1.v redefinida (0 partidas LOTE con importe), F5 vigente y F5b nueva; S.20 con las cifras nuevas (−1,697,446.66 directos). Sin mutante propio: la lógica es de quote (S.59 y R.1 la vigilan). |
 | H-210 (bomba dimensionada con altura, cabezal o montante en 0) | **Cerrado** (fuego v4 → v5, 27-sep-2026) | Sin altura al rociador más alto, cabezal o montante capturados la bomba no se dimensiona: presión en la base, carga y potencia «pendiente», aviso err y semáforo «incompleta»; la cotización la lleva a pendientes (ES/EN) y no se ofrece a eléctrico; salen los 6 / 30 / 12 m y 30 mca ocultos de un campo nulo. `CM.fuego.6.F10–.F12` vigentes; salen `CM.fuego.6.m/.n/.r/.s`, que documentaban 16.3 m y 15 HP. Prueba S.105 |
+| H-264 complemento (migración de proyectos anteriores) | **Cerrado** (fuego v5 → v6, 28-sep-2026) | La altura y el área heredadas (o el área que se tomaba en vivo con tomarArea y load>fuego) se copian una vez al abrir con la cifra que daba la herencia (zona más alta, suma de zonas) y quedan «sin confirmar». El fixture de regresión guarda otra vez 4.71 m heredados y abre con 6 m. Prueba S.106 |
 
 Hoja: `fuego.csv` (187 filas: 180 vigentes, 7 fase2) · cálculo: `fuego.calc.mjs` · módulo: `pruebas-motores/fuego.mjs` ·
 mutantes: `parches/mutantes/fuego.json`. Numeración de líneas: `master` en `2185dcd`.

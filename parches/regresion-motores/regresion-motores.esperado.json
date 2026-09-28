@@ -1,6 +1,6 @@
 {
  "generadoCon": "2.9.24",
- "fecha": "2026-09-27",
+ "fecha": "2026-09-28",
  "motores": {
   "load": {
    "ver": "6",
@@ -421,7 +421,7 @@
    }
   },
   "fuego": {
-   "ver": "5",
+   "ver": "6",
    "cifras": {
     "qTotal": 2302.5379999999996,
     "nTotal": 58,

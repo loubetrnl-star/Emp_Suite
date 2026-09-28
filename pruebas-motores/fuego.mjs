@@ -46,8 +46,9 @@ export default async function ({ t, G, S, REG_PROY, CM }) {
   };
 
   caso("CM.fuego.1 (NFPA 13-2016 Tabla 19.3.3.1.1 curva densidad-área y Tabla 10.2.4.2.1; criterio de la casa 1.15/30 %/+1 m; H-205) proyecto de regresión: ordinario 2, 700 m² y 6 m (MÁXIMA) HEREDADOS de 4 zonas, 30+12 m, K80, cisterna", "CM.fuego.1", () => {
-    /* El mismo arranque que R.1. H-264: contra incendio ya no hereda; el fixture CAPTURA 700 m² y 6 m, los valores que la
-       herencia le imponía al abrir (suma de zonas y, desde H-205, la altura máxima; antes el promedio 4.71 m). */
+    /* El mismo arranque que R.1. H-264: contra incendio ya no hereda. El fixture guarda, como lo dejó e0e1cf4, 700 m² y la altura
+       heredada vieja (4.71 m, el promedio) con su registro her.*: al abrirlo, la migración del complemento de H-264 (fuego v6) le da
+       lo que la herencia le daba (suma de zonas y, desde H-205, la altura máxima: 6 m), marcado «sin confirmar». */
     G("importarRespaldo")(REG_PROY); S.tab = "tablero"; G("KZ_CACHE").key = null; G("VZ_CACHE").key = null; G("recompute")();
     if (!(S.fuego.area === 700 && S.fuego.altura === 6)) throw new Error(`el fixture no trae 700 m² / 6 m capturados (H-205, H-264): ${S.fuego.area} / ${S.fuego.altura}`);
   });

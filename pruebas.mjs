@@ -7757,6 +7757,34 @@ t("S.105 (H-210) contra incendio sin altura al rociador más alto, cabezal o mon
     contiene(G("QUOTE").porCotizar.find((p) => p.clave === "bombaFuego").desc, "39.1 m", "bomba con todo capturado:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
+t("S.106 (H-264) un proyecto guardado antes de H-264 abre con la altura y el área que le daba la herencia (zona más alta y suma de zonas) o que tomaba en vivo (tomarArea con permiso load>fuego), marcadas «sin confirmar», no como capturadas (misma cifra al abrir; regla 8)", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    const viejo = { ...G("defaultState")(), meta: { name: "S.106" },
+      zones: [{ ...G("defaultZone")("Oficinas"), area: 2000, height: 3 }, { ...G("defaultZone")("Almacén"), area: 200, height: 13 }],
+      fuego: { ...G("defaultFuego")(), riesgo: "ord2", area: 2200, altura: 3.91, Lramal: 30, Lmontante: 12 },
+      her: { "fuego.area": { modo: "heredado", ts: 1, valor: 2200, origen: "load" }, "fuego.altura": { modo: "heredado", ts: 1, valor: 3.91, origen: "load" } } };
+    G("importarRespaldo")(JSON.stringify(viejo)); G("recompute")();
+    const F = () => G("FUEGO"), tray = () => F().memo.find((m) => /^Trayectoria/.test(m)) || "";
+    eq(S.fuego.altura, 13, "la altura que la herencia le daba al abrir (la zona más alta, H-205):");
+    eq(S.fuego.area, 2200, "el área que la herencia le daba (suma de zonas):");
+    eq(F().estatica, 14, "estática con la zona más alta + 1 m:");
+    if (!F().avisos.some((a) => /rack/.test(a.msg))) throw new Error("con 13 m debe salir el aviso de almacenamiento en rack");
+    if (/capturados en esta pestaña/.test(tray())) throw new Error(`la altura migrada no es captura del usuario: …${tray().slice(-150)}`);
+    contiene(tray(), "sin confirmar", "la memoria dice que la altura se tomó al abrir, sin confirmar:");
+    if (!F().avisos.some((a) => a.lvl === "warn" && /sin confirmar/.test(a.msg))) throw new Error("falta el aviso para confirmar lo tomado al abrir");
+    eq(S.her["fuego.altura"], undefined, "el registro de herencia se retira:");
+    S.fuego.altura = 12; G("recompute")();
+    if (/sin confirmar/.test(tray())) throw new Error("con otra altura capturada ya no está «sin confirmar»");
+    /* U2: con tomarArea y el permiso load>fuego se tomaba EN VIVO el área de las zonas: abre con esa área. */
+    const vivo = { ...G("defaultState")(), meta: { name: "S.106 b" }, perms: { "load>fuego": { ts: 1, via: "S.106" } },
+      zones: [{ ...G("defaultZone")("Nave"), area: 800, height: 6 }],
+      fuego: { ...G("defaultFuego")(), riesgo: "ord2", area: 600, altura: 6, Lramal: 30, Lmontante: 12, tomarArea: true } };
+    G("importarRespaldo")(JSON.stringify(vivo)); G("recompute")();
+    eq(S.fuego.area, 800, "el área que se tomaba en vivo de las zonas (tomarArea + load>fuego):");
+    eq(F().nTotal, Math.ceil(800 / F().r.cobertura), "rociadores con esa área:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
 t("S.101 (H-265) obra civil es autónoma: sus áreas de obra y sus cuartos clasificados se capturan en su pestaña; no toma las zonas de carga térmica ni los cuartos limpios; un proyecto anterior los copia una vez al abrirlo, con las mismas cifras (decisión del dueño, 27-sep-2026)", () => {
   const guardado = JSON.stringify(S);
   try {

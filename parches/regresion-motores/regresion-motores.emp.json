@@ -877,7 +877,7 @@
  "fuego": {
   "riesgo": "ord2",
   "area": 700,
-  "altura": 6,
+  "altura": 4.71,
   "rociador": "k80",
   "material": "acero_neg",
   "areaDiseno": 0,
