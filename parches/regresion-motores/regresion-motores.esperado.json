@@ -1,6 +1,6 @@
 {
  "generadoCon": "2.9.24",
- "fecha": "2026-09-27",
+ "fecha": "2026-09-28",
  "motores": {
   "load": {
    "ver": "6",
@@ -516,7 +516,7 @@
    }
   },
   "soporte": {
-   "ver": "12",
+   "ver": "13",
    "cifras": {
     "n": 88,
     "total": 336216,

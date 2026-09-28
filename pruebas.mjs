@@ -7151,7 +7151,8 @@ t("S.77 (H-228) termoplástico por subtipo, IPC 2009 T308.5 (MCP, secundaria): C
     S.zones[0].area = 200; S.zones[0].height = 6;
     S.hidro = { ...G("defaultHidro")(), material: "cpvc", muebles, tramos: tramos() };
     S.fuego = G("defaultFuego")(); S.aire = G("defaultAire")(); S.duct.segments = []; S.quote.items = [];
-    S.soporte = { ...G("defaultSoporte")(), alturaColgadoM: 0.5, sismoSDS: 1.0, sismoFuente: "CFE MDOC-Sismo 2015, sitio Tijuana", estructuraTipo: "losa_concreto", estructuraFc: 250 };
+    /* H-266 (U5): con arriostramiento sísmico, sin la altura de la estructura el anclaje va «Por cotizar» (z/h = 0 no es dato): se captura. */
+    S.soporte = { ...G("defaultSoporte")(), alturaColgadoM: 0.5, sismoSDS: 1.0, sismoFuente: "CFE MDOC-Sismo 2015, sitio Tijuana", estructuraTipo: "losa_concreto", estructuraFc: 250, alturaEstructura: 6 };
     aceptarSoporte();   /* H-266 */
     let R = G("SOPORTE"), h = hidroDe();
     if (!h || h.fam !== "plastico") throw new Error("el caso no aísla lo que se quiere probar: debe agrupar como termoplástico");
@@ -7892,6 +7893,43 @@ t("S.130 (H-266) un proyecto a mano con el sí/no de soportería guardado como t
     G("importarRespaldo")(JSON.stringify(p)); G("recompute")();
     eq(S.soporte.basesEquipo, 2, "a mano con instantánea vieja: toma las 2 bases que contaba (antes 0):");
     eq(G("SOPORTE").nEquipos, 2, "y las cuenta:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+/* ===== S.131 (H-266) sin altura de la estructura el anclaje no se cotiza como calculado (z/h = 0 no es dato) ===== */
+t("S.131 (H-266) con arriostramiento sísmico y sin la altura de la estructura capturada el anclaje va «Por cotizar» con su motivo (aviso, memoria y cotización): z/h = 0 no es dato del edificio aunque haya SDS con fuente y losa con f'c; con la altura, o sin sismo, se cotiza (revisión adversarial U5; regla 6)", () => {
+  const guardado = JSON.stringify(S);
+  const anclas = () => (G("SOPORTE").part || []).filter((p) => /^Anclaje/.test(p.desc));
+  const pc = () => (G("QUOTE").porCotizar || []).filter((p) => p.mot === "soporte" && p.clave === "anclajeSop");
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.131";
+    Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.131" }; });
+    const muebles = [{ id: "wc_flux", cant: 4 }, { id: "ming_flux", cant: 2 }, { id: "lavabo", cant: 4 }, { id: "fregadero", cant: 1 }, { id: "manguera", cant: 2 }];
+    S.hidro = { ...G("defaultHidro")(), material: "acero", muebles, tramos: [{ ...G("defaultTramoAgua")("AF-GENERAL"), um: 72, L: 25, alt: 3 }, { ...G("defaultTramoAgua")("AF-RAMAL"), um: 20, L: 18, alt: 3 }] };
+    S.fuego = G("defaultFuego")(); S.aire = G("defaultAire")(); S.duct.segments = []; S.quote.items = [];
+    S.soporte = { ...G("defaultSoporte")(), alturaColgadoM: 0.5, alturaTrabajo: 5, mesesElevacion: 1,
+      sismoSDS: 1.2, sismoFuente: "CFE MDOC-Sismo 2015, sitio Tijuana", estructuraTipo: "losa_concreto", estructuraFc: 250 };
+    aceptarSoporte();
+    let R = G("SOPORTE");
+    if (!(R.nSoportes > 0 && R.anclajesPza.some((a) => a.cnt > 0))) throw new Error("el caso no aísla lo que se quiere probar: debe haber soportes con ancla");
+    eq(R.hEstructura, 0, "la altura de la estructura no está capturada:");
+    eq(R.sdsCapturado && R.estructuraCapturada, true, "SDS con fuente y losa con f'c sí están capturados:");
+    const nAnclas = R.anclajesPza.reduce((a, x) => a + x.cnt, 0);
+    eq(R.anclajePendiente, true, "sin altura de la estructura el anclaje no se cotiza como calculado (z/h = 0 supuesto):");
+    eq(anclas().length, 0, "sin partida de anclaje con importe:");
+    eq(pc().reduce((a, p) => a + p.qty, 0), nAnclas, "las anclas van «Por cotizar» con sus piezas:");
+    if (!pc().every((p) => /altura de la estructura/.test(p.desc) && /height/.test(p.descEn))) throw new Error("la partida Por cotizar debe decir que falta la altura de la estructura (ES/EN): " + JSON.stringify(pc().map((p) => p.desc)));
+    if (pc().some((p) => /SDS con fuente, tipo de estructura/.test(p.desc))) throw new Error("con SDS y estructura capturados la partida no debe pedirlos: " + pc()[0].desc);
+    if (!R.avisos.some((a) => /Anclaje «Por cotizar»/.test(a.msg) && /altura de la estructura/.test(a.msg))) throw new Error("el aviso de anclaje debe decir que falta la altura de la estructura");
+    const mFp = R.memo.find((m) => /Fuerza sísmica/.test(m)) || "";
+    if (!/z\/h 0 DE REFERENCIA/.test(mFp) || !/sin capturar/.test(mFp)) throw new Error("la memoria no debe presentar z/h = 0 como dato: " + mFp.slice(0, 260));
+    /* Con la altura capturada el anclaje se calcula y se cotiza. */
+    S.soporte.alturaEstructura = 8; G("recompute")(); R = G("SOPORTE");
+    eq(R.anclajePendiente, false, "con la altura capturada:"); eq(anclas().reduce((a, p) => a + p.qty, 0), nAnclas, "se cotizan las anclas:"); eq(pc().length, 0, "ya no está Por cotizar:");
+    if (!R.memo.some((m) => /Fuerza sísmica/.test(m) && /z\/h 1/.test(m) && !/DE REFERENCIA \(altura/.test(m))) throw new Error("con 8 m la memoria dice z/h 1 como dato capturado");
+    /* Sin arriostramiento sísmico la altura no entra al anclaje (Fp = 0): se cotiza sin ella. */
+    S.soporte.alturaEstructura = 0; S.soporte.sismico = false; G("recompute")(); R = G("SOPORTE");
+    eq(R.anclajePendiente, false, "sin sismo la altura no hace falta para el anclaje:"); eq(anclas().length, 1, "se cotiza:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
