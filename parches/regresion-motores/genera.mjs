@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 /* Regresión por motor: construye un proyecto fijo, lo guarda como fixture (formato de guardado de la suite) y escribe las
    cifras esperadas de cada motor junto con la versión del motor con la que se generaron.
-   Uso: node parches/regresion-motores/genera.mjs [index.html] [motor ... | todos]
+   Uso: node parches/regresion-motores/genera.mjs [index.html] [motor ... | todos] [--fixture]
+   U6 (28-sep-2026): el fixture versionado es un proyecto GUARDADO CON VERSIONES ANTERIORES (herencia, conteo en vivo, sin áreas
+   propias de civil…): al abrirlo, R.1 prueba las migraciones «misma cifra al abrir». Por eso ya no se reescribe: sólo con --fixture
+   (y entonces se revisa a mano que siga siendo de formato anterior). Sin la bandera sólo se escribe el esperado.
    Regla: el esperado de un motor sólo se regenera cuando SUBIÓ su versión en MOTOR_VER (con hallazgo en MOTOR_CAMBIOS),
    o si se pasa el motor como argumento a propósito. Si las cifras cambian con la misma versión, avisa y no regenera. */
 import fs from "node:fs";
@@ -14,7 +17,8 @@ const require = createRequire(path.join(RAIZ, "pruebas.mjs"));
 const { JSDOM } = require("jsdom");
 const args = process.argv.slice(2);
 const file = args[0] && args[0].endsWith(".html") ? args[0] : path.join(RAIZ, "index.html");
-const solo = args.filter((a) => !a.endsWith(".html"));
+const escribirFixture = args.includes("--fixture");
+const solo = args.filter((a) => !a.endsWith(".html") && a !== "--fixture");
 const dom = new JSDOM(fs.readFileSync(file, "utf8"), { runScripts: "dangerously", url: "https://emp.local/", pretendToBeVisual: true });
 const w = dom.window; await new Promise((r) => setTimeout(r, 1500));
 const G = (e) => w.eval(e);
@@ -71,7 +75,8 @@ w.eval(String.raw`
 const MV = G("MOTOR_VER"), REV = G("REV");
 const cifras = {}; Object.keys(MV).forEach((id) => { cifras[id] = G(`cifrasMotor(${JSON.stringify(id)})`); });
 const proyecto = JSON.parse(G(`JSON.stringify({ v: FORMATO_GUARDADO, ...S })`));
-fs.writeFileSync(path.join(AQUI, "regresion-motores.emp.json"), JSON.stringify(proyecto, null, 1));
+if (escribirFixture) fs.writeFileSync(path.join(AQUI, "regresion-motores.emp.json"), JSON.stringify(proyecto, null, 1));
+else console.log("fixture sin tocar (proyecto de formato anterior: prueba las migraciones; --fixture para reescribirlo)");
 const esperadoPath = path.join(AQUI, "regresion-motores.esperado.json");
 let previo = null; try { previo = JSON.parse(fs.readFileSync(esperadoPath, "utf8")); } catch { /* primera vez */ }
 const esperado = { generadoCon: REV, fecha: new Date().toISOString().slice(0, 10), motores: {} };
@@ -83,5 +88,5 @@ Object.keys(MV).forEach((id) => {
   if (regenera) console.log(`${id}: esperado v${MV[id]}${p ? ` (antes v${p.ver})` : " (nuevo)"}`);
 });
 fs.writeFileSync(esperadoPath, JSON.stringify(esperado, null, 1));
-console.log("fixture y esperado escritos en", AQUI);
+console.log(escribirFixture ? "fixture y esperado escritos en" : "esperado escrito en", AQUI);
 process.exit(0);
