@@ -4881,13 +4881,6 @@ const QUOTE_SEED = {
   /* H-196 (quote v8) y H-206 (quote v9), rev 2.9.24: cisterna (9,500 MXN/m³), bomba de agua (14,500 MXN/HP) y bomba contra
      incendio (385,000 MXN fijos) no tenían fuente ni fecha: se retiraron; esas partidas van «Por cotizar» con su volumen,
      capacidad y potencia declarados. */
-  /* Sección E · aire comprimido. Lista de referencia de la casa. */
-  compresorMXN: 0,        // 0 = usar el precio de lista del modelo seleccionado
-  tanqueL: 195,           // MXN por litro de tanque pulmón instalado
-  secadorM3min: 0,        // 0 = usar el precio por m³/min del tipo de secador
-  filtroAire: 38500,      // MXN por etapa de filtración instalada
-  aireM: 0,               // 0 = usar el precio por metro del material elegido
-  puntoUso: 4850,         // bajada con filtro-regulador, válvula y acople rápido
   /* H-17 · Flete, fianzas y financiamiento: en obra industrial son puntos
      completos y no estaban en ningún lado. */
   freight: 0.025,         // flete, maniobras y seguro de tránsito, % del directo
@@ -7032,6 +7025,7 @@ function defaultAire() {
     horas: 3500, tarifaKWh: 2.85,
     redundancia: "ninguna",   // ninguna | n1
     consumos: [],
+    precios: { ...AIRE_PRECIO_SEED },   /* H-296: precios de su cotización (lista de referencia de la casa sin fuente) */
   };
 }
 function defaultConsumo(nombre = "Consumo") {
@@ -7045,6 +7039,49 @@ function defaultConsumo(nombre = "Consumo") {
    R = 287.05 J/(kg·K) y p ABSOLUTA. Es el corazón del cálculo de la red. */
 const rhoAire = (barMan, tC, pAtmKpa) => ((barMan * 100 + (pAtmKpa || 101.325)) * 1000) / (287.05 * (tC + 273.15));
 
+/* H-296 (decisión del dueño, 29-sep-2026: cada motor saca su propia cotización de sus propios resultados). Los precios de la central de
+   aire son de Aire comprimido: copia en este motor de la lista de referencia de la casa (antes QUOTE_SEED, sección E; sin fuente, la
+   cotización los marca SEMILLA · SIN FUENTE). 0 en compresor, secador y red = usar el precio de lista del modelo, del tipo de secador
+   o del material. Se capturan en la pestaña de Aire comprimido (S.aire.precios). */
+const AIRE_PRECIO_SEED = { compresorMXN: 0, tanqueL: 195, secadorM3min: 0, filtroAire: 38500, aireM: 0, puntoUso: 4850 };
+/* H-296: la cotización de Aire comprimido sale sólo de sus resultados (R) y de sus precios (P): los mismos renglones e importes que
+   antes armaba computeQuote leyendo AIRE en vivo. La cotización global sólo los junta. */
+function cotizacionAire(R, P) {
+  const aux = [], pendientes = [], porCotizar = [];
+  if (!(R && R.fadRequerido > 0)) return { aux, pendientes, porCotizar };
+  const p = P && typeof P === "object" ? P : {};
+    const puC = num(p.compresorMXN, 0) > 0 ? num(p.compresorMXN) : R.principal.mxn;
+    const tipoEn = R.principal.tipo === "tornillo lubricado" ? "lubricated screw" : R.principal.tipo;
+    aux.push({ desc: `Compresor de ${R.principal.tipo} ${R.principal.hp} HP · ${n(R.principal.fadReal, 0)} L/min a ${R.pDescarga.toFixed(1)} bar${R.principal.vsd ? " con velocidad variable" : ""}${R.redund ? " · incluye unidad de relevo N+1" : ""}`,
+      descEn: `${tipoEn} compressor ${R.principal.hp} HP · ${n(R.principal.fadReal, 0)} L/min at ${R.pDescarga.toFixed(1)} bar${R.principal.vsd ? " with variable speed" : ""}${R.redund ? " · includes N+1 standby unit" : ""}`,
+      qty: R.totalUnidades, unit: puC, total: puC * R.totalUnidades, sec: "E", un: "PIEZA", mot: "aire" });
+    const puT = num(p.tanqueL, AIRE_PRECIO_SEED.tanqueL);
+    aux.push({ desc: R.nTanques > 1 ? `${R.nTanques} tanques pulmón de ${n(R.tanqueUnit, 0)} L en paralelo (${n(R.tanque, 0)} L) con válvula de seguridad, manómetro y purga automática` : `Tanque pulmón de ${R.tanque} L con válvula de seguridad, manómetro y purga automática`,
+      descEn: R.nTanques > 1 ? `${R.nTanques} air receiver tanks of ${n(R.tanqueUnit, 0)} L in parallel (${n(R.tanque, 0)} L) with safety valve, gauge and automatic drain` : `${R.tanque} L air receiver tank with safety valve, gauge and automatic drain`,
+      qty: R.tanque, unit: puT, total: puT * R.tanque, sec: "E", un: "LITRO", mot: "aire" });
+    const m3min = R.capSecador / 1000;
+    const puS = num(p.secadorM3min, 0) > 0 ? num(p.secadorM3min) : R.sec.mxnPorM3min;
+    aux.push({ desc: `${R.sec.label} de ${n(m3min, 2)} m³/min · punto de rocío ${R.sec.pdp} °C (capacidad nominal ISO 7183 A1: 35 °C, 7 bar(e)${R.secadorPendiente ? `; corrección a ${R.tAmb} °C y ${R.pDescarga.toFixed(1)} bar pendiente del fabricante` : ""})`,
+      descEn: `${R.sec.labelEn} of ${n(m3min, 2)} m³/min · dew point ${R.sec.pdp} °C (ISO 7183 A1 rated capacity: 35 °C, 7 bar(g)${R.secadorPendiente ? `; correction to ${R.tAmb} °C and ${R.pDescarga.toFixed(1)} bar pending from the manufacturer` : ""})`,
+      qty: +m3min.toFixed(2), unit: puS, total: puS * m3min, sec: "E", un: "M3/MIN", mot: "aire" });
+    const nF = R.trenFiltros.length, puF = num(p.filtroAire, AIRE_PRECIO_SEED.filtroAire);
+    if (nF > 0) aux.push({ desc: `Tren de filtración clase ISO ${R.cls.id}: ${R.trenFiltros.map((f) => f.label).join(" + ")}`,
+      descEn: `ISO class ${R.cls.id} filter train: ${R.trenFiltros.map((f) => f.labelEn).join(" + ")}`,
+      qty: nF, unit: puF, total: puF * nF, sec: "E", un: "ETAPA", mot: "aire" });
+    const mRed = R.tramos.reduce((a, t) => a + t.L, 0);
+    const puR = num(p.aireM, 0) > 0 ? num(p.aireM) : R.mat.mxnM;
+    if (mRed > 0) aux.push({ desc: `Red de aire comprimido en ${R.mat.label.toLowerCase()}: troncal ${R.tramos[0].nom} y ramales ${R.tramos[1].nom}, instalada y probada${R.diPendiente ? " (diámetros indicativos: DI del fabricante pendiente)" : ""}`,
+      descEn: `Compressed air piping in ${R.mat.labelEn.toLowerCase()}: ${R.tramos[0].nom} main and ${R.tramos[1].nom} branches, installed and tested${R.diPendiente ? " (indicative diameters: manufacturer's ID pending)" : ""}`,
+      qty: mRed, unit: puR, total: puR * mRed, sec: "E", un: "ML", mot: "aire" });
+    if (R.nPuntos > 0) {
+      const puP = num(p.puntoUso, AIRE_PRECIO_SEED.puntoUso);
+      aux.push({ desc: `Bajadas a punto de uso con filtro-regulador, válvula de corte y acople rápido (${R.nPuntos} puntos del levantamiento)`,
+        descEn: `Point-of-use drops with filter-regulator, shutoff valve and quick coupler (${R.nPuntos} points from the survey)`,
+        qty: R.nPuntos, unit: puP, total: puP * R.nPuntos, sec: "E", un: "PIEZA", mot: "aire" });
+    }
+
+  return { aux, pendientes, porCotizar };
+}
 function computeAire(A) {
   const avisos = [], memo = [];
   const cls = ISO8573.find((c) => c.id === A.clase) || ISO8573[2];
@@ -7230,11 +7267,13 @@ function computeAire(A) {
     avisos.push({ lvl: "warn", msg: `${mat.label}: el óxido interior contamina el aire y no es compatible con clase de partícula ${cls.part}.` });
   if (tAmb > 40) avisos.push({ lvl: "warn", msg: `Aire de succión a ${tAmb} °C: por cada 3 °C de más el compresor pierde ~1 % de caudal. Conviene tomar aire del exterior sombreado y ventilar el cuarto de máquinas.` });
 
-  return { cls, lista, nPuntos, pico, medio, simul, simulAuto, demandaProceso, fugasLmin, conFugas,
+  const R = { cls, lista, nPuntos, pico, medio, simul, simulAuto, demandaProceso, fugasLmin, conFugas,
     reservaLmin, purgaLmin, fadRequerido, pUso, dPred, dPfiltros, pDescarga, corrP, exento,
     principal, cubre, nUnidades, totalUnidades, redund, tanque, tanqueUnit, nTanques, vTeorico, arr, dPt,
     sec, capSecador, fT, fP, fadCompresor, enA1, secadorPendiente, trenFiltros, mat, diFuente: DI.fuente, diPendiente, rho, tramos, dPtotal, Leq,
     kWoper, kWhAno, mxnAno, mxnFugas, horas, tarifa, tAmb, avisos, memo };
+  R.cot = cotizacionAire(R, A.precios);   /* H-296: su propia cotización */
+  return R;
 }
 
 
@@ -8954,36 +8993,10 @@ function computeQuote() {
      temperatura y presión, cada etapa del tren de filtración y los metros de
      red por material. Las bajadas a punto de uso se cuentan de los consumos
      capturados, no se estiman. */
-  if (verAire && AIRE && AIRE.fadRequerido > 0) {
-    const puC = num(q.compresorMXN, 0) > 0 ? num(q.compresorMXN) : AIRE.principal.mxn;
-    const tipoEn = AIRE.principal.tipo === "tornillo lubricado" ? "lubricated screw" : AIRE.principal.tipo;
-    aux.push({ desc: `Compresor de ${AIRE.principal.tipo} ${AIRE.principal.hp} HP · ${n(AIRE.principal.fadReal, 0)} L/min a ${AIRE.pDescarga.toFixed(1)} bar${AIRE.principal.vsd ? " con velocidad variable" : ""}${AIRE.redund ? " · incluye unidad de relevo N+1" : ""}`,
-      descEn: `${tipoEn} compressor ${AIRE.principal.hp} HP · ${n(AIRE.principal.fadReal, 0)} L/min at ${AIRE.pDescarga.toFixed(1)} bar${AIRE.principal.vsd ? " with variable speed" : ""}${AIRE.redund ? " · includes N+1 standby unit" : ""}`,
-      qty: AIRE.totalUnidades, unit: puC, total: puC * AIRE.totalUnidades, sec: "E", un: "PIEZA", mot: "aire" });
-    const puT = num(q.tanqueL, QUOTE_SEED.tanqueL);
-    aux.push({ desc: AIRE.nTanques > 1 ? `${AIRE.nTanques} tanques pulmón de ${n(AIRE.tanqueUnit, 0)} L en paralelo (${n(AIRE.tanque, 0)} L) con válvula de seguridad, manómetro y purga automática` : `Tanque pulmón de ${AIRE.tanque} L con válvula de seguridad, manómetro y purga automática`,
-      descEn: AIRE.nTanques > 1 ? `${AIRE.nTanques} air receiver tanks of ${n(AIRE.tanqueUnit, 0)} L in parallel (${n(AIRE.tanque, 0)} L) with safety valve, gauge and automatic drain` : `${AIRE.tanque} L air receiver tank with safety valve, gauge and automatic drain`,
-      qty: AIRE.tanque, unit: puT, total: puT * AIRE.tanque, sec: "E", un: "LITRO", mot: "aire" });
-    const m3min = AIRE.capSecador / 1000;
-    const puS = num(q.secadorM3min, 0) > 0 ? num(q.secadorM3min) : AIRE.sec.mxnPorM3min;
-    aux.push({ desc: `${AIRE.sec.label} de ${n(m3min, 2)} m³/min · punto de rocío ${AIRE.sec.pdp} °C (capacidad nominal ISO 7183 A1: 35 °C, 7 bar(e)${AIRE.secadorPendiente ? `; corrección a ${AIRE.tAmb} °C y ${AIRE.pDescarga.toFixed(1)} bar pendiente del fabricante` : ""})`,
-      descEn: `${AIRE.sec.labelEn} of ${n(m3min, 2)} m³/min · dew point ${AIRE.sec.pdp} °C (ISO 7183 A1 rated capacity: 35 °C, 7 bar(g)${AIRE.secadorPendiente ? `; correction to ${AIRE.tAmb} °C and ${AIRE.pDescarga.toFixed(1)} bar pending from the manufacturer` : ""})`,
-      qty: +m3min.toFixed(2), unit: puS, total: puS * m3min, sec: "E", un: "M3/MIN", mot: "aire" });
-    const nF = AIRE.trenFiltros.length, puF = num(q.filtroAire, QUOTE_SEED.filtroAire);
-    if (nF > 0) aux.push({ desc: `Tren de filtración clase ISO ${AIRE.cls.id}: ${AIRE.trenFiltros.map((f) => f.label).join(" + ")}`,
-      descEn: `ISO class ${AIRE.cls.id} filter train: ${AIRE.trenFiltros.map((f) => f.labelEn).join(" + ")}`,
-      qty: nF, unit: puF, total: puF * nF, sec: "E", un: "ETAPA", mot: "aire" });
-    const mRed = AIRE.tramos.reduce((a, t) => a + t.L, 0);
-    const puR = num(q.aireM, 0) > 0 ? num(q.aireM) : AIRE.mat.mxnM;
-    if (mRed > 0) aux.push({ desc: `Red de aire comprimido en ${AIRE.mat.label.toLowerCase()}: troncal ${AIRE.tramos[0].nom} y ramales ${AIRE.tramos[1].nom}, instalada y probada${AIRE.diPendiente ? " (diámetros indicativos: DI del fabricante pendiente)" : ""}`,
-      descEn: `Compressed air piping in ${AIRE.mat.labelEn.toLowerCase()}: ${AIRE.tramos[0].nom} main and ${AIRE.tramos[1].nom} branches, installed and tested${AIRE.diPendiente ? " (indicative diameters: manufacturer's ID pending)" : ""}`,
-      qty: mRed, unit: puR, total: puR * mRed, sec: "E", un: "ML", mot: "aire" });
-    if (AIRE.nPuntos > 0) {
-      const puP = num(q.puntoUso, QUOTE_SEED.puntoUso);
-      aux.push({ desc: `Bajadas a punto de uso con filtro-regulador, válvula de corte y acople rápido (${AIRE.nPuntos} puntos del levantamiento)`,
-        descEn: `Point-of-use drops with filter-regulator, shutoff valve and quick coupler (${AIRE.nPuntos} points from the survey)`,
-        qty: AIRE.nPuntos, unit: puP, total: puP * AIRE.nPuntos, sec: "E", un: "PIEZA", mot: "aire" });
-    }
+  /* H-296 (decisión del dueño, 29-sep-2026): la cotización de Aire comprimido la arma su motor con sus resultados y sus precios
+     (AIRE.cot, cotizacionAire); aquí sólo se juntan sus renglones tal cual (copias), sin recalcular nada. */
+  if (verAire && AIRE && AIRE.fadRequerido > 0 && AIRE.cot) {
+    aux.push(...AIRE.cot.aux.map((x) => ({ ...x }))); pendientes.push(...AIRE.cot.pendientes.map((x) => ({ ...x }))); porCotizar.push(...AIRE.cot.porCotizar.map((x) => ({ ...x })));
   }
   if (AIRE && AIRE.fadRequerido > 0 && !verAire) faltan.push("la central de aire comprimido");
   if (ELEC && ELEC.kVAdemanda > 0 && !verElec) faltan.push("la instalación eléctrica");
@@ -19682,7 +19695,8 @@ const HUELLA_FORMA = {
   duct: { f: 2, que: "H-284: la huella ya no lleva el sitio de Proyecto, que Ductos no usa" },
   hidro: { f: 2, que: "H-285: la huella ya no lleva el sitio de Proyecto, que Hidráulica no usa" },
   fuego: { f: 3, que: "H-293: el precio del rociador pasó de la cotización a Contra incendio (misma cifra)" },
-  quote: { f: 4, que: "H-293–H-295: los precios del rociador, por CFM de ventilación y de FFU, HEPA y rejilla pasaron a su motor (misma cifra)" },
+  quote: { f: 5, que: "H-293–H-296: los precios del rociador, por CFM de ventilación, de FFU, HEPA y rejilla y de la central de aire pasaron a su motor (misma cifra)" },
+  aire: { f: 2, que: "H-296: los precios de la central de aire pasaron de la cotización a Aire comprimido (misma cifra)" },
   vent: { f: 3, que: "H-294: el precio por CFM pasó de la cotización a Ventilación (misma cifra)" },
 };
 const formaHuella = (id) => (HUELLA_FORMA[id] ? HUELLA_FORMA[id].f : 1);
@@ -22978,6 +22992,11 @@ function viewAire() {
     </tr>`;
   };
   return `<div class="grid two">
+    <div class="card"><h3>Precios de Aire comprimido<span class="tag">su cotización · lista de la casa sin fuente</span></h3><div class="body">
+      <div class="row">${inp("Compresor (MXN por unidad · 0 = precio de lista del modelo)", "aire.precios.compresorMXN", "number", "1000")}${inp("Tanque pulmón instalado (MXN por litro)", "aire.precios.tanqueL", "number", "5")}</div>
+      <div class="row">${inp("Secador (MXN por m³/min · 0 = precio del tipo)", "aire.precios.secadorM3min", "number", "100")}${inp("Etapa de filtración instalada (MXN)", "aire.precios.filtroAire", "number", "100")}</div>
+      <div class="row">${inp("Red instalada (MXN por metro · 0 = precio del material)", "aire.precios.aireM", "number", "10")}${inp("Bajada a punto de uso (MXN)", "aire.precios.puntoUso", "number", "50")}</div>
+    </div></div>
     <div class="card"><h3>Calidad del aire y demanda<span class="tag">ISO 8573-1</span></h3><div class="body">
       ${sel("Clase de calidad exigida", "aire.clase", ISO8573.map((c) => [c.id, c.label]))}
       <div class="hint" style="margin:8px 0 14px">${esc(R.cls.uso)}</div>
@@ -24554,6 +24573,7 @@ function sanearEstado(d) {
   if (!Array.isArray(s.hidro.tramos)) s.hidro.tramos = defaultHidro().tramos;
   const fuegoTraiaPrecio = !!(s.fuego && typeof s.fuego === "object" && "precioRociador" in s.fuego);   /* H-293 */
   s.fuego = { ...defaultFuego(), ...(s.fuego && typeof s.fuego === "object" ? s.fuego : {}) };
+  const aireTraiaPrecios = !!(s.aire && typeof s.aire === "object" && s.aire.precios && typeof s.aire.precios === "object");   /* H-296 */
   s.aire = { ...defaultAire(), ...(s.aire && typeof s.aire === "object" ? s.aire : {}) };
   const civilPrevio = s.civil && typeof s.civil === "object" ? s.civil : null;   /* H-265: para saber si hay que migrar */
   s.civil = { ...defaultCivil(), ...(civilPrevio || {}) };
@@ -24607,6 +24627,10 @@ function sanearEstado(d) {
      tenía la cotización; sin él, la semilla de la casa, igual que antes) y la cotización deja de guardarlo. */
   if (!fuegoTraiaPrecio && "rociador" in s.quote) s.fuego.precioRociador = num(s.quote.rociador, FUEGO_PRECIO_SEED.rociador);
   delete s.quote.rociador;
+  /* H-296: los precios de la central de aire pasaron de la cotización a Aire comprimido. Un proyecto anterior conserva las cifras que
+     tenía la cotización (sin ellas, la lista de la casa, igual que antes) y la cotización deja de guardarlas. */
+  if (!aireTraiaPrecios) s.aire.precios = Object.fromEntries(Object.keys(AIRE_PRECIO_SEED).map((k) => [k, num(s.quote[k], AIRE_PRECIO_SEED[k])]));
+  Object.keys(AIRE_PRECIO_SEED).forEach((k) => { delete s.quote[k]; });
   /* Contingencia (14-sep-2026): un proyecto guardado antes de que existiera abre
      con 0 % para que su total no cambie; queda visible y editable. */
   if (!("contingencia" in s.quote)) s.quote.contingencia = 0;

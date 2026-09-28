@@ -9290,6 +9290,29 @@ t("S.175 (H-295) la cotización de Cuartos limpios sale de su propio motor: los 
     eq(["ffu", "hepaSpare", "grille"].some((k) => k in s.quote), false, "la cotización ya no guarda esos precios:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
+t("S.176 (H-296) la cotización de Aire comprimido sale de su propio motor: los precios de la central (compresor, tanque, secador, filtros, red y bajadas) se capturan en Aire comprimido (copia de la lista de la casa) y la cotización global sólo junta sus renglones tal cual; un proyecto anterior conserva sus precios", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.176";
+    S.aire.consumos = [{ id: "u1", tipo: "actuador", nombre: "Línea de prueba", cant: 12, lmin: 0, bar: 0, uso: 0 }];
+    S.perms["aire>quote"] = { ts: 1, via: "S.176" }; G("recompute")();
+    const filas = () => (G("QUOTE").aux || []).filter((a) => a.mot === "aire");
+    const tanque = () => filas().find((a) => a.un === "LITRO");
+    if (!(G("AIRE").fadRequerido > 0) || !tanque()) throw new Error("el caso no aísla lo que se quiere probar: debe salir la central de aire con su tanque");
+    eq(tanque().unit, 195, "arranca con la lista de la casa (la misma cifra de antes):");
+    const antes = JSON.stringify(filas().map((a) => [a.desc, a.total]));
+    S.aire.precios = { ...S.aire.precios, tanqueL: 250 }; S.quote.tanqueL = 1; G("recompute")();
+    eq(tanque().unit, 250, "el precio sale de la captura de Aire comprimido, no de la cotización:");
+    eq(JSON.stringify(((G("AIRE").cot || { aux: [] }).aux).map((a) => [a.desc, a.total])), JSON.stringify(filas().map((a) => [a.desc, a.total])),
+      "la cotización global junta los renglones que armó el motor, tal cual:");
+    S.aire.precios = { ...S.aire.precios, tanqueL: 195 }; G("recompute")();
+    eq(JSON.stringify(filas().map((a) => [a.desc, a.total])), antes, "con los precios de antes, los mismos renglones e importes:");
+    const viejo = JSON.parse(JSON.stringify(S)); delete viejo.aire.precios; Object.assign(viejo.quote, { tanqueL: 210, filtroAire: 40000 });
+    const s = G("sanearEstado")(viejo);
+    eq(JSON.stringify([s.aire.precios.tanqueL, s.aire.precios.filtroAire, s.aire.precios.puntoUso]), JSON.stringify([210, 40000, 4850]), "un proyecto anterior conserva sus precios, ahora en Aire comprimido:");
+    eq(["compresorMXN", "tanqueL", "secadorM3min", "filtroAire", "aireM", "puntoUso"].some((k) => k in s.quote), false, "la cotización ya no guarda esos precios:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {
   const guardado = JSON.stringify(S);
   try {
