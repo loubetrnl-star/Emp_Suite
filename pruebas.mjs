@@ -8102,6 +8102,46 @@ t("S.135 (H-266) los textos de soportería describen lo que hoy hace: los permis
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+/* ===== S.136 (H-266) «Capturo lo mío» no borra sin preguntar lo ya cuantificado, y Deshacer lo recupera ===== */
+t("S.136 (H-266) «Capturo lo mío» con una instantánea de soportería ya cuantificada pregunta antes de dejarla (dice qué se deja de contar) y Deshacer la recupera tal como estaba, también la que se conservó; «Conservar lo aceptado» también se puede deshacer (revisión adversarial U15; decisión del dueño: lo cuantificado no se mueve solo)", () => {
+  const guardado = JSON.stringify(S);
+  const act = (a, id) => { const b = w.document.createElement("button"); b.dataset.act = a; if (id) b.dataset.id = id; w.document.body.appendChild(b); b.dispatchEvent(new w.MouseEvent("click", { bubbles: true })); b.remove(); };
+  const modal = () => w.document.getElementById("modal");
+  const ID = "motores>soporte";
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.136"; G("histReiniciar")();
+    Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.136" }; });
+    S.duct.segments = [];
+    S.fuego = { ...G("defaultFuego")(), area: 600, altura: 6, Lramal: 30, Lmontante: 12 };
+    S.soporte = { ...G("defaultSoporte")(), alturaColgadoM: 0.5, alturaTrabajo: 5, mesesElevacion: 1, alturaEstructura: 6 };
+    G("recompute")(); G("histSnap")("inicio S.136");
+    act("prop-aceptar", ID); G("recompute")();
+    eq(G("SOPORTE").mTub, 42, "aceptada con cabezal 30 + montante 12:");
+    /* Contra incendio cambia; el usuario conserva lo aceptado (42 m). */
+    S.fuego.Lramal = 80; G("recompute")();
+    eq(G("estadoPropuesta")(ID).nivel, "desactualizado", "el origen cambió:");
+    act("prop-conservar", ID); G("recompute")();
+    eq(G("estadoPropuesta")(ID).nivel, "aceptado", "conservada:"); eq(G("SOPORTE").mTub, 42, "sigue con lo conservado:");
+    /* «Capturo lo mío»: pregunta antes de dejar lo ya cuantificado (antes borraba la instantánea al instante). */
+    act("prop-propio", ID);
+    if (!S.soporte.snap) throw new Error("«Capturo lo mío» borró la instantánea ya cuantificada sin preguntar");
+    if (modal().hidden || !/instantánea aceptada/i.test(modal().textContent) || !/42 m/.test(modal().textContent)) throw new Error("debe preguntar y decir qué se deja de contar: " + (modal().hidden ? "(sin ventana)" : modal().textContent.replace(/\s+/g, " ").slice(0, 300)));
+    act("confirmar-si");
+    eq(S.soporte.snap, undefined, "confirmado, deja la instantánea:"); eq(G("SOPORTE").mTub, 0, "y cuenta lo capturado a mano:");
+    /* Deshacer la recupera tal como estaba: la conservada de 42 m, no la de antes de aceptar. */
+    G("deshacer")(); G("recompute")();
+    if (!S.soporte.snap) throw new Error("Deshacer no recuperó la instantánea");
+    eq(G("SOPORTE").mTub, 42, "Deshacer devuelve lo conservado:");
+    eq(G("estadoPropuesta")(ID).nivel, "aceptado", "y su estado:");
+    /* «Conservar lo aceptado» también se puede deshacer: vuelve a «desactualizada». */
+    S.fuego.Lramal = 60; G("recompute")();
+    act("prop-conservar", ID); G("recompute")();
+    eq(G("estadoPropuesta")(ID).nivel, "aceptado", "conservada otra vez:");
+    G("deshacer")(); G("recompute")();
+    eq(G("estadoPropuesta")(ID).nivel, "desactualizado", "Deshacer deshace «Conservar lo aceptado»:");
+  } finally { G("closeModal")(); w.eval("clearTimeout(autoT)"); G("reemplazarEstado")(JSON.parse(guardado)); G("histReiniciar")(); G("recompute")(); }
+});
+
 /* ===== S.103 (H-268) eléctrico autónomo: las cargas de otros motores entran sólo como propuesta aceptada (instantánea) ===== */
 t("S.103 (H-268) eléctrico es autónomo: con permisos y tomarHVAC, sin aceptar la propuesta, la cédula, el ventilador, el compresor, las bombas y los FFU NO entran al cuadro (se retiró el modo en vivo); aceptar concede los cruces y deja una instantánea con fecha que no se mueve sola; un proyecto guardado en vivo migra al abrir con las mismas cifras (sólo con los cruces que tenía); el sello no cambia al reabrir (decisión del dueño, 27-sep-2026)", () => {
   const guardado = JSON.stringify(S);
