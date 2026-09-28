@@ -694,5 +694,9 @@
     "buscar": "eqS + miscS + ffuS + infS;",
     "reemplazar": "eqS + ffuS + infS;",
     "estado": "vigente"
-  }
+  },
+  { "id": "load.m88", "que": "H-281: el traspaso vuelve a escribir el aire exterior de la zona sin aceptar la propuesta clean>load (sin vínculo, fecha ni firma)", "logica": true,
+    "buscar": "      if (hit) propAceptar(\"clean>load\"); else { projAutosave(); render(); }", "reemplazar": "      if (hit) { aplicarRepCuartos(Date.now()); projAutosave(); render(); } else { projAutosave(); render(); }", "estado": "vigente" },
+  { "id": "load.m89", "que": "H-281: el origen del aire exterior entra a la huella de carga (aceptar lo mismo marcaría «la captura cambió»)", "logica": true,
+    "buscar": "(S.zones || []).map((z) => z && \"origenOA\" in z ? sinClaves(z, [\"origenOA\"]) : z).map(", "reemplazar": "(S.zones || []).map(", "estado": "vigente" }
 ]

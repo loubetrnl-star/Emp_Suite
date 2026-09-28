@@ -3663,6 +3663,7 @@ function defaultZone(name = "Zona 1") {
     presion: "positiva", // rev 2.9.21 · cuarto limpio: positiva (sin infiltración) o negativa (con infiltración)
     hrControl: "no", // rev 2.9.20 · "si" = HR especificada: dos casos de diseño (un cuarto limpio siempre los lleva)
     miscVent: null, // H-263 · calor del motor del ventilador seleccionado en Ventilación (instantánea); null = no recibe
+    origenOA: null, // H-281 · de dónde sale el aire exterior fijo: { motor: "clean", cuarto, makeup, ts } al aceptar la reposición; null = capturado aquí
   };
 }
 
@@ -17051,7 +17052,7 @@ function viewCarga() {
         <tr><td>Calor de esos ventiladores</td><td class="num">${n(LOADS[i].ffuS / 1000, 2)} kW</td></tr>
         <tr><td>Caudal que gobierna</td><td class="num">${LOADS[i].achFlow >= LOADS[i].supply - 1 ? "la clase ISO" : "el confort"}</td></tr>
       </tbody></table></div>` : ""}` : ""}
-      ${inp("Aire exterior impuesto (m³/h, 0 = calculado)", `zones.${i}.oaFixed`, "number", "50", "zone.oaFixed", z)}
+      ${inp(`Aire exterior impuesto (m³/h, 0 = calculado)${z.origenOA && z.origenOA.motor === "clean" && num(z.oaFixed) === num(z.origenOA.makeup) ? ` · reposición de Cuartos limpios «${esc(z.origenOA.cuarto)}», aceptada ${fechaCorta(z.origenOA.ts)}` : ""}`, `zones.${i}.oaFixed`, "number", "50", "zone.oaFixed", z)}
       </details>
       ${S.zones.length > 1 ? `<button class="btn-ghost" data-act="zone-del" data-i="${i}">Eliminar esta zona</button>` : ""}
     </div></div>
@@ -18444,7 +18445,37 @@ function tarjetaZonasEquip() {
   </div></div>`;
 }
 
+/* H-281 (decisión del dueño, 27-sep-2026: lo de otra disciplina entra sólo como propuesta aceptada): la reposición de aire de cada
+   cuarto limpio vinculado a una zona de carga térmica (H-126) es lo que Cuartos limpios propone a Carga térmica. */
+function repCuartosLoad() {
+  const rooms = cleanRooms(), zs = S.zones || [], lista = (typeof CLEAN !== "undefined" && CLEAN && CLEAN.list) ? CLEAN.list : [];
+  return lista.map((r, k) => ({ r, c: rooms[k] })).filter(({ r, c }) => c && c.zonaId && zs.some((z) => z && z.id === c.zonaId) && num(r.makeup, 0) > 0)
+    .map(({ r, c }) => ({ cuarto: c.name || "Cuarto", zonaId: c.zonaId, zona: (zs.find((z) => z.id === c.zonaId) || {}).name || "", makeup: Math.round(num(r.makeup, 0)) }));
+}
+function resumenRepCuartos(xs, en) { return xs.length ? xs.map((x) => `${x.cuarto} → ${x.zona}: ${n(x.makeup, 0)} m³/h`).join(" · ") : (en ? "no clean room linked to a zone" : "sin cuartos vinculados a una zona"); }
+function aplicarRepCuartos(ts) {
+  const xs = repCuartosLoad();
+  xs.forEach((x) => { const z = S.zones.find((q) => q.id === x.zonaId); if (z) { z.oaFixed = x.makeup; z.origenOA = { motor: "clean", cuarto: x.cuarto, makeup: x.makeup, ts }; } });
+  return xs.length;
+}
 const PROPUESTAS = {
+  /* H-281: clean y load son del núcleo térmico (no hace falta permiso), pero la reposición entra sólo al aceptar: queda con origen,
+     fecha y firma; si el cuarto cambia, la propuesta sale desactualizada y la zona no se mueve sola (regla 3). */
+  "clean>load": {
+    destino: "load", origen: "clean", permisos: [],
+    titulo: "Reposición de aire de los cuartos limpios a sus zonas de carga térmica",
+    que: "Cada cuarto limpio vinculado a una zona de Carga térmica propone su reposición de aire (cascada de presiones) como aire exterior fijo de esa zona. Al aceptar se guarda con origen y fecha: si después cambia el cuarto, la propuesta sale desactualizada y la zona no se mueve sola.",
+    disponible: () => repCuartosLoad().length > 0,
+    firma: () => JSON.stringify(repCuartosLoad().map((x) => [x.zonaId, x.makeup])),
+    resumen: () => resumenRepCuartos(repCuartosLoad()),
+    actual: () => { const zs = (S.zones || []).filter((z) => z && z.origenOA && z.origenOA.motor === "clean"); return zs.length ? `${zs.length} zona(s) con la reposición aceptada de Cuartos limpios` : "el aire exterior de cada zona es el capturado en Carga térmica"; },
+    enVivo: () => false,
+    aplicar: () => aplicarRepCuartos(Date.now()),
+    propio: () => {},   /* cada zona conserva su aire exterior capturado */
+    en: (e) => ({ destino: "Thermal load", campo: "Clean-room makeup air to their thermal-load zones",
+      valor: e.rec ? (e.rec.estado === "aceptado" ? resumenRepCuartos(repCuartosLoad(), true) : "captured by the user") : "not decided",
+      origen: "Clean rooms", estado: { "sin-datos": "No data at the source", pendiente: "Proposal available", aceptado: "Accepted · current", desactualizado: "Out of date · the source changed", propio: "Captured by hand", vivo: "Live (previous mode)" }[e.nivel] || e.nivel }),
+  },
   "load>duct": {
     destino: "duct", origen: "load", permisos: ["load>duct"],
     titulo: "Caudales por tramo desde la carga térmica",
@@ -19161,7 +19192,7 @@ const ENTRADAS = {
   /* H-263: la fecha de la instantánea del ventilador (miscVent.ts) no cambia el cálculo: fuera de la huella. Una zona sin
      ventilador (miscVent null, que sanearEstado agrega a los proyectos anteriores) pesa lo mismo que una sin el campo: así
      un proyecto sellado con la versión anterior no sale «la captura cambió» sin haber cambiado nada. */
-  load: () => ({ zones: (S.zones || []).map((z) => !z || !("miscVent" in z) ? z : z.miscVent ? { ...z, miscVent: sinClaves(z.miscVent, ["ts"]) } : sinClaves(z, ["miscVent"])), site: S.site, bldDiv: S.bldDiv, forceTech: S.forceTech, peakScan: S.peakScan }),
+  load: () => ({ zones: (S.zones || []).map((z) => z && "origenOA" in z ? sinClaves(z, ["origenOA"]) : z).map((z) => !z || !("miscVent" in z) ? z : z.miscVent ? { ...z, miscVent: sinClaves(z.miscVent, ["ts"]) } : sinClaves(z, ["miscVent"])),   /* H-281: el origen del aire exterior no es captura */ site: S.site, bldDiv: S.bldDiv, forceTech: S.forceTech, peakScan: S.peakScan }),
   clean: () => ({ rooms: cleanRooms(), site: S.site }),
   /* H-267: sólo lo que la selección calcula: sus zonas de selección (la instantánea aceptada va dentro, sin id, origen, fecha ni
      marca de edición, que no cambian el cálculo), la diversidad del edificio, el sitio (capacidad en sitio), la tecnología elegida,
@@ -20829,6 +20860,7 @@ function viewLimpio() {
       <button class="btn-ghost" data-act="clean-to-zone">Crear zona de carga térmica con este cuarto</button>
       <div style="height:8px"></div>
       <button class="btn-ghost" data-act="cl-handoff">Traspasar la reposición de cascada a las zonas</button>
+      <div style="height:8px"></div>${propuestaHtml("clean>load")}
       ${rooms.length > 1 ? `<div style="height:8px"></div><button class="btn-ghost" data-act="cl-del" data-i="${i}">Eliminar este cuarto</button>` : ""}
     </div></div>
     <div class="grid" style="gap:14px">
@@ -23554,15 +23586,12 @@ document.addEventListener("click", (e) => {
     case "cl-handoff": {
       /* H-126 (rev 2.9.24): el traspaso va por el vínculo cuarto ↔ zona (id elegido en el selector), nunca por la primera palabra
          del nombre (la reposición de «Sala de llenado» caía en «Sala de juntas»). Sin vínculo no se traspasa y se dice. */
+      /* H-281: traspasar es aceptar la propuesta clean>load (origen, fecha y firma); sin cuarto vinculado con reposición no hay nada. */
       asegurarIdsZona();
-      let hit = 0, sinVinculo = 0;
       const rooms = cleanRooms();
-      CLEAN.list.forEach((r, k) => {
-        const zid = rooms[k] && rooms[k].zonaId;
-        const z = zid ? S.zones.find((x) => x.id === zid) : null;
-        if (z) { z.oaFixed = Math.round(r.makeup); hit++; } else sinVinculo++;
-      });
-      projAutosave(); render();
+      const sinVinculo = CLEAN.list.filter((r, k) => !(rooms[k] && rooms[k].zonaId && S.zones.some((x) => x.id === rooms[k].zonaId))).length;
+      const hit = repCuartosLoad().length;
+      if (hit) propAceptar("clean>load"); else { projAutosave(); render(); }
       toast(hit ? `Reposición traspasada a ${hit} zona(s) de carga térmica vinculada(s)${sinVinculo ? `; ${sinVinculo} cuarto(s) sin zona vinculada` : ""}` : "Ningún cuarto tiene zona de carga térmica vinculada: elige la zona en cada cuarto (no se empata por nombre)");
       break;
     }
@@ -23584,7 +23613,9 @@ document.addEventListener("click", (e) => {
       z.oaFixed = Math.round(r.makeup);   // el aire exterior es la reposición de cascada
       z.oaFraction = 0;
       z.walls = { N: 0, S: 0, E: 0, W: 0, NE: 0, SE: 0, SW: 0, NW: 0 }; z.glass = { ...z.walls }; z.roof = 0;
+      z.origenOA = { motor: "clean", cuarto: c.name || "Cuarto", makeup: z.oaFixed, ts: Date.now() };   /* H-281: de dónde sale su aire exterior */
       S.zones.push(z); asegurarIdsZona(); c.zonaId = z.id; /* H-126: queda vinculada al cuarto */
+      if (repCuartosLoad().every((x) => { const q = S.zones.find((y) => y.id === x.zonaId); return q && num(q.oaFixed) === x.makeup; })) registrarVinculo("clean>load", "aceptado");
       S.zi = S.zones.length - 1; S.tab = "carga";
       render(); toast(`Zona creada como cuarto limpio ${r.cls.label.split(" · ")[0]} a ${r.ach} cambios/h, vinculada al cuarto; iluminación e infiltración pendientes de captura`); break;
     }

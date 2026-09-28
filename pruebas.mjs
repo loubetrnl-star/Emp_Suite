@@ -6973,6 +6973,31 @@ t("S.68 (H-128) «Crear zona de carga con este cuarto» no inventa 12 W/m² de i
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+t("S.138 (H-281) la reposición de los cuartos limpios entra a carga térmica sólo como propuesta clean>load aceptada: el traspaso deja vínculo, origen y fecha; si el cuarto cambia, la propuesta sale desactualizada y la zona no se mueve sola; el origen no mueve el sello de carga (decisión del dueño del 27-sep-2026; reglas 2 y 3)", () => {
+  const guardado = JSON.stringify(S);
+  const act = (a) => { const b = w.document.createElement("button"); b.dataset.act = a; w.document.body.appendChild(b); b.dispatchEvent(new w.MouseEvent("click", { bubbles: true })); b.remove(); };
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.138";
+    S.zones = [{ ...G("defaultZone")("Sala de llenado"), area: 40, height: 3 }];
+    S.clean = { ci: 0, rooms: [{ ...G("defaultRoom")("Sala de llenado"), iso: "iso5", area: 40, height: 3, occ: 2 }] };
+    G("recompute")(); G("asegurarIdsZona")(); S.clean.rooms[0].zonaId = S.zones[0].id; G("recompute")();
+    const mk = Math.round(G("CLEAN").cur.makeup);
+    if (!(mk > 0)) throw new Error("el caso no aísla lo que se quiere probar: el cuarto trae reposición");
+    eq(G("estadoPropuesta")("clean>load").nivel, "pendiente", "con el cuarto vinculado hay propuesta sin decidir:");
+    S.zones[0].oaFixed = mk; G("recompute")(); const h0 = G("huellaMotor")("load");   /* ya capturado igual: aceptar sólo agrega el origen */
+    act("cl-handoff");
+    eq(G("huellaMotor")("load"), h0, "aceptar lo mismo que ya estaba capturado no cambia la huella de carga (el origen no es captura):");
+    eq(S.zones[0].oaFixed, mk, "la zona vinculada recibe la reposición:");
+    eq((S.vinculos["clean>load"] || {}).estado, "aceptado", "el traspaso queda como propuesta aceptada:");
+    eq((S.zones[0].origenOA || {}).motor, "clean", "la zona guarda de dónde sale su aire exterior:");
+    const huella = G("huellaMotor")("load");
+    S.clean.rooms[0].area = 80; G("recompute")();
+    eq(S.zones[0].oaFixed, mk, "la zona conserva lo aceptado (no se mueve sola):");
+    eq(G("estadoPropuesta")("clean>load").nivel, "desactualizado", "la propuesta sale desactualizada:");
+    eq(G("huellaMotor")("load"), huella, "el cambio del cuarto no toca la huella de carga:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 t("S.69 (H-141, decisión (a) del dueño) la diversidad del edificio se aplica UNA sola vez, en la planta: las ganancias internas y el pico de cada zona no la llevan; el objetivo de planta sí (×0.8), y la memoria lo declara como criterio Carrier por ratificar", () => {
   const guardado = JSON.stringify(S);
   const pdfTxt = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");
