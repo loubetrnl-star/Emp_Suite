@@ -9148,6 +9148,21 @@ t("S.169 (H-289) la diversidad del edificio se captura en Selección (decisión 
     eq(S.bldDiv, undefined, "sin el dato viejo en Proyecto:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
+t("S.170 (H-291) el sitio de Proyecto no marca Ventilación: su cálculo no lo usa y su huella ya no lo lleva (el sello sigue «calculado» al cambiar el sitio); un sello anterior dice que cambió la forma del sello", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.170";
+    S.vent = { ...S.vent, mode: "general", area: 200, height: 4, ach: 6 }; G("recompute")();
+    const h0 = G("huellaMotor")("vent"), r0 = JSON.stringify(G("VENT"));
+    S.sellos = { vent: { ts: 5, huella: h0, ver: G("motorVer")("vent"), hf: 2 } };
+    S.site = { key: "custom", db: 45, wb: 28, alt: 2240, range: 14 }; G("recompute")();
+    eq(JSON.stringify(G("VENT")), r0, "el cálculo no usa el sitio:");
+    eq(G("huellaMotor")("vent"), h0, "y su huella ya no lo lleva:");
+    eq(G("selloDe")("vent").estado, "calculado", "el sello sigue calculado al cambiar el sitio de Proyecto:");
+    S.sellos = { vent: { ts: 5, huella: "0123456789abcd", ver: G("motorVer")("vent") } };
+    contiene(G("selloDe")("vent").texto, "cambió la forma del sello", "un sello anterior dice qué cambió:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {
   const guardado = JSON.stringify(S);
   try {
