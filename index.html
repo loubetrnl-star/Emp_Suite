@@ -4891,7 +4891,6 @@ const QUOTE_SEED = {
   ffu: 42000,             // módulo FFU 1.17×0.57 con filtro HEPA H14, instalado y probado
   hepaSpare: 9800,        // juego de filtro HEPA de repuesto por módulo
   grille: 3200,           // rejilla de retorno bajo / extracción con marco
-  fanCFM: 145,            // MXN por CFM de ventilador o extractor instalado con arrancador
   /* H-17 · Flete, fianzas y financiamiento: en obra industrial son puntos
      completos y no estaban en ningún lado. */
   freight: 0.025,         // flete, maniobras y seguro de tránsito, % del directo
@@ -8789,16 +8788,10 @@ function computeQuote() {
   if (impMonto > 0) aux.push({ desc: `Flete, aduana e importación a México (capturado: ${imp.fuente}, ${imp.fecha})`, descEn: `Freight, customs and import into Mexico (captured: ${imp.fuente}, ${imp.fecha})`, qty: 1, unit: impMonto, total: impMonto, sec: "H", un: "LOTE", mot: "importacion" });
   else { pendientes.push({ mot: "importacion", desc: "Flete, aduana e importación a México", descEn: "Freight, customs and import into Mexico", motivo: "siempre por cotizar hasta capturarlo; no se prorratea ni se estima", motivoEn: "always to be quoted until captured; never prorated or estimated" });
     porCotizar.push({ sec: "H", mot: "importacion", clave: "importacion", desc: "Flete, aduana e importación a México", descEn: "Freight, customs and import into Mexico", un: "LOTE", qty: 1, motivo: "siempre por cotizar hasta capturarlo" }); }
-  if (verVent && VENT && VENT.demand > 0) {
-    const cfmV = Math.round(VENT.demand);
-    aux.push({ desc: `Ventilación: ${VENT.eq && VENT.eq.primary ? VENT.eq.primary.model + " · " : ""}${n(cfmV, 0)} CFM de extracción instalada con arrancador y curbs`,
-      descEn: `Ventilation: ${VENT.eq && VENT.eq.primary ? VENT.eq.primary.model + " · " : ""}${n(cfmV, 0)} CFM exhaust, installed with starter and curbs`,
-      qty: cfmV, unit: num(q.fanCFM, QUOTE_SEED.fanCFM), total: num(q.fanCFM, QUOTE_SEED.fanCFM) * cfmV , sec: "B", un: "CFM", mot: "vent"});
-    if (VENT.mua > 0) {
-      const cfmM = Math.round(VENT.mua);
-      aux.push({ desc: `Reposición de aire (make-up) ${n(cfmM, 0)} CFM`, descEn: `Make-up air ${n(cfmM, 0)} CFM`,
-        qty: cfmM, unit: num(q.fanCFM, QUOTE_SEED.fanCFM), total: num(q.fanCFM, QUOTE_SEED.fanCFM) * cfmM , sec: "B", un: "CFM", mot: "vent"});
-    }
+  /* H-294 (decisión del dueño, 29-sep-2026): la cotización de Ventilación la arma su motor con sus resultados y su precio (VENT.cot,
+     cotizacionVent); aquí sólo se juntan sus renglones tal cual (copias), sin recalcular nada. */
+  if (verVent && VENT && VENT.demand > 0 && VENT.cot) {
+    aux.push(...VENT.cot.aux.map((x) => ({ ...x }))); pendientes.push(...VENT.cot.pendientes.map((x) => ({ ...x }))); porCotizar.push(...VENT.cot.porCotizar.map((x) => ({ ...x })));
   } else if (VENT && VENT.demand > 0) faltan.push("los ventiladores y extractores del motor de ventilación");
   if (verClean && CLEAN && CLEAN.sum && CLEAN.sum.ffu > 0) {
     const nf = CLEAN.sum.ffu;
@@ -9071,6 +9064,26 @@ const HOOD_SRC = "IMC 507.2.1 / NFPA 96 · CFM por pie lineal del lado abierto";
    avisaba. Las constantes se derivan de P para que haya una sola fuente. */
 const OA_CFM_PERSON = P.OA_PERS / 1.699, OA_CFM_M2 = P.OA_M2 / 1.699;
 
+/* H-294 (decisión del dueño, 29-sep-2026: cada motor saca su propia cotización de sus propios resultados). El precio por CFM de
+   ventilador o extractor instalado con arrancador es de Ventilación: copia en este motor de la semilla de la casa (antes
+   QUOTE_SEED.fanCFM, 145 MXN/CFM, sin fuente; la cotización lo marca SEMILLA · SIN FUENTE). Se captura en la pestaña de Ventilación. */
+const VENT_PRECIO_SEED = { cfm: 145 };
+/* H-294: la cotización de Ventilación sale sólo de sus resultados (R) y de su captura (v): los mismos renglones e importes que antes
+   armaba computeQuote leyendo VENT en vivo. La cotización global sólo los junta. */
+function cotizacionVent(R, v) {
+  const aux = [], pendientes = [], porCotizar = [];
+  if (!(R && R.demand > 0)) return { aux, pendientes, porCotizar };
+  const pu = num(v.precioCFM, VENT_PRECIO_SEED.cfm), cfmV = Math.round(R.demand);
+  aux.push({ desc: `Ventilación: ${R.eq && R.eq.primary ? R.eq.primary.model + " · " : ""}${n(cfmV, 0)} CFM de extracción instalada con arrancador y curbs`,
+    descEn: `Ventilation: ${R.eq && R.eq.primary ? R.eq.primary.model + " · " : ""}${n(cfmV, 0)} CFM exhaust, installed with starter and curbs`,
+    qty: cfmV, unit: pu, total: pu * cfmV , sec: "B", un: "CFM", mot: "vent"});
+  if (R.mua > 0) {
+    const cfmM = Math.round(R.mua);
+    aux.push({ desc: `Reposición de aire (make-up) ${n(cfmM, 0)} CFM`, descEn: `Make-up air ${n(cfmM, 0)} CFM`,
+      qty: cfmM, unit: pu, total: pu * cfmM , sec: "B", un: "CFM", mot: "vent"});
+  }
+  return { aux, pendientes, porCotizar };
+}
 function computeVent(v) {
   const method = [], lines = [];
   const vol = Math.max(0, v.area) * Math.max(0, v.height);
@@ -9154,7 +9167,9 @@ function computeVent(v) {
   method.push(`SP ≈ ductos ${v.ductLoss} + filtros ${v.filterLoss} + 0,25 entrada/salida.`);
   const eq = pickVent(demand, v.mode, sp);
   method.push(eq.sizingNote);
-  return { demand, m3h: demand * 1.699, achCfm: achCfmOut, oaCfm: oaCfmOut, vol, sp, method, lines, eq, mua, avisos };
+  const R = { demand, m3h: demand * 1.699, achCfm: achCfmOut, oaCfm: oaCfmOut, vol, sp, method, lines, eq, mua, avisos };
+  R.cot = cotizacionVent(R, v);   /* H-294: su propia cotización */
+  return R;
 }
 const VTECH_LABEL = { centrifugal: "CSW Utility Centrifugal", axial: "AE Axial Roof", inline: "SQ Square Inline", roof_exhauster: "G / GB Roof Exhaust", kitchen_hood: "CUBE Grease Upblast", make_up_air: "MSX Make-Up Air", louver: "ESD Louvers", erv: "MiniCore ERV" };
 function pickVent(cfm, mode, sp) {
@@ -11532,7 +11547,7 @@ function defaultState() { return {
      capturó — se van a 0. faceVel/ductLoss/filterLoss SÍ son criterio de
      diseño (velocidad objetivo, coeficientes de pérdida), no medición de
      este proyecto: se quedan igual que las normas de casa. */
-  vent: { name: "Extracción general", mode: "general", spaceType: "office", area: 0, height: 0, ach: 6, occ: 0, hoodL: 0, hoodW: 0, hoodType: "wall", duty: "medium", processCFM: 0, freeArea: 0, faceVel: 400, louverW: 0, louverH: 0, ductLoss: .5, filterLoss: .25, seleccion: null },
+  vent: { name: "Extracción general", mode: "general", spaceType: "office", area: 0, height: 0, ach: 6, occ: 0, hoodL: 0, hoodW: 0, hoodType: "wall", duty: "medium", processCFM: 0, freeArea: 0, faceVel: 400, louverW: 0, louverH: 0, ductLoss: .5, filterLoss: .25, seleccion: null, precioCFM: VENT_PRECIO_SEED.cfm },
   duct: {
     meta: { material: "galvanized", pc: "2", eps: .09, rho: 1.2, mu: 1.8e-5,
       /* Largo comercial del espiroducto y hoja de lámina con los que se compra.
@@ -19654,8 +19669,8 @@ const HUELLA_FORMA = {
   duct: { f: 2, que: "H-284: la huella ya no lleva el sitio de Proyecto, que Ductos no usa" },
   hidro: { f: 2, que: "H-285: la huella ya no lleva el sitio de Proyecto, que Hidráulica no usa" },
   fuego: { f: 3, que: "H-293: el precio del rociador pasó de la cotización a Contra incendio (misma cifra)" },
-  quote: { f: 2, que: "H-293: el precio del rociador pasó a Contra incendio (misma cifra)" },
-  vent: { f: 2, que: "H-291: la huella ya no lleva el sitio de Proyecto, que Ventilación no usa" },
+  quote: { f: 3, que: "H-293/H-294: los precios del rociador y por CFM de ventilación pasaron a su motor (misma cifra)" },
+  vent: { f: 3, que: "H-294: el precio por CFM pasó de la cotización a Ventilación (misma cifra)" },
 };
 const formaHuella = (id) => (HUELLA_FORMA[id] ? HUELLA_FORMA[id].f : 1);
 function cambiosMotorTexto(id, desde) { return (MOTOR_CAMBIOS[id] || []).filter((c) => +c.ver > +(desde || 1)).map((c) => `v${c.ver} (rev ${c.rev}): ${c.que}`).join("; ") || "cambio de lógica del motor"; }
@@ -21339,6 +21354,7 @@ function viewVent() {
       ${fields}
       <details><summary>Avanzado: pérdidas de presión</summary>
       <div class="row">${inp("Pérdida en ductos (in.w.g.)", "vent.ductLoss", "number", "0.05", "vent.ductLoss", S.vent)}${inp("Pérdida en filtros (in.w.g.)", "vent.filterLoss", "number", "0.05", "vent.filterLoss", S.vent)}</details>
+      <div class="row">${inp("Ventilador o extractor instalado con arrancador (MXN por CFM · semilla de la casa sin fuente)", "vent.precioCFM", "number", "5")}</div>
       ${(asegurarIdsZona(), seleccionVentHtml())}
       ${VENT.eq && VENT.eq.primary ? `<button class="btn-primary" data-act="pdf-sub" data-kind="green" data-id="${VENT.eq.primary.id}">Submittal del ventilador en PDF</button>` : `<div class="hint">${VENT.demand > 0 ? "Ningún modelo del catálogo cubre el caudal: no se propone modelo ni submittal (H-154)." : "Sin caudal: sin modelo."}</div>`}
     </div></div>
@@ -24600,6 +24616,10 @@ function sanearEstado(d) {
   if (!Array.isArray(s.quote.prop.hitos)) s.quote.prop.hitos = defaultPropuesta().hitos;
   if (!s.vent || typeof s.vent !== "object") s.vent = base.vent;
   if (s.vent.seleccion === undefined) s.vent.seleccion = null; // H-263 · proyectos anteriores: sin ventilador seleccionado
+  /* H-294: el precio por CFM pasó de la cotización a Ventilación. Un proyecto anterior conserva la cifra que tenía la cotización (sin
+     ella, la semilla de la casa, igual que antes) y la cotización deja de guardarla. */
+  if (!("precioCFM" in s.vent)) s.vent.precioCFM = num(s.quote && s.quote.fanCFM, VENT_PRECIO_SEED.cfm);
+  if (s.quote) delete s.quote.fanCFM;
   if (!s.meta || typeof s.meta !== "object") s.meta = base.meta;
   ["name", "client", "location", "engineer", "date"].forEach((k) => { if (typeof s.meta[k] !== "string") s.meta[k] = (typeof base.meta[k] === "string" ? base.meta[k] : ""); });
   if (!s.site || typeof s.site !== "object") s.site = base.site;

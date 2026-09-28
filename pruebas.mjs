@@ -9248,6 +9248,27 @@ t("S.173 (H-293) la cotización de Contra incendio sale de su propio motor: el p
     eq("rociador" in s.quote, false, "la cotización ya no guarda el precio del rociador:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
+t("S.174 (H-294) la cotización de Ventilación sale de su propio motor: el precio por CFM se captura en Ventilación (copia de la semilla de la casa) y la cotización global sólo junta sus renglones tal cual; un proyecto anterior conserva su precio", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.174";
+    S.perms["vent>quote"] = { ts: 1, via: "S.174" };
+    S.vent = { ...S.vent, mode: "general", area: 200, height: 4, ach: 6 };
+    G("recompute")();
+    const filas = () => (G("QUOTE").aux || []).filter((a) => a.mot === "vent");
+    if (!filas().length || !(G("VENT").demand > 0)) throw new Error("el caso no aísla lo que se quiere probar: debe haber partida de ventilación");
+    eq(filas()[0].unit, 145, "un proyecto nuevo arranca con la semilla de la casa (la misma cifra de antes):");
+    S.vent.precioCFM = 160; S.quote.fanCFM = 999; G("recompute")();
+    eq(filas()[0].unit, 160, "el precio sale de la captura de Ventilación, no de la cotización:");
+    eq(filas()[0].total, 160 * Math.round(G("VENT").demand), "total = precio × CFM del motor:");
+    eq(JSON.stringify(((G("VENT").cot || { aux: [] }).aux).map((a) => [a.desc, a.total])), JSON.stringify(filas().map((a) => [a.desc, a.total])),
+      "la cotización global junta los renglones que armó el motor, tal cual:");
+    const viejo = JSON.parse(JSON.stringify(S)); delete viejo.vent.precioCFM; viejo.quote.fanCFM = 150;
+    const s = G("sanearEstado")(viejo);
+    eq(s.vent.precioCFM, 150, "un proyecto anterior conserva su precio, ahora en Ventilación:");
+    eq("fanCFM" in s.quote, false, "la cotización ya no guarda el precio por CFM:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {
   const guardado = JSON.stringify(S);
   try {
