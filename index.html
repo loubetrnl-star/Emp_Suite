@@ -18264,12 +18264,53 @@ function snapshotSoporte() {
     ts: Date.now(),
   };
 }
-function resumenSnapSoporte(sn) {
-  const m = (xs) => xs.reduce((a, x) => a + Math.max(0, num(x.L)), 0);
+function resumenSnapSoporte(sn, en) {
+  const m = (xs) => (xs || []).reduce((a, x) => a + Math.max(0, num(x.L)), 0);
   /* Capa 0 · 2.5: el material entra a la firma de la instantánea; si no se
      nombra aquí, la tarjeta desactualizada muestra dos textos idénticos. */
-  const matSop = sn.hidroMat === "plastico" ? `termoplástico${sn.hidroSub && sn.hidroSub !== "plastico" ? " " + String(sn.hidroSub).toUpperCase() : ""}` : (sn.hidroMat || "acero");
-  return `${n(m(sn.duct), 0)} m de ducto (${sn.duct.length} tramos) · ${n(m(sn.hidro), 0)} m de tubería hidráulica soportada como ${matSop} · incendio ${sn.fuego.nTotal} rociador(es) · ${n(m(sn.aire), 0)} m de red de aire · ${sn.nEquip} base(s) de equipo`;
+  const sub = sn.hidroSub && sn.hidroSub !== "plastico" ? " " + String(sn.hidroSub).toUpperCase() : "";
+  const matSop = sn.hidroMat === "plastico" ? `termoplástico${sub}` : (sn.hidroMat || "acero");
+  const matSopEn = sn.hidroMat === "plastico" ? `thermoplastic${sub}` : ({ acero: "steel", cobre: "copper" }[sn.hidroMat || "acero"] || sn.hidroMat);
+  /* H-266 (revisión adversarial U13; reglas 3 y 8): la red contra incendio se soporta por sus metros (cabezal y montante, con su
+     Ø), no por rociadores; la firma ya los comparaba y la tarjeta desactualizada salía con dos textos idénticos. ES/EN (regla 7). */
+  const fu = sn.fuego || {}, nR = num(fu.nTotal);
+  const redes = [num(fu.Lram) > 0 ? (en ? `header ${n(num(fu.Lram), 0)} m Ø${n(num(fu.ramD), 0)} mm` : `cabezal ${n(num(fu.Lram), 0)} m Ø${n(num(fu.ramD), 0)} mm`) : "",
+    num(fu.Lmon) > 0 ? (en ? `riser ${n(num(fu.Lmon), 0)} m Ø${n(num(fu.monD), 0)} mm` : `montante ${n(num(fu.Lmon), 0)} m Ø${n(num(fu.monD), 0)} mm`) : ""].filter(Boolean).join(", ");
+  if (en) return `${n(m(sn.duct), 0)} m of duct (${(sn.duct || []).length} runs) · ${n(m(sn.hidro), 0)} m of plumbing pipe supported as ${matSopEn} · fire protection ${redes || "without header or riser"} (${nR} sprinkler(s)) · ${n(m(sn.aire), 0)} m of compressed air network · ${num(sn.nEquip)} equipment base(s)`;
+  return `${n(m(sn.duct), 0)} m de ducto (${(sn.duct || []).length} tramos) · ${n(m(sn.hidro), 0)} m de tubería hidráulica soportada como ${matSop} · incendio ${redes || "sin cabezal ni montante"} (${nR} rociador(es)) · ${n(m(sn.aire), 0)} m de red de aire · ${num(sn.nEquip)} base(s) de equipo`;
+}
+/* H-266 (U13; regla 3): qué cambió entre la instantánea aceptada y lo que hoy proponen los motores, por red. */
+function cambiosSnapSoporte(a, b) {
+  if (!a || !b) return "";
+  const m = (xs) => (xs || []).reduce((s, x) => s + Math.max(0, num(x.L)), 0), c = [];
+  const dif = (x, y) => Math.abs(num(x) - num(y)) > 1e-9;
+  const red = (et, xa, xb, uni) => {
+    if ((xa || []).length !== (xb || []).length || dif(m(xa), m(xb))) c.push(`${et} ${n(m(xa), 0)} → ${n(m(xb), 0)} m (${(xa || []).length} → ${(xb || []).length} ${uni})`);
+    else if (JSON.stringify(xa || []) !== JSON.stringify(xb || [])) c.push(`${et}: mismos metros, cambió la sección, el diámetro o el calibre de algún tramo`);
+  };
+  red("ducto", a.duct, b.duct, "tramos"); red("hidráulica", a.hidro, b.hidro, "tramos");
+  if ((a.hidroMat || "") !== (b.hidroMat || "") || (a.hidroSub || "") !== (b.hidroSub || "")) c.push(`material hidráulico ${a.hidroSub || a.hidroMat} → ${b.hidroSub || b.hidroMat}`);
+  const fa = a.fuego || {}, fb = b.fuego || {}, fc = [];
+  if (dif(fa.Lram, fb.Lram)) fc.push(`cabezal ${n(num(fa.Lram), 0)} → ${n(num(fb.Lram), 0)} m`);
+  if (dif(fa.ramD, fb.ramD)) fc.push(`Ø del cabezal ${n(num(fa.ramD), 0)} → ${n(num(fb.ramD), 0)} mm`);
+  if (dif(fa.Lmon, fb.Lmon)) fc.push(`montante ${n(num(fa.Lmon), 0)} → ${n(num(fb.Lmon), 0)} m`);
+  if (dif(fa.monD, fb.monD)) fc.push(`Ø del montante ${n(num(fa.monD), 0)} → ${n(num(fb.monD), 0)} mm`);
+  if (dif(fa.nTotal, fb.nTotal)) fc.push(`rociadores ${num(fa.nTotal)} → ${num(fb.nTotal)}`);
+  if ((fa.tub || "acero") !== (fb.tub || "acero")) fc.push(`material ${fa.tub || "acero"} → ${fb.tub || "acero"}`);
+  if (fc.length) c.push(`contra incendio: ${fc.join(", ")}`);
+  red("aire", a.aire, b.aire, "tramos");
+  if ((a.aireMat || "") !== (b.aireMat || "")) c.push(`material del aire ${a.aireMat} → ${b.aireMat}`);
+  if (dif(a.nEquip, b.nEquip)) c.push(`bases de equipo ${num(a.nEquip)} → ${num(b.nEquip)}`);
+  return c.join(" · ") || "un dato de los tramos que no mueve metros ni diámetros (etiqueta o marca de tramo)";
+}
+/* H-266 (U13; regla 8): los motores que de verdad aportan metros a una instantánea (la propuesta junta cuatro). */
+function origenesSnapSoporte(sn, en) {
+  const m = (xs) => (xs || []).reduce((a, x) => a + Math.max(0, num(x.L)), 0), fu = (sn && sn.fuego) || {};
+  const EN = { duct: "Ductwork", hidro: "Plumbing", fuego: "Fire protection", aire: "Compressed air" };
+  const ids = sn ? [["duct", m(sn.duct) > 0 || (sn.duct || []).length > 0], ["hidro", m(sn.hidro) > 0], ["fuego", num(fu.Lram) + num(fu.Lmon) > 0 || num(fu.nTotal) > 0], ["aire", m(sn.aire) > 0]]
+    .filter((x) => x[1]).map((x) => x[0]) : [];
+  if (!ids.length) return en ? "Ductwork, plumbing, fire protection or compressed air" : "Ductos, hidrosanitario, contra incendio o aire comprimido";
+  return ids.map((id) => (en ? EN[id] : (DOMAINS[id] || {}).label || id)).join(", ");
 }
 /* Soportería con instantánea: el motor de soportería no cambia, pero se le
    presentan los tramos que el usuario ACEPTÓ, no los que hay ahora. Así un
@@ -18522,6 +18563,16 @@ const PROPUESTAS = {
     enVivo: () => false,   /* H-266: ya no existe el conteo en vivo */
     aplicar: () => { S.soporte.snap = snapshotSoporte(); S.soporte.usarMotores = true; },
     propio: () => { S.soporte.usarMotores = false; delete S.soporte.snap; },
+    /* H-266 (revisión adversarial U13; reglas 3 y 8): el origen son los motores que aportan (antes «Ductos y calibres» fijo); lo
+       aceptado se describe desde la instantánea (la que de verdad cuenta, también tras «Conservar lo aceptado»); desactualizada,
+       dice qué cambió por red; y la fila del trazado llega al libro de la propuesta con su espejo en inglés (regla 7). */
+    origenTxt: (aceptada, en) => origenesSnapSoporte(aceptada && S.soporte.snap ? S.soporte.snap : snapshotSoporte(), en),
+    resumenAceptado: () => (S.soporte.snap && typeof S.soporte.snap === "object" ? resumenSnapSoporte(S.soporte.snap) : null),
+    cambios: () => (S.soporte.snap && typeof S.soporte.snap === "object" ? cambiosSnapSoporte(S.soporte.snap, snapshotSoporte()) : ""),
+    en: (e) => ({ destino: "Supports and lifting", campo: "Duct and pipe lengths counted by the systems",
+      valor: e.rec ? (e.rec.estado === "aceptado" ? (S.soporte.snap && typeof S.soporte.snap === "object" ? resumenSnapSoporte(S.soporte.snap, true) : "accepted") : "captured by the user") : "not decided",
+      origen: origenPropTxt("motores>soporte", !!(e.rec && e.rec.estado === "aceptado"), true),
+      estado: { "sin-datos": "No data at the source", pendiente: "Proposal available", aceptado: "Accepted · current", desactualizado: "Out of date · the source changed", propio: "Captured by hand", vivo: "Live (previous mode)" }[e.nivel] || e.nivel }),
   },
   /* H-267 (decisión del dueño, 27-sep-2026): selección de equipo autónoma. Carga térmica ARMA la propuesta con lo que calculó;
      al aceptarla se escribe la instantánea (zonas de selección con origen y fecha) y ya no se mueve sola. */
@@ -18599,7 +18650,7 @@ function vinculoDe(id) { if (!S.vinculos || typeof S.vinculos !== "object") S.vi
 function registrarVinculo(id, estado = "aceptado") {
   const P = PROPUESTAS[id]; if (!P) return;
   if (!S.vinculos || typeof S.vinculos !== "object") S.vinculos = {};
-  S.vinculos[id] = { estado, ts: Date.now(), origen: (DOMAINS[P.origen] || {}).label || P.origen,
+  S.vinculos[id] = { estado, ts: Date.now(), origen: origenPropTxt(id, estado === "aceptado"),
     firma: estado === "aceptado" ? seguro(() => P.firma(), "") : (seguro(() => P.firma(), "") || ""),
     resumen: estado === "aceptado" ? seguro(() => P.resumen(), "") : "capturado a mano por el usuario", rev: REV };
 }
@@ -18635,8 +18686,9 @@ function propuestaHtml(id) {
   const P = PROPUESTAS[id]; if (!P) return "";
   const e = estadoPropuesta(id);
   const [lab, tono] = NIVEL_PROP[e.nivel];
-  const origen = (DOMAINS[P.origen] || {}).label || P.origen;
+  const origen = origenPropTxt(id, !e.disponible);   /* H-266 (U13): los motores que proponen hoy; sin propuesta, los de lo aceptado */
   const resumen = e.disponible ? seguro(() => P.resumen(), "") : "";
+  const resAcept = rec => (P.resumenAceptado && seguro(() => P.resumenAceptado(), null)) || rec.resumen || "";   /* H-266 (U13) */
   const actual = seguro(() => P.actual(), "");
   const rec = e.rec;
   let cuerpo = "", botones = "";
@@ -18654,12 +18706,13 @@ function propuestaHtml(id) {
       botones = `<button class="btn-primary" data-act="prop-aceptar" data-id="${id}">Convertir en propuesta aceptada</button><button class="btn-ghost" data-act="prop-propio" data-id="${id}">Capturo lo mío</button>`;
       break;
     case "aceptado":
-      cuerpo = `<div class="prow"><span class="pk">Aceptada</span><span>${esc(rec.resumen || "")} · <b>${esc(rec.origen)}</b> · ${fechaCorta(rec.ts)}</span></div><div class="prow"><span class="pk">Ahora hay</span><span>${esc(actual)}</span></div>`;
+      cuerpo = `<div class="prow"><span class="pk">Aceptada</span><span>${esc(resAcept(rec))} · <b>${esc(origenPropTxt(id, true))}</b> · ${fechaCorta(rec.ts)}</span></div><div class="prow"><span class="pk">Ahora hay</span><span>${esc(actual)}</span></div>`;
       botones = `<button class="btn-ghost" data-act="prop-aceptar" data-id="${id}">Volver a aplicar</button><button class="btn-ghost" data-act="prop-propio" data-id="${id}">Capturo lo mío</button>`;
       break;
     case "desactualizado":
-      cuerpo = `<div class="prow"><span class="pk">Se aceptó</span><span>${esc(rec.resumen || "")} · ${fechaCorta(rec.ts)}</span></div>
+      cuerpo = `<div class="prow"><span class="pk">Se aceptó</span><span>${esc(resAcept(rec))} · ${fechaCorta(rec.ts)}</span></div>
         <div class="prow"><span class="pk">Hoy propone</span><span>${e.disponible ? esc(resumen) : "el origen ya no tiene datos"}</span></div>
+        ${P.cambios ? `<div class="prow"><span class="pk">Qué cambió</span><span>${esc(seguro(() => P.cambios(), "") || "—")}</span></div>` : ""}
         <div class="sub"><b>El origen cambió</b> desde que se aceptó. Esta disciplina sigue con lo aceptado: no se recalcula sola.</div>`;
       botones = `<button class="btn-primary" data-act="prop-aceptar" data-id="${id}">Actualizar con la propuesta</button><button class="btn-ghost" data-act="prop-conservar" data-id="${id}">Conservar lo aceptado</button><button class="btn-ghost" data-act="prop-propio" data-id="${id}">Capturo lo mío</button>`;
       break;
@@ -18674,6 +18727,13 @@ function propuestaHtml(id) {
     ${botones ? `<div class="row" style="margin-top:10px">${botones}</div>` : ""}
   </div>`;
 }
+/* H-266 (U13; regla 8): el origen que se muestra de una propuesta. Una propuesta que junta varios motores (motores>soporte) nombra
+   los que de verdad aportan: los de lo aceptado si «aceptada», si no los de la propuesta de hoy. Las demás, su motor de origen. */
+function origenPropTxt(id, aceptada, en) {
+  const P = PROPUESTAS[id]; if (!P) return "";
+  const fijo = (DOMAINS[P.origen] || {}).label || P.origen;
+  return P.origenTxt ? (seguro(() => P.origenTxt(aceptada, en), "") || fijo) : fijo;
+}
 function propAceptar(id) {
   const P = PROPUESTAS[id]; if (!P) return;
   S.perms = S.perms || {};
@@ -18682,7 +18742,7 @@ function propAceptar(id) {
   P.aplicar();
   registrarVinculo(id, "aceptado");
   projAutosave(); render();
-  toast(`Propuesta aceptada · ${(DOMAINS[P.origen] || {}).label || P.origen} → ${(DOMAINS[P.destino] || {}).label || P.destino} · ${fechaCorta(Date.now())}`);
+  toast(`Propuesta aceptada · ${origenPropTxt(id, true)} → ${(DOMAINS[P.destino] || {}).label || P.destino} · ${fechaCorta(Date.now())}`);
 }
 function propPropio(id) {
   const P = PROPUESTAS[id]; if (!P) return;
@@ -18728,8 +18788,8 @@ function trazaHerencia() {
     const e = estadoPropuesta(id);
     const rec = e.rec;
     filas.push({ destinoId: P.destino, destino: (DOMAINS[P.destino] || {}).label || P.destino, campo: P.titulo,
-      valor: rec ? (rec.estado === "aceptado" ? rec.resumen : "lo capturado por el usuario") : (e.nivel === "vivo" ? "entra en vivo (modo anterior)" : "sin decidir"),
-      origen: (DOMAINS[P.origen] || {}).label || P.origen, fecha: rec ? fechaCorta(rec.ts) : "—",
+      valor: rec ? (rec.estado === "aceptado" ? ((P.resumenAceptado && seguro(() => P.resumenAceptado(), null)) || rec.resumen) : "lo capturado por el usuario") : (e.nivel === "vivo" ? "entra en vivo (modo anterior)" : "sin decidir"),
+      origen: origenPropTxt(id, !!(rec && rec.estado === "aceptado")), fecha: rec ? fechaCorta(rec.ts) : "—",   /* H-266 (U13) */
       estado: NIVEL_PROP[e.nivel][0], regla: 2, nivel: e.nivel,
       /* H-267 · regla 7: las propuestas nuevas traen su espejo en inglés para el libro de la propuesta. */
       ...(P.en ? { en: seguro(() => P.en(e), undefined) } : {}) });
@@ -19542,7 +19602,7 @@ function viewTablero() {
   const pendHtml = hayProy && pendientes.length ? `<div class="card" style="margin-top:16px"><h3>Propuestas por decidir<span class="tag">${pendientes.length}</span></h3><div class="body">
       <div class="sub" style="margin-bottom:10px">Resultados que una disciplina ofrece a otra. Nada entra solo: se acepta, se captura lo propio, o se conserva lo aceptado cuando el origen cambió.</div>
       ${pendientes.map(([id, e]) => { const P = PROPUESTAS[id]; const [lab, tono] = NIVEL_PROP[e.nivel];
-        return `<div class="list-item"><span class="badge ${tono}">${lab}</span><div style="flex:1;min-width:0"><b>${esc(P.titulo)}</b><div class="sub">${esc((DOMAINS[P.origen] || {}).label || P.origen)} → ${esc((DOMAINS[P.destino] || {}).label || P.destino)}</div></div>
+        return `<div class="list-item"><span class="badge ${tono}">${lab}</span><div style="flex:1;min-width:0"><b>${esc(P.titulo)}</b><div class="sub">${esc(origenPropTxt(id, !e.disponible))} → ${esc((DOMAINS[P.destino] || {}).label || P.destino)}</div></div>
           <button class="toolbtn" data-act="go-tab" data-tab="${DISCIPLINAS.find((d) => d.id === P.destino)?.tab || "inicio"}">Decidir</button></div>`; }).join("")}
     </div></div>` : "";
 
@@ -22783,6 +22843,15 @@ function buildSoportePdf() {
   pdfTitle(d, "Cedula de soporteria y elevacion", `${S.meta.name || "Proyecto"} · seccion G`);
   pdfHeading(d, "Base normativa del espaciamiento");
   pdfParagraph(d, "MSS SP-58 para tuberia segun diametro y material: acero de 2.1 m en diametros chicos hasta 7.0 m en 12 pulgadas; en cobre de 1.8 a 3.7 m porque el material cede mas; en la red contra incendio el espaciamiento se topa en 4.6 m (NFPA 13); termoplastico (CPVC/PEAD) de 0.9 a 1.8 m con la tabla propia de la suite (IPC 308.5). SMACNA para ducto: 2.44 m en rectangular y 3.66 m en espiroducto. NFPA 13 capitulo 18 para arriostramiento sismico: longitudinal cada 24.4 m y transversal cada 12.2 m.");
+  /* H-266 (revisión adversarial U13; regla 8): la cédula dice de dónde salen los metros: la instantánea aceptada (con su fecha y
+     los motores de origen) o lo capturado a mano en esta pestaña. */
+  const snapSop = S.soporte && S.soporte.snap && typeof S.soporte.snap === "object" && S.soporte.usarMotores !== false ? S.soporte.snap : null;
+  pdfHeading(d, "Origen de los metros");
+  if (snapSop) {
+    const recS = vinculoDe("motores>soporte"), tsS = recS && recS.estado === "aceptado" && recS.ts ? recS.ts : snapSop.ts;
+    const cam = estadoPropuesta("motores>soporte").nivel === "desactualizado" ? seguro(() => cambiosSnapSoporte(snapSop, snapshotSoporte()), "") : "";
+    pdfParagraph(d, `Tramos de la instantánea aceptada el ${tsS ? fechaCorta(tsS) : "(sin fecha registrada)"} (${origenPropTxt("motores>soporte", true)}): ${resumenSnapSoporte(snapSop)}. No se mueven solos: si el origen cambia, la propuesta sale desactualizada y el usuario decide (regla 3).${cam ? ` OJO: el origen cambió desde la aceptación: ${cam}.` : ""}`);
+  } else pdfParagraph(d, `Metros capturados a mano en la pestaña de soportería: ${n(num(S.soporte.ductoM), 0)} m de ducto, ${n(num(S.soporte.tubHidroM), 0)} m de hidráulica, ${n(num(S.soporte.tubFuegoM), 0)} m de contra incendio y ${n(num(S.soporte.tubAireM), 0)} m de aire. Los metros de los otros motores entran sólo al aceptar su propuesta (H-266).`);
   if (R.porTuberia.length) {
     pdfHeading(d, "Conteo por tramo");
     pdfTable(d, ["Servicio", "Tramo", "Diam mm", "Espac m", "Long m", "Soportes"],

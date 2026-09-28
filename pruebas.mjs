@@ -8028,6 +8028,48 @@ t("S.133 (H-266) lo que la migración de soportería copia o supone al abrir un 
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+/* ===== S.134 (H-266) la propuesta de soportería muestra lo que propone y de dónde sale ===== */
+t("S.134 (H-266) la propuesta motores>soporte muestra los metros y Ø de la red contra incendio (cabezal y montante, no sólo rociadores) y el origen por motor (no «Ductos y calibres» para todo) en la tarjeta, en el vínculo y en el trazado (ES/EN); desactualizada dice qué cambió; la cédula dice que los tramos son de la instantánea aceptada y su fecha, o que son capturados a mano (revisión adversarial U13; reglas 3 y 8)", () => {
+  const guardado = JSON.stringify(S);
+  const tarjeta = () => { S.tab = "soporte"; G("render")(); const c = w.document.querySelector(".prop"); return c ? c.textContent.replace(/\s+/g, " ") : ""; };
+  const pdf = () => [...Buffer.from(G("buildSoportePdf")()).toString("latin1").matchAll(/\(((?:[^()\\]|\\.)*)\) Tj/g)].map((m) => m[1]).join(" ");
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.134";
+    Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.134" }; });
+    S.duct.segments = [];
+    S.fuego = { ...G("defaultFuego")(), area: 600, altura: 6, Lramal: 30, Lmontante: 12 };
+    S.soporte = { ...G("defaultSoporte")(), alturaColgadoM: 0.5, alturaTrabajo: 5, mesesElevacion: 1, alturaEstructura: 6 };
+    G("recompute")();
+    const F = G("FUEGO"), P = G("PROPUESTAS")["motores>soporte"], fuegoLab = G("DOMAINS").fuego.label;
+    if (!(F.Lram === 30 && F.Lmon === 12 && F.nTotal > 0)) throw new Error("el caso no aísla lo que se quiere probar: cabezal 30 m y montante 12 m");
+    eq(G("estadoPropuesta")("motores>soporte").nivel, "pendiente", "hay propuesta:");
+    const res = P.resumen();
+    if (!/cabezal 30 m/.test(res) || !/montante 12 m/.test(res)) throw new Error("la propuesta debe mostrar los metros de la red contra incendio: " + res);
+    let c = tarjeta();
+    if (!c.includes(`${fuegoLab} → `) || c.includes("Ductos y calibres →")) throw new Error("la tarjeta debe nombrar el motor de origen verdadero: " + c.slice(0, 160));
+    /* Aceptada: el vínculo y el trazado dicen el origen verdadero y lo aceptado, en español y en inglés (libro de la propuesta). */
+    G("propAceptar")("motores>soporte"); G("recompute")();
+    eq(S.vinculos["motores>soporte"].origen, fuegoLab, "el vínculo guarda el origen verdadero:");
+    let fila = G("trazaHerencia")().find((f) => f.campo === P.titulo);
+    eq(fila.origen, fuegoLab, "trazado, origen:");
+    if (!/cabezal 30 m/.test(fila.valor)) throw new Error("trazado, valor: " + fila.valor);
+    if (!fila.en || !/Fire protection/.test(fila.en.origen) || !/header 30 m/.test(fila.en.valor)) throw new Error("trazado, espejo EN: " + JSON.stringify(fila.en));
+    /* La cédula dice de dónde salen los tramos. */
+    const hoy = G("fechaCorta")(S.vinculos["motores>soporte"].ts);
+    if (!pdf().includes("instantánea aceptada el " + hoy)) throw new Error("la cédula debe decir que los tramos son de la instantánea aceptada y su fecha");
+    /* El cabezal pasa a 80 m: desactualizada, y la tarjeta dice qué cambió (antes «Se aceptó» y «Hoy propone» salían idénticos). */
+    S.fuego.Lramal = 80; G("recompute")();
+    eq(G("estadoPropuesta")("motores>soporte").nivel, "desactualizado", "el origen cambió:");
+    c = tarjeta();
+    const se = (c.match(/Se aceptó(.*?)Hoy propone/) || [])[1] || "", hoyP = (c.match(/Hoy propone(.*?)(Qué cambió|El origen cambió)/) || [])[1] || "";
+    if (!se || se.replace(/ · \d.*$/, "").trim() === hoyP.trim()) throw new Error("«Se aceptó» y «Hoy propone» no deben ser iguales: " + c.slice(0, 400));
+    if (!/Qué cambió.*cabezal 30 → 80 m/.test(c)) throw new Error("la tarjeta debe decir qué cambió: " + c.slice(0, 600));
+    /* Capturado a mano: la cédula lo dice. */
+    G("propPropio")("motores>soporte"); S.soporte.tubFuegoM = 20; S.soporte.tubFuegoD = 50; G("recompute")();
+    if (!pdf().includes("capturados a mano")) throw new Error("la cédula debe decir que los metros son capturados a mano");
+  } finally { w.eval("clearTimeout(autoT)"); G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 /* ===== S.103 (H-268) eléctrico autónomo: las cargas de otros motores entran sólo como propuesta aceptada (instantánea) ===== */
 t("S.103 (H-268) eléctrico es autónomo: con permisos y tomarHVAC, sin aceptar la propuesta, la cédula, el ventilador, el compresor, las bombas y los FFU NO entran al cuadro (se retiró el modo en vivo); aceptar concede los cruces y deja una instantánea con fecha que no se mueve sola; un proyecto guardado en vivo migra al abrir con las mismas cifras (sólo con los cruces que tenía); el sello no cambia al reabrir (decisión del dueño, 27-sep-2026)", () => {
   const guardado = JSON.stringify(S);
