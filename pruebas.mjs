@@ -9163,6 +9163,21 @@ t("S.170 (H-291) el sitio de Proyecto no marca Ventilación: su cálculo no lo u
     contiene(G("selloDe")("vent").texto, "cambió la forma del sello", "un sello anterior dice qué cambió:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
+t("S.171 (H-292) el sitio de Proyecto no marca Contra incendio: su cálculo no lo usa y su huella ya no lo lleva (el sello sigue «calculado» al cambiar el sitio); un sello anterior dice que cambió la forma del sello", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.171";
+    S.fuego = { ...S.fuego, area: 600, altura: 6, Lramal: 30, Lmontante: 12, presFuente: 30 }; G("recompute")();
+    const h0 = G("huellaMotor")("fuego"), r0 = JSON.stringify(G("FUEGO"));
+    S.sellos = { fuego: { ts: 5, huella: h0, ver: G("motorVer")("fuego"), hf: 2 } };
+    S.site = { key: "custom", db: 45, wb: 28, alt: 2240, range: 14 }; G("recompute")();
+    eq(JSON.stringify(G("FUEGO")), r0, "el cálculo no usa el sitio:");
+    eq(G("huellaMotor")("fuego"), h0, "y su huella ya no lo lleva:");
+    eq(G("selloDe")("fuego").estado, "calculado", "el sello sigue calculado al cambiar el sitio de Proyecto:");
+    S.sellos = { fuego: { ts: 5, huella: "0123456789abcd", ver: G("motorVer")("fuego") } };
+    contiene(G("selloDe")("fuego").texto, "cambió la forma del sello", "un sello anterior dice qué cambió:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {
   const guardado = JSON.stringify(S);
   try {

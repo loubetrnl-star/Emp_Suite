@@ -78,5 +78,6 @@
   { "id": "fuego.m40", "que": "H-264 (complemento): un proyecto con tomarArea y load>fuego abre con el área capturada, no con la que se tomaba en vivo", "logica": true,
     "buscar": "if (s.fuego.tomarArea === true && s.perms[\"load>fuego\"]) {", "reemplazar": "if (false) {", "estado": "vigente" },
   { "id": "fuego.m41", "que": "H-264 (sello): la huella de contra incendio vuelve a llevar los permisos (aceptar la propuesta de soportería la marcaría «la captura cambió»)", "logica": true,
-    "buscar": "  fuego: () => ({ fuego: S.fuego, site: S.site }),", "reemplazar": "  fuego: () => ({ fuego: S.fuego, perms: ePerms(), site: S.site }),", "estado": "vigente" }
+    "buscar": "  fuego: () => ({ fuego: S.fuego }),", "reemplazar": "  fuego: () => ({ fuego: S.fuego, perms: ePerms() }),", "estado": "vigente" },
+  { "id": "fuego.m42", "que": "H-292: la huella de Contra incendio vuelve a llevar el sitio de Proyecto (cambiarlo marcaría el sello sin que cambie nada)", "logica": true, "buscar": "  fuego: () => ({ fuego: S.fuego }),   /* H-264: computeFuego ya no lee permisos (salió load>fuego): conceder o retirar uno no toca su sello. H-292: tampoco el sitio de Proyecto, que no usa */", "reemplazar": "  fuego: () => ({ fuego: S.fuego, site: S.site }),   /* H-264: computeFuego ya no lee permisos (salió load>fuego): conceder o retirar uno no toca su sello */", "estado": "vigente" }
 ]

@@ -19455,7 +19455,7 @@ const ENTRADAS = {
   duct: () => ({ duct: S.duct }),   /* H-284: el sitio de Proyecto no entra al cálculo de ductos (rho, mu y rugosidad se capturan aquí): fuera de la huella */
   vent: () => ({ vent: sinClaves(S.vent, ["seleccion"]) }),   /* H-263: la selección no la lee computeVent. H-291: el sitio de Proyecto tampoco: fuera de la huella */
   hidro: () => ({ hidro: sinClaves(S.hidro, ["equipoHN"]) }),   /* H-285: el sitio de Proyecto no entra al cálculo hidráulico: fuera de la huella */
-  fuego: () => ({ fuego: S.fuego, site: S.site }),   /* H-264: computeFuego ya no lee permisos (salió load>fuego): conceder o retirar uno no toca su sello */
+  fuego: () => ({ fuego: S.fuego }),   /* H-264: computeFuego ya no lee permisos (salió load>fuego): conceder o retirar uno no toca su sello. H-292: tampoco el sitio de Proyecto, que no usa */
   aire: () => ({ aire: S.aire, site: S.site }),
   civil: () => ({ civil: S.civil }),   /* H-265: obra civil sólo depende de su propia captura */
   /* H-268: sólo su captura (las cargas aceptadas de otros motores van dentro, como instantánea) y los permisos; tomarHVAC ya no
@@ -19538,6 +19538,7 @@ const HUELLA_FORMA = {
   clean: { f: 2, que: "H-283: la huella ya no lleva el sitio de Proyecto, que Cuartos limpios no usa" },
   duct: { f: 2, que: "H-284: la huella ya no lleva el sitio de Proyecto, que Ductos no usa" },
   hidro: { f: 2, que: "H-285: la huella ya no lleva el sitio de Proyecto, que Hidráulica no usa" },
+  fuego: { f: 2, que: "H-292: la huella ya no lleva el sitio de Proyecto, que Contra incendio no usa" },
   vent: { f: 2, que: "H-291: la huella ya no lleva el sitio de Proyecto, que Ventilación no usa" },
 };
 const formaHuella = (id) => (HUELLA_FORMA[id] ? HUELLA_FORMA[id].f : 1);
