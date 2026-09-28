@@ -7905,6 +7905,19 @@ t("S.117 (H-265) un proyecto anterior a H-265 con una zona sin área pero con ta
     cerca(G("CIVIL").muroM2, nave.muro + 50 * 3, 1e-6, "el muro suma la tabiquería del pasillo (50 ml × 3 m), como antes de H-265:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
+t("S.118 (H-265) «Nuevo desde plantilla» y «Referencia interna» vuelven genéricos los nombres de las áreas de obra y de los cuartos clasificados de obra civil y quitan su origen de archivo, que pueden nombrar la obra o el cliente (los datos técnicos quedan)", () => {
+  const civil = { ...G("defaultCivil")(), usarZonas: true,
+    areas: [{ id: "a1", nombre: "Nave OBRA-X Planta 3", area: 400, altura: 6, perimetro: 80, origen: { archivo: "levantamiento OBRA-X.xlsx", hoja: "Areas", fila: 3 } }],
+    cuartos: [{ id: "k1", nombre: "Sala ISO 7 OBRA-X", area: 60, altura: 3, perimetro: 32 }] };
+  const ref = G("anonimizarRegistro")({ id: "s118", ts: 1, data: { ...G("defaultState")(), meta: { name: "OBRA-X" }, civil } }, 1);
+  const txt = JSON.stringify(ref.data.civil);
+  if (/OBRA-X/.test(txt)) throw new Error(`la referencia interna conserva el nombre de la obra en obra civil: ${txt.slice(0, 220)}`);
+  eq(ref.data.civil.areas[0].nombre, "Área de obra 1", "nombre genérico del área de obra:");
+  eq(ref.data.civil.cuartos[0].nombre, "Cuarto clasificado 1", "nombre genérico del cuarto clasificado:");
+  eq(ref.data.civil.areas[0].area, 400, "los datos técnicos quedan:"); eq(ref.data.civil.cuartos[0].perimetro, 32, "y el perímetro:");
+  const pl = G("etiquetasGenericas")({ civil: JSON.parse(JSON.stringify(civil)) });
+  if (/OBRA-X/.test(JSON.stringify(pl.civil))) throw new Error("la plantilla conserva el nombre de la obra en obra civil");
+});
 t("S.102 (H-266) soportería es autónoma: sin la instantánea aceptada no cuenta metros de otros motores (se retiró el conteo en vivo); aceptarla los cuantifica y ya no se mueven solos; alturas y bases se capturan; un proyecto anterior se migra al abrir con las mismas cifras (decisión del dueño, 27-sep-2026)", () => {
   const guardado = JSON.stringify(S);
   try {

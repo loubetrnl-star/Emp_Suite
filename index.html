@@ -24258,6 +24258,11 @@ function etiquetasGenericas(d) {
   else if (d.clean && typeof d.clean === "object") d.clean.name = "Cuarto limpio 1";
   if (d.vent && typeof d.vent === "object") d.vent.name = defaultState().vent.name;
   if (d.aire && Array.isArray(d.aire.consumos)) d.aire.consumos = d.aire.consumos.map((c, i) => ({ ...c, nombre: `Consumo ${i + 1}` }));
+  /* H-265 (complemento): las áreas de obra y los cuartos clasificados de obra civil también llevan nombre libre, y los que
+     entraron de un archivo, su origen (nombre del archivo, hoja y fila): se vuelven genéricos; los datos técnicos quedan. */
+  [["areas", "Área de obra"], ["cuartos", "Cuarto clasificado"]].forEach(([tipo, rot]) => {
+    if (d.civil && Array.isArray(d.civil[tipo])) d.civil[tipo] = d.civil[tipo].map((x, i) => { const y = { ...x, nombre: `${rot} ${i + 1}` }; delete y.origen; return y; });
+  });
   /* El modelo, el origen y el sello de la carga los escribe la carga de
      archivos o el usuario, y pueden nombrar la obra ("UMA OBRA-X 39MW"). */
   if (d.elec && Array.isArray(d.elec.cargas)) d.elec.cargas = d.elec.cargas.map((c, i) => {
