@@ -9093,6 +9093,20 @@ t("S.166 (H-283) el sitio de Proyecto no marca Cuartos limpios: su cálculo no l
     if (/Margen de error HAP/.test(pdf)) throw new Error("la memoria de cuartos limpios imprime el margen HAP de Carga térmica");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
+t("S.167 (H-284) el sitio de Proyecto no marca Ductos: su cálculo no lo usa (densidad, viscosidad y rugosidad se capturan en Ductos) y su huella ya no lo lleva; un sello anterior dice que cambió la forma del sello", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.167";
+    S.duct.segments = [{ ...G("defaultSegment")("SA-1", 2500), length: 20 }]; G("recompute")();
+    if (!(G("DUCT").path > 0)) throw new Error("el caso no aísla lo que se quiere probar: la red debe tener caída de presión");
+    const h0 = G("huellaMotor")("duct"), d0 = JSON.stringify(G("DUCT"));
+    S.site = { key: "custom", db: 45, wb: 28, alt: 2240, range: 14 }; G("recompute")();
+    eq(JSON.stringify(G("DUCT")), d0, "el cálculo de ductos no usa el sitio:");
+    eq(G("huellaMotor")("duct"), h0, "y su huella ya no lo lleva:");
+    S.sellos = { duct: { ts: 5, huella: "0123456789abcd", ver: G("motorVer")("duct") } };
+    contiene(G("selloDe")("duct").texto, "cambió la forma del sello", "un sello anterior dice qué cambió:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {
   const guardado = JSON.stringify(S);
   try {

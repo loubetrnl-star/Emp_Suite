@@ -19451,7 +19451,7 @@ const ENTRADAS = {
      los modelos por familia y la presión estática externa capturada en esta pestaña (H-274: nada de Ductos). Ya no anida
      ENTRADAS.load(): la carga entra sólo al aceptar la propuesta load>equip. La marca de migración es pasajera: fuera. */
   equip: () => ({ zonas: zonasSel().map((z) => sinClaves(z, ["id", "origen", "editada"])), bldDiv: S.bldDiv, sitio: sitioSelHuella(), sysForce: S.sysForce, sel: eSel(), esp: espCapturada() }),
-  duct: () => ({ duct: S.duct, site: S.site }),
+  duct: () => ({ duct: S.duct }),   /* H-284: el sitio de Proyecto no entra al cálculo de ductos (rho, mu y rugosidad se capturan aquí): fuera de la huella */
   vent: () => ({ vent: sinClaves(S.vent, ["seleccion"]), site: S.site }),   /* H-263: la selección no la lee computeVent */
   hidro: () => ({ hidro: sinClaves(S.hidro, ["equipoHN"]), site: S.site }),
   fuego: () => ({ fuego: S.fuego, site: S.site }),   /* H-264: computeFuego ya no lee permisos (salió load>fuego): conceder o retirar uno no toca su sello */
@@ -19534,6 +19534,7 @@ const motorVer = (id) => MOTOR_VER[id] || "1";
    dueño, 28-sep-2026: no hay re-sello solo). */
 const HUELLA_FORMA = {
   clean: { f: 2, que: "H-283: la huella ya no lleva el sitio de Proyecto, que Cuartos limpios no usa" },
+  duct: { f: 2, que: "H-284: la huella ya no lleva el sitio de Proyecto, que Ductos no usa" },
 };
 const formaHuella = (id) => (HUELLA_FORMA[id] ? HUELLA_FORMA[id].f : 1);
 function cambiosMotorTexto(id, desde) { return (MOTOR_CAMBIOS[id] || []).filter((c) => +c.ver > +(desde || 1)).map((c) => `v${c.ver} (rev ${c.rev}): ${c.que}`).join("; ") || "cambio de lógica del motor"; }
