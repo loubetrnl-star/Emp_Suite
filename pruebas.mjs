@@ -7934,7 +7934,7 @@ t("S.131 (H-266) con arriostramiento sísmico y sin la altura de la estructura c
 });
 
 /* ===== S.132 (H-266) la migración no acepta una instantánea vacía y un proyecto anterior no abre «con cambios sin guardar» ===== */
-t("S.132 (H-266) un proyecto anterior que contaba en vivo sin nada que soportar en los motores de origen abre a mano con sus bases: no registra una aceptación vacía que sale «Desactualizada» en la tarjeta y en el trazado; uno con metros toma su instantánea y, abierto desde Mis proyectos sin tocar nada, no pide «Hay cambios sin guardar» (revisión adversarial U8)", () => {
+t("S.132 (H-266) un proyecto anterior que contaba en vivo sin nada que soportar en los motores de origen ni metros capturados a mano abre a mano con sus bases: no registra una aceptación vacía que sale «Desactualizada» en la tarjeta y en el trazado; con metros capturados a mano que el conteo en vivo no contaba toma la instantánea como antes y abre con las mismas cifras (0 m, no los metros a mano); uno con metros en los motores toma su instantánea y, abierto desde Mis proyectos sin tocar nada, no pide «Hay cambios sin guardar» (revisión adversarial U8)", () => {
   const guardado = JSON.stringify(S), lista = JSON.stringify(G("projList")());
   try {
     /* (1) Guardado antes de H-266 (sin alturaEstructura) en el modo por omisión (contaba en vivo, sin instantánea), sin ductos,
@@ -7952,6 +7952,17 @@ t("S.132 (H-266) un proyecto anterior que contaba en vivo sin nada que soportar 
     const fila = G("trazaHerencia")().find((f) => f.campo === G("PROPUESTAS")["motores>soporte"].titulo);
     if (!fila || /Desactualizada/.test(fila.estado)) throw new Error("el trazado de origen no debe imprimir «Desactualizada»: " + JSON.stringify(fila));
     eq(G("SOPORTE").nEquipos, 2, "mismas cifras: las 2 bases que contaba:"); eq(S.soporte.basesEquipo, 2, "capturadas una vez:");
+    /* Con metros capturados a mano guardados de cuando estuvo en «valores propios» (30 m de ducto 400×300 y 20 m de hidráulica
+       Ø50 de acero), que el conteo en vivo no contaba: abrir a mano los contaría (22 soportes, 41,454 MXN: otras cifras). Toma la
+       instantánea como antes (d8f8b5e): 0 m de los motores, las mismas cifras; los metros capturados se conservan (revisión de U8). */
+    const pm = JSON.parse(JSON.stringify(G("defaultState")())); pm.meta.name = "S.132-M";
+    pm.zones = [{ ...G("defaultZone")("Nave"), area: 400, height: 6 }]; pm.duct.segments = [];
+    pm.soporte = { usarMotores: true, ductoM: 30, ductoAnchoMm: 400, ductoAltoMm: 300, tubHidroM: 20, tubHidroD: 50, tubHidroMat: "acero" };
+    G("importarRespaldo")(JSON.stringify(pm)); G("recompute")();
+    eq(G("SOPORTE").mDucto, 0, "con metros capturados a mano que el conteo en vivo no contaba abre con las mismas cifras de antes: ducto");
+    eq(G("SOPORTE").mTub, 0, "tubería:"); eq(G("SOPORTE").nSoportes, 0, "soportes:"); eq(G("SOPORTE").total, 0, "total:");
+    eq(S.soporte.usarMotores === true && !!S.soporte.snap, true, "toma la instantánea, como antes:");
+    eq(S.soporte.ductoM, 30, "los metros capturados a mano se conservan:"); eq(S.soporte.tubHidroM, 20, "también los de hidráulica:");
     /* Con metros en un motor de origen, aunque sin captura real (red de aire con longitud y sin consumos), la toma igual: el conteo en
        vivo los soportaba y abre con las mismas cifras. */
     const pa = JSON.parse(JSON.stringify(G("defaultState")())); pa.meta.name = "S.132-A";

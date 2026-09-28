@@ -11721,7 +11721,12 @@ function recompute() {
     const sn = snapshotSoporte(), mSn = (xs) => (xs || []).reduce((a, x) => a + Math.max(0, num(x.L)), 0);
     const hayMetros = mSn(sn.duct) + mSn(sn.hidro) + mSn(sn.aire) + num(sn.fuego.Lram) + num(sn.fuego.Lmon) > 0;
     const hayPropuesta = seguro(() => PROPUESTAS["motores>soporte"].disponible(), false) && REQUIERE_CAPTURA_PROP["motores>soporte"].some(capturaReal);
-    if (hayMetros || hayPropuesta) {
+    /* H-266 (revisión adversarial de U8): abrir a mano sólo si tampoco hay metros capturados a mano. Los que el proyecto guardaba
+       de cuando estuvo en «valores propios» no entraban al conteo en vivo; a mano se contarían (otras cifras al abrir). Con ellos
+       se toma la instantánea como antes de U8: 0 m de los motores, las mismas cifras; los metros capturados se conservan y
+       «Capturo lo mío» los vuelve a contar. */
+    const hayManual = ["ductoM", "tubHidroM", "tubFuegoM", "tubAireM"].some((k) => num(S.soporte[k], 0) > 0);
+    if (hayMetros || hayPropuesta || hayManual) {
       S.soporte.snap = sn; S.soporte.usarMotores = true;
       registrarVinculo("motores>soporte", "aceptado");
     } else { S.soporte.usarMotores = false; S.soporte.tomarBases = true; }
