@@ -7976,6 +7976,24 @@ t("S.145 (H-264, H-265, H-266) los textos de obra civil, contra incendio, soport
     contiene(txt, "de cada cuarto clasificado", "y el perímetro de los cuartos:");
   } finally { S.civil = JSON.parse(c0); G("recompute")(); }
 });
+t("S.146 (decisión del dueño, 28-sep-2026) cada «Calcular» de una pestaña también genera y descarga la memoria de cálculo en PDF de esa disciplina; sin captura suficiente no calcula ni descarga, y lo dice", () => {
+  const guardado = JSON.stringify(S), orig = w.deliverPdf, bajadas = [];
+  try {
+    w.deliverPdf = (bytes, nombre) => { bajadas.push({ nombre, n: bytes ? bytes.length : 0 }); };
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.146";
+    G("accCalcular")("fuego");
+    eq(bajadas.length, 0, "sin área capturada no calcula ni descarga:");
+    S.fuego = { ...G("defaultFuego")(), riesgo: "ord2", area: 500, altura: 6, Lramal: 30, Lmontante: 12 }; G("recompute")();
+    G("accCalcular")("fuego");
+    eq(bajadas.length, 1, "Calcular descargó la memoria:");
+    contiene(bajadas[0].nombre, G("MOTOR_ACC").fuego.archivo, "es la memoria de contra incendio:");
+    if (!(bajadas[0].n > 1000)) throw new Error("el PDF salió vacío");
+    if (!(S.sellos.fuego && S.sellos.fuego.ts > 0)) throw new Error("Calcular también sella, como antes");
+    contiene(w.document.getElementById("toast").textContent, "memoria PDF descargada", "el aviso lo dice:");
+    G("accCalcular")("fuego");
+    eq(bajadas.length, 2, "cada clic en Calcular vuelve a descargarla:");
+  } finally { w.deliverPdf = orig; G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
 t("S.102 (H-266) soportería es autónoma: sin la instantánea aceptada no cuenta metros de otros motores (se retiró el conteo en vivo); aceptarla los cuantifica y ya no se mueven solos; alturas y bases se capturan; un proyecto anterior se migra al abrir con las mismas cifras (decisión del dueño, 27-sep-2026)", () => {
   const guardado = JSON.stringify(S);
   try {

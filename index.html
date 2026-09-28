@@ -19408,7 +19408,15 @@ function accCalcular(id) {
   render();
   const nb = document.querySelector('.accbar [data-act="calc-motor"]');
   if (nb) nb.focus();
-  toast(`Cálculo de ${D.nombre} hecho · ${fechaCorta(S.sellos[id].ts)}${sem && sem.faltan && sem.faltan.length ? ` · Revisar: ${sem.faltan[0]}` : ""}`, 5200);
+  /* Decisión del dueño (28-sep-2026): cada Calcular también genera y descarga la memoria de cálculo en PDF de esa pestaña. Si la
+     memoria todavía no se puede emitir, el cálculo queda hecho y sellado y el aviso dice por qué no salió el PDF. */
+  const Em = accEstado(id);
+  let memo = "";
+  if (Em.memo.ok) {
+    try { accMemoria(id); memo = " · memoria PDF descargada"; }
+    catch (err) { memo = ` · la memoria no se pudo generar: ${err && err.message ? err.message : err}`; }
+  } else memo = ` · memoria sin descargar: ${Em.memo.razon}`;
+  toast(`Cálculo de ${D.nombre} hecho · ${fechaCorta(S.sellos[id].ts)}${memo}${sem && sem.faltan && sem.faltan.length ? ` · Revisar: ${sem.faltan[0]}` : ""}`, 6200);
 }
 function accMemoria(id) {
   const M = MOTOR_ACC[id];
