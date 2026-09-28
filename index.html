@@ -1634,8 +1634,7 @@ function buildLimpioSuitePdf() {
   pdfHeading(d, "1. Datos del proyecto");
   pdfDocHeaderMeta(d);
   pdfRows(d, [
-    ["Sitio de diseno", `${SITE.label} · ${SITE.db} C BS / ${SITE.wb} C BH · ${SITE.alt} m (${SITE.pAtm.toFixed(1)} kPa)`],
-    ["Margen de error HAP", `${MARGEN_HAP * 100} %`],
+    ["Sitio del proyecto", `${siteOf(S.site).label} · dato del proyecto: no entra al calculo de cuartos limpios (H-283)`],
   ]);
   pdfHeading(d, "2. Caudales y filtracion terminal");
   pdfTable(d, ["Cuarto", "m2", "Clase", "ACH", "m3/h", "CFM", "HEPA"],
@@ -19446,7 +19445,7 @@ const ENTRADAS = {
      ventilador (miscVent null, que sanearEstado agrega a los proyectos anteriores) pesa lo mismo que una sin el campo: así
      un proyecto sellado con la versión anterior no sale «la captura cambió» sin haber cambiado nada. */
   load: () => ({ zones: (S.zones || []).map((z) => z && "origenOA" in z ? sinClaves(z, ["origenOA"]) : z).map((z) => !z || !("miscVent" in z) ? z : z.miscVent ? { ...z, miscVent: sinClaves(z.miscVent, ["ts"]) } : sinClaves(z, ["miscVent"])),   /* H-281: el origen del aire exterior no es captura */ site: S.site, bldDiv: S.bldDiv, forceTech: S.forceTech, peakScan: S.peakScan }),
-  clean: () => ({ rooms: cleanRooms(), site: S.site }),
+  clean: () => ({ rooms: cleanRooms() }),   /* H-283: el sitio de Proyecto no entra al cálculo de cuartos limpios: fuera de la huella */
   /* H-267: sólo lo que la selección calcula: sus zonas de selección (la instantánea aceptada va dentro, sin id, origen, fecha ni
      marca de edición, que no cambian el cálculo), la diversidad del edificio, el sitio (capacidad en sitio), la tecnología elegida,
      los modelos por familia y la presión estática externa capturada en esta pestaña (H-274: nada de Ductos). Ya no anida
@@ -19529,6 +19528,14 @@ const MOTOR_CAMBIOS = {
     { ver: "13", rev: "2.9.24", que: "H-266, complementos de la revisión adversarial (27-sep-2026): con arriostramiento sísmico y sin la altura de la estructura capturada el anclaje va Por cotizar con su motivo (antes se cotizaba como calculado con z/h = 0 supuesto, el lado no conservador de ASCE 7-16 §13.3.1); sin sismo la altura no entra al anclaje. Proyecto fijo: cifras sin cambio" }],
 };
 const motorVer = (id) => MOTOR_VER[id] || "1";
+/* H-283 (y los que sigan): cuando sólo cambia la FORMA de la huella de un motor —qué entra a ella— sin cambiar su cálculo, no sube
+   la versión del motor. El sello guarda la forma con que se hizo (hf); uno de forma anterior con otra huella no dice «la captura
+   cambió» (sería falso) sino lo que pasó: cambió la forma del sello y las cifras no. Calcular lo vuelve a sellar (decisión del
+   dueño, 28-sep-2026: no hay re-sello solo). */
+const HUELLA_FORMA = {
+  clean: { f: 2, que: "H-283: la huella ya no lleva el sitio de Proyecto, que Cuartos limpios no usa" },
+};
+const formaHuella = (id) => (HUELLA_FORMA[id] ? HUELLA_FORMA[id].f : 1);
 function cambiosMotorTexto(id, desde) { return (MOTOR_CAMBIOS[id] || []).filter((c) => +c.ver > +(desde || 1)).map((c) => `v${c.ver} (rev ${c.rev}): ${c.que}`).join("; ") || "cambio de lógica del motor"; }
 /* Cifras clave del resultado de cada motor, para el antes/después de la memoria. */
 function resumenMotor(id) {
@@ -19593,6 +19600,7 @@ function selloDe(id, puedeCalcular = true) {
   const verSello = st.ver || "1", verAct = motorVer(id);
   if (verSello !== verAct) return { estado: "desactualizado", clase: "sem-desactualizada", cambioVer: { de: verSello, a: verAct }, texto: `Desactualizado · el motor cambió desde el cálculo del ${fechaCorta(st.ts)} (v${verSello} → v${verAct}: ${cambiosMotorTexto(id, verSello)})${puedeCalcular ? " · Calcular lo vuelve a sellar y la memoria muestra antes y después" : ""}` };
   if (st.huella === huellaMotor(id)) return { estado: "calculado", clase: "sem-datos", texto: `Calculado ${fechaCorta(st.ts)} · motor v${verAct}` };
+  if (num(st.hf, 1) < formaHuella(id)) return { estado: "desactualizado", clase: "sem-desactualizada", formaHuella: true, texto: `Desactualizado · cambió la forma del sello desde el cálculo del ${fechaCorta(st.ts)} (${HUELLA_FORMA[id].que}); las cifras no cambian${puedeCalcular ? " · Calcular lo vuelve a sellar" : ""}` };
   return { estado: "desactualizado", clase: "sem-desactualizada", texto: `Desactualizado · la captura cambió desde el cálculo del ${fechaCorta(st.ts)}${puedeCalcular ? " · Calcular lo vuelve a sellar" : ""}` };
 }
 /* Qué puede hacer cada botón ahora y, si no puede, por qué (una línea). */
@@ -19657,7 +19665,7 @@ function accCalcular(id) {
   const sem = seguro(() => semaforoDisciplina(D), null);
   if (!S.sellos || typeof S.sellos !== "object") S.sellos = {};
   const prev = S.sellos[id];
-  const nuevo = { ts: Date.now(), huella: huellaMotor(id), ver: motorVer(id), resumen: resumenMotor(id) };
+  const nuevo = { ts: Date.now(), huella: huellaMotor(id), ver: motorVer(id), hf: formaHuella(id), resumen: resumenMotor(id) };
   if (prev && (prev.ver || "1") !== nuevo.ver) nuevo.previo = { ver: prev.ver || "1", ts: num(prev.ts), resumen: prev.resumen || null };
   else if (prev && prev.previo) nuevo.previo = prev.previo;
   S.sellos[id] = nuevo;
@@ -24468,6 +24476,7 @@ function sanearEstado(d) {
       const res = (o) => (o && typeof o === "object" && !Array.isArray(o)) ? Object.fromEntries(Object.entries(o).slice(0, 12).filter(([a, b]) => /^[\wÁ-ú .()%³-]{1,40}$/.test(a) && typeof b === "string" && b.length <= 60)) : null;
       const sello = { ts: num(v.ts), huella: v.huella };
       if (/^\d{1,3}$/.test(String(v.ver || ""))) sello.ver = String(v.ver);
+      if (/^\d{1,3}$/.test(String(v.hf || ""))) sello.hf = +v.hf;   /* H-283: forma de la huella con que se selló */
       if (res(v.resumen)) sello.resumen = res(v.resumen);
       if (v.previo && typeof v.previo === "object" && /^\d{1,3}$/.test(String(v.previo.ver || ""))) sello.previo = { ver: String(v.previo.ver), ts: num(v.previo.ts), resumen: res(v.previo.resumen) };
       s.sellos[k] = sello;

@@ -9072,6 +9072,27 @@ t("S.158 (H-288) Selección corrige la capacidad de catálogo con SU sitio (deci
     eq(G("estadoPropuesta")("proyecto>equip").nivel, "aceptado", "como propuesta aceptada con fecha:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
+t("S.166 (H-283) el sitio de Proyecto no marca Cuartos limpios: su cálculo no lo usa y su huella ya no lo lleva; un sello anterior abre diciendo que cambió la forma del sello (no «la captura cambió») y la memoria dice que el sitio no entra al cálculo ni imprime el margen HAP de Carga térmica", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.166";
+    S.zones = [{ ...G("defaultZone")("Limpio"), spaceType: "cleanroom", iso: "iso7", achClean: 45, area: 120, height: 3, occ: 2, lights: 720, equip: 2400 }];
+    G("recompute")();
+    if (!(G("CLEAN").list.length > 0)) throw new Error("el caso no aísla lo que se quiere probar: debe haber un cuarto limpio");
+    const h0 = G("huellaMotor")("clean"), c0 = JSON.stringify(G("CLEAN"));
+    S.site = { key: "custom", db: 45, wb: 28, alt: 2240, range: 14 }; G("recompute")();
+    eq(JSON.stringify(G("CLEAN")), c0, "el cálculo de cuartos limpios no usa el sitio:");
+    eq(G("huellaMotor")("clean"), h0, "y su huella ya no lo lleva:");
+    S.sellos = { clean: { ts: 5, huella: "0123456789abcd", ver: G("motorVer")("clean") } };
+    const st = G("selloDe")("clean");
+    eq(st.estado, "desactualizado", "un sello de antes de H-283 queda por volver a sellar:");
+    contiene(st.texto, "cambió la forma del sello", "y dice por qué:");
+    if (/la captura cambió/.test(st.texto)) throw new Error("un sello de forma anterior no debe decir que la captura cambió");
+    const pdf = textoPdf(G("buildLimpioSuitePdf")());
+    contiene(pdf, "no entra al calculo", "la memoria dice que el sitio no entra al cálculo:");
+    if (/Margen de error HAP/.test(pdf)) throw new Error("la memoria de cuartos limpios imprime el margen HAP de Carga térmica");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {
   const guardado = JSON.stringify(S);
   try {

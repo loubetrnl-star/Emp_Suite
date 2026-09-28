@@ -1,0 +1,18 @@
+[
+ {
+  "id": "clean.m1",
+  "que": "H-283: la huella de cuartos limpios vuelve a llevar el sitio de Proyecto (cambiarlo marcaría «la captura cambió» sin que cambie nada)",
+  "logica": true,
+  "buscar": "  clean: () => ({ rooms: cleanRooms() }),",
+  "reemplazar": "  clean: () => ({ rooms: cleanRooms(), site: S.site }),",
+  "estado": "vigente"
+ },
+ {
+  "id": "clean.m2",
+  "que": "H-283: un sello de forma anterior vuelve a decir «la captura cambió» (falso: sólo cambió la forma de la huella)",
+  "logica": false,
+  "buscar": "  if (num(st.hf, 1) < formaHuella(id)) return",
+  "reemplazar": "  if (false) return",
+  "estado": "vigente"
+ }
+]
