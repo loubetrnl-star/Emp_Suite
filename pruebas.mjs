@@ -9225,6 +9225,29 @@ t("S.172 (H-290) Carga térmica calcula con SU sitio de diseño (decisión del d
     eq(G("estadoPropuesta")("proyecto>load").nivel, "aceptado", "como propuesta aceptada con fecha:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
+/* ===== H-293 · cada motor saca su propia cotización (decisión del dueño, 29-sep-2026) ===== */
+t("S.173 (H-293) la cotización de Contra incendio sale de su propio motor: el precio del rociador instalado se captura en Contra incendio (copia de la semilla de la casa) y la cotización global sólo junta sus renglones tal cual; un proyecto anterior conserva su precio", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.173";
+    S.perms["fuego>quote"] = { ts: 1, via: "S.173" };
+    S.fuego = { ...G("defaultFuego")(), area: 400, altura: 6, Lramal: 20, Lmontante: 8 };
+    G("recompute")();
+    const fila = () => (G("QUOTE").aux || []).find((a) => a.mot === "fuego");
+    if (!fila() || !(G("FUEGO").nTotal > 0)) throw new Error("el caso no aísla lo que se quiere probar: debe haber partida de rociadores");
+    const nR = G("FUEGO").nTotal;
+    eq(fila().unit, 2850, "un proyecto nuevo arranca con la semilla de la casa (la misma cifra de antes):");
+    S.fuego.precioRociador = 3000; S.quote.rociador = 9999; G("recompute")();
+    eq(fila().unit, 3000, "el precio sale de la captura de Contra incendio, no de la cotización:");
+    eq(fila().total, 3000 * nR, "total = precio × rociadores del motor:");
+    eq(JSON.stringify((G("FUEGO").cot || { aux: [] }).aux.map((a) => [a.desc, a.total])), JSON.stringify([[fila().desc, fila().total]]),
+      "la cotización global junta el renglón que armó el motor, tal cual:");
+    const viejo = JSON.parse(JSON.stringify(S)); delete viejo.fuego.precioRociador; viejo.quote.rociador = 3100;
+    const s = G("sanearEstado")(viejo);
+    eq(s.fuego.precioRociador, 3100, "un proyecto anterior conserva su precio, ahora en Contra incendio:");
+    eq("rociador" in s.quote, false, "la cotización ya no guarda el precio del rociador:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {
   const guardado = JSON.stringify(S);
   try {

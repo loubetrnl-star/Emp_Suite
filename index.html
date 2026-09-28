@@ -4888,7 +4888,6 @@ const QUOTE_SEED = {
   filtroAire: 38500,      // MXN por etapa de filtración instalada
   aireM: 0,               // 0 = usar el precio por metro del material elegido
   puntoUso: 4850,         // bajada con filtro-regulador, válvula y acople rápido
-  rociador: 2850,         // rociador instalado con su ramal proporcional
   ffu: 42000,             // módulo FFU 1.17×0.57 con filtro HEPA H14, instalado y probado
   hepaSpare: 9800,        // juego de filtro HEPA de repuesto por módulo
   grille: 3200,           // rejilla de retorno bajo / extracción con marco
@@ -8916,24 +8915,11 @@ function computeQuote() {
     if (!HIDRO.presOk) porCotizar.push({ sec: "F", mot: "hidro", clave: "bombaAgua", desc: `Equipo de bombeo de ${n(HIDRO.hpBomba, 1)} HP (${n(HIDRO.Qtotal, 2)} L/s a ${n(HIDRO.cdt, 1)} m de carga dinámica total): la presión de la red no alcanza al mueble más exigente`,
       descEn: `${n(HIDRO.hpBomba, 1)} HP pumping equipment (${n(HIDRO.Qtotal, 2)} L/s at ${n(HIDRO.cdt, 1)} m total dynamic head): the supply pressure does not reach the most demanding fixture`, un: "LOTE", qty: 1, motivo: "sin precio con fuente y fecha" });
   }
-  if (verFue && FUEGO && FUEGO.nTotal > 0) {
-    aux.push({ desc: `Rociadores automáticos ${FUEGO.roc.label} con red de ${TUB_FUEGO[FUEGO.tub].label} (${FUEGO.nTotal} rociadores)`,
-      descEn: `${FUEGO.roc.labelEn} automatic sprinklers with ${TUB_FUEGO[FUEGO.tub].labelEn} piping (${FUEGO.nTotal} sprinklers)`,
-      qty: FUEGO.nTotal, unit: num(q.rociador, QUOTE_SEED.rociador), total: num(q.rociador, QUOTE_SEED.rociador) * FUEGO.nTotal , sec: "D", un: "PIEZA", mot: "fuego"});
-    /* H-206 (quote v9, regla de precios del 22-sep): la bomba contra incendio y su reserva no llevan precio fijo (antes 385,000 MXN
-       + 9,500 MXN/m³ sin fuente): van «Por cotizar» con capacidad, presión, potencia y volumen declarados, para que el proveedor
-       cotice lo que el motor dimensionó. Con red municipal que alcanza no hay bomba ni reserva. */
-    /* H-210 (dependencia de fuego v5): sin altura, cabezal o montante capturados la bomba no está dimensionada: va a pendientes
-       con su motivo (ES/EN), no «Por cotizar» con una presión y una potencia que nadie calculó. La reserva no depende de ellos. */
-    if (FUEGO.bombaPendiente) pendientes.push({ mot: "fuego", desc: S.fuego.fuente === "municipal" ? "Bomba contra incendio (si la red municipal no alcanza)" : "Bomba contra incendio listada con controlador",
-      descEn: S.fuego.fuente === "municipal" ? "Fire pump (if the municipal supply falls short)" : "Listed fire pump with controller",
-      motivo: `pendiente de ${FUEGO.faltan.join(", ")} (sin captura no se supone; H-210)`, motivoEn: `${FUEGO.faltanEn.join(", ")} pending (not assumed without capture; H-210)` });
-    if (S.fuego.fuente !== "municipal") {
-      if (!FUEGO.bombaPendiente) porCotizar.push({ sec: "D", mot: "fuego", clave: "bombaFuego", desc: `Bomba contra incendio listada con controlador: ${n(FUEGO.qBomba / 3.785, 0)} gpm (${n(FUEGO.qBomba, 0)} L/min) a ${n(FUEGO.presBomba, 1)} m, ${n(FUEGO.hpBomba, 0)} HP (NFPA 20; dimensionada por el motor)`,
-        descEn: `Listed fire pump with controller: ${n(FUEGO.qBomba / 3.785, 0)} gpm (${n(FUEGO.qBomba, 0)} L/min) at ${n(FUEGO.presBomba, 1)} m, ${n(FUEGO.hpBomba, 0)} HP (NFPA 20; sized by the engine)`, un: "LOTE", qty: 1, motivo: "sin precio con fuente y fecha" });
-      porCotizar.push({ sec: "D", mot: "fuego", clave: "cisternaFuego", desc: `Reserva de agua contra incendio de ${n(FUEGO.reserva / 1000, 1)} m³ (${n(FUEGO.qTotal, 0)} L/min × ${n(FUEGO.r.dur, 0)} min)`,
-        descEn: `${n(FUEGO.reserva / 1000, 1)} m³ fire-protection water reserve (${n(FUEGO.qTotal, 0)} L/min × ${n(FUEGO.r.dur, 0)} min)`, un: "M3", qty: FUEGO.reserva / 1000, motivo: "sin precio con fuente y fecha" });
-    }
+  /* H-293 (decisión del dueño, 29-sep-2026): la cotización de Contra incendio la arma su motor con sus resultados y su precio
+     (FUEGO.cot, cotizacionFuego); aquí sólo se juntan sus renglones tal cual, sin recalcular nada. */
+  if (verFue && FUEGO && FUEGO.nTotal > 0 && FUEGO.cot) {
+    const copia = (x) => ({ ...x });   /* copias: la global no toca los renglones del motor */
+    aux.push(...FUEGO.cot.aux.map(copia)); pendientes.push(...FUEGO.cot.pendientes.map(copia)); porCotizar.push(...FUEGO.cot.porCotizar.map(copia));
   }
   /* ---- Sección A · obra civil ----
      Las partidas ya vienen armadas del motor con su unidad y su precio: aquí
@@ -11027,6 +11013,35 @@ function sizeFuego(Q_lpm, material) {
   return { d, nom, C, V: velAgua(Q_ls, d) };
 }
 
+/* H-293 (decisión del dueño, 29-sep-2026: cada motor saca su propia cotización de sus propios resultados). El precio del rociador
+   instalado con su ramal proporcional es de Contra incendio: copia en este motor de la semilla de la casa (antes QUOTE_SEED.rociador,
+   2,850 MXN por pieza, sin fuente; la cotización lo marca SEMILLA · SIN FUENTE). Se captura en la pestaña de Contra incendio. */
+const FUEGO_PRECIO_SEED = { rociador: 2850 };
+/* H-293: la cotización de Contra incendio sale sólo de sus resultados (R) y de su captura (F): los mismos renglones, importes,
+   pendientes y «Por cotizar» que antes armaba computeQuote leyendo FUEGO en vivo. La cotización global sólo los junta. */
+function cotizacionFuego(R, F) {
+  const aux = [], pendientes = [], porCotizar = [];
+  if (!(R && R.nTotal > 0)) return { aux, pendientes, porCotizar };
+  const pu = num(F.precioRociador, FUEGO_PRECIO_SEED.rociador);
+  aux.push({ desc: `Rociadores automáticos ${R.roc.label} con red de ${TUB_FUEGO[R.tub].label} (${R.nTotal} rociadores)`,
+    descEn: `${R.roc.labelEn} automatic sprinklers with ${TUB_FUEGO[R.tub].labelEn} piping (${R.nTotal} sprinklers)`,
+    qty: R.nTotal, unit: pu, total: pu * R.nTotal , sec: "D", un: "PIEZA", mot: "fuego"});
+  /* H-206 (quote v9, regla de precios del 22-sep): la bomba contra incendio y su reserva no llevan precio fijo (antes 385,000 MXN
+     + 9,500 MXN/m³ sin fuente): van «Por cotizar» con capacidad, presión, potencia y volumen declarados, para que el proveedor
+     cotice lo que el motor dimensionó. Con red municipal que alcanza no hay bomba ni reserva. */
+  /* H-210 (dependencia de fuego v5): sin altura, cabezal o montante capturados la bomba no está dimensionada: va a pendientes
+     con su motivo (ES/EN), no «Por cotizar» con una presión y una potencia que nadie calculó. La reserva no depende de ellos. */
+  if (R.bombaPendiente) pendientes.push({ mot: "fuego", desc: F.fuente === "municipal" ? "Bomba contra incendio (si la red municipal no alcanza)" : "Bomba contra incendio listada con controlador",
+    descEn: F.fuente === "municipal" ? "Fire pump (if the municipal supply falls short)" : "Listed fire pump with controller",
+    motivo: `pendiente de ${R.faltan.join(", ")} (sin captura no se supone; H-210)`, motivoEn: `${R.faltanEn.join(", ")} pending (not assumed without capture; H-210)` });
+  if (F.fuente !== "municipal") {
+    if (!R.bombaPendiente) porCotizar.push({ sec: "D", mot: "fuego", clave: "bombaFuego", desc: `Bomba contra incendio listada con controlador: ${n(R.qBomba / 3.785, 0)} gpm (${n(R.qBomba, 0)} L/min) a ${n(R.presBomba, 1)} m, ${n(R.hpBomba, 0)} HP (NFPA 20; dimensionada por el motor)`,
+      descEn: `Listed fire pump with controller: ${n(R.qBomba / 3.785, 0)} gpm (${n(R.qBomba, 0)} L/min) at ${n(R.presBomba, 1)} m, ${n(R.hpBomba, 0)} HP (NFPA 20; sized by the engine)`, un: "LOTE", qty: 1, motivo: "sin precio con fuente y fecha" });
+    porCotizar.push({ sec: "D", mot: "fuego", clave: "cisternaFuego", desc: `Reserva de agua contra incendio de ${n(R.reserva / 1000, 1)} m³ (${n(R.qTotal, 0)} L/min × ${n(R.r.dur, 0)} min)`,
+      descEn: `${n(R.reserva / 1000, 1)} m³ fire-protection water reserve (${n(R.qTotal, 0)} L/min × ${n(R.r.dur, 0)} min)`, un: "M3", qty: R.reserva / 1000, motivo: "sin precio con fuente y fecha" });
+  }
+  return { aux, pendientes, porCotizar };
+}
 function defaultFuego() {
   /* Arranque en ceros (decisión del dueño, 17-sep-2026): area/altura/Lramal/
      Lmontante/presFuente eran una nave de ejemplo (600 m², 6 m, 30+12 m de
@@ -11045,6 +11060,7 @@ function defaultFuego() {
     presFuente: 0,              // presión disponible en la toma municipal, mca
     fuente: "cisterna",         // cisterna con bomba, o red municipal directa
     tomarArea: false,           // sin uso desde H-264: el área es sólo la capturada (se conserva por proyectos anteriores)
+    precioRociador: FUEGO_PRECIO_SEED.rociador,   /* H-293: MXN por rociador instalado (semilla de la casa sin fuente) */
   };
 }
 
@@ -11170,12 +11186,14 @@ function computeFuego(F) {
   if (hAlt > 12 && /ligero|ord/.test(r.id)) avisos.push({ lvl: "info", msg: `Con ${n(hAlt, 1)} m de altura hay que revisar si aplica protección en rack o rociadores de almacenamiento: la curva densidad-área no cubre almacenamiento alto.` });
   if (r.id === "extra2") avisos.push({ lvl: "info", msg: "Riesgo extra grupo 2: casi siempre exige espuma o supresión especial además de los rociadores. Confirmar con la aseguradora y con protección civil antes de cerrar el alcance." });
 
-  return { r, roc, tub, area, areaDis, nDiseno, nTotal, espaciamiento, qRoc, pRoc, pDiseno, qReal,
+  const R = { r, roc, tub, area, areaDis, nDiseno, nTotal, espaciamiento, qRoc, pRoc, pDiseno, qReal,
     sobre, qRociadores, qManguera, qTotal, ram, mon, Lram, Lmon, hfRam, hfMon, estatica,
     mcaRoc, mcaTotal, barTotal, presFuente, alcanza, qBomba, presBomba, kWbomba, hpBomba, reserva,
     hAlt, bombaPendiente, faltan, faltanEn,   /* H-210 */
     altSinConf, areaSinConf,   /* H-264 (complemento) */
     memo, avisos };   /* H-264: sin verArea (el área ya no se toma de carga térmica) */
+  R.cot = cotizacionFuego(R, F);   /* H-293: su propia cotización */
+  return R;
 }
 
 
@@ -19635,7 +19653,8 @@ const HUELLA_FORMA = {
   clean: { f: 2, que: "H-283: la huella ya no lleva el sitio de Proyecto, que Cuartos limpios no usa" },
   duct: { f: 2, que: "H-284: la huella ya no lleva el sitio de Proyecto, que Ductos no usa" },
   hidro: { f: 2, que: "H-285: la huella ya no lleva el sitio de Proyecto, que Hidráulica no usa" },
-  fuego: { f: 2, que: "H-292: la huella ya no lleva el sitio de Proyecto, que Contra incendio no usa" },
+  fuego: { f: 3, que: "H-293: el precio del rociador pasó de la cotización a Contra incendio (misma cifra)" },
+  quote: { f: 2, que: "H-293: el precio del rociador pasó a Contra incendio (misma cifra)" },
   vent: { f: 2, que: "H-291: la huella ya no lleva el sitio de Proyecto, que Ventilación no usa" },
 };
 const formaHuella = (id) => (HUELLA_FORMA[id] ? HUELLA_FORMA[id].f : 1);
@@ -23218,6 +23237,9 @@ function viewFuego() {
         ${sel("Fuente de agua", "fuego.fuente", [["cisterna", "Cisterna con bomba contra incendio"], ["municipal", "Red municipal directa"]])}
         ${inp("Presión de la fuente (m)", "fuego.presFuente", "number", "1", "fuego.pres", F)}
       </div>
+      <div class="row">
+        ${inp("Rociador instalado con su ramal (MXN por pieza · semilla de la casa sin fuente)", "fuego.precioRociador", "number", "50")}
+      </div>
     </div></div>
     <div class="grid" style="gap:14px">
       <div class="card"><h3>Densidad-área y rociadores</h3><div class="body">
@@ -24497,6 +24519,7 @@ function sanearEstado(d) {
   s.hidro = { ...defaultHidro(), ...(s.hidro && typeof s.hidro === "object" ? s.hidro : {}) };
   if (!Array.isArray(s.hidro.muebles)) s.hidro.muebles = defaultHidro().muebles;
   if (!Array.isArray(s.hidro.tramos)) s.hidro.tramos = defaultHidro().tramos;
+  const fuegoTraiaPrecio = !!(s.fuego && typeof s.fuego === "object" && "precioRociador" in s.fuego);   /* H-293 */
   s.fuego = { ...defaultFuego(), ...(s.fuego && typeof s.fuego === "object" ? s.fuego : {}) };
   s.aire = { ...defaultAire(), ...(s.aire && typeof s.aire === "object" ? s.aire : {}) };
   const civilPrevio = s.civil && typeof s.civil === "object" ? s.civil : null;   /* H-265: para saber si hay que migrar */
@@ -24540,6 +24563,10 @@ function sanearEstado(d) {
   if (!s.duct || typeof s.duct !== "object") s.duct = base.duct;
   if (!Array.isArray(s.duct.segments)) s.duct.segments = [];
   if (!s.quote || typeof s.quote !== "object") s.quote = JSON.parse(JSON.stringify(QUOTE_SEED));
+  /* H-293: el precio del rociador pasó de la cotización a Contra incendio. Un proyecto anterior lo conserva allá (la misma cifra que
+     tenía la cotización; sin él, la semilla de la casa, igual que antes) y la cotización deja de guardarlo. */
+  if (!fuegoTraiaPrecio && "rociador" in s.quote) s.fuego.precioRociador = num(s.quote.rociador, FUEGO_PRECIO_SEED.rociador);
+  delete s.quote.rociador;
   /* Contingencia (14-sep-2026): un proyecto guardado antes de que existiera abre
      con 0 % para que su total no cambie; queda visible y editable. */
   if (!("contingencia" in s.quote)) s.quote.contingencia = 0;
