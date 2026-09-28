@@ -8684,6 +8684,18 @@ t("S.156 (H-286, X-3) Valor: el consumo por TR de cada sistema alterno sale de s
     if (revisadas < 2) throw new Error("el caso no aísla lo que se quiere probar: debe haber al menos dos alternativas de otra tecnología");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("VZ_CACHE").key = null; G("recompute")(); }
 });
+t("S.157 (H-287, X-1) un material que no existe en el catálogo se avisa mientras está en el proyecto y el aviso se va al corregirlo (antes seguía, en la validación y en Kaizen, hasta recargar la página)", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.157";
+    S.zones = [{ ...G("defaultZone")("Nave"), area: 200, height: 4, occ: 5, lights: 1000, equip: 1000, wallMat: "no_existe_s157" }]; G("recompute")();
+    const avisa = () => G("validateAll")().rows.some((r) => /no_existe_s157/.test(r.msg));
+    if (!avisa()) throw new Error("el caso no aísla lo que se quiere probar: el material inexistente debe avisarse");
+    S.zones[0].wallMat = G("MATS").find((m) => m.kind === "wall").id; G("recompute")();
+    if (avisa()) throw new Error("el aviso del material inexistente sigue después de corregirlo");
+    eq(G("MISSING_MATS").size, 0, "ya no quedan materiales faltantes:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {
   const guardado = JSON.stringify(S);
   try {

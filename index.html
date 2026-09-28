@@ -11618,6 +11618,9 @@ function recompute() {
      recalculo, y solo toca los campos que siguen en modo heredado. */
   if (typeof PROP_CACHE !== "undefined") PROP_CACHE.clear();
   sincronizarHerencia();
+  /* H-287 (X-1): los materiales faltantes son de ESTA corrida: sin limpiar, un material ya corregido seguía avisándose (validación y
+     Kaizen) hasta recargar la página. */
+  MISSING_MATS.clear();
   LOADS = S.zones.map(loadOf);
   VENT = computeVent(S.vent);
   DUCT = calcDuct(S.duct);
