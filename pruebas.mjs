@@ -9313,6 +9313,23 @@ t("S.176 (H-296) la cotización de Aire comprimido sale de su propio motor: los 
     eq(["compresorMXN", "tanqueL", "secadorM3min", "filtroAire", "aireM", "puntoUso"].some((k) => k in s.quote), false, "la cotización ya no guarda esos precios:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
+t("S.177 (H-297) la cotización de Obra civil la arma su propio motor (CIVIL.cot) y la cotización global sólo junta esos renglones tal cual: no vuelve a leer las partidas ni los pendientes de altura de Obra civil", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.177";
+    S.perms["civil>quote"] = { ts: 1, via: "S.177" };
+    S.civil.areas = [{ id: "a1", nombre: "Nave", area: 200, altura: 5, perimetro: 60 }, { id: "a2", nombre: "Bodega", area: 80, altura: 0 }];
+    G("recompute")();
+    const C = G("CIVIL");
+    if (!(C.total > 0) || !(C.pendAltura && C.pendAltura.areas.length)) throw new Error("el caso no aísla lo que se quiere probar: debe haber partidas y un área pendiente de altura");
+    const deCivil = () => (G("QUOTE").aux || []).filter((a) => a.mot === "civil").map((a) => [a.desc, a.total]);
+    eq(JSON.stringify(deCivil()), JSON.stringify(((C.cot || { aux: [] }).aux).map((a) => [a.desc, a.total])), "la global junta los renglones que armó el motor:");
+    /* Lo que diga la cotización del motor es lo que junta la global (no recalcula de CIVIL.part). */
+    C.cot = { aux: [{ desc: "RENGLÓN DEL MOTOR", descEn: "ENGINE ROW", qty: 1, unit: 10, total: 10, sec: "A", un: "LOTE", mot: "civil" }], pendientes: [], porCotizar: [] };
+    G("QUOTE").aux = G("computeQuote")().aux;
+    eq(JSON.stringify(deCivil()), JSON.stringify([["RENGLÓN DEL MOTOR", 10]]), "la cotización global usa la cotización del motor, sin recalcular:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {
   const guardado = JSON.stringify(S);
   try {
