@@ -291,14 +291,20 @@ t("2.0.5 las flechas son las herencias declaradas, no adorno", () => {
   if (A.some((ar) => ar.regla === 1)) throw new Error("H-264/H-265: quedó una flecha de herencia (regla 1); ninguna disciplina hereda");
   if (!A.some((ar) => ar.regla === 2)) throw new Error("ninguna arista de regla 2");
 });
-t("2.0.6 cada flecha se pinta con el estado de lo que declara (H-264, H-265: ya no hay herencias; las propuestas se pintan con su estado)", () => {
+t("2.0.6 cada flecha se pinta con el estado de lo que declara: cada nivel de su propuesta da su color (H-264, H-265: ya no hay herencias; U4 de la revisión: la prueba vuelve a exigir el color de cada nivel)", () => {
   S.tab = "inicio"; G("render")();
   if (G("ARISTAS").some((x) => x.regla === 1)) throw new Error("quedó una flecha de herencia");
   const ar = G("ARISTAS").find((x) => x.de === "hvac" && x.a === "elec" && x.regla === 2);
   if (!ar) throw new Error("no existe la flecha de propuesta de HVAC a eléctrico");
-  const e = G("estadoArista")(ar);
-  if (!["vigente", "desactualizada", "propia", "pendiente", "inerte"].includes(e)) throw new Error("estado de flecha desconocido: " + e);
-  contiene(vista(), "dar-" + e);
+  const orig = w.estadoPropuesta;
+  const esperado = { aceptado: "vigente", vigente: "vigente", desactualizado: "desactualizada", propio: "propia", pendiente: "pendiente", vivo: "pendiente", "sin-datos": "inerte" };
+  try {
+    for (const [nivel, e] of Object.entries(esperado)) {
+      w.estadoPropuesta = (id) => (id === ar.prop ? { nivel } : orig(id));
+      eq(G("estadoArista")(ar), e, `propuesta «${nivel}»:`);
+      G("render")(); contiene(vista(), "dar-" + e, `la vista pinta «${e}» con la propuesta «${nivel}»:`);
+    }
+  } finally { w.estadoPropuesta = orig; G("render")(); }
 });
 t("2.0.7 y el nodo HVAC se desactualiza cuando cambió el dato de origen", () => {
   /* La propuesta de carga térmica a ductos quedó DENTRO del módulo: ya no se
