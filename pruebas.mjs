@@ -7979,6 +7979,55 @@ t("S.132 (H-266) un proyecto anterior que contaba en vivo sin nada que soportar 
   }
 });
 
+/* ===== S.133 (H-266) lo que la migración copia o supone al abrir queda con su origen, sin cambiar la cifra ===== */
+t("S.133 (H-266) lo que la migración de soportería copia o supone al abrir un proyecto anterior (altura de trabajo = zona más alta + 1.2 m, supuesto de la casa; altura de la estructura = la zona más alta) conserva la cifra pero no queda como captura del usuario: su origen, «sin confirmar», sale en pantalla, en la partida de renta, en la memoria, en las observaciones y en el pendiente de la propuesta (ES/EN); al capturar otro valor la marca cae (revisión adversarial U10; reglas 6 y 8, precedente H-179)", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    const p = JSON.parse(JSON.stringify(G("defaultState")())); p.meta.name = "S.133";
+    p.zones = [{ ...G("defaultZone")("Nave"), area: 400, height: 6 }];
+    Object.keys(G("LINKS")).forEach((k) => { p.perms[k] = { ts: 1, via: "S.133" }; });
+    /* Guardado antes de H-266 (sin alturaEstructura ni altura de trabajo): la migración las toma de la zona más alta. */
+    p.soporte = { usarMotores: false, sismico: true, ductoM: 30, ductoAnchoMm: 400, ductoAltoMm: 300, mesesElevacion: 2, alturaColgadoM: 0.5,
+      sismoSDS: 1.2, sismoFuente: "CFE MDOC-Sismo 2015, sitio Tijuana", estructuraTipo: "losa_concreto", estructuraFc: 250 };
+    G("importarRespaldo")(JSON.stringify(p)); G("recompute")();
+    let R = G("SOPORTE");
+    eq(S.soporte.alturaTrabajo, 7.2, "la cifra no cambia al abrir: altura de trabajo"); eq(S.soporte.alturaEstructura, 6, "ni la de la estructura:");
+    const renta = () => (G("SOPORTE").part || []).find((x) => /· renta$/.test(x.desc));
+    if (!renta() || !R.memo.some((m) => /Fuerza sísmica/.test(m))) throw new Error("el caso no aísla lo que se quiere probar: debe haber renta de elevación y sismo");
+    const total = R.total;
+    const origen = /de la migración.*zona más alta \(6 m\) \+ 1\.2 m.*supuesto de la casa/;
+    if (!origen.test(renta().nota || "")) throw new Error("la partida de renta debe decir de dónde sale la altura: " + renta().nota);
+    const mElev = R.memo.find((m) => /^Elevación/.test(m)) || "";
+    if (!origen.test(mElev)) throw new Error("la memoria debe decir de dónde sale la altura de trabajo: " + mElev.slice(0, 200));
+    const mFp = R.memo.find((m) => /Fuerza sísmica/.test(m)) || "";
+    if (!/altura de la estructura 6 m, de la migración.*zona más alta de Carga térmica/.test(mFp)) throw new Error("la memoria del sismo debe decir de dónde sale la altura de la estructura: " + mFp.slice(0, 300));
+    if (!R.avisos.some((a) => /sin confirmar/.test(a.msg) && /altura de trabajo 7\.2 m/.test(a.msg) && /altura de la estructura 6 m/.test(a.msg))) throw new Error("las observaciones deben listar lo que la migración puso sin confirmar");
+    S.tab = "soporte"; G("render")();
+    const pant = w.document.body.textContent;
+    if (!/Altura de trabajo 7\.2 m: de la migración/.test(pant) || !/Altura de la estructura 6 m: de la migración/.test(pant)) throw new Error("la pantalla debe decir el origen de las dos alturas");
+    /* Con los meses de renta sin capturar, el pendiente de la propuesta nombra la altura con su origen (ES/EN). */
+    S.soporte.mesesElevacion = null; G("recompute")();
+    const pr = (G("QUOTE").pendientes || []).find((x) => x.mot === "soporte" && /Renta de elevación/.test(x.desc));
+    if (!pr || !/sin confirmar/.test(pr.desc) || !/unconfirmed/.test(pr.descEn)) throw new Error("el pendiente de la renta debe decir que la altura viene de la migración (ES/EN): " + JSON.stringify(pr));
+    S.soporte.mesesElevacion = 2;
+    /* Al capturar otro valor la marca cae. */
+    S.soporte.alturaTrabajo = 5; S.soporte.alturaEstructura = 8; G("recompute")(); R = G("SOPORTE");
+    if (/migración/.test(renta().nota || "") || R.memo.some((m) => /de la migración/.test(m)) || R.avisos.some((a) => /sin confirmar/.test(a.msg))) throw new Error("capturado, ya no es de la migración");
+    /* De vuelta a la cifra de la migración sin capturarla, sigue siendo de la migración; capturada (en pantalla o desde un plano,
+       setPath), la misma cifra queda confirmada. La marca sólo dice el origen: no mueve la cifra. */
+    S.soporte.alturaTrabajo = 7.2; S.soporte.alturaEstructura = 6; G("recompute")();
+    if (!origen.test(renta().nota || "")) throw new Error("la misma cifra sin capturar sigue siendo de la migración: " + renta().nota);
+    G("setPath")("soporte.alturaTrabajo", 7.2); G("setPath")("soporte.alturaEstructura", 6); G("recompute")(); R = G("SOPORTE");
+    if (/migración/.test(renta().nota || "") || R.memo.some((m) => /de la migración/.test(m)) || R.avisos.some((a) => /sin confirmar/.test(a.msg))) throw new Error("capturada, la misma cifra queda confirmada");
+    eq(R.total, total, "la marca no mueve la cifra:");
+    /* Con la zona más alta de 1.5 m la migración ponía el mínimo de 3 m de la casa: el origen lo dice. */
+    const s3 = G("sanearEstado")(JSON.parse(JSON.stringify({ zones: [{ ...G("defaultZone")("Bodega"), area: 50, height: 1.5 }], soporte: { usarMotores: false } })));
+    eq(s3.soporte.alturaTrabajo, 3, "mínimo de la casa, misma cifra:");
+    const o3 = G("origenMigradoSop")("alturaTrabajo", (s3.soporte.sinConfirmar || {}).alturaTrabajo), o3en = G("origenMigradoSop")("alturaTrabajo", (s3.soporte.sinConfirmar || {}).alturaTrabajo, true);
+    if (!/mínimo de 3 m.*supuesto de la casa/.test(o3) || !/house minimum of 3 m/.test(o3en)) throw new Error("el origen del mínimo de 3 m: " + o3 + " / " + o3en);
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 /* ===== S.103 (H-268) eléctrico autónomo: las cargas de otros motores entran sólo como propuesta aceptada (instantánea) ===== */
 t("S.103 (H-268) eléctrico es autónomo: con permisos y tomarHVAC, sin aceptar la propuesta, la cédula, el ventilador, el compresor, las bombas y los FFU NO entran al cuadro (se retiró el modo en vivo); aceptar concede los cruces y deja una instantánea con fecha que no se mueve sola; un proyecto guardado en vivo migra al abrir con las mismas cifras (sólo con los cruces que tenía); el sello no cambia al reabrir (decisión del dueño, 27-sep-2026)", () => {
   const guardado = JSON.stringify(S);

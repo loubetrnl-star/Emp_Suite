@@ -8254,6 +8254,16 @@ const PU_SOP_VARILLA = { '3/8"': 65, '1/2"': 95, '5/8"': 140, '3/4"': 195, '7/8"
 const PU_SOP_PERFIL = { P1000: 180, P1001: 320, PTR2x125: 230, PTR2x1875: 310, CPS3: 330 };
 const PU_SOP_ANCLAJE = { M10: 95, M12: 135, M16: 215, M20: 325 };
 const PU_SOP_ABRAZADERA = 285, PU_SOP_TUERCA_RONDANA = 9, PU_SOP_RIOSTRA = 4200;
+/* H-266 (revisión adversarial U10): de dónde salió una altura que la migración copió o supuso al abrir un proyecto anterior a
+   H-266 (sanearEstado, soporte.sinConfirmar). «corto» da sólo el «antes …», para listarla en las observaciones. ES/EN (regla 7). */
+function origenMigradoSop(k, m, en, corto) {
+  const hZ = num(m && m.hZona, 0);
+  const antes = k === "alturaTrabajo"
+    ? (hZ + 1.2 >= 3 ? (en ? `formerly the highest zone (${n(hZ, 1)} m) + 1.2 m, a house assumption` : `antes la zona más alta (${n(hZ, 1)} m) + 1.2 m, supuesto de la casa`)
+      : (en ? `formerly the house minimum of 3 m (highest zone ${n(hZ, 1)} m + 1.2 m), a house assumption` : `antes el mínimo de 3 m (zona más alta ${n(hZ, 1)} m + 1.2 m), supuesto de la casa`))
+    : (en ? `formerly the highest Thermal load zone (${n(hZ, 1)} m), a house criterion` : `antes la zona más alta de Carga térmica (${n(hZ, 1)} m), criterio de la casa`);
+  return corto ? antes : `${en ? "from the migration on opening, unconfirmed" : "de la migración al abrir, sin confirmar"}: ${antes}`;
+}
 
 function computeSoporte(Gc) {
   const avisos = [], memo = [], part = [];
@@ -8274,6 +8284,14 @@ function computeSoporte(Gc) {
   const hEstructura = Math.max(0, num(Gc.alturaEstructura, 0));
   const hTrab = Math.max(0, num(Gc.alturaTrabajo, 0));
   const hTrabPendiente = !(hTrab > 0);
+  /* H-266 (revisión adversarial U10; reglas 6 y 8, precedente H-179): una altura que la migración copió o supuso al abrir un
+     proyecto anterior se usa con la misma cifra, pero se dice de dónde salió («sin confirmar») en la partida, la memoria, las
+     observaciones y la pantalla, hasta que el usuario capture otro valor. */
+  const scSop = Gc.sinConfirmar && typeof Gc.sinConfirmar === "object" ? Gc.sinConfirmar : {};
+  const deMigracion = (v, m) => v > 0 && !!m && typeof m === "object" && Math.abs(v - num(m.valor, -1)) < 1e-9;
+  const hTrabMigrada = deMigracion(hTrab, scSop.alturaTrabajo), hEstructuraMigrada = deMigracion(hEstructura, scSop.alturaEstructura);
+  const origenHTrab = hTrabMigrada ? origenMigradoSop("alturaTrabajo", scSop.alturaTrabajo) : "";
+  const origenHEst = hEstructuraMigrada ? origenMigradoSop("alturaEstructura", scSop.alturaEstructura) : "";
   /* H-56: sin altura de colgado por tramo capturada (no hay UI para eso), se
      propone la altura de trabajo ya calculada arriba como aproximación de
      nivel de proyecto, y el campo de captura la sustituye si el usuario la
@@ -8554,7 +8572,7 @@ function computeSoporte(Gc) {
   /* rev 2.9.16 · DECISIÓN DEL DUEÑO (pisos internos): sólo se quedan los pisos con norma, y cuando se aplican se avisan y quedan en la memoria; los que no tenían sustento salieron.
      La renta de elevación entraba aunque no hubiera nada que montar (3 meses por omisión en un proyecto vacío).
      Ahora sólo entra si hay soportes, riel o bases que instalar. */
-  if (part.length && meses > 0 && !hTrabPendiente) P(`${equipo.label} · renta`, "MES", meses, equipo.mxnMes, `Altura de trabajo ${n(hTrab, 1)} m`,
+  if (part.length && meses > 0 && !hTrabPendiente) P(`${equipo.label} · renta`, "MES", meses, equipo.mxnMes, `Altura de trabajo ${n(hTrab, 1)} m${hTrabMigrada ? ` (${origenHTrab})` : ""}`,
     `${equipo.labelEn} · rental`);
   if (part.length && hTrabPendiente) avisos.push({ lvl: "warn", msg: "Renta de elevación pendiente: no hay altura de trabajo capturada; no se supone ninguna (antes la mayor de las zonas + 1.2 m, H-266). Captúrala para elegir el equipo de elevación." });
   if (part.length && mesesPendiente && !hTrabPendiente) avisos.push({ lvl: "warn", msg: `Renta de elevación pendiente: no hay meses capturados (${equipo.label.toLowerCase()} por altura de trabajo de ${n(hTrab, 1)} m). Captura los meses del programa; no se suponen (H-232).` });
@@ -8574,17 +8592,20 @@ function computeSoporte(Gc) {
   const rigeSC = R.tramos.slice().sort((a, b) => b.carga_por_varilla_kgf - a.carga_por_varilla_kgf)[0] || null;
   if (rigeSC) {
     memo.push(`Varilla dimensionada por carga, MSS SP-58 tabla 3 (SoporteCalc v0.1.0). El caso que rige es ${rigeSC.descripcion || rigeSC.id}: ${n(rigeSC.peso.total, 1)} kg/m por ${n(rigeSC.espaciamiento.e_m, 1)} m de espaciamiento = ${n(rigeSC.carga_por_soporte_kgf, 0)} kg por soporte, resuelve varilla de ${rigeSC.varilla ? rigeSC.varilla.id : "—"}${rigeSC.varilla ? ` (admisible ${n(rigeSC.varilla.adm_kgf, 0)} kg, FU ${n(rigeSC.varilla.fu, 2)})` : ", ningún diámetro de la tabla alcanza: requiere soporte estructural diseñado"}.`);
-    if (rigeSC.sismo && rigeSC.sismo.parametros) memo.push(`Fuerza sísmica del tramo que rige: Fp = ${n(rigeSC.sismo.Fp_kgf, 1)} kgf (${rigeSC.sismo.norma}; rige ${rigeSC.sismo.rige}) con SDS ${n(rigeSC.sismo.parametros.SDS, 2)}${sdsCapturado ? ` capturado (fuente: ${String(Gc.sismoFuente).trim()})` : " DE REFERENCIA (no capturado: sin fuente)"}, Ip ${rigeSC.sismo.parametros.Ip}, ap ${rigeSC.sismo.parametros.ap}, Rp ${rigeSC.sismo.parametros.Rp}, z/h ${n(rigeSC.sismo.parametros.h > 0 ? Math.min(rigeSC.sismo.parametros.z / rigeSC.sismo.parametros.h, 1) : 0, 2)}${alturaEstructuraCapturada ? "" : " DE REFERENCIA (altura de la estructura sin capturar: el anclaje va «Por cotizar», H-266)"}. ${rigeSC.sismo.aviso}`);
+    if (rigeSC.sismo && rigeSC.sismo.parametros) memo.push(`Fuerza sísmica del tramo que rige: Fp = ${n(rigeSC.sismo.Fp_kgf, 1)} kgf (${rigeSC.sismo.norma}; rige ${rigeSC.sismo.rige}) con SDS ${n(rigeSC.sismo.parametros.SDS, 2)}${sdsCapturado ? ` capturado (fuente: ${String(Gc.sismoFuente).trim()})` : " DE REFERENCIA (no capturado: sin fuente)"}, Ip ${rigeSC.sismo.parametros.Ip}, ap ${rigeSC.sismo.parametros.ap}, Rp ${rigeSC.sismo.parametros.Rp}, z/h ${n(rigeSC.sismo.parametros.h > 0 ? Math.min(rigeSC.sismo.parametros.z / rigeSC.sismo.parametros.h, 1) : 0, 2)}${alturaEstructuraCapturada ? "" : " DE REFERENCIA (altura de la estructura sin capturar: el anclaje va «Por cotizar», H-266)"}${hEstructuraMigrada ? ` (altura de la estructura ${n(hEstructura, 1)} m, ${origenHEst})` : ""}. ${rigeSC.sismo.aviso}`);
     if (rigeSC.anclaje) memo.push(`Anclaje ${rigeSC.anclaje.anclaje} a ${estructuraCapturada ? (Gc.estructuraTipo === "losa_concreto" ? `losa de concreto f'c ${n(num(Gc.estructuraFc), 0)} kg/cm² (capturado)` : `${Gc.estructuraTipo} (capturado)`) : "losa de concreto f'c 250 kg/cm² DE REFERENCIA (tipo de estructura y f'c no capturados: anclaje Por cotizar)"}${alturaEstructuraCapturada ? "" : ", con z/h = 0 DE REFERENCIA (altura de la estructura sin capturar: anclaje Por cotizar)"}: interacción tensión-cortante ${n(rigeSC.anclaje.interaccion, 2)} (${rigeSC.anclaje.criterio}), ${rigeSC.anclaje.pasa ? "pasa" : "NO PASA"} — ACI 318-19 cap. 17. Predimensionado: el valor que se firma sale del reporte de evaluación (ESR/ICC-ES) del anclaje que se compre.`);
   }
   memo.push(`${nSoportes} soportes contados de ${n(mDucto + mTub, 0)} m de instalación (${n(mDucto, 0)} m de ducto, ${n(mTub, 0)} m de tubería): varilla, perfil de trapecio y anclaje a concreto revisados por capacidad, no un lote estimado — SoporteCalc v0.1.0 (MSS SP-58, ACI 318-19 cap. 17, ASCE 7-16 §13.3.1, NFPA 13 cap. 18).`);
   if (plastResultados.some((p) => !p.pendiente)) memo.push(`Claros del termoplástico: IPC 2009 Tabla 308.5 (folleto MCP, fuente secundaria; ratificar con el texto): CPVC ≤ 1" 0.9 m (decisión del dueño, más cerrado que los 3 ft) y ≥ 1¼" 1.219 m; PP-R ≤ 1" 0.813 m y ≥ 1¼" 1.219 m. Varilla MSS SP-58 tabla 3 y ancla ACI 318-19 cap. 17 con el mismo criterio del despiece (una ancla, 4 tuercas y 4 rondanas por soporte), sin trapecio (H-228).`);
   if (Gc.sismico) memo.push(`Arriostramiento sísmico NFPA 13 cap. 18: ${nLong} longitudinales cada 24.4 m y ${nTrans} transversales cada 12.2 m, contados tramo por tramo sobre ${n(mArriostrable, 0)} m de corrida.`);
   if (Gc.sismico !== false && tramosSC.length && !(hEstructura > 0)) avisos.push({ lvl: "warn", msg: `Soportería: altura de la estructura sin capturar: la amplificación sísmica (ASCE 7-16 §13.3.1) se predimensiona sin altura (z/h = 0), que queda corta${anclajePendiente ? ", y por eso el anclaje va «Por cotizar»" : ""}. Captura la altura de la estructura de la que cuelga la instalación (ya no se toma de las zonas, H-266).` });
-  if (part.length && !hTrabPendiente) memo.push(`Elevación: ${equipo.label.toLowerCase()} por altura de trabajo de ${n(hTrab, 1)} m. ${equipo.nota} NOM-009-STPS exige equipo certificado y personal capacitado para trabajos en altura.`);
+  if (part.length && !hTrabPendiente) memo.push(`Elevación: ${equipo.label.toLowerCase()} por altura de trabajo de ${n(hTrab, 1)} m${hTrabMigrada ? ` (${origenHTrab})` : ""}. ${equipo.nota} NOM-009-STPS exige equipo certificado y personal capacitado para trabajos en altura.`);
+
+  if (hTrabMigrada || hEstructuraMigrada) avisos.push({ lvl: "warn", msg: `Soportería: valores que la migración copió o supuso al abrir este proyecto (H-266), sin confirmar: ${[hTrabMigrada ? `altura de trabajo ${n(hTrab, 1)} m (${origenMigradoSop("alturaTrabajo", scSop.alturaTrabajo, false, true)})` : "", hEstructuraMigrada ? `altura de la estructura ${n(hEstructura, 1)} m (${origenMigradoSop("alturaEstructura", scSop.alturaEstructura, false, true)})` : ""].filter(Boolean).join("; ")}. Se usan con la misma cifra; captura el valor de la obra para confirmarlo.` });
 
   return { porTuberia, mDucto, mTub, nSoportes, nLong, nTrans, mArriostrable,
     hTrab, hTrabPendiente, hEstructura, equipo, meses, mesesPendiente, nEquipos, part, total, avisos, memo, alturaColgado, colgadoCapturado, colgadoPendiente, colgadoSugerido,
+    hTrabMigrada, hEstructuraMigrada, origenHTrab, origenHEst,
     manualPendientes, sdsCapturado, estructuraCapturada, alturaEstructuraCapturada, anclajeCapturado, anclajePendiente, anclajesPza: Object.entries(anclMerge).map(([id, cnt]) => ({ id, cnt })),
     sopcalc: R };   // corrida completa de SoporteCalc, por si se quiere el detalle fino
 }
@@ -8893,7 +8914,7 @@ function computeQuote() {
   if (typeof SOPORTE !== "undefined" && SOPORTE && SOPORTE.hTrabPendiente && (SOPORTE.part || []).length && linkAllowed("soporte>quote"))
     pendientes.push({ mot: "soporte", desc: "Renta de elevación", descEn: "Lift rental", motivo: "pendiente de altura de trabajo (sin captura no se supone, H-266)", motivoEn: "working height pending (not assumed without capture, H-266)" });
   else if (typeof SOPORTE !== "undefined" && SOPORTE && SOPORTE.mesesPendiente && (SOPORTE.part || []).length && linkAllowed("soporte>quote"))
-    pendientes.push({ mot: "soporte", desc: `Renta de elevación (${SOPORTE.equipo ? SOPORTE.equipo.label.toLowerCase() : "equipo"}, altura de trabajo ${n(SOPORTE.hTrab, 1)} m)`, descEn: `Lift rental (${SOPORTE.equipo ? SOPORTE.equipo.labelEn.toLowerCase() : "equipment"}, working height ${n(SOPORTE.hTrab, 1)} m)`, motivo: "pendiente de meses de renta (sin captura no se suponen)", motivoEn: "rental months pending (not assumed without capture)" });
+    pendientes.push({ mot: "soporte", desc: `Renta de elevación (${SOPORTE.equipo ? SOPORTE.equipo.label.toLowerCase() : "equipo"}, altura de trabajo ${n(SOPORTE.hTrab, 1)} m${SOPORTE.hTrabMigrada ? `, ${origenMigradoSop("alturaTrabajo", (S.soporte.sinConfirmar || {}).alturaTrabajo)}` : ""})`, descEn: `Lift rental (${SOPORTE.equipo ? SOPORTE.equipo.labelEn.toLowerCase() : "equipment"}, working height ${n(SOPORTE.hTrab, 1)} m${SOPORTE.hTrabMigrada ? `, ${origenMigradoSop("alturaTrabajo", (S.soporte.sinConfirmar || {}).alturaTrabajo, true)}` : ""})`, motivo: "pendiente de meses de renta (sin captura no se suponen)", motivoEn: "rental months pending (not assumed without capture)" });
   if (verCiv && CIVIL && CIVIL.total > 0) {
     CIVIL.part.forEach((p) => aux.push({ desc: p.desc, descEn: p.descEn, qty: p.qty, unit: p.unit, total: p.total, sec: "A", un: p.un, mot: "civil" }));
   }
@@ -11757,6 +11778,10 @@ function setPath(path, val) {
   }
   for (let i = 0; i < parts.length - 1; i++) { if (o[parts[i]] == null || typeof o[parts[i]] !== "object") o[parts[i]] = {}; o = o[parts[i]]; }
   o[parts[parts.length - 1]] = val;
+  /* H-266 (U10): capturar una altura que la migración copió o supuso (en pantalla o desde un plano) la confirma, aunque sea la
+     misma cifra: deja de ser «de la migración, sin confirmar». */
+  if (parts[0] === "soporte" && (parts[1] === "alturaTrabajo" || parts[1] === "alturaEstructura") && S.soporte && S.soporte.sinConfirmar && typeof S.soporte.sinConfirmar === "object")
+    delete S.soporte.sinConfirmar[parts[1]];
 }
 function getPath(path) { return path.split(".").reduce((o, k) => (o == null ? o : o[k]), S); }
 
@@ -22677,7 +22702,9 @@ function viewSoporte() {
       <div class="row">
         ${inp("Altura de trabajo (m) · sin ella la renta de elevación queda pendiente", "soporte.alturaTrabajo", "number", "0.5", "sop.ht", G)}
         ${inp("Altura de la estructura (m) · de la que cuelga la instalación, para el sismo", "soporte.alturaEstructura", "number", "0.5")}
-      </div><div class="row">
+      </div>
+      ${R.hTrabMigrada || R.hEstructuraMigrada ? `<div class="note warn" style="margin-top:6px">${[R.hTrabMigrada ? `Altura de trabajo ${n(R.hTrab, 1)} m: ${esc(R.origenHTrab)}.` : "", R.hEstructuraMigrada ? `Altura de la estructura ${n(R.hEstructura, 1)} m: ${esc(R.origenHEst)}.` : ""].filter(Boolean).join(" ")} Captura el valor de la obra para confirmarlo (H-266).</div>` : ""}
+      <div class="row">
         ${inp("SDS del sitio (g) · sin él y su fuente el anclaje va Por cotizar", "soporte.sismoSDS", "number", "0.05")}
         ${inp("Fuente del SDS (documento, sitio, edición)", "soporte.sismoFuente", "text")}
       </div><div class="row">
@@ -22697,7 +22724,7 @@ function viewSoporte() {
       <div class="metrics">
         <div class="metric"><div class="k">Soportes</div><div class="v">${R.nSoportes}</div><div class="sub">${n(R.mDucto, 0)} m de ducto · ${n(R.mTub, 0)} m de tubería</div></div>
         <div class="metric"><div class="k">Arriostramiento</div><div class="v">${R.nLong + R.nTrans}</div><div class="sub">${R.nLong} long. · ${R.nTrans} transv.</div></div>
-        <div class="metric"><div class="k">Altura de trabajo</div><div class="v">${R.hTrabPendiente ? "pendiente" : `${n(R.hTrab, 1)} <small>m</small>`}</div><div class="sub">${R.meses} mes(es) de renta si hay soportes, riel o bases que montar</div></div>
+        <div class="metric"><div class="k">Altura de trabajo</div><div class="v">${R.hTrabPendiente ? "pendiente" : `${n(R.hTrab, 1)} <small>m</small>`}</div><div class="sub">${R.hTrabMigrada ? "de la migración, sin confirmar · " : ""}${R.meses} mes(es) de renta si hay soportes, riel o bases que montar</div></div>
       </div>
       ${R.porTuberia.length ? `<div class="tw" style="margin-top:14px"><table>
         <thead><tr><th>Servicio</th><th>Tramo</th><th class="num">Ø mm</th><th class="num">Espac. m</th><th class="num">Long m</th><th class="num">Soportes</th></tr></thead>
@@ -24078,7 +24105,13 @@ function sanearEstado(d) {
   if (sopPrevio && !("alturaEstructura" in sopPrevio)) {
     const hZ = (Array.isArray(s.zones) ? s.zones : []).reduce((a, z) => Math.max(a, num(z && z.height, 0)), 0);
     s.soporte.alturaEstructura = hZ;
-    if (!(num(s.soporte.alturaTrabajo, 0) > 0)) s.soporte.alturaTrabajo = Math.max(3, hZ + 1.2);
+    /* H-266 (revisión adversarial U10; reglas 6 y 8, precedente H-179): lo que la migración copia o supone se conserva (mismas
+       cifras), pero no como captura del usuario: queda «sin confirmar» con el valor que puso y la zona de la que salió. La marca
+       cae sola en cuanto el usuario captura otro valor (computeSoporte compara). */
+    const sc = {};
+    if (hZ > 0) sc.alturaEstructura = { valor: hZ, hZona: hZ };
+    if (!(num(s.soporte.alturaTrabajo, 0) > 0)) { s.soporte.alturaTrabajo = Math.max(3, hZ + 1.2); sc.alturaTrabajo = { valor: s.soporte.alturaTrabajo, hZona: hZ }; }
+    if (Object.keys(sc).length) s.soporte.sinConfirmar = sc;
     /* H-42: el sí/no guardado como texto («true»/«false», revisiones anteriores) se lee aquí, ANTES de decidir; el boolear de
        más abajo corre después y ya encontraría el booleano que puso esta migración: un proyecto a mano con «false» abría
        como instantánea aceptada con otros metros (revisión adversarial C2). Sin la clave = contaba en vivo, como antes. */
