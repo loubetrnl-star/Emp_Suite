@@ -4371,37 +4371,34 @@ const LINKS = {
     why: "Es la verificación cruzada que detecta que los ductos quedaron dimensionados para otra corrida.",
     cost: "Si lo niegas, cada motor se valida solo y nadie avisa si los ductos y la carga dejaron de coincidir.",
   },
-  /* H-67 (decisión del dueño, 15-sep-2026): soportería y obra civil ya leían
-     ductos/hidráulico/incendio/aire/limpios/carga directo, sin pasar por
-     linkAllowed — el único candado era el interruptor interno usarMotores, que
-     no es un permiso auditable como los demás. Entran al sistema de cruces
-     igual que el resto, PERO con una salvaguarda distinta: negar el permiso
-     NUNCA pone la cantidad en cero (un proyecto en trámite sigue necesitando
-     los mismos soportes/m² reales), solo marca la partida "pendiente de
-     autorización" en los avisos — ver computeSoporte/computeCivil. */
+  /* H-67 (15-sep-2026) metió estos cuatro cruces al sistema de permisos cuando soportería leía los motores en vivo. H-266 (decisión
+     del dueño, 27-sep-2026): soportería es autónoma y los metros de otros motores entran SÓLO al aceptar la propuesta
+     motores>soporte (instantánea con fecha), que concede los cuatro; ya no hay conteo en vivo ni aviso de permiso pendiente. Los
+     cruces quedan como registro de esa aceptación y sus textos dicen eso (revisión adversarial U14): autorizarlos aquí no mete
+     metros, y negarlos o revocarlos no cambia lo ya aceptado. */
   "duct>soporte": {
     from: "duct", to: "soporte",
-    what: "Metros y calibre de ducto por tramo, para contar soportes.",
-    why: "La soportería de ducto se cuenta por norma sobre lo que ductos ya dimensionó, no se estima.",
-    cost: "Si lo niegas, los soportes de ducto SÍ se siguen contando y cotizando —nunca se bajan a cero—, pero la sección G queda marcada pendiente de autorizar el cruce.",
+    what: "Metros, sección y calibre de ducto por tramo, para contar soportes. Entran a soportería sólo al aceptar su propuesta («Metros de ducto y tubería contados por los motores»), como instantánea con fecha.",
+    why: "Registra que se aceptó esa propuesta: aceptarla concede este cruce. Autorizarlo aquí no mete metros por sí solo; la soportería cuenta la instantánea aceptada o lo capturado a mano en su pestaña (H-266).",
+    cost: "Si lo niegas o lo revocas no cambia ninguna cifra: la soportería sigue con la instantánea aceptada (no se mueve sola) o con lo capturado a mano. Para dejar de usar la instantánea, «Capturo lo mío» en la tarjeta de la propuesta, en Soportería.",
   },
   "hidro>soporte": {
     from: "hidro", to: "soporte",
-    what: "Metros y diámetro de tubería hidrosanitaria por tramo.",
-    why: "Misma razón que duct>soporte, para la red de agua.",
-    cost: "Si lo niegas, esos soportes se siguen contando y cotizando, marcados pendientes de autorizar.",
+    what: "Metros, diámetro y material de tubería hidrosanitaria por tramo. Entran a soportería sólo al aceptar su propuesta («Metros de ducto y tubería contados por los motores»), como instantánea con fecha.",
+    why: "Registra que se aceptó esa propuesta, igual que duct>soporte: autorizarlo aquí no mete metros por sí solo (H-266).",
+    cost: "Si lo niegas o lo revocas no cambia ninguna cifra: sigue la instantánea aceptada o lo capturado a mano. Para dejar de usar la instantánea, «Capturo lo mío» en la tarjeta de la propuesta, en Soportería.",
   },
   "fuego>soporte": {
     from: "fuego", to: "soporte",
-    what: "Metros y diámetro del cabezal y el montante de la red contra incendio.",
-    why: "Misma razón que duct>soporte, para la red contra incendio.",
-    cost: "Si lo niegas, esos soportes se siguen contando y cotizando, marcados pendientes de autorizar.",
+    what: "Metros, diámetro y material del cabezal y el montante de la red contra incendio. Entran a soportería sólo al aceptar su propuesta («Metros de ducto y tubería contados por los motores»), como instantánea con fecha.",
+    why: "Registra que se aceptó esa propuesta, igual que duct>soporte: autorizarlo aquí no mete metros por sí solo (H-266).",
+    cost: "Si lo niegas o lo revocas no cambia ninguna cifra: sigue la instantánea aceptada o lo capturado a mano. Para dejar de usar la instantánea, «Capturo lo mío» en la tarjeta de la propuesta, en Soportería.",
   },
   "aire>soporte": {
     from: "aire", to: "soporte",
-    what: "Metros y diámetro de la red de aire comprimido por tramo.",
-    why: "Misma razón que duct>soporte, para la red de aire comprimido.",
-    cost: "Si lo niegas, esos soportes se siguen contando y cotizando, marcados pendientes de autorizar.",
+    what: "Metros, diámetro y material de la red de aire comprimido por tramo. Entran a soportería sólo al aceptar su propuesta («Metros de ducto y tubería contados por los motores»), como instantánea con fecha.",
+    why: "Registra que se aceptó esa propuesta, igual que duct>soporte: autorizarlo aquí no mete metros por sí solo (H-266).",
+    cost: "Si lo niegas o lo revocas no cambia ninguna cifra: sigue la instantánea aceptada o lo capturado a mano. Para dejar de usar la instantánea, «Capturo lo mío» en la tarjeta de la propuesta, en Soportería.",
   },
   /* H-265: los cruces load>civil y clean>civil se retiraron: obra civil captura sus áreas y sus cuartos clasificados. */
 };
@@ -8246,6 +8243,21 @@ const PU_SOP_VARILLA = { '3/8"': 65, '1/2"': 95, '5/8"': 140, '3/4"': 195, '7/8"
 const PU_SOP_PERFIL = { P1000: 180, P1001: 320, PTR2x125: 230, PTR2x1875: 310, CPS3: 330 };
 const PU_SOP_ANCLAJE = { M10: 95, M12: 135, M16: 215, M20: 325 };
 const PU_SOP_ABRAZADERA = 285, PU_SOP_TUERCA_RONDANA = 9, PU_SOP_RIOSTRA = 4200;
+/* H-266 (revisión adversarial U10): de dónde salió una altura que la migración copió o supuso al abrir un proyecto anterior a
+   H-266 (sanearEstado, soporte.sinConfirmar). «corto» da sólo el «antes …», para listarla en las observaciones. ES/EN (regla 7).
+   También las bases de equipo que copió al abrir (recompute, tomarBases): el conteo de equipos de la cotización (y de unidades
+   de aire comprimido) que hacía la revisión anterior. */
+function origenMigradoSop(k, m, en, corto) {
+  const hZ = num(m && m.hZona, 0);
+  const antes = k === "basesEquipo"
+    ? (en ? (num(m && m.aire, 0) > 0 ? `count of quoted equipment (${n(num(m.equipos, 0), 0)}) and of compressed air units (${n(num(m.aire, 0), 0)}) on opening` : "count of quoted equipment on opening")
+      : String((m && m.origen) || "conteo de equipos de la cotización al abrir"))
+    : k === "alturaTrabajo"
+    ? (hZ + 1.2 >= 3 ? (en ? `formerly the highest zone (${n(hZ, 1)} m) + 1.2 m, a house assumption` : `antes la zona más alta (${n(hZ, 1)} m) + 1.2 m, supuesto de la casa`)
+      : (en ? `formerly the house minimum of 3 m (highest zone ${n(hZ, 1)} m + 1.2 m), a house assumption` : `antes el mínimo de 3 m (zona más alta ${n(hZ, 1)} m + 1.2 m), supuesto de la casa`))
+    : (en ? `formerly the highest Thermal load zone (${n(hZ, 1)} m), a house criterion` : `antes la zona más alta de Carga térmica (${n(hZ, 1)} m), criterio de la casa`);
+  return corto ? antes : `${en ? "from the migration on opening, unconfirmed" : "de la migración al abrir, sin confirmar"}: ${antes}`;
+}
 
 function computeSoporte(Gc) {
   const avisos = [], memo = [], part = [];
@@ -8266,6 +8278,14 @@ function computeSoporte(Gc) {
   const hEstructura = Math.max(0, num(Gc.alturaEstructura, 0));
   const hTrab = Math.max(0, num(Gc.alturaTrabajo, 0));
   const hTrabPendiente = !(hTrab > 0);
+  /* H-266 (revisión adversarial U10; reglas 6 y 8, precedente H-179): una altura que la migración copió o supuso al abrir un
+     proyecto anterior se usa con la misma cifra, pero se dice de dónde salió («sin confirmar») en la partida, la memoria, las
+     observaciones y la pantalla, hasta que el usuario capture otro valor. */
+  const scSop = Gc.sinConfirmar && typeof Gc.sinConfirmar === "object" ? Gc.sinConfirmar : {};
+  const deMigracion = (v, m) => v > 0 && !!m && typeof m === "object" && Math.abs(v - num(m.valor, -1)) < 1e-9;
+  const hTrabMigrada = deMigracion(hTrab, scSop.alturaTrabajo), hEstructuraMigrada = deMigracion(hEstructura, scSop.alturaEstructura);
+  const origenHTrab = hTrabMigrada ? origenMigradoSop("alturaTrabajo", scSop.alturaTrabajo) : "";
+  const origenHEst = hEstructuraMigrada ? origenMigradoSop("alturaEstructura", scSop.alturaEstructura) : "";
   /* H-56: sin altura de colgado por tramo capturada (no hay UI para eso), se
      propone la altura de trabajo ya calculada arriba como aproximación de
      nivel de proyecto, y el campo de captura la sustituye si el usuario la
@@ -8497,7 +8517,12 @@ function computeSoporte(Gc) {
   const nEquipos = num(Gc.basesEquipo, 0) > 0 ? num(Gc.basesEquipo)
     : (typeof QUOTE !== "undefined" && QUOTE && QUOTE.deSnap) ? num(QUOTE.nEquip, 0)
     : 0;
-  if (nEquipos > 0) memo.push(`Bases de equipo: ${nEquipos} (${num(Gc.basesEquipo, 0) > 0 ? "capturadas" : "de la instantánea aceptada"}; H-266).`);
+  /* H-266 (revisión adversarial de U10; reglas 6 y 8): las bases que la migración copió al abrir se usan con la misma cifra,
+     pero se dice de dónde salieron («sin confirmar») en la memoria, las observaciones y la pantalla, hasta que el usuario las
+     capture (setPath) o capture otra cifra. */
+  const basesMigradas = deMigracion(num(Gc.basesEquipo, 0), scSop.basesEquipo);
+  const origenBases = basesMigradas ? origenMigradoSop("basesEquipo", scSop.basesEquipo) : "";
+  if (nEquipos > 0) memo.push(`Bases de equipo: ${nEquipos} (${num(Gc.basesEquipo, 0) > 0 ? (basesMigradas ? origenBases : "capturadas") : "de la instantánea aceptada"}; H-266).`);
 
   /* ---- Partidas: despiece real de SoporteCalc (varilla, perfil, anclaje,
      abrazadera, tornillería, riostras) + lo del termoplástico + lo que
@@ -8514,9 +8539,18 @@ function computeSoporte(Gc) {
   const colgadoPendiente = !colgadoCapturado && Object.values(anclMerge).some((c) => c > 0);
   const sdsCapturado = num(Gc.sismoSDS, 0) > 0 && String(Gc.sismoFuente || "").trim().length > 0;
   const estructuraCapturada = !!Gc.estructuraTipo && (Gc.estructuraTipo !== "losa_concreto" || num(Gc.estructuraFc, 0) > 0);
-  const anclajeCapturado = sdsCapturado && estructuraCapturada;
+  /* H-266 (revisión adversarial U5; regla 6): con arriostramiento sísmico la amplificación de Fp depende de z/h (ASCE 7-16
+     §13.3.1). Sin la altura de la estructura capturada SoporteCalc predimensiona con z/h = 0, un valor de referencia del lado
+     no conservador (el que H-50 había corregido): el anclaje va «Por cotizar» con su motivo, igual que sin SDS. Sin sismo
+     Fp = 0 y la altura no entra al anclaje. */
+  const alturaEstructuraCapturada = Gc.sismico === false || hEstructura > 0;
+  const anclajeCapturado = sdsCapturado && estructuraCapturada && alturaEstructuraCapturada;
   const anclajePendiente = !anclajeCapturado && Object.values(anclMerge).some((c) => c > 0);
-  if (anclajePendiente) avisos.push({ lvl: "warn", msg: `Anclaje «Por cotizar»: falta ${[!sdsCapturado ? "el SDS del sitio con su fuente" : "", !estructuraCapturada ? "el tipo de estructura (y f'c en losa)" : ""].filter(Boolean).join(" y ")}. Se predimensionó con valores de referencia (SDS ${n(num(Gc.sismoSDS, 0) > 0 ? num(Gc.sismoSDS) : 1.0, 2)}, ${Gc.estructuraTipo || "losa de concreto"}${Gc.estructuraTipo && Gc.estructuraTipo !== "losa_concreto" ? "" : ` f'c ${n(num(Gc.estructuraFc, 0) > 0 ? num(Gc.estructuraFc) : 250, 0)} kg/cm²`}) que no son datos del edificio (H-226).` });
+  const anclajeFalta = [!sdsCapturado ? "el SDS del sitio con su fuente" : "", !estructuraCapturada ? "el tipo de estructura (y f'c en losa)" : "",
+    !alturaEstructuraCapturada ? "la altura de la estructura (z/h de ASCE 7-16 §13.3.1)" : ""].filter(Boolean);
+  const refAncla = [!sdsCapturado || !estructuraCapturada ? `SDS ${n(num(Gc.sismoSDS, 0) > 0 ? num(Gc.sismoSDS) : 1.0, 2)}, ${Gc.estructuraTipo || "losa de concreto"}${Gc.estructuraTipo && Gc.estructuraTipo !== "losa_concreto" ? "" : ` f'c ${n(num(Gc.estructuraFc, 0) > 0 ? num(Gc.estructuraFc) : 250, 0)} kg/cm²`}` : "",
+    !alturaEstructuraCapturada ? "z/h = 0 por falta de la altura de la estructura" : ""].filter(Boolean).join("; ");
+  if (anclajePendiente) avisos.push({ lvl: "warn", msg: `Anclaje «Por cotizar»: falta ${anclajeFalta.length > 1 ? `${anclajeFalta.slice(0, -1).join(", ")} y ${anclajeFalta[anclajeFalta.length - 1]}` : anclajeFalta[0]}. Se predimensionó con valores de referencia (${refAncla}) que no son datos del edificio (H-226${alturaEstructuraCapturada ? "" : "; H-266"}).` });
   if (!colgadoPendiente) Object.entries(varMerge).forEach(([id, m]) => P(`Varilla roscada ${id} galvanizada, incluye corte y habilitado`, "ML", m, PU_SOP_VARILLA[id] || 300, "MSS SP-58 tabla 3",
     `${id} galvanized threaded rod, includes cutting and setup`));
   if (colgadoPendiente) avisos.push({ lvl: "warn", msg: `Varilla roscada pendiente: no hay altura de colgado capturada (${colgadoSugerido ? `sugerencia: la altura de trabajo, ${n(colgadoSugerido, 1)} m` : "sin altura de trabajo capturada para sugerir"}). Sin captura no se cuentan metros de varilla (H-225).` });
@@ -8537,7 +8571,7 @@ function computeSoporte(Gc) {
   /* rev 2.9.16 · DECISIÓN DEL DUEÑO (pisos internos): sólo se quedan los pisos con norma, y cuando se aplican se avisan y quedan en la memoria; los que no tenían sustento salieron.
      La renta de elevación entraba aunque no hubiera nada que montar (3 meses por omisión en un proyecto vacío).
      Ahora sólo entra si hay soportes, riel o bases que instalar. */
-  if (part.length && meses > 0 && !hTrabPendiente) P(`${equipo.label} · renta`, "MES", meses, equipo.mxnMes, `Altura de trabajo ${n(hTrab, 1)} m`,
+  if (part.length && meses > 0 && !hTrabPendiente) P(`${equipo.label} · renta`, "MES", meses, equipo.mxnMes, `Altura de trabajo ${n(hTrab, 1)} m${hTrabMigrada ? ` (${origenHTrab})` : ""}`,
     `${equipo.labelEn} · rental`);
   if (part.length && hTrabPendiente) avisos.push({ lvl: "warn", msg: "Renta de elevación pendiente: no hay altura de trabajo capturada; no se supone ninguna (antes la mayor de las zonas + 1.2 m, H-266). Captúrala para elegir el equipo de elevación." });
   if (part.length && mesesPendiente && !hTrabPendiente) avisos.push({ lvl: "warn", msg: `Renta de elevación pendiente: no hay meses capturados (${equipo.label.toLowerCase()} por altura de trabajo de ${n(hTrab, 1)} m). Captura los meses del programa; no se suponen (H-232).` });
@@ -8550,25 +8584,31 @@ function computeSoporte(Gc) {
     t.errores.forEach((e) => avisos.push({ lvl: "err", msg: `${t.descripcion || t.id}: ${e}` }));
     t.avisos.forEach((a) => { if (!infoVistos.has(a)) { infoVistos.add(a); avisos.push({ lvl: "info", msg: a }); } });
   });
-  if (nSoportes === 0) avisos.push({ lvl: "warn", msg: "No hay soportes que contar: no hay ductos ni tubería calculados en los motores, ni metros capturados a mano." });
+  /* H-266 (revisión adversarial U16): desde H-266 los metros de los motores no entran solos; el aviso ya no dice «no hay ductos ni
+     tubería calculados en los motores» (falso con tramos en Ductos sin aceptar). computeSoporteGobernado precisa si hay metros
+     en los motores sin aceptar. */
+  if (nSoportes === 0) avisos.push({ lvl: "warn", msg: Gc.usarMotores !== false && Gc.snap ? "No hay soportes que contar: la instantánea aceptada no trae metros de ducto ni de tubería." : "No hay soportes que contar: no hay metros capturados a mano en esta pestaña ni una propuesta de los motores aceptada (H-266)." });
   if (hTrab > 10 && !mesesPendiente && meses < 2) avisos.push({ lvl: "info", msg: `Trabajo a ${n(hTrab, 1)} m con solo ${meses} mes(es) de renta. Revisa el programa: a esa altura casi todo el montaje mecánico y eléctrico necesita plataforma.` });
 
   /* ---- Memoria ---- */
   const rigeSC = R.tramos.slice().sort((a, b) => b.carga_por_varilla_kgf - a.carga_por_varilla_kgf)[0] || null;
   if (rigeSC) {
     memo.push(`Varilla dimensionada por carga, MSS SP-58 tabla 3 (SoporteCalc v0.1.0). El caso que rige es ${rigeSC.descripcion || rigeSC.id}: ${n(rigeSC.peso.total, 1)} kg/m por ${n(rigeSC.espaciamiento.e_m, 1)} m de espaciamiento = ${n(rigeSC.carga_por_soporte_kgf, 0)} kg por soporte, resuelve varilla de ${rigeSC.varilla ? rigeSC.varilla.id : "—"}${rigeSC.varilla ? ` (admisible ${n(rigeSC.varilla.adm_kgf, 0)} kg, FU ${n(rigeSC.varilla.fu, 2)})` : ", ningún diámetro de la tabla alcanza: requiere soporte estructural diseñado"}.`);
-    if (rigeSC.sismo && rigeSC.sismo.parametros) memo.push(`Fuerza sísmica del tramo que rige: Fp = ${n(rigeSC.sismo.Fp_kgf, 1)} kgf (${rigeSC.sismo.norma}; rige ${rigeSC.sismo.rige}) con SDS ${n(rigeSC.sismo.parametros.SDS, 2)}${sdsCapturado ? ` capturado (fuente: ${String(Gc.sismoFuente).trim()})` : " DE REFERENCIA (no capturado: sin fuente)"}, Ip ${rigeSC.sismo.parametros.Ip}, ap ${rigeSC.sismo.parametros.ap}, Rp ${rigeSC.sismo.parametros.Rp}, z/h ${n(rigeSC.sismo.parametros.h > 0 ? Math.min(rigeSC.sismo.parametros.z / rigeSC.sismo.parametros.h, 1) : 0, 2)}. ${rigeSC.sismo.aviso}`);
-    if (rigeSC.anclaje) memo.push(`Anclaje ${rigeSC.anclaje.anclaje} a ${estructuraCapturada ? (Gc.estructuraTipo === "losa_concreto" ? `losa de concreto f'c ${n(num(Gc.estructuraFc), 0)} kg/cm² (capturado)` : `${Gc.estructuraTipo} (capturado)`) : "losa de concreto f'c 250 kg/cm² DE REFERENCIA (tipo de estructura y f'c no capturados: anclaje Por cotizar)"}: interacción tensión-cortante ${n(rigeSC.anclaje.interaccion, 2)} (${rigeSC.anclaje.criterio}), ${rigeSC.anclaje.pasa ? "pasa" : "NO PASA"} — ACI 318-19 cap. 17. Predimensionado: el valor que se firma sale del reporte de evaluación (ESR/ICC-ES) del anclaje que se compre.`);
+    if (rigeSC.sismo && rigeSC.sismo.parametros) memo.push(`Fuerza sísmica del tramo que rige: Fp = ${n(rigeSC.sismo.Fp_kgf, 1)} kgf (${rigeSC.sismo.norma}; rige ${rigeSC.sismo.rige}) con SDS ${n(rigeSC.sismo.parametros.SDS, 2)}${sdsCapturado ? ` capturado (fuente: ${String(Gc.sismoFuente).trim()})` : " DE REFERENCIA (no capturado: sin fuente)"}, Ip ${rigeSC.sismo.parametros.Ip}, ap ${rigeSC.sismo.parametros.ap}, Rp ${rigeSC.sismo.parametros.Rp}, z/h ${n(rigeSC.sismo.parametros.h > 0 ? Math.min(rigeSC.sismo.parametros.z / rigeSC.sismo.parametros.h, 1) : 0, 2)}${alturaEstructuraCapturada ? "" : " DE REFERENCIA (altura de la estructura sin capturar: el anclaje va «Por cotizar», H-266)"}${hEstructuraMigrada ? ` (altura de la estructura ${n(hEstructura, 1)} m, ${origenHEst})` : ""}. ${rigeSC.sismo.aviso}`);
+    if (rigeSC.anclaje) memo.push(`Anclaje ${rigeSC.anclaje.anclaje} a ${estructuraCapturada ? (Gc.estructuraTipo === "losa_concreto" ? `losa de concreto f'c ${n(num(Gc.estructuraFc), 0)} kg/cm² (capturado)` : `${Gc.estructuraTipo} (capturado)`) : "losa de concreto f'c 250 kg/cm² DE REFERENCIA (tipo de estructura y f'c no capturados: anclaje Por cotizar)"}${alturaEstructuraCapturada ? "" : ", con z/h = 0 DE REFERENCIA (altura de la estructura sin capturar: anclaje Por cotizar)"}: interacción tensión-cortante ${n(rigeSC.anclaje.interaccion, 2)} (${rigeSC.anclaje.criterio}), ${rigeSC.anclaje.pasa ? "pasa" : "NO PASA"} — ACI 318-19 cap. 17. Predimensionado: el valor que se firma sale del reporte de evaluación (ESR/ICC-ES) del anclaje que se compre.`);
   }
   memo.push(`${nSoportes} soportes contados de ${n(mDucto + mTub, 0)} m de instalación (${n(mDucto, 0)} m de ducto, ${n(mTub, 0)} m de tubería): varilla, perfil de trapecio y anclaje a concreto revisados por capacidad, no un lote estimado — SoporteCalc v0.1.0 (MSS SP-58, ACI 318-19 cap. 17, ASCE 7-16 §13.3.1, NFPA 13 cap. 18).`);
   if (plastResultados.some((p) => !p.pendiente)) memo.push(`Claros del termoplástico: IPC 2009 Tabla 308.5 (folleto MCP, fuente secundaria; ratificar con el texto): CPVC ≤ 1" 0.9 m (decisión del dueño, más cerrado que los 3 ft) y ≥ 1¼" 1.219 m; PP-R ≤ 1" 0.813 m y ≥ 1¼" 1.219 m. Varilla MSS SP-58 tabla 3 y ancla ACI 318-19 cap. 17 con el mismo criterio del despiece (una ancla, 4 tuercas y 4 rondanas por soporte), sin trapecio (H-228).`);
   if (Gc.sismico) memo.push(`Arriostramiento sísmico NFPA 13 cap. 18: ${nLong} longitudinales cada 24.4 m y ${nTrans} transversales cada 12.2 m, contados tramo por tramo sobre ${n(mArriostrable, 0)} m de corrida.`);
-  if (Gc.sismico !== false && tramosSC.length && !(hEstructura > 0)) avisos.push({ lvl: "warn", msg: "Soportería: altura de la estructura sin capturar: la amplificación sísmica (ASCE 7-16 §13.3.1) se toma sin altura (z/h = 0) y queda corta. Captura la altura de la estructura de la que cuelga la instalación (ya no se toma de las zonas, H-266)." });
-  if (part.length && !hTrabPendiente) memo.push(`Elevación: ${equipo.label.toLowerCase()} por altura de trabajo de ${n(hTrab, 1)} m. ${equipo.nota} NOM-009-STPS exige equipo certificado y personal capacitado para trabajos en altura.`);
+  if (Gc.sismico !== false && tramosSC.length && !(hEstructura > 0)) avisos.push({ lvl: "warn", msg: `Soportería: altura de la estructura sin capturar: la amplificación sísmica (ASCE 7-16 §13.3.1) se predimensiona sin altura (z/h = 0), que queda corta${anclajePendiente ? ", y por eso el anclaje va «Por cotizar»" : ""}. Captura la altura de la estructura de la que cuelga la instalación (ya no se toma de las zonas, H-266).` });
+  if (part.length && !hTrabPendiente) memo.push(`Elevación: ${equipo.label.toLowerCase()} por altura de trabajo de ${n(hTrab, 1)} m${hTrabMigrada ? ` (${origenHTrab})` : ""}. ${equipo.nota} NOM-009-STPS exige equipo certificado y personal capacitado para trabajos en altura.`);
+
+  if (hTrabMigrada || hEstructuraMigrada || basesMigradas) avisos.push({ lvl: "warn", msg: `Soportería: valores que la migración copió o supuso al abrir este proyecto (H-266), sin confirmar: ${[hTrabMigrada ? `altura de trabajo ${n(hTrab, 1)} m (${origenMigradoSop("alturaTrabajo", scSop.alturaTrabajo, false, true)})` : "", hEstructuraMigrada ? `altura de la estructura ${n(hEstructura, 1)} m (${origenMigradoSop("alturaEstructura", scSop.alturaEstructura, false, true)})` : "", basesMigradas ? `bases de equipo ${n(nEquipos, 0)} (${origenMigradoSop("basesEquipo", scSop.basesEquipo, false, true)})` : ""].filter(Boolean).join("; ")}. Se usan con la misma cifra; captura el valor de la obra para confirmarlo.` });
 
   return { porTuberia, mDucto, mTub, nSoportes, nLong, nTrans, mArriostrable,
     hTrab, hTrabPendiente, hEstructura, equipo, meses, mesesPendiente, nEquipos, part, total, avisos, memo, alturaColgado, colgadoCapturado, colgadoPendiente, colgadoSugerido,
-    manualPendientes, sdsCapturado, estructuraCapturada, anclajeCapturado, anclajePendiente, anclajesPza: Object.entries(anclMerge).map(([id, cnt]) => ({ id, cnt })),
+    hTrabMigrada, hEstructuraMigrada, origenHTrab, origenHEst, basesMigradas, origenBases,
+    manualPendientes, sdsCapturado, estructuraCapturada, alturaEstructuraCapturada, anclajeCapturado, anclajePendiente, anclajesPza: Object.entries(anclMerge).map(([id, cnt]) => ({ id, cnt })),
     sopcalc: R };   // corrida completa de SoporteCalc, por si se quiere el detalle fino
 }
 
@@ -8861,13 +8901,22 @@ function computeQuote() {
   if (typeof SOPORTE !== "undefined" && SOPORTE && (SOPORTE.manualPendientes || []).length && linkAllowed("soporte>quote"))
     SOPORTE.manualPendientes.forEach((p) => pendientes.push({ mot: "soporte", desc: `Soportes: ${p.que}`, descEn: `Supports: ${p.queEn}`, motivo: `pendiente de ${p.falta}`, motivoEn: `${p.faltaEn} pending` }));
   if (typeof SOPORTE !== "undefined" && SOPORTE && SOPORTE.anclajePendiente && linkAllowed("soporte>quote"))
-    (SOPORTE.anclajesPza || []).forEach((a) => porCotizar.push({ sec: "G", mot: "soporte", clave: "anclajeSop", desc: `Anclaje ${a.id} a estructura, ${a.cnt} pieza(s): predimensionado con SDS y estructura de referencia; Por cotizar hasta capturar SDS con fuente, tipo de estructura y f'c`, descEn: `${a.id} anchor to structure, ${a.cnt} piece(s): pre-sized with reference SDS and structure; to be quoted until site SDS with source, structure type and f'c are captured`, un: "PIEZA", qty: a.cnt, motivo: "datos del edificio sin capturar (H-226)" }));
+    /* H-266 (U5, dependencia de soporte v13): el motivo sale de lo que de verdad falta; sin la altura de la estructura (con sismo) el
+       anclaje se predimensionó con z/h = 0 de referencia. Con SDS o estructura sin capturar, el texto de H-226 no cambia. */
+    (SOPORTE.anclajesPza || []).forEach((a) => {
+      const sinDatos = !(SOPORTE.sdsCapturado && SOPORTE.estructuraCapturada), sinH = SOPORTE.alturaEstructuraCapturada === false;
+      const conEs = sinDatos && sinH ? "SDS, estructura y z/h = 0 de referencia (sin altura de la estructura)" : sinH ? "z/h = 0 de referencia (sin altura de la estructura)" : "SDS y estructura de referencia";
+      const conEn = sinDatos && sinH ? "reference SDS, structure and z/h = 0 (no structure height)" : sinH ? "a reference z/h = 0 (no structure height)" : "reference SDS and structure";
+      const faltaEs = sinDatos && sinH ? "SDS con fuente, tipo de estructura, f'c y la altura de la estructura" : sinH ? "la altura de la estructura" : "SDS con fuente, tipo de estructura y f'c";
+      const faltaEn = sinDatos && sinH ? "site SDS with source, structure type, f'c and the structure height are captured" : sinH ? "the structure height is captured" : "site SDS with source, structure type and f'c are captured";
+      porCotizar.push({ sec: "G", mot: "soporte", clave: "anclajeSop", desc: `Anclaje ${a.id} a estructura, ${a.cnt} pieza(s): predimensionado con ${conEs}; Por cotizar hasta capturar ${faltaEs}`, descEn: `${a.id} anchor to structure, ${a.cnt} piece(s): pre-sized with ${conEn}; to be quoted until ${faltaEn}`, un: "PIEZA", qty: a.cnt, motivo: sinH ? "datos del edificio sin capturar (H-226; altura de la estructura, H-266)" : "datos del edificio sin capturar (H-226)" });
+    });
   if (typeof SOPORTE !== "undefined" && SOPORTE && SOPORTE.colgadoPendiente && linkAllowed("soporte>quote"))
     pendientes.push({ mot: "soporte", desc: `Varilla roscada de los soportes (${SOPORTE.nSoportes} soportes)`, descEn: `Threaded rod for the supports (${SOPORTE.nSoportes} supports)`, motivo: "pendiente de altura de colgado (sin captura no se supone)", motivoEn: "hanging height pending (not assumed without capture)" });
   if (typeof SOPORTE !== "undefined" && SOPORTE && SOPORTE.hTrabPendiente && (SOPORTE.part || []).length && linkAllowed("soporte>quote"))
     pendientes.push({ mot: "soporte", desc: "Renta de elevación", descEn: "Lift rental", motivo: "pendiente de altura de trabajo (sin captura no se supone, H-266)", motivoEn: "working height pending (not assumed without capture, H-266)" });
   else if (typeof SOPORTE !== "undefined" && SOPORTE && SOPORTE.mesesPendiente && (SOPORTE.part || []).length && linkAllowed("soporte>quote"))
-    pendientes.push({ mot: "soporte", desc: `Renta de elevación (${SOPORTE.equipo ? SOPORTE.equipo.label.toLowerCase() : "equipo"}, altura de trabajo ${n(SOPORTE.hTrab, 1)} m)`, descEn: `Lift rental (${SOPORTE.equipo ? SOPORTE.equipo.labelEn.toLowerCase() : "equipment"}, working height ${n(SOPORTE.hTrab, 1)} m)`, motivo: "pendiente de meses de renta (sin captura no se suponen)", motivoEn: "rental months pending (not assumed without capture)" });
+    pendientes.push({ mot: "soporte", desc: `Renta de elevación (${SOPORTE.equipo ? SOPORTE.equipo.label.toLowerCase() : "equipo"}, altura de trabajo ${n(SOPORTE.hTrab, 1)} m${SOPORTE.hTrabMigrada ? `, ${origenMigradoSop("alturaTrabajo", (S.soporte.sinConfirmar || {}).alturaTrabajo)}` : ""})`, descEn: `Lift rental (${SOPORTE.equipo ? SOPORTE.equipo.labelEn.toLowerCase() : "equipment"}, working height ${n(SOPORTE.hTrab, 1)} m${SOPORTE.hTrabMigrada ? `, ${origenMigradoSop("alturaTrabajo", (S.soporte.sinConfirmar || {}).alturaTrabajo, true)}` : ""})`, motivo: "pendiente de meses de renta (sin captura no se suponen)", motivoEn: "rental months pending (not assumed without capture)" });
   /* H-265 (complemento; dependencia de civil): un área de obra o un cuarto clasificado sin altura no se supone ni desaparece:
      llega a la cotización y a la propuesta como pendiente (ES/EN). No mueve importes. */
   if (verCiv && CIVIL && CIVIL.pendAltura) {
@@ -11683,13 +11732,34 @@ function recompute() {
      y desde ahí no se mueve solo. Las marcas las deja sanearEstado y se consumen aquí, antes de la soportería. */
   if (S.soporte.tomarInstantanea) {
     delete S.soporte.tomarInstantanea;
-    S.soporte.snap = snapshotSoporte(); S.soporte.usarMotores = true;
-    registrarVinculo("motores>soporte", "aceptado");
+    /* H-266 (revisión adversarial U8): la instantánea se toma sólo si el conteo en vivo tenía algo de los motores: metros que
+       soportar o una propuesta con captura real (la misma condición de la tarjeta, REQUIERE_CAPTURA_PROP). Sin nada, quedaba
+       «aceptada» una instantánea vacía que salía enseguida «Desactualizada · el origen cambió», en la tarjeta y en el trazado
+       impreso. Entonces abre a mano con las bases que contaba (tomarBases, abajo): mismas cifras, propuesta «sin datos». */
+    const sn = snapshotSoporte(), mSn = (xs) => (xs || []).reduce((a, x) => a + Math.max(0, num(x.L)), 0);
+    const hayMetros = mSn(sn.duct) + mSn(sn.hidro) + mSn(sn.aire) + num(sn.fuego.Lram) + num(sn.fuego.Lmon) > 0;
+    const hayPropuesta = seguro(() => PROPUESTAS["motores>soporte"].disponible(), false) && REQUIERE_CAPTURA_PROP["motores>soporte"].some(capturaReal);
+    /* H-266 (revisión adversarial de U8): abrir a mano sólo si tampoco hay metros capturados a mano. Los que el proyecto guardaba
+       de cuando estuvo en «valores propios» no entraban al conteo en vivo; a mano se contarían (otras cifras al abrir). Con ellos
+       se toma la instantánea como antes de U8: 0 m de los motores, las mismas cifras; los metros capturados se conservan y
+       «Capturo lo mío» los vuelve a contar. */
+    const hayManual = ["ductoM", "tubHidroM", "tubFuegoM", "tubAireM"].some((k) => num(S.soporte[k], 0) > 0);
+    if (hayMetros || hayPropuesta || hayManual) {
+      S.soporte.snap = sn; S.soporte.usarMotores = true;
+      registrarVinculo("motores>soporte", "aceptado");
+    } else { S.soporte.usarMotores = false; S.soporte.tomarBases = true; }
   }
   if (S.soporte.tomarBases) {
     delete S.soporte.tomarBases;
-    const nb = equiposCotizados() + (AIRE ? num(AIRE.totalUnidades, 0) : 0);
-    if (nb > 0) S.soporte.basesEquipo = nb;
+    const nq = equiposCotizados(), na = AIRE ? num(AIRE.totalUnidades, 0) : 0, nb = nq + na;
+    if (nb > 0) {
+      S.soporte.basesEquipo = nb;
+      /* H-266 (revisión adversarial de U10; reglas 6 y 8): las bases que copia la migración conservan la cifra, pero no como
+         captura del usuario: quedan «de la migración, sin confirmar» con su origen (como las alturas, sanearEstado) mientras el
+         campo tenga esa cifra; capturarlo (setPath) las confirma. */
+      if (!S.soporte.sinConfirmar || typeof S.soporte.sinConfirmar !== "object") S.soporte.sinConfirmar = {};
+      S.soporte.sinConfirmar.basesEquipo = { valor: nb, origen: na > 0 ? `conteo de equipos de la cotización (${nq}) y de unidades de aire comprimido (${na}) al abrir` : "conteo de equipos de la cotización al abrir", equipos: nq, aire: na };
+    }
   }
   SOPORTE = computeSoporteGobernado(S.soporte);
   if (!S.quote) S.quote = JSON.parse(JSON.stringify(QUOTE_SEED));
@@ -11738,6 +11808,10 @@ function setPath(path, val) {
   }
   for (let i = 0; i < parts.length - 1; i++) { if (o[parts[i]] == null || typeof o[parts[i]] !== "object") o[parts[i]] = {}; o = o[parts[i]]; }
   o[parts[parts.length - 1]] = val;
+  /* H-266 (U10): capturar una altura que la migración copió o supuso (en pantalla o desde un plano), o las bases de equipo que
+     copió, la confirma, aunque sea la misma cifra: deja de ser «de la migración, sin confirmar». */
+  if (parts[0] === "soporte" && (parts[1] === "alturaTrabajo" || parts[1] === "alturaEstructura" || parts[1] === "basesEquipo") && S.soporte && S.soporte.sinConfirmar && typeof S.soporte.sinConfirmar === "object")
+    delete S.soporte.sinConfirmar[parts[1]];
 }
 function getPath(path) { return path.split(".").reduce((o, k) => (o == null ? o : o[k]), S); }
 
@@ -16158,12 +16232,19 @@ function cxzHuella(s) {
   if (c.clean && typeof c.clean === "object") { c.clean = { ...c.clean }; delete c.clean.ci; }
   return JSON.stringify(c);
 }
+/* H-266 (revisión adversarial U8; dependencia: proyectos). Las migraciones que se consumen en recompute al abrir (H-266 la
+   instantánea de soportería, H-267 la selección de equipo, H-268 el eléctrico) cambian S respecto al registro guardado sin que
+   el usuario toque nada: todo proyecto anterior abría «con cambios sin guardar». La referencia de un proyecto recién abierto es
+   su estado ya migrado (projOpen), mientras su registro siga igual; si el registro cambia (se guardó), vuelve a ser el registro. */
+let CXZ_BASE = null;
 function cxzSucio() {
   try {
     if (S.pid) {
       const rec = projList().find((p) => p.id === S.pid);
       if (!rec) return true;
-      return cxzHuella(S) !== cxzHuella(sanearEstado(JSON.parse(JSON.stringify(rec.data || {}))));
+      const crudo = JSON.stringify(rec.data || {});
+      if (CXZ_BASE && CXZ_BASE.pid === rec.id && CXZ_BASE.crudo === crudo) return cxzHuella(S) !== CXZ_BASE.huella;
+      return cxzHuella(S) !== cxzHuella(sanearEstado(JSON.parse(crudo)));
     }
     return cxzHuella(S) !== cxzHuella(sanearEstado(JSON.parse(JSON.stringify(INIT))));
   } catch { return false; }
@@ -18214,16 +18295,61 @@ function snapshotSoporte() {
     ts: Date.now(),
   };
 }
-function resumenSnapSoporte(sn) {
-  const m = (xs) => xs.reduce((a, x) => a + Math.max(0, num(x.L)), 0);
+function resumenSnapSoporte(sn, en) {
+  const m = (xs) => (xs || []).reduce((a, x) => a + Math.max(0, num(x.L)), 0);
   /* Capa 0 · 2.5: el material entra a la firma de la instantánea; si no se
      nombra aquí, la tarjeta desactualizada muestra dos textos idénticos. */
-  const matSop = sn.hidroMat === "plastico" ? `termoplástico${sn.hidroSub && sn.hidroSub !== "plastico" ? " " + String(sn.hidroSub).toUpperCase() : ""}` : (sn.hidroMat || "acero");
-  return `${n(m(sn.duct), 0)} m de ducto (${sn.duct.length} tramos) · ${n(m(sn.hidro), 0)} m de tubería hidráulica soportada como ${matSop} · incendio ${sn.fuego.nTotal} rociador(es) · ${n(m(sn.aire), 0)} m de red de aire · ${sn.nEquip} base(s) de equipo`;
+  const sub = sn.hidroSub && sn.hidroSub !== "plastico" ? " " + String(sn.hidroSub).toUpperCase() : "";
+  const matSop = sn.hidroMat === "plastico" ? `termoplástico${sub}` : (sn.hidroMat || "acero");
+  const matSopEn = sn.hidroMat === "plastico" ? `thermoplastic${sub}` : ({ acero: "steel", cobre: "copper" }[sn.hidroMat || "acero"] || sn.hidroMat);
+  /* H-266 (revisión adversarial U13; reglas 3 y 8): la red contra incendio se soporta por sus metros (cabezal y montante, con su
+     Ø), no por rociadores; la firma ya los comparaba y la tarjeta desactualizada salía con dos textos idénticos. ES/EN (regla 7). */
+  const fu = sn.fuego || {}, nR = num(fu.nTotal);
+  const redes = [num(fu.Lram) > 0 ? (en ? `header ${n(num(fu.Lram), 0)} m Ø${n(num(fu.ramD), 0)} mm` : `cabezal ${n(num(fu.Lram), 0)} m Ø${n(num(fu.ramD), 0)} mm`) : "",
+    num(fu.Lmon) > 0 ? (en ? `riser ${n(num(fu.Lmon), 0)} m Ø${n(num(fu.monD), 0)} mm` : `montante ${n(num(fu.Lmon), 0)} m Ø${n(num(fu.monD), 0)} mm`) : ""].filter(Boolean).join(", ");
+  if (en) return `${n(m(sn.duct), 0)} m of duct (${(sn.duct || []).length} runs) · ${n(m(sn.hidro), 0)} m of plumbing pipe supported as ${matSopEn} · fire protection ${redes || "without header or riser"} (${nR} sprinkler(s)) · ${n(m(sn.aire), 0)} m of compressed air network · ${num(sn.nEquip)} equipment base(s)`;
+  return `${n(m(sn.duct), 0)} m de ducto (${(sn.duct || []).length} tramos) · ${n(m(sn.hidro), 0)} m de tubería hidráulica soportada como ${matSop} · incendio ${redes || "sin cabezal ni montante"} (${nR} rociador(es)) · ${n(m(sn.aire), 0)} m de red de aire · ${num(sn.nEquip)} base(s) de equipo`;
+}
+/* H-266 (U13; regla 3): qué cambió entre la instantánea aceptada y lo que hoy proponen los motores, por red. */
+function cambiosSnapSoporte(a, b) {
+  if (!a || !b) return "";
+  const m = (xs) => (xs || []).reduce((s, x) => s + Math.max(0, num(x.L)), 0), c = [];
+  const dif = (x, y) => Math.abs(num(x) - num(y)) > 1e-9;
+  const red = (et, xa, xb, uni) => {
+    if ((xa || []).length !== (xb || []).length || dif(m(xa), m(xb))) c.push(`${et} ${n(m(xa), 0)} → ${n(m(xb), 0)} m (${(xa || []).length} → ${(xb || []).length} ${uni})`);
+    else if (JSON.stringify(xa || []) !== JSON.stringify(xb || [])) c.push(`${et}: mismos metros, cambió la sección, el diámetro o el calibre de algún tramo`);
+  };
+  red("ducto", a.duct, b.duct, "tramos"); red("hidráulica", a.hidro, b.hidro, "tramos");
+  if ((a.hidroMat || "") !== (b.hidroMat || "") || (a.hidroSub || "") !== (b.hidroSub || "")) c.push(`material hidráulico ${a.hidroSub || a.hidroMat} → ${b.hidroSub || b.hidroMat}`);
+  const fa = a.fuego || {}, fb = b.fuego || {}, fc = [];
+  if (dif(fa.Lram, fb.Lram)) fc.push(`cabezal ${n(num(fa.Lram), 0)} → ${n(num(fb.Lram), 0)} m`);
+  if (dif(fa.ramD, fb.ramD)) fc.push(`Ø del cabezal ${n(num(fa.ramD), 0)} → ${n(num(fb.ramD), 0)} mm`);
+  if (dif(fa.Lmon, fb.Lmon)) fc.push(`montante ${n(num(fa.Lmon), 0)} → ${n(num(fb.Lmon), 0)} m`);
+  if (dif(fa.monD, fb.monD)) fc.push(`Ø del montante ${n(num(fa.monD), 0)} → ${n(num(fb.monD), 0)} mm`);
+  if (dif(fa.nTotal, fb.nTotal)) fc.push(`rociadores ${num(fa.nTotal)} → ${num(fb.nTotal)}`);
+  if ((fa.tub || "acero") !== (fb.tub || "acero")) fc.push(`material ${fa.tub || "acero"} → ${fb.tub || "acero"}`);
+  if (fc.length) c.push(`contra incendio: ${fc.join(", ")}`);
+  red("aire", a.aire, b.aire, "tramos");
+  if ((a.aireMat || "") !== (b.aireMat || "")) c.push(`material del aire ${a.aireMat} → ${b.aireMat}`);
+  if (dif(a.nEquip, b.nEquip)) c.push(`bases de equipo ${num(a.nEquip)} → ${num(b.nEquip)}`);
+  return c.join(" · ") || "un dato de los tramos que no mueve metros ni diámetros (etiqueta o marca de tramo)";
+}
+/* H-266 (U13; regla 8): los motores que de verdad aportan metros a una instantánea (la propuesta junta cuatro). */
+function origenesSnapSoporte(sn, en) {
+  const m = (xs) => (xs || []).reduce((a, x) => a + Math.max(0, num(x.L)), 0), fu = (sn && sn.fuego) || {};
+  const EN = { duct: "Ductwork", hidro: "Plumbing", fuego: "Fire protection", aire: "Compressed air" };
+  const ids = sn ? [["duct", m(sn.duct) > 0 || (sn.duct || []).length > 0], ["hidro", m(sn.hidro) > 0], ["fuego", num(fu.Lram) + num(fu.Lmon) > 0 || num(fu.nTotal) > 0], ["aire", m(sn.aire) > 0]]
+    .filter((x) => x[1]).map((x) => x[0]) : [];
+  if (!ids.length) return en ? "Ductwork, plumbing, fire protection or compressed air" : "Ductos, hidrosanitario, contra incendio o aire comprimido";
+  return ids.map((id) => (en ? EN[id] : (DOMAINS[id] || {}).label || id)).join(", ");
 }
 /* Soportería con instantánea: el motor de soportería no cambia, pero se le
    presentan los tramos que el usuario ACEPTÓ, no los que hay ahora. Así un
    cambio en ductos no mueve la soportería hasta que alguien lo decida. */
+/* H-266 (U16): la propuesta motores>soporte tiene algo que ofrecer (misma condición que su tarjeta: propuesta con captura real). */
+function propSoporteDisponible() {
+  return seguro(() => PROPUESTAS["motores>soporte"].disponible(), false) && REQUIERE_CAPTURA_PROP["motores>soporte"].some(capturaReal);
+}
 function computeSoporteGobernado(G) {
   const snap = G && G.snap && typeof G.snap === "object" && G.usarMotores !== false ? G.snap : null;
   /* H-266 (decisión del dueño, 27-sep-2026): sin instantánea aceptada, soportería cuenta sólo lo capturado a mano. Los metros de
@@ -18232,6 +18358,12 @@ function computeSoporteGobernado(G) {
   if (!snap) {
     const Rm = computeSoporte({ ...G, usarMotores: false });
     if (G && G.usarMotores !== false) Rm.avisos.unshift({ lvl: "warn", msg: "Soportería: los metros de ductos y tuberías de los otros motores entran sólo al aceptar su propuesta (instantánea); mientras, se cuenta lo capturado a mano (H-266)." });
+    /* H-266 (U16): sin soportes, distingue «hay metros en los motores sin aceptar» de «no hay nada». */
+    if (!(Rm.nSoportes > 0) && propSoporteDisponible()) {
+      const i = Rm.avisos.findIndex((a) => /^No hay soportes que contar/.test(a.msg));
+      const msg = "No hay soportes que contar: ductos, hidrosanitario, contra incendio o aire comprimido ya tienen metros, pero entran a soportería sólo al aceptar su propuesta (arriba, «Metros de ducto y tubería contados por los motores»: siguen sin aceptar); tampoco hay metros capturados a mano en esta pestaña (H-266).";
+      if (i >= 0) Rm.avisos[i] = { lvl: "warn", msg }; else Rm.avisos.push({ lvl: "warn", msg });
+    }
     return Rm;
   }
   const prev = [DUCT, HIDRO, FUEGO, AIRE, QUOTE, S.hidro, S.aire];
@@ -18506,6 +18638,22 @@ const PROPUESTAS = {
     enVivo: () => false,   /* H-266: ya no existe el conteo en vivo */
     aplicar: () => { S.soporte.snap = snapshotSoporte(); S.soporte.usarMotores = true; },
     propio: () => { S.soporte.usarMotores = false; delete S.soporte.snap; },
+    /* H-266 (revisión adversarial U13; reglas 3 y 8): el origen son los motores que aportan (antes «Ductos y calibres» fijo); lo
+       aceptado se describe desde la instantánea (la que de verdad cuenta, también tras «Conservar lo aceptado»); desactualizada,
+       dice qué cambió por red; y la fila del trazado llega al libro de la propuesta con su espejo en inglés (regla 7). */
+    origenTxt: (aceptada, en) => origenesSnapSoporte(aceptada && S.soporte.snap ? S.soporte.snap : snapshotSoporte(), en),
+    /* H-266 (U15): lo ya cuantificado que «Capturo lo mío» deja de contar (se pregunta antes). */
+    propioPierde: () => {
+      if (!(S.soporte.snap && typeof S.soporte.snap === "object" && S.soporte.usarMotores !== false)) return [];
+      const rec = vinculoDe("motores>soporte"), R = SOPORTE;
+      return [[`Instantánea aceptada${rec && rec.estado === "aceptado" && rec.ts ? ` el ${fechaCorta(rec.ts)}` : ""}${rec && rec.conservado ? " (conservada)" : ""}`, `${n(R ? num(R.mDucto) + num(R.mTub) : 0, 0)} m · ${R ? R.nSoportes : 0} soportes`]];
+    },
+    resumenAceptado: () => (S.soporte.snap && typeof S.soporte.snap === "object" ? resumenSnapSoporte(S.soporte.snap) : null),
+    cambios: () => (S.soporte.snap && typeof S.soporte.snap === "object" ? cambiosSnapSoporte(S.soporte.snap, snapshotSoporte()) : ""),
+    en: (e) => ({ destino: "Supports and lifting", campo: "Duct and pipe lengths counted by the systems",
+      valor: e.rec ? (e.rec.estado === "aceptado" ? (S.soporte.snap && typeof S.soporte.snap === "object" ? resumenSnapSoporte(S.soporte.snap, true) : "accepted") : "captured by the user") : "not decided",
+      origen: origenPropTxt("motores>soporte", !!(e.rec && e.rec.estado === "aceptado"), true),
+      estado: { "sin-datos": "No data at the source", pendiente: "Proposal available", aceptado: "Accepted · current", desactualizado: "Out of date · the source changed", propio: "Captured by hand", vivo: "Live (previous mode)" }[e.nivel] || e.nivel }),
   },
   /* H-267 (decisión del dueño, 27-sep-2026): selección de equipo autónoma. Carga térmica ARMA la propuesta con lo que calculó;
      al aceptarla se escribe la instantánea (zonas de selección con origen y fecha) y ya no se mueve sola. */
@@ -18583,7 +18731,7 @@ function vinculoDe(id) { if (!S.vinculos || typeof S.vinculos !== "object") S.vi
 function registrarVinculo(id, estado = "aceptado") {
   const P = PROPUESTAS[id]; if (!P) return;
   if (!S.vinculos || typeof S.vinculos !== "object") S.vinculos = {};
-  S.vinculos[id] = { estado, ts: Date.now(), origen: (DOMAINS[P.origen] || {}).label || P.origen,
+  S.vinculos[id] = { estado, ts: Date.now(), origen: origenPropTxt(id, estado === "aceptado"),
     firma: estado === "aceptado" ? seguro(() => P.firma(), "") : (seguro(() => P.firma(), "") || ""),
     resumen: estado === "aceptado" ? seguro(() => P.resumen(), "") : "capturado a mano por el usuario", rev: REV };
 }
@@ -18619,8 +18767,9 @@ function propuestaHtml(id) {
   const P = PROPUESTAS[id]; if (!P) return "";
   const e = estadoPropuesta(id);
   const [lab, tono] = NIVEL_PROP[e.nivel];
-  const origen = (DOMAINS[P.origen] || {}).label || P.origen;
+  const origen = origenPropTxt(id, !e.disponible);   /* H-266 (U13): los motores que proponen hoy; sin propuesta, los de lo aceptado */
   const resumen = e.disponible ? seguro(() => P.resumen(), "") : "";
+  const resAcept = rec => (P.resumenAceptado && seguro(() => P.resumenAceptado(), null)) || rec.resumen || "";   /* H-266 (U13) */
   const actual = seguro(() => P.actual(), "");
   const rec = e.rec;
   let cuerpo = "", botones = "";
@@ -18638,12 +18787,13 @@ function propuestaHtml(id) {
       botones = `<button class="btn-primary" data-act="prop-aceptar" data-id="${id}">Convertir en propuesta aceptada</button><button class="btn-ghost" data-act="prop-propio" data-id="${id}">Capturo lo mío</button>`;
       break;
     case "aceptado":
-      cuerpo = `<div class="prow"><span class="pk">Aceptada</span><span>${esc(rec.resumen || "")} · <b>${esc(rec.origen)}</b> · ${fechaCorta(rec.ts)}</span></div><div class="prow"><span class="pk">Ahora hay</span><span>${esc(actual)}</span></div>`;
+      cuerpo = `<div class="prow"><span class="pk">Aceptada</span><span>${esc(resAcept(rec))} · <b>${esc(origenPropTxt(id, true))}</b> · ${fechaCorta(rec.ts)}</span></div><div class="prow"><span class="pk">Ahora hay</span><span>${esc(actual)}</span></div>`;
       botones = `<button class="btn-ghost" data-act="prop-aceptar" data-id="${id}">Volver a aplicar</button><button class="btn-ghost" data-act="prop-propio" data-id="${id}">Capturo lo mío</button>`;
       break;
     case "desactualizado":
-      cuerpo = `<div class="prow"><span class="pk">Se aceptó</span><span>${esc(rec.resumen || "")} · ${fechaCorta(rec.ts)}</span></div>
+      cuerpo = `<div class="prow"><span class="pk">Se aceptó</span><span>${esc(resAcept(rec))} · ${fechaCorta(rec.ts)}</span></div>
         <div class="prow"><span class="pk">Hoy propone</span><span>${e.disponible ? esc(resumen) : "el origen ya no tiene datos"}</span></div>
+        ${P.cambios ? `<div class="prow"><span class="pk">Qué cambió</span><span>${esc(seguro(() => P.cambios(), "") || "—")}</span></div>` : ""}
         <div class="sub"><b>El origen cambió</b> desde que se aceptó. Esta disciplina sigue con lo aceptado: no se recalcula sola.</div>`;
       botones = `<button class="btn-primary" data-act="prop-aceptar" data-id="${id}">Actualizar con la propuesta</button><button class="btn-ghost" data-act="prop-conservar" data-id="${id}">Conservar lo aceptado</button><button class="btn-ghost" data-act="prop-propio" data-id="${id}">Capturo lo mío</button>`;
       break;
@@ -18658,6 +18808,13 @@ function propuestaHtml(id) {
     ${botones ? `<div class="row" style="margin-top:10px">${botones}</div>` : ""}
   </div>`;
 }
+/* H-266 (U13; regla 8): el origen que se muestra de una propuesta. Una propuesta que junta varios motores (motores>soporte) nombra
+   los que de verdad aportan: los de lo aceptado si «aceptada», si no los de la propuesta de hoy. Las demás, su motor de origen. */
+function origenPropTxt(id, aceptada, en) {
+  const P = PROPUESTAS[id]; if (!P) return "";
+  const fijo = (DOMAINS[P.origen] || {}).label || P.origen;
+  return P.origenTxt ? (seguro(() => P.origenTxt(aceptada, en), "") || fijo) : fijo;
+}
 function propAceptar(id) {
   const P = PROPUESTAS[id]; if (!P) return;
   S.perms = S.perms || {};
@@ -18666,7 +18823,7 @@ function propAceptar(id) {
   P.aplicar();
   registrarVinculo(id, "aceptado");
   projAutosave(); render();
-  toast(`Propuesta aceptada · ${(DOMAINS[P.origen] || {}).label || P.origen} → ${(DOMAINS[P.destino] || {}).label || P.destino} · ${fechaCorta(Date.now())}`);
+  toast(`Propuesta aceptada · ${origenPropTxt(id, true)} → ${(DOMAINS[P.destino] || {}).label || P.destino} · ${fechaCorta(Date.now())}`);
 }
 function propPropio(id) {
   const P = PROPUESTAS[id]; if (!P) return;
@@ -18674,6 +18831,17 @@ function propPropio(id) {
   registrarVinculo(id, "propio");
   projAutosave(); render();
   toast("Queda registrado: esta disciplina usa lo que capturaste tú");
+}
+/* H-266 (revisión adversarial U15; decisión del dueño: lo ya cuantificado no se mueve solo). «Capturo lo mío» deja lo aceptado:
+   si con eso se deja de contar algo ya cuantificado (la instantánea de soportería), pregunta antes y dice qué; siempre toma una
+   instantánea del historial, así Deshacer lo recupera tal como estaba, también lo que se había conservado. Antes borraba la
+   instantánea al instante y Deshacer regresaba a antes de aceptar. */
+function propPropioConfirmado(id) {
+  const P = PROPUESTAS[id]; if (!P) return;
+  const lista = P.propioPierde ? (seguro(() => P.propioPierde(), []) || []) : [];
+  confirmarSiHayDatos({ titulo: "Capturar lo propio", etiqueta: "capturar lo propio", boton: "Sí, capturo lo mío", lista,
+    detalle: `${P.titulo}: se deja de usar lo aceptado y la disciplina cuenta sólo lo capturado a mano en su pestaña. Si después vuelves a aceptar la propuesta, entra lo que los motores propongan ese día, no lo que se había aceptado o conservado.`,
+    onOk: () => propPropio(id) });
 }
 function propConservar(id) {
   const P = PROPUESTAS[id]; const rec = vinculoDe(id); if (!P || !rec) return;
@@ -18712,8 +18880,8 @@ function trazaHerencia() {
     const e = estadoPropuesta(id);
     const rec = e.rec;
     filas.push({ destinoId: P.destino, destino: (DOMAINS[P.destino] || {}).label || P.destino, campo: P.titulo,
-      valor: rec ? (rec.estado === "aceptado" ? rec.resumen : "lo capturado por el usuario") : (e.nivel === "vivo" ? "entra en vivo (modo anterior)" : "sin decidir"),
-      origen: (DOMAINS[P.origen] || {}).label || P.origen, fecha: rec ? fechaCorta(rec.ts) : "—",
+      valor: rec ? (rec.estado === "aceptado" ? ((P.resumenAceptado && seguro(() => P.resumenAceptado(), null)) || rec.resumen) : "lo capturado por el usuario") : (e.nivel === "vivo" ? "entra en vivo (modo anterior)" : "sin decidir"),
+      origen: origenPropTxt(id, !!(rec && rec.estado === "aceptado")), fecha: rec ? fechaCorta(rec.ts) : "—",   /* H-266 (U13) */
       estado: NIVEL_PROP[e.nivel][0], regla: 2, nivel: e.nivel,
       /* H-267 · regla 7: las propuestas nuevas traen su espejo en inglés para el libro de la propuesta. */
       ...(P.en ? { en: seguro(() => P.en(e), undefined) } : {}) });
@@ -19120,8 +19288,11 @@ const MOTOR_ACC = {
     falta: () => (capturaReal("aire") ? "" : "Faltan puntos de consumo de aire") },
   civil: { donde: "Obra civil", archivo: "Obra-civil", memoria: () => buildCivilPdf(), cot: "civil",
     falta: () => (capturaReal("civil") && CIVIL && CIVIL.part && CIVIL.part.length ? "" : "Falta la geometría: área y altura") },
-  soporte: { donde: "Ductos y calibres o las tuberías", archivo: "Soporteria", memoria: () => buildSoportePdf(), cot: "soporte",
-    falta: () => (capturaReal("soporte") && SOPORTE.part && SOPORTE.part.length ? "" : "Faltan metros de ducto o tubería que soportar") },
+  /* H-266 (revisión adversarial U16): capturar en Ductos o en las tuberías ya no alimenta a soportería: se acepta su propuesta o se
+     capturan los metros aquí. Si los motores ya tienen metros sin aceptar, se dice. */
+  soporte: { donde: "Soportería: acepta la propuesta de los motores (arriba) o captura los metros a mano", archivo: "Soporteria", memoria: () => buildSoportePdf(), cot: "soporte",
+    falta: () => (capturaReal("soporte") && SOPORTE.part && SOPORTE.part.length ? ""
+      : (!S.soporte.snap && propSoporteDisponible() ? "Faltan metros que soportar: los motores ya tienen metros sin aceptar" : "Faltan metros de ducto o tubería que soportar")) },
   estr: { externo: "Estructural corre como archivo aparte (StructCalc v0.1.2): esta suite no lo calcula ni simula su resultado" },
 };
 /* Del identificador de pantalla al motor. El comparativo de zonas es una vista
@@ -19211,7 +19382,7 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "6", clean: "3", equip: "3", duct: "4", vent: "4", quote: "24", valor: "2", kaizen: "1", elec: "9", hidro: "8", fuego: "6", aire: "5", civil: "8", soporte: "12" };
+const MOTOR_VER = { load: "6", clean: "3", equip: "3", duct: "4", vent: "4", quote: "24", valor: "2", kaizen: "1", elec: "9", hidro: "8", fuego: "6", aire: "5", civil: "8", soporte: "13" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
@@ -19261,7 +19432,8 @@ const MOTOR_CAMBIOS = {
     { ver: "7", rev: "2.9.24", que: "H-230: el modo «valores propios» pide medidas del ducto, diámetro y material de cada tubería; sin ellos la línea queda pendiente (antes 400×300, 50/100/32 mm de acero inventados)" },
     { ver: "8", rev: "2.9.24", que: "H-229 (decisión 4): claros de cobre al mínimo de MSS SP-58-2018 (PHD) e IPC 2009 T308.5 (MCP), secundarias declaradas: ½\"–¾\" 1.524 m, 1\"–1¼\" 1.829, 1½\"–2\" 2.438, 2½\" 2.743, 3\"–4\" 3.048 (antes 1.8 / 2.4 / 3.0 / 3.7)" },
     { ver: "9", rev: "2.9.24", que: "H-228: claros del termoplástico por subtipo, IPC 2009 T308.5 (MCP, secundaria): CPVC ≤1\" 0.9 m (dueño) y ≥1¼\" 1.219 (antes 1.2 / 1.8), PP-R ≤1\" 0.813 y ≥1¼\" 1.219; PEAD sin renglón queda pendiente de claro; cada soporte de termoplástico lleva ancla (sujeta a H-226) y 4+4 tuercas/rondanas como el despiece (antes 0)" }, { ver: "10", rev: "2.9.24", que: "H-166 (dependencia de ductos): el tramo de ducto sin sección no se soporta con 400×200 ni Ø250 supuestos: queda pendiente con su razón y fuera de los metros y la cotización de soportes" }, { ver: "11", rev: "2.9.24", que: "H-224 (parte no bloqueada): la red contra incendio se soporta con su material: acero como acero, cobre con MSS SP-58-2018; CPVC queda pendiente de la tabla NFPA 13 (sin texto), nunca como acero ni con los claros del IPC (antes toda la red como acero); también a mano y con la instantánea" },
-    { ver: "12", rev: "2.9.24", que: "H-266 (decisión del dueño, 27-sep-2026): soportería es autónoma: sin instantánea aceptada cuenta sólo lo capturado a mano (se retiró el conteo en vivo de ductos, hidráulica, incendio y aire); aceptar la propuesta concede los cruces y ya no se mueve sola. Altura de trabajo y altura de la estructura (sismo) capturadas: ya no salen de la zona más alta; sin ellas, renta de elevación pendiente y aviso sísmico. Bases de equipo capturadas o de la instantánea (ya no de la cotización ni de aire). Un proyecto guardado se migra una vez al abrirlo, con las mismas cifras. Red contra incendio sin longitudes de cabezal y montante: pendiente (antes 30 + 12 m a 100 mm leídos en vivo de contra incendio, aun con la instantánea)" }],
+    { ver: "12", rev: "2.9.24", que: "H-266 (decisión del dueño, 27-sep-2026): soportería es autónoma: sin instantánea aceptada cuenta sólo lo capturado a mano (se retiró el conteo en vivo de ductos, hidráulica, incendio y aire); aceptar la propuesta concede los cruces y ya no se mueve sola. Altura de trabajo y altura de la estructura (sismo) capturadas: ya no salen de la zona más alta; sin ellas, renta de elevación pendiente y aviso sísmico. Bases de equipo capturadas o de la instantánea (ya no de la cotización ni de aire). Un proyecto guardado se migra una vez al abrirlo, con las mismas cifras. Red contra incendio sin longitudes de cabezal y montante: pendiente (antes 30 + 12 m a 100 mm leídos en vivo de contra incendio, aun con la instantánea)" },
+    { ver: "13", rev: "2.9.24", que: "H-266, complementos de la revisión adversarial (27-sep-2026): con arriostramiento sísmico y sin la altura de la estructura capturada el anclaje va Por cotizar con su motivo (antes se cotizaba como calculado con z/h = 0 supuesto, el lado no conservador de ASCE 7-16 §13.3.1); sin sismo la altura no entra al anclaje. Proyecto fijo: cifras sin cambio" }],
 };
 const motorVer = (id) => MOTOR_VER[id] || "1";
 function cambiosMotorTexto(id, desde) { return (MOTOR_CAMBIOS[id] || []).filter((c) => +c.ver > +(desde || 1)).map((c) => `v${c.ver} (rev ${c.rev}): ${c.que}`).join("; ") || "cambio de lógica del motor"; }
@@ -19538,7 +19710,7 @@ function viewTablero() {
   const pendHtml = hayProy && pendientes.length ? `<div class="card" style="margin-top:16px"><h3>Propuestas por decidir<span class="tag">${pendientes.length}</span></h3><div class="body">
       <div class="sub" style="margin-bottom:10px">Resultados que una disciplina ofrece a otra. Nada entra solo: se acepta, se captura lo propio, o se conserva lo aceptado cuando el origen cambió.</div>
       ${pendientes.map(([id, e]) => { const P = PROPUESTAS[id]; const [lab, tono] = NIVEL_PROP[e.nivel];
-        return `<div class="list-item"><span class="badge ${tono}">${lab}</span><div style="flex:1;min-width:0"><b>${esc(P.titulo)}</b><div class="sub">${esc((DOMAINS[P.origen] || {}).label || P.origen)} → ${esc((DOMAINS[P.destino] || {}).label || P.destino)}</div></div>
+        return `<div class="list-item"><span class="badge ${tono}">${lab}</span><div style="flex:1;min-width:0"><b>${esc(P.titulo)}</b><div class="sub">${esc(origenPropTxt(id, !e.disponible))} → ${esc((DOMAINS[P.destino] || {}).label || P.destino)}</div></div>
           <button class="toolbtn" data-act="go-tab" data-tab="${DISCIPLINAS.find((d) => d.id === P.destino)?.tab || "inicio"}">Decidir</button></div>`; }).join("")}
     </div></div>` : "";
 
@@ -22699,7 +22871,9 @@ function viewSoporte() {
       <div class="row">
         ${inp("Altura de trabajo (m) · sin ella la renta de elevación queda pendiente", "soporte.alturaTrabajo", "number", "0.5", "sop.ht", G)}
         ${inp("Altura de la estructura (m) · de la que cuelga la instalación, para el sismo", "soporte.alturaEstructura", "number", "0.5")}
-      </div><div class="row">
+      </div>
+      ${R.hTrabMigrada || R.hEstructuraMigrada ? `<div class="note warn" style="margin-top:6px">${[R.hTrabMigrada ? `Altura de trabajo ${n(R.hTrab, 1)} m: ${esc(R.origenHTrab)}.` : "", R.hEstructuraMigrada ? `Altura de la estructura ${n(R.hEstructura, 1)} m: ${esc(R.origenHEst)}.` : ""].filter(Boolean).join(" ")} Captura el valor de la obra para confirmarlo (H-266).</div>` : ""}
+      <div class="row">
         ${inp("SDS del sitio (g) · sin él y su fuente el anclaje va Por cotizar", "soporte.sismoSDS", "number", "0.05")}
         ${inp("Fuente del SDS (documento, sitio, edición)", "soporte.sismoFuente", "text")}
       </div><div class="row">
@@ -22712,6 +22886,7 @@ function viewSoporte() {
         ${inp("Bases de equipo (0 = sin bases; con la instantánea aceptada, las de la instantánea)", "soporte.basesEquipo", "number", "1", "sop.be", G)}
         ${inp("Riel tipo canal (ml)", "soporte.rielM", "number", "1", "sop.ri", G)}
       </div>
+      ${R.basesMigradas ? `<div class="note warn" style="margin-top:6px">Bases de equipo ${n(R.nEquipos, 0)}: ${esc(R.origenBases)}. Captura las de la obra para confirmarlas (H-266).</div>` : ""}
       <div class="hint" style="margin-top:10px">${esc(R.equipo.label)}: ${esc(R.equipo.nota)}</div>
     </div></div>
 
@@ -22719,7 +22894,7 @@ function viewSoporte() {
       <div class="metrics">
         <div class="metric"><div class="k">Soportes</div><div class="v">${R.nSoportes}</div><div class="sub">${n(R.mDucto, 0)} m de ducto · ${n(R.mTub, 0)} m de tubería</div></div>
         <div class="metric"><div class="k">Arriostramiento</div><div class="v">${R.nLong + R.nTrans}</div><div class="sub">${R.nLong} long. · ${R.nTrans} transv.</div></div>
-        <div class="metric"><div class="k">Altura de trabajo</div><div class="v">${R.hTrabPendiente ? "pendiente" : `${n(R.hTrab, 1)} <small>m</small>`}</div><div class="sub">${R.meses} mes(es) de renta si hay soportes, riel o bases que montar</div></div>
+        <div class="metric"><div class="k">Altura de trabajo</div><div class="v">${R.hTrabPendiente ? "pendiente" : `${n(R.hTrab, 1)} <small>m</small>`}</div><div class="sub">${R.hTrabMigrada ? "de la migración, sin confirmar · " : ""}${R.meses} mes(es) de renta si hay soportes, riel o bases que montar</div></div>
       </div>
       ${R.porTuberia.length ? `<div class="tw" style="margin-top:14px"><table>
         <thead><tr><th>Servicio</th><th>Tramo</th><th class="num">Ø mm</th><th class="num">Espac. m</th><th class="num">Long m</th><th class="num">Soportes</th></tr></thead>
@@ -22778,6 +22953,15 @@ function buildSoportePdf() {
   pdfTitle(d, "Cedula de soporteria y elevacion", `${S.meta.name || "Proyecto"} · seccion G`);
   pdfHeading(d, "Base normativa del espaciamiento");
   pdfParagraph(d, "MSS SP-58 para tuberia segun diametro y material: acero de 2.1 m en diametros chicos hasta 7.0 m en 12 pulgadas; en cobre de 1.8 a 3.7 m porque el material cede mas; en la red contra incendio el espaciamiento se topa en 4.6 m (NFPA 13); termoplastico (CPVC/PEAD) de 0.9 a 1.8 m con la tabla propia de la suite (IPC 308.5). SMACNA para ducto: 2.44 m en rectangular y 3.66 m en espiroducto. NFPA 13 capitulo 18 para arriostramiento sismico: longitudinal cada 24.4 m y transversal cada 12.2 m.");
+  /* H-266 (revisión adversarial U13; regla 8): la cédula dice de dónde salen los metros: la instantánea aceptada (con su fecha y
+     los motores de origen) o lo capturado a mano en esta pestaña. */
+  const snapSop = S.soporte && S.soporte.snap && typeof S.soporte.snap === "object" && S.soporte.usarMotores !== false ? S.soporte.snap : null;
+  pdfHeading(d, "Origen de los metros");
+  if (snapSop) {
+    const recS = vinculoDe("motores>soporte"), tsS = recS && recS.estado === "aceptado" && recS.ts ? recS.ts : snapSop.ts;
+    const cam = estadoPropuesta("motores>soporte").nivel === "desactualizado" ? seguro(() => cambiosSnapSoporte(snapSop, snapshotSoporte()), "") : "";
+    pdfParagraph(d, `Tramos de la instantánea aceptada el ${tsS ? fechaCorta(tsS) : "(sin fecha registrada)"} (${origenPropTxt("motores>soporte", true)}): ${resumenSnapSoporte(snapSop)}. No se mueven solos: si el origen cambia, la propuesta sale desactualizada y el usuario decide (regla 3).${cam ? ` OJO: el origen cambió desde la aceptación: ${cam}.` : ""}`);
+  } else pdfParagraph(d, `Metros capturados a mano en la pestaña de soportería: ${n(num(S.soporte.ductoM), 0)} m de ducto, ${n(num(S.soporte.tubHidroM), 0)} m de hidráulica, ${n(num(S.soporte.tubFuegoM), 0)} m de contra incendio y ${n(num(S.soporte.tubAireM), 0)} m de aire. Los metros de los otros motores entran sólo al aceptar su propuesta (H-266).`);
   if (R.porTuberia.length) {
     pdfHeading(d, "Conteo por tramo");
     pdfTable(d, ["Servicio", "Tramo", "Diam mm", "Espac m", "Long m", "Soportes"],
@@ -23688,8 +23872,8 @@ document.addEventListener("click", (e) => {
     }
     case "q-xlsx-espejo": emitirPropuestaEspejo(); break;
     case "q-pdf-espejo": emitirPropuestaPdfEspejo(); break;
-    case "prop-propio": propPropio(b.dataset.id); break;
-    case "prop-conservar": propConservar(b.dataset.id); break;
+    case "prop-propio": propPropioConfirmado(b.dataset.id); break;   /* H-266 (U15): pregunta si deja algo ya cuantificado; se deshace */
+    case "prop-conservar": histSnap("conservar lo aceptado"); propConservar(b.dataset.id); break;   /* H-266 (U15): se puede deshacer */
     case "vent-seleccionar": {
       histSnap("seleccionar ventilador");
       const zs = document.getElementById("vent-sel-zona");
@@ -24099,9 +24283,19 @@ function sanearEstado(d) {
   if (sopPrevio && !("alturaEstructura" in sopPrevio)) {
     const hZ = (Array.isArray(s.zones) ? s.zones : []).reduce((a, z) => Math.max(a, num(z && z.height, 0)), 0);
     s.soporte.alturaEstructura = hZ;
-    if (!(num(s.soporte.alturaTrabajo, 0) > 0)) s.soporte.alturaTrabajo = Math.max(3, hZ + 1.2);
-    if (sopPrevio.usarMotores !== false && !(sopPrevio.snap && typeof sopPrevio.snap === "object")) { s.soporte.usarMotores = true; s.soporte.tomarInstantanea = true; }
-    else if (sopPrevio.usarMotores === false && !(num(sopPrevio.basesEquipo, 0) > 0)) s.soporte.tomarBases = true;
+    /* H-266 (revisión adversarial U10; reglas 6 y 8, precedente H-179): lo que la migración copia o supone se conserva (mismas
+       cifras), pero no como captura del usuario: queda «sin confirmar» con el valor que puso y la zona de la que salió. La marca
+       cae sola en cuanto el usuario captura otro valor (computeSoporte compara). */
+    const sc = {};
+    if (hZ > 0) sc.alturaEstructura = { valor: hZ, hZona: hZ };
+    if (!(num(s.soporte.alturaTrabajo, 0) > 0)) { s.soporte.alturaTrabajo = Math.max(3, hZ + 1.2); sc.alturaTrabajo = { valor: s.soporte.alturaTrabajo, hZona: hZ }; }
+    if (Object.keys(sc).length) s.soporte.sinConfirmar = sc;
+    /* H-42: el sí/no guardado como texto («true»/«false», revisiones anteriores) se lee aquí, ANTES de decidir; el boolear de
+       más abajo corre después y ya encontraría el booleano que puso esta migración: un proyecto a mano con «false» abría
+       como instantánea aceptada con otros metros (revisión adversarial C2). Sin la clave = contaba en vivo, como antes. */
+    const umPrevio = typeof sopPrevio.usarMotores === "string" ? sopPrevio.usarMotores === "true" : sopPrevio.usarMotores;
+    if (umPrevio !== false && !(sopPrevio.snap && typeof sopPrevio.snap === "object")) { s.soporte.usarMotores = true; s.soporte.tomarInstantanea = true; }
+    else if (umPrevio === false && !(num(sopPrevio.basesEquipo, 0) > 0)) s.soporte.tomarBases = true;
   }
   if (!Array.isArray(s.aire.consumos)) s.aire.consumos = defaultAire().consumos;
   if (!s.clean || typeof s.clean !== "object" || Array.isArray(s.clean)) s.clean = { rooms: [defaultRoom()], ci: 0 };
@@ -24483,6 +24677,10 @@ function projOpen(id) {
   else if (rp !== REV) toast(`Proyecto “${p.name}” abierto. OJO: se guardó con el motor rev ${rp} y esta suite es la rev ${REV}. Los resultados pueden diferir de la memoria firmada; vuelve a emitirla si la vas a usar.`, 9000);
   else toast(`Proyecto “${p.name}” abierto`);
   enlazarRevisionAnterior(p);
+  /* H-266 (U8): la referencia de «sucio» es el estado ya migrado, ligada a lo que hoy tiene el registro (enlazarRevisionAnterior
+     puede haberlo tocado): si después el registro cambia, cxzSucio vuelve a compararlo contra él. */
+  const recAbierto = projList().find((x) => x.id === p.id);
+  CXZ_BASE = recAbierto ? { pid: p.id, crudo: JSON.stringify(recAbierto.data || {}), huella: cxzHuella(S) } : null;
 }
 function projDup(id) {
   /* Primero se guarda lo que hay en pantalla y DESPUÉS se lee el registro:

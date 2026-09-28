@@ -7189,7 +7189,8 @@ t("S.77 (H-228) termoplástico por subtipo, IPC 2009 T308.5 (MCP, secundaria): C
     S.zones[0].area = 200; S.zones[0].height = 6;
     S.hidro = { ...G("defaultHidro")(), material: "cpvc", muebles, tramos: tramos() };
     S.fuego = G("defaultFuego")(); S.aire = G("defaultAire")(); S.duct.segments = []; S.quote.items = [];
-    S.soporte = { ...G("defaultSoporte")(), alturaColgadoM: 0.5, sismoSDS: 1.0, sismoFuente: "CFE MDOC-Sismo 2015, sitio Tijuana", estructuraTipo: "losa_concreto", estructuraFc: 250 };
+    /* H-266 (U5): con arriostramiento sísmico, sin la altura de la estructura el anclaje va «Por cotizar» (z/h = 0 no es dato): se captura. */
+    S.soporte = { ...G("defaultSoporte")(), alturaColgadoM: 0.5, sismoSDS: 1.0, sismoFuente: "CFE MDOC-Sismo 2015, sitio Tijuana", estructuraTipo: "losa_concreto", estructuraFc: 250, alturaEstructura: 6 };
     aceptarSoporte();   /* H-266 */
     let R = G("SOPORTE"), h = hidroDe();
     if (!h || h.fam !== "plastico") throw new Error("el caso no aísla lo que se quiere probar: debe agrupar como termoplástico");
@@ -8047,6 +8048,337 @@ t("S.102 (H-266) soportería es autónoma: sin la instantánea aceptada no cuent
     eq(S.soporte.alturaTrabajo, 7.2, "altura de trabajo = la que usaba (zona más alta 6 m + 1.2):"); eq(S.soporte.alturaEstructura, 6, "altura de la estructura = la zona más alta:");
     const mv = G("SOPORTE").mDucto; S.duct.segments.push({ ...G("defaultSegment")("TR-X", 3000), length: 40 }); G("recompute")();
     eq(G("SOPORTE").mDucto, mv, "ya migrado no cuenta en vivo:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+/* ===== S.130 (H-266) la migración de soportería lee el sí/no guardado como texto (H-42) antes de decidir ===== */
+t("S.130 (H-266) un proyecto a mano con el sí/no de soportería guardado como texto («false», H-42) abre a mano: no toma una instantánea ni registra una aceptación que nadie hizo y conserva sus metros; con una instantánea vieja recupera las bases que contaba; «true» en texto o sin la clave sigue migrando a instantánea (revisión adversarial C2; decisión del dueño, 27-sep-2026)", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    const nave = { ...G("defaultZone")("Nave"), area: 400, height: 6 };
+    /* Sin alturaEstructura: guardado antes de H-266, así que la migración corre. */
+    const saneado = (sop) => G("sanearEstado")(JSON.parse(JSON.stringify({ zones: [nave], soporte: sop })));
+    let s = saneado({ usarMotores: "false", ductoM: 30, ductoAnchoMm: 400, ductoAltoMm: 300 });
+    eq(s.soporte.usarMotores, false, "el sí/no guardado como texto se respeta:");
+    eq(s.soporte.tomarInstantanea, undefined, "no se marca una instantánea que el usuario no aceptó:");
+    eq(s.soporte.tomarBases, true, "como todo proyecto a mano sin bases, toma una vez las que contaba:");
+    eq(s.soporte.ductoM, 30, "los metros capturados se conservan:");
+    /* Controles: el booleano false da lo mismo; «true» en texto, o sin la clave (contaba en vivo), toma la instantánea. */
+    s = saneado({ usarMotores: false, ductoM: 30 });
+    eq(s.soporte.tomarInstantanea, undefined, "booleano false:"); eq(s.soporte.tomarBases, true, "booleano false, bases:");
+    s = saneado({ usarMotores: "true", ductoM: 30 });
+    eq(s.soporte.usarMotores, true, "«true» en texto:"); eq(s.soporte.tomarInstantanea, true, "«true» en texto toma la instantánea:");
+    s = saneado({ ductoM: 30 });
+    eq(s.soporte.tomarInstantanea, true, "sin la clave (contaba en vivo) toma la instantánea:");
+    /* Por el camino real (importarRespaldo): los 100 m que hay en Ductos no entran; quedan los 30 m capturados, sin vínculo. */
+    const p = JSON.parse(JSON.stringify(G("defaultState")())); p.meta.name = "S.130";
+    p.zones = [nave]; p.duct.segments = [{ ...G("defaultSegment")("TR-1", 3000), length: 100 }];
+    p.soporte = { usarMotores: "false", ductoM: 30, ductoAnchoMm: 400, ductoAltoMm: 300 };
+    G("importarRespaldo")(JSON.stringify(p)); G("recompute")();
+    eq(S.soporte.usarMotores, false, "abierto con importarRespaldo sigue a mano:");
+    eq(G("SOPORTE").mDucto, 30, "cuenta los 30 m capturados, no los 100 m de Ductos:");
+    eq(S.vinculos["motores>soporte"], undefined, "no queda registrada una aceptación que nadie hizo:");
+    /* Con «false» en texto, una instantánea vieja guardada y dos equipos Carrier en la cotización: recupera sus dos bases. */
+    const fam = G("FAMILIES")[0], m = G("familyPool")(fam.id)[0];
+    if (!m || !G("CARRIER").some((x) => x.id === m.id)) throw new Error("el caso no aísla lo que se quiere probar: hace falta un equipo Carrier cotizable");
+    p.duct.segments = []; p.quote.items = [{ id: m.id, fam: fam.id, qty: 2, unit: null }];
+    p.soporte.snap = { duct: [], hidro: [], hidroMat: "acero", fuego: { nTotal: 0, Lram: 0, ramD: 100, Lmon: 0, monD: 100 }, aire: [], aireMat: "acero", nEquip: 0, ts: 1 };
+    G("importarRespaldo")(JSON.stringify(p)); G("recompute")();
+    eq(S.soporte.basesEquipo, 2, "a mano con instantánea vieja: toma las 2 bases que contaba (antes 0):");
+    eq(G("SOPORTE").nEquipos, 2, "y las cuenta:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+/* ===== S.131 (H-266) sin altura de la estructura el anclaje no se cotiza como calculado (z/h = 0 no es dato) ===== */
+t("S.131 (H-266) con arriostramiento sísmico y sin la altura de la estructura capturada el anclaje va «Por cotizar» con su motivo (aviso, memoria y cotización): z/h = 0 no es dato del edificio aunque haya SDS con fuente y losa con f'c; con la altura, o sin sismo, se cotiza (revisión adversarial U5; regla 6)", () => {
+  const guardado = JSON.stringify(S);
+  const anclas = () => (G("SOPORTE").part || []).filter((p) => /^Anclaje/.test(p.desc));
+  const pc = () => (G("QUOTE").porCotizar || []).filter((p) => p.mot === "soporte" && p.clave === "anclajeSop");
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.131";
+    Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.131" }; });
+    const muebles = [{ id: "wc_flux", cant: 4 }, { id: "ming_flux", cant: 2 }, { id: "lavabo", cant: 4 }, { id: "fregadero", cant: 1 }, { id: "manguera", cant: 2 }];
+    S.hidro = { ...G("defaultHidro")(), material: "acero", muebles, tramos: [{ ...G("defaultTramoAgua")("AF-GENERAL"), um: 72, L: 25, alt: 3 }, { ...G("defaultTramoAgua")("AF-RAMAL"), um: 20, L: 18, alt: 3 }] };
+    S.fuego = G("defaultFuego")(); S.aire = G("defaultAire")(); S.duct.segments = []; S.quote.items = [];
+    S.soporte = { ...G("defaultSoporte")(), alturaColgadoM: 0.5, alturaTrabajo: 5, mesesElevacion: 1,
+      sismoSDS: 1.2, sismoFuente: "CFE MDOC-Sismo 2015, sitio Tijuana", estructuraTipo: "losa_concreto", estructuraFc: 250 };
+    aceptarSoporte();
+    let R = G("SOPORTE");
+    if (!(R.nSoportes > 0 && R.anclajesPza.some((a) => a.cnt > 0))) throw new Error("el caso no aísla lo que se quiere probar: debe haber soportes con ancla");
+    eq(R.hEstructura, 0, "la altura de la estructura no está capturada:");
+    eq(R.sdsCapturado && R.estructuraCapturada, true, "SDS con fuente y losa con f'c sí están capturados:");
+    const nAnclas = R.anclajesPza.reduce((a, x) => a + x.cnt, 0);
+    eq(R.anclajePendiente, true, "sin altura de la estructura el anclaje no se cotiza como calculado (z/h = 0 supuesto):");
+    eq(anclas().length, 0, "sin partida de anclaje con importe:");
+    eq(pc().reduce((a, p) => a + p.qty, 0), nAnclas, "las anclas van «Por cotizar» con sus piezas:");
+    if (!pc().every((p) => /altura de la estructura/.test(p.desc) && /height/.test(p.descEn))) throw new Error("la partida Por cotizar debe decir que falta la altura de la estructura (ES/EN): " + JSON.stringify(pc().map((p) => p.desc)));
+    if (pc().some((p) => /SDS con fuente, tipo de estructura/.test(p.desc))) throw new Error("con SDS y estructura capturados la partida no debe pedirlos: " + pc()[0].desc);
+    if (!R.avisos.some((a) => /Anclaje «Por cotizar»/.test(a.msg) && /altura de la estructura/.test(a.msg))) throw new Error("el aviso de anclaje debe decir que falta la altura de la estructura");
+    const mFp = R.memo.find((m) => /Fuerza sísmica/.test(m)) || "";
+    if (!/z\/h 0 DE REFERENCIA/.test(mFp) || !/sin capturar/.test(mFp)) throw new Error("la memoria no debe presentar z/h = 0 como dato: " + mFp.slice(0, 260));
+    /* Con la altura capturada el anclaje se calcula y se cotiza. */
+    S.soporte.alturaEstructura = 8; G("recompute")(); R = G("SOPORTE");
+    eq(R.anclajePendiente, false, "con la altura capturada:"); eq(anclas().reduce((a, p) => a + p.qty, 0), nAnclas, "se cotizan las anclas:"); eq(pc().length, 0, "ya no está Por cotizar:");
+    if (!R.memo.some((m) => /Fuerza sísmica/.test(m) && /z\/h 1/.test(m) && !/DE REFERENCIA \(altura/.test(m))) throw new Error("con 8 m la memoria dice z/h 1 como dato capturado");
+    /* Sin arriostramiento sísmico la altura no entra al anclaje (Fp = 0): se cotiza sin ella. */
+    S.soporte.alturaEstructura = 0; S.soporte.sismico = false; G("recompute")(); R = G("SOPORTE");
+    eq(R.anclajePendiente, false, "sin sismo la altura no hace falta para el anclaje:"); eq(anclas().length, 1, "se cotiza:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+/* ===== S.132 (H-266) la migración no acepta una instantánea vacía y un proyecto anterior no abre «con cambios sin guardar» ===== */
+t("S.132 (H-266) un proyecto anterior que contaba en vivo sin nada que soportar en los motores de origen ni metros capturados a mano abre a mano con sus bases: no registra una aceptación vacía que sale «Desactualizada» en la tarjeta y en el trazado; con metros capturados a mano que el conteo en vivo no contaba toma la instantánea como antes y abre con las mismas cifras (0 m, no los metros a mano); uno con metros en los motores toma su instantánea y, abierto desde Mis proyectos sin tocar nada, no pide «Hay cambios sin guardar» (revisión adversarial U8)", () => {
+  const guardado = JSON.stringify(S), lista = JSON.stringify(G("projList")());
+  try {
+    /* (1) Guardado antes de H-266 (sin alturaEstructura) en el modo por omisión (contaba en vivo, sin instantánea), sin ductos,
+       agua, incendio ni aire; con dos equipos Carrier en la cotización, que el conteo en vivo tomaba como bases. */
+    const fam = G("FAMILIES")[0], m = G("familyPool")(fam.id)[0];
+    if (!m || !G("CARRIER").some((x) => x.id === m.id)) throw new Error("el caso no aísla lo que se quiere probar: hace falta un equipo Carrier cotizable");
+    const p = JSON.parse(JSON.stringify(G("defaultState")())); p.meta.name = "S.132";
+    p.duct.segments = []; p.quote.items = [{ id: m.id, fam: fam.id, qty: 2, unit: null }];
+    p.soporte = { usarMotores: true, sismico: true, alturaTrabajo: 0, mesesElevacion: 3, basesEquipo: 0, rielM: 0 };
+    G("importarRespaldo")(JSON.stringify(p)); G("recompute")();
+    eq(S.vinculos["motores>soporte"], undefined, "sin nada que proponer no queda registrada una aceptación:");
+    eq(S.soporte.snap, undefined, "ni una instantánea vacía:");
+    eq(S.soporte.usarMotores, false, "abre a mano:");
+    eq(G("estadoPropuesta")("motores>soporte").nivel, "sin-datos", "la propuesta sigue «sin datos», no «Desactualizada»:");
+    const fila = G("trazaHerencia")().find((f) => f.campo === G("PROPUESTAS")["motores>soporte"].titulo);
+    if (!fila || /Desactualizada/.test(fila.estado)) throw new Error("el trazado de origen no debe imprimir «Desactualizada»: " + JSON.stringify(fila));
+    eq(G("SOPORTE").nEquipos, 2, "mismas cifras: las 2 bases que contaba:"); eq(S.soporte.basesEquipo, 2, "capturadas una vez:");
+    /* Con metros capturados a mano guardados de cuando estuvo en «valores propios» (30 m de ducto 400×300 y 20 m de hidráulica
+       Ø50 de acero), que el conteo en vivo no contaba: abrir a mano los contaría (22 soportes, 41,454 MXN: otras cifras). Toma la
+       instantánea como antes (d8f8b5e): 0 m de los motores, las mismas cifras; los metros capturados se conservan (revisión de U8). */
+    const pm = JSON.parse(JSON.stringify(G("defaultState")())); pm.meta.name = "S.132-M";
+    pm.zones = [{ ...G("defaultZone")("Nave"), area: 400, height: 6 }]; pm.duct.segments = [];
+    pm.soporte = { usarMotores: true, ductoM: 30, ductoAnchoMm: 400, ductoAltoMm: 300, tubHidroM: 20, tubHidroD: 50, tubHidroMat: "acero" };
+    G("importarRespaldo")(JSON.stringify(pm)); G("recompute")();
+    eq(G("SOPORTE").mDucto, 0, "con metros capturados a mano que el conteo en vivo no contaba abre con las mismas cifras de antes: ducto");
+    eq(G("SOPORTE").mTub, 0, "tubería:"); eq(G("SOPORTE").nSoportes, 0, "soportes:"); eq(G("SOPORTE").total, 0, "total:");
+    eq(S.soporte.usarMotores === true && !!S.soporte.snap, true, "toma la instantánea, como antes:");
+    eq(S.soporte.ductoM, 30, "los metros capturados a mano se conservan:"); eq(S.soporte.tubHidroM, 20, "también los de hidráulica:");
+    /* Con metros en un motor de origen, aunque sin captura real (red de aire con longitud y sin consumos), la toma igual: el conteo en
+       vivo los soportaba y abre con las mismas cifras. */
+    const pa = JSON.parse(JSON.stringify(G("defaultState")())); pa.meta.name = "S.132-A";
+    pa.aire = { ...pa.aire, Lprincipal: 30, Lramales: 12 };
+    pa.soporte = { usarMotores: true, sismico: true, alturaTrabajo: 0, mesesElevacion: 3, basesEquipo: 0, rielM: 0 };
+    G("importarRespaldo")(JSON.stringify(pa)); G("recompute")();
+    eq(!!S.soporte.snap, true, "con metros en el origen toma la instantánea:"); eq(G("SOPORTE").mTub, 42, "mismas cifras (30 + 12 m de aire):");
+    /* (2) Guardado antes de H-266 en vivo con 20 m de ducto, en Mis proyectos; se abre y no se toca nada. */
+    const q = JSON.parse(JSON.stringify(G("defaultState")())); q.meta.name = "S.132-B";
+    q.zones = [{ ...G("defaultZone")("Nave"), area: 400, height: 6 }];
+    q.duct.segments = [{ ...G("defaultSegment")("TR-1", 3000), length: 20 }];
+    q.soporte = { usarMotores: true, sismico: true, alturaTrabajo: 0, mesesElevacion: 3, basesEquipo: 0, rielM: 0 };
+    G("projPersist")([{ id: "p132b", name: "S.132-B", ts: 1757000000000, rev: "2.9.20", tons: 0, zones: 1, client: "", location: "", data: q }].concat(JSON.parse(lista)));
+    G("projOpen")("p132b");
+    eq(S.vinculos["motores>soporte"] && S.vinculos["motores>soporte"].estado, "aceptado", "con metros toma la instantánea de lo que contaba:");
+    eq(G("SOPORTE").mDucto, 20, "mismas cifras:");
+    eq(G("cxzSucio")(), false, "abierto sin tocar nada no tiene cambios sin guardar:");
+    S.soporte.rielM = 5; G("recompute")();
+    eq(G("cxzSucio")(), true, "un cambio del usuario sí:");
+    G("projSave")(true);
+    eq(G("cxzSucio")(), false, "guardado, ya no:");
+  } finally {
+    G("closeModal")(); w.eval("clearTimeout(autoT)");
+    G("projPersist")(JSON.parse(lista)); G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")();
+  }
+});
+
+/* ===== S.133 (H-266) lo que la migración copia o supone al abrir queda con su origen, sin cambiar la cifra ===== */
+t("S.133 (H-266) lo que la migración de soportería copia o supone al abrir un proyecto anterior (altura de trabajo = zona más alta + 1.2 m, supuesto de la casa; altura de la estructura = la zona más alta) conserva la cifra pero no queda como captura del usuario: su origen, «sin confirmar», sale en pantalla, en la partida de renta, en la memoria, en las observaciones y en el pendiente de la propuesta (ES/EN); al capturar otro valor la marca cae (revisión adversarial U10; reglas 6 y 8, precedente H-179)", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    const p = JSON.parse(JSON.stringify(G("defaultState")())); p.meta.name = "S.133";
+    p.zones = [{ ...G("defaultZone")("Nave"), area: 400, height: 6 }];
+    Object.keys(G("LINKS")).forEach((k) => { p.perms[k] = { ts: 1, via: "S.133" }; });
+    /* Guardado antes de H-266 (sin alturaEstructura ni altura de trabajo): la migración las toma de la zona más alta. */
+    p.soporte = { usarMotores: false, sismico: true, ductoM: 30, ductoAnchoMm: 400, ductoAltoMm: 300, mesesElevacion: 2, alturaColgadoM: 0.5,
+      sismoSDS: 1.2, sismoFuente: "CFE MDOC-Sismo 2015, sitio Tijuana", estructuraTipo: "losa_concreto", estructuraFc: 250 };
+    G("importarRespaldo")(JSON.stringify(p)); G("recompute")();
+    let R = G("SOPORTE");
+    eq(S.soporte.alturaTrabajo, 7.2, "la cifra no cambia al abrir: altura de trabajo"); eq(S.soporte.alturaEstructura, 6, "ni la de la estructura:");
+    const renta = () => (G("SOPORTE").part || []).find((x) => /· renta$/.test(x.desc));
+    if (!renta() || !R.memo.some((m) => /Fuerza sísmica/.test(m))) throw new Error("el caso no aísla lo que se quiere probar: debe haber renta de elevación y sismo");
+    const total = R.total;
+    const origen = /de la migración.*zona más alta \(6 m\) \+ 1\.2 m.*supuesto de la casa/;
+    if (!origen.test(renta().nota || "")) throw new Error("la partida de renta debe decir de dónde sale la altura: " + renta().nota);
+    const mElev = R.memo.find((m) => /^Elevación/.test(m)) || "";
+    if (!origen.test(mElev)) throw new Error("la memoria debe decir de dónde sale la altura de trabajo: " + mElev.slice(0, 200));
+    const mFp = R.memo.find((m) => /Fuerza sísmica/.test(m)) || "";
+    if (!/altura de la estructura 6 m, de la migración.*zona más alta de Carga térmica/.test(mFp)) throw new Error("la memoria del sismo debe decir de dónde sale la altura de la estructura: " + mFp.slice(0, 300));
+    if (!R.avisos.some((a) => /sin confirmar/.test(a.msg) && /altura de trabajo 7\.2 m/.test(a.msg) && /altura de la estructura 6 m/.test(a.msg))) throw new Error("las observaciones deben listar lo que la migración puso sin confirmar");
+    S.tab = "soporte"; G("render")();
+    const pant = w.document.body.textContent;
+    if (!/Altura de trabajo 7\.2 m: de la migración/.test(pant) || !/Altura de la estructura 6 m: de la migración/.test(pant)) throw new Error("la pantalla debe decir el origen de las dos alturas");
+    /* Con los meses de renta sin capturar, el pendiente de la propuesta nombra la altura con su origen (ES/EN). */
+    S.soporte.mesesElevacion = null; G("recompute")();
+    const pr = (G("QUOTE").pendientes || []).find((x) => x.mot === "soporte" && /Renta de elevación/.test(x.desc));
+    if (!pr || !/sin confirmar/.test(pr.desc) || !/unconfirmed/.test(pr.descEn)) throw new Error("el pendiente de la renta debe decir que la altura viene de la migración (ES/EN): " + JSON.stringify(pr));
+    S.soporte.mesesElevacion = 2;
+    /* Al capturar otro valor la marca cae. */
+    S.soporte.alturaTrabajo = 5; S.soporte.alturaEstructura = 8; G("recompute")(); R = G("SOPORTE");
+    if (/migración/.test(renta().nota || "") || R.memo.some((m) => /de la migración/.test(m)) || R.avisos.some((a) => /sin confirmar/.test(a.msg))) throw new Error("capturado, ya no es de la migración");
+    /* De vuelta a la cifra de la migración sin capturarla, sigue siendo de la migración; capturada (en pantalla o desde un plano,
+       setPath), la misma cifra queda confirmada. La marca sólo dice el origen: no mueve la cifra. */
+    S.soporte.alturaTrabajo = 7.2; S.soporte.alturaEstructura = 6; G("recompute")();
+    if (!origen.test(renta().nota || "")) throw new Error("la misma cifra sin capturar sigue siendo de la migración: " + renta().nota);
+    G("setPath")("soporte.alturaTrabajo", 7.2); G("setPath")("soporte.alturaEstructura", 6); G("recompute")(); R = G("SOPORTE");
+    if (/migración/.test(renta().nota || "") || R.memo.some((m) => /de la migración/.test(m)) || R.avisos.some((a) => /sin confirmar/.test(a.msg))) throw new Error("capturada, la misma cifra queda confirmada");
+    eq(R.total, total, "la marca no mueve la cifra:");
+    /* Con la zona más alta de 1.5 m la migración ponía el mínimo de 3 m de la casa: el origen lo dice. */
+    const s3 = G("sanearEstado")(JSON.parse(JSON.stringify({ zones: [{ ...G("defaultZone")("Bodega"), area: 50, height: 1.5 }], soporte: { usarMotores: false } })));
+    eq(s3.soporte.alturaTrabajo, 3, "mínimo de la casa, misma cifra:");
+    const o3 = G("origenMigradoSop")("alturaTrabajo", (s3.soporte.sinConfirmar || {}).alturaTrabajo), o3en = G("origenMigradoSop")("alturaTrabajo", (s3.soporte.sinConfirmar || {}).alturaTrabajo, true);
+    if (!/mínimo de 3 m.*supuesto de la casa/.test(o3) || !/house minimum of 3 m/.test(o3en)) throw new Error("el origen del mínimo de 3 m: " + o3 + " / " + o3en);
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+/* ===== S.134 (H-266) la propuesta de soportería muestra lo que propone y de dónde sale ===== */
+t("S.134 (H-266) la propuesta motores>soporte muestra los metros y Ø de la red contra incendio (cabezal y montante, no sólo rociadores) y el origen por motor (no «Ductos y calibres» para todo) en la tarjeta, en el vínculo y en el trazado (ES/EN); desactualizada dice qué cambió; la cédula dice que los tramos son de la instantánea aceptada y su fecha, o que son capturados a mano (revisión adversarial U13; reglas 3 y 8)", () => {
+  const guardado = JSON.stringify(S);
+  const tarjeta = () => { S.tab = "soporte"; G("render")(); const c = w.document.querySelector(".prop"); return c ? c.textContent.replace(/\s+/g, " ") : ""; };
+  const pdf = () => [...Buffer.from(G("buildSoportePdf")()).toString("latin1").matchAll(/\(((?:[^()\\]|\\.)*)\) Tj/g)].map((m) => m[1]).join(" ");
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.134";
+    Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.134" }; });
+    S.duct.segments = [];
+    S.fuego = { ...G("defaultFuego")(), area: 600, altura: 6, Lramal: 30, Lmontante: 12 };
+    S.soporte = { ...G("defaultSoporte")(), alturaColgadoM: 0.5, alturaTrabajo: 5, mesesElevacion: 1, alturaEstructura: 6 };
+    G("recompute")();
+    const F = G("FUEGO"), P = G("PROPUESTAS")["motores>soporte"], fuegoLab = G("DOMAINS").fuego.label;
+    if (!(F.Lram === 30 && F.Lmon === 12 && F.nTotal > 0)) throw new Error("el caso no aísla lo que se quiere probar: cabezal 30 m y montante 12 m");
+    eq(G("estadoPropuesta")("motores>soporte").nivel, "pendiente", "hay propuesta:");
+    const res = P.resumen();
+    if (!/cabezal 30 m/.test(res) || !/montante 12 m/.test(res)) throw new Error("la propuesta debe mostrar los metros de la red contra incendio: " + res);
+    let c = tarjeta();
+    if (!c.includes(`${fuegoLab} → `) || c.includes("Ductos y calibres →")) throw new Error("la tarjeta debe nombrar el motor de origen verdadero: " + c.slice(0, 160));
+    /* Aceptada: el vínculo y el trazado dicen el origen verdadero y lo aceptado, en español y en inglés (libro de la propuesta). */
+    G("propAceptar")("motores>soporte"); G("recompute")();
+    eq(S.vinculos["motores>soporte"].origen, fuegoLab, "el vínculo guarda el origen verdadero:");
+    let fila = G("trazaHerencia")().find((f) => f.campo === P.titulo);
+    eq(fila.origen, fuegoLab, "trazado, origen:");
+    if (!/cabezal 30 m/.test(fila.valor)) throw new Error("trazado, valor: " + fila.valor);
+    if (!fila.en || !/Fire protection/.test(fila.en.origen) || !/header 30 m/.test(fila.en.valor)) throw new Error("trazado, espejo EN: " + JSON.stringify(fila.en));
+    /* La cédula dice de dónde salen los tramos. */
+    const hoy = G("fechaCorta")(S.vinculos["motores>soporte"].ts);
+    if (!pdf().includes("instantánea aceptada el " + hoy)) throw new Error("la cédula debe decir que los tramos son de la instantánea aceptada y su fecha");
+    /* El cabezal pasa a 80 m: desactualizada, y la tarjeta dice qué cambió (antes «Se aceptó» y «Hoy propone» salían idénticos). */
+    S.fuego.Lramal = 80; G("recompute")();
+    eq(G("estadoPropuesta")("motores>soporte").nivel, "desactualizado", "el origen cambió:");
+    c = tarjeta();
+    const se = (c.match(/Se aceptó(.*?)Hoy propone/) || [])[1] || "", hoyP = (c.match(/Hoy propone(.*?)(Qué cambió|El origen cambió)/) || [])[1] || "";
+    if (!se || se.replace(/ · \d.*$/, "").trim() === hoyP.trim()) throw new Error("«Se aceptó» y «Hoy propone» no deben ser iguales: " + c.slice(0, 400));
+    if (!/Qué cambió.*cabezal 30 → 80 m/.test(c)) throw new Error("la tarjeta debe decir qué cambió: " + c.slice(0, 600));
+    /* Capturado a mano: la cédula lo dice. */
+    G("propPropio")("motores>soporte"); S.soporte.tubFuegoM = 20; S.soporte.tubFuegoD = 50; G("recompute")();
+    if (!pdf().includes("capturados a mano")) throw new Error("la cédula debe decir que los metros son capturados a mano");
+  } finally { w.eval("clearTimeout(autoT)"); G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+/* ===== S.135 (H-266) textos de soportería que describían el conteo en vivo retirado ===== */
+t("S.135 (H-266) los textos de soportería describen lo que hoy hace: los permisos duct/hidro/fuego/aire → soportería son el registro de la propuesta aceptada (autorizarlos no mete metros; negarlos o revocarlos no cambia lo aceptado) y ya no prometen soportes «que se siguen contando, pendientes de autorizar»; la pestaña no manda a capturar en Ductos y calibres y, sin soportes, distingue «hay metros en los motores sin aceptar» de «no hay nada» (revisión adversarial U14 y U16)", () => {
+  const guardado = JSON.stringify(S);
+  const CRUCES = ["duct>soporte", "hidro>soporte", "fuego>soporte", "aire>soporte"];
+  try {
+    /* U14: el texto del permiso (pantalla de permisos, ventana y aviso al negar) ya no describe la conducta que H-266 quitó. */
+    CRUCES.forEach((k) => {
+      const Lk = G("LINKS")[k], txt = `${Lk.what} ${Lk.why} ${Lk.cost}`, modal = G("linkModal")(k);
+      if (/se siguen contando|pendiente[s]? de autorizar|nunca se bajan a cero/.test(txt) || /se siguen contando/.test(modal)) throw new Error(`${k}: describe el conteo en vivo retirado: ${Lk.cost}`);
+      if (!/propuesta/.test(txt) || !/instantánea/.test(txt) || !/Capturo lo mío/.test(Lk.cost)) throw new Error(`${k}: debe decir que los metros entran al aceptar la propuesta (instantánea) y cómo volver a lo capturado: ${txt}`);
+    });
+    /* La conducta que el texto describe: autorizar no mete metros; lo aceptado no baja al revocar (Q.7). */
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.135";
+    S.duct.segments = [{ ...G("defaultSegment")("TR-1", 3000), length: 20 }, { ...G("defaultSegment")("TR-2", 2000), length: 15 }];
+    CRUCES.forEach((k) => { S.perms[k] = { ts: 1, via: "S.135" }; }); G("recompute")();
+    eq(G("SOPORTE").mDucto, 0, "autorizar los cruces no mete metros:");
+    /* U16: sin soportes, con 35 m en Ductos sin aceptar: la pestaña no manda a capturar en Ductos y calibres y el aviso no dice
+       que no hay ductos calculados. */
+    const razon = G("accEstado")("soporte").calc.razon || "";
+    if (/Ductos y calibres o las tuberías/.test(razon) || !/acepta la propuesta/.test(razon)) throw new Error("la barra de acciones debe mandar a aceptar la propuesta o capturar aquí: " + razon);
+    if (!/sin aceptar/.test(razon)) throw new Error("la barra debe decir que hay metros en los motores sin aceptar: " + razon);
+    let av = G("SOPORTE").avisos.map((a) => a.msg).join(" | ");
+    if (/no hay ductos ni tubería calculados en los motores/.test(av)) throw new Error("el aviso dice que no hay ductos aunque los hay: " + av);
+    if (!/sin aceptar|al aceptar su propuesta/.test(av)) throw new Error("el aviso debe decir que hay metros en los motores sin aceptar: " + av);
+    /* Sin nada en los motores ni capturado: lo dice tal cual. */
+    S.duct.segments = []; G("recompute")();
+    av = G("SOPORTE").avisos.map((a) => a.msg).join(" | ");
+    if (!/No hay soportes que contar/.test(av) || /sin aceptar/.test(av)) throw new Error("sin nada, «no hay nada»: " + av);
+    if (/sin aceptar/.test(G("accEstado")("soporte").calc.razon || "")) throw new Error("sin nada en los motores la barra no habla de metros sin aceptar");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+/* ===== S.136 (H-266) «Capturo lo mío» no borra sin preguntar lo ya cuantificado, y Deshacer lo recupera ===== */
+t("S.136 (H-266) «Capturo lo mío» con una instantánea de soportería ya cuantificada pregunta antes de dejarla (dice qué se deja de contar) y Deshacer la recupera tal como estaba, también la que se conservó; «Conservar lo aceptado» también se puede deshacer (revisión adversarial U15; decisión del dueño: lo cuantificado no se mueve solo)", () => {
+  const guardado = JSON.stringify(S);
+  const act = (a, id) => { const b = w.document.createElement("button"); b.dataset.act = a; if (id) b.dataset.id = id; w.document.body.appendChild(b); b.dispatchEvent(new w.MouseEvent("click", { bubbles: true })); b.remove(); };
+  const modal = () => w.document.getElementById("modal");
+  const ID = "motores>soporte";
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.136"; G("histReiniciar")();
+    Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.136" }; });
+    S.duct.segments = [];
+    S.fuego = { ...G("defaultFuego")(), area: 600, altura: 6, Lramal: 30, Lmontante: 12 };
+    S.soporte = { ...G("defaultSoporte")(), alturaColgadoM: 0.5, alturaTrabajo: 5, mesesElevacion: 1, alturaEstructura: 6 };
+    G("recompute")(); G("histSnap")("inicio S.136");
+    act("prop-aceptar", ID); G("recompute")();
+    eq(G("SOPORTE").mTub, 42, "aceptada con cabezal 30 + montante 12:");
+    /* Contra incendio cambia; el usuario conserva lo aceptado (42 m). */
+    S.fuego.Lramal = 80; G("recompute")();
+    eq(G("estadoPropuesta")(ID).nivel, "desactualizado", "el origen cambió:");
+    act("prop-conservar", ID); G("recompute")();
+    eq(G("estadoPropuesta")(ID).nivel, "aceptado", "conservada:"); eq(G("SOPORTE").mTub, 42, "sigue con lo conservado:");
+    /* «Capturo lo mío»: pregunta antes de dejar lo ya cuantificado (antes borraba la instantánea al instante). */
+    act("prop-propio", ID);
+    if (!S.soporte.snap) throw new Error("«Capturo lo mío» borró la instantánea ya cuantificada sin preguntar");
+    if (modal().hidden || !/instantánea aceptada/i.test(modal().textContent) || !/42 m/.test(modal().textContent)) throw new Error("debe preguntar y decir qué se deja de contar: " + (modal().hidden ? "(sin ventana)" : modal().textContent.replace(/\s+/g, " ").slice(0, 300)));
+    act("confirmar-si");
+    eq(S.soporte.snap, undefined, "confirmado, deja la instantánea:"); eq(G("SOPORTE").mTub, 0, "y cuenta lo capturado a mano:");
+    /* Deshacer la recupera tal como estaba: la conservada de 42 m, no la de antes de aceptar. */
+    G("deshacer")(); G("recompute")();
+    if (!S.soporte.snap) throw new Error("Deshacer no recuperó la instantánea");
+    eq(G("SOPORTE").mTub, 42, "Deshacer devuelve lo conservado:");
+    eq(G("estadoPropuesta")(ID).nivel, "aceptado", "y su estado:");
+    /* «Conservar lo aceptado» también se puede deshacer: vuelve a «desactualizada». */
+    S.fuego.Lramal = 60; G("recompute")();
+    act("prop-conservar", ID); G("recompute")();
+    eq(G("estadoPropuesta")(ID).nivel, "aceptado", "conservada otra vez:");
+    G("deshacer")(); G("recompute")();
+    eq(G("estadoPropuesta")(ID).nivel, "desactualizado", "Deshacer deshace «Conservar lo aceptado»:");
+  } finally { G("closeModal")(); w.eval("clearTimeout(autoT)"); G("reemplazarEstado")(JSON.parse(guardado)); G("histReiniciar")(); G("recompute")(); }
+});
+
+/* ===== S.137 (H-266) las bases de equipo que la migración copia al abrir quedan «de la migración, sin confirmar» ===== */
+t("S.137 (H-266) las bases de equipo que la migración de soportería copia al abrir un proyecto anterior (el conteo de equipos de la cotización que se hacía: a mano sin bases capturadas, o en vivo sin nada que soportar) conservan la cifra pero no quedan como captura: la memoria, las observaciones y la pantalla dicen «de la migración, sin confirmar» y de dónde salen mientras la cifra sea esa; capturar el campo (setPath) las confirma aunque sea la misma cifra (revisión adversarial de U10; reglas 6 y 8, precedente H-179)", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    const fam = G("FAMILIES")[0], m = G("familyPool")(fam.id)[0];
+    if (!m || !G("CARRIER").some((x) => x.id === m.id)) throw new Error("el caso no aísla lo que se quiere probar: hace falta un equipo Carrier cotizable");
+    const mB = () => G("SOPORTE").memo.find((x) => /^Bases de equipo/.test(x)) || "(sin memoria de bases)";
+    const avisoB = () => G("SOPORTE").avisos.find((a) => /sin confirmar/.test(a.msg) && /bases de equipo \d+ \(/.test(a.msg));
+    for (const um of [false, true]) {
+      /* Guardado antes de H-266 (sin alturaEstructura), sin bases capturadas y con dos equipos Carrier en la cotización: la
+         migración copia las 2 bases que contaba (a mano: tomarBases; en vivo sin nada que soportar: U8, abre a mano). */
+      const caso = um ? "en vivo sin nada que soportar:" : "a mano sin bases:";
+      const p = JSON.parse(JSON.stringify(G("defaultState")())); p.meta.name = "S.137";
+      p.duct.segments = []; p.quote.items = [{ id: m.id, fam: fam.id, qty: 2, unit: null }];
+      p.soporte = { usarMotores: um, mesesElevacion: 2 };
+      G("importarRespaldo")(JSON.stringify(p)); G("recompute")();
+      eq(G("SOPORTE").nEquipos, 2, `${caso} la cifra no cambia al abrir:`); const total = G("SOPORTE").total;
+      if (!/de la migración al abrir, sin confirmar: conteo de equipos de la cotización al abrir/.test(mB()) || /capturadas/.test(mB())) throw new Error(`${caso} la memoria debe decir que las bases son de la migración, sin confirmar, y de dónde salen: ${mB()}`);
+      if (!avisoB() || !/bases de equipo 2 \(conteo de equipos de la cotización al abrir\)/.test(avisoB().msg)) throw new Error(`${caso} las observaciones deben listar las bases que puso la migración: ${JSON.stringify(G("SOPORTE").avisos.map((a) => a.msg))}`);
+      S.tab = "soporte"; G("render")();
+      if (!/Bases de equipo 2: de la migración al abrir, sin confirmar: conteo de equipos de la cotización al abrir/.test(w.document.body.textContent)) throw new Error(`${caso} la pantalla debe decir el origen de las bases`);
+      const sc = (S.soporte.sinConfirmar || {}).basesEquipo || {};
+      eq(`${sc.valor} · ${sc.origen}`, "2 · conteo de equipos de la cotización al abrir", `${caso} la marca guarda la cifra y su origen:`);
+      /* Otra cifra quita la marca; de vuelta a la cifra de la migración sin capturarla, sigue siendo de la migración. */
+      S.soporte.basesEquipo = 3; G("recompute")();
+      if (!/\(capturadas; H-266\)/.test(mB()) || avisoB()) throw new Error(`${caso} con otra cifra ya no es de la migración: ${mB()}`);
+      S.soporte.basesEquipo = 2; G("recompute")();
+      if (!/sin confirmar/.test(mB())) throw new Error(`${caso} la misma cifra sin capturar sigue siendo de la migración: ${mB()}`);
+      /* Capturada en pantalla o desde un plano (setPath), la misma cifra queda confirmada; la marca no mueve la cifra. */
+      G("setPath")("soporte.basesEquipo", 2); G("recompute")();
+      if (!/\(capturadas; H-266\)/.test(mB()) || avisoB()) throw new Error(`${caso} capturadas, la misma cifra queda confirmada: ${mB()}`);
+      eq(G("SOPORTE").total, total, `${caso} la marca no mueve la cifra:`);
+    }
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
