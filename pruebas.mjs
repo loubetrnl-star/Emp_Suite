@@ -7933,6 +7933,24 @@ t("S.144 (H-264, H-265) ni el tablero ni el libro de la propuesta (ES/EN) dicen 
   ["inherited by the other disciplines", "INHERITED VALUES", "inherited value"].forEach((x) => { if (en.includes(x)) throw new Error(`el libro EN dice «${x}»`); });
   if (/valor heredado/.test(w.document.getElementById("btn-print").title)) throw new Error("el botón de la memoria integral habla de valores heredados");
 });
+t("S.145 (H-264, H-265, H-266) los textos de obra civil, contra incendio, soportería y del diagrama dicen dónde se captura cada dato (en su pestaña) y no hablan de herencia; concordancia «áreas de obra capturadas» (regla 8)", () => {
+  Object.entries(G("ARISTA_TXT")).forEach(([k, v]) => { if (/hered/i.test(v)) throw new Error(`el texto de flecha «${k}» habla de herencia: ${v}`); });
+  const D = G("DOMAINS");
+  contiene(D.fuego.owns, "altura al rociador más alto", "contra incendio declara que captura la altura:"); contiene(D.fuego.owns, "Área a proteger", "y el área a proteger:");
+  if (/Si cuenta de los motores/.test(D.soporte.owns)) throw new Error("soportería describe un conteo en vivo que ya no existe");
+  const c0 = JSON.stringify(S.civil);
+  try {
+    S.civil = { ...G("defaultCivil")(), usarZonas: true, areas: [], cuartos: [] };
+    contiene(G("civilListaHtml")("areas", "Áreas de obra", "Tabiquería (ml)", []), "Sin áreas de obra capturadas", "concordancia:");
+    S.civil.areas = [{ id: "a1", nombre: "Nave", area: 400, altura: 6, perimetro: 0 }]; S.civil.cuartos = [{ id: "k1", nombre: "Sala", area: 60, altura: 3, perimetro: 0 }];
+    G("recompute")();
+    const txt = G("CIVIL").memo.join(" ") + " " + G("CIVIL").avisos.map((a) => a.msg).join(" ");
+    const mal = txt.match(/.{0,40}(tabiquería de cada zona|perímetro de cada cuarto limpio).{0,30}/);
+    if (mal) throw new Error(`civil manda a capturar en otra pestaña: «${mal[0]}»`);
+    contiene(txt, "de cada área de obra", "la memoria dice dónde se captura la tabiquería:");
+    contiene(txt, "de cada cuarto clasificado", "y el perímetro de los cuartos:");
+  } finally { S.civil = JSON.parse(c0); G("recompute")(); }
+});
 t("S.102 (H-266) soportería es autónoma: sin la instantánea aceptada no cuenta metros de otros motores (se retiró el conteo en vivo); aceptarla los cuantifica y ya no se mueven solos; alturas y bases se capturan; un proyecto anterior se migra al abrir con las mismas cifras (decisión del dueño, 27-sep-2026)", () => {
   const guardado = JSON.stringify(S);
   try {

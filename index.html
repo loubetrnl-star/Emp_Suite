@@ -4204,7 +4204,7 @@ const DOMAINS = {
            owns: "Muebles, unidades mueble, material de tubería, presión de la toma, drenaje y dotación.",
            emits: ["gasto probable", "diámetros", "presión residual", "drenaje", "cisterna", "bomba"] },
   fuego: { cluster: "autonomo", label: "Contra incendio",     method: "NFPA 13 / NFPA 20",
-           owns: "Clase de riesgo, área de diseño, rociador, material de tubería y fuente de agua.",
+           owns: "Área a proteger y altura al rociador más alto (capturadas aquí), clase de riesgo, área de diseño, rociador, cabezal y montante, material de tubería y fuente de agua.",
            emits: ["densidad", "número de rociadores", "caudal", "presión", "bomba", "reserva"] },
   aire:  { cluster: "autonomo", label: "Aire comprimido",     method: "ISO 8573-1 / ISO 1217",
            owns: "Clase de calidad, consumos por punto, presión de uso, fugas, material y longitud de la red.",
@@ -4213,7 +4213,7 @@ const DOMAINS = {
            owns: "Sistemas de muro, plafón y piso, demoliciones, cancelería y cantidades capturadas a mano.",
            emits: ["m² de muro", "m² de plafón", "m² de piso", "ml de media caña", "catálogo A100-A800"] },
   soporte: { cluster: "autonomo", label: "Soportería y elevación", method: "MSS SP-58 / SMACNA / NFPA 13",
-           owns: "Si cuenta de los motores o a mano, arriostramiento sísmico, altura de trabajo y meses de renta.",
+           owns: "Metros capturados a mano o aceptados de los motores (instantánea), arriostramiento sísmico, alturas de trabajo y de la estructura, bases y meses de renta.",
            emits: ["soportes de ducto", "soportes de tubería", "arriostramiento", "equipo de elevación"] },
   quote: { cluster: "autonomo", label: "Cotización",          method: "Lista de precios propia",
            owns: "Partidas, precios unitarios, indirectos, utilidad, IVA y tipo de cambio.",
@@ -7397,7 +7397,7 @@ function civilListaHtml(tipo, titulo, etiquetaPer, calc) {
       ${inp(`${etiquetaPer}${c && !c.capturado && c.area > 0 ? ` · sin captura: rectángulo 3:2 estimado, ${n(c.per, 1)} ml` : ""}`, `civil.${tipo}.${i}.perimetro`, "number", "0.1")}
       ${x.origen && x.origen.archivo ? `<div class="sub cx-origen-renglon">Del archivo ${esc(cxOrigenTexto(x.origen))}${x.origen.texto ? ` · «${esc(String(x.origen.texto).slice(0, 90))}»` : ""} · ${x.origen.auto ? "entró solo al cargar" : "aceptado por el usuario"}${x.origen.ts ? " · " + esc(fechaCorta(x.origen.ts)) : ""}${!(num(x.altura) > 0) ? " · altura pendiente: el archivo no la trae" : ""}</div>` : ""}
       <button class="btn-ghost" data-act="civil-del" data-tipo="${tipo}" data-i="${i}">Quitar</button></div></div>`; }).join("")}
-    ${lista.length ? "" : `<div class="hint" style="margin-bottom:10px">Sin ${tipo === "areas" ? "áreas de obra" : "cuartos clasificados"} capturados.</div>`}
+    ${lista.length ? "" : `<div class="hint" style="margin-bottom:10px">Sin ${tipo === "areas" ? "áreas de obra capturadas" : "cuartos clasificados capturados"}.</div>`}
     <button class="btn-ghost" data-act="civil-add" data-tipo="${tipo}">Agregar ${tipo === "areas" ? "área de obra" : "cuarto clasificado"}</button>`;
 }
 /* H-265: id estable (contador, no reloj) para un renglón nuevo de la lista de civil. */
@@ -7465,7 +7465,7 @@ function computeCivil(C) {
     alturaProm = Math.max(0, num(C.alturaManual, 3));
     muroM2 = Math.max(0, num(C.murosManual));
   }
-  if (estimado) memo.push(`Tabiquería ESTIMADA con un rectángulo 3:2 × altura en ${zonasCivil.filter((z) => !z.capturado && z.area > 0).map((z) => z.name).join(", ")}: captura el perímetro de tabiquería de cada zona para que la partida deje de ser estimada. Los muros de carga térmica (envolvente) no son tabiquería (H-244).`);
+  if (estimado) memo.push(`Tabiquería ESTIMADA con un rectángulo 3:2 × altura en ${zonasCivil.filter((z) => !z.capturado && z.area > 0).map((z) => z.name).join(", ")}: captura el perímetro de tabiquería de cada área de obra en esta pestaña para que la partida deje de ser estimada. Los muros de carga térmica (envolvente) no son tabiquería (H-244).`);
   zonasCivil.filter((z) => z.capturado).forEach((z) => memo.push(`${z.name}: tabiquería ${n(z.per, 2)} ml capturados × altura ${n(z.h, 2)} m = ${n(z.muro, 1)} m² (H-244).`));
   /* H-265: los cruces load>civil y clean>civil se retiraron: obra civil no toma nada de otra disciplina. */
   if (sinAltura.length) avisos.push({ lvl: "warn", msg: `Obra civil: ${sinAltura.join(", ")} sin altura capturada: su muro queda en 0, pendiente de la captura (no se supone ninguna altura, H-265).` });
@@ -7567,11 +7567,11 @@ function computeCivil(C) {
     avisos.push({ lvl: "err", msg: `El piso elegido no es apto para área clasificada.` });
   if (areaLimpia > 0 && mlCana === 0)
     avisos.push({ lvl: "warn", msg: "No salió media caña sanitaria: sin ella no hay validación de cuarto limpio. Revisa el área y la altura de los cuartos clasificados capturados en esta pestaña." });
-  if (cuartoEstimado) avisos.push({ lvl: "warn", msg: `Media caña y muro clasificado estimados con un rectángulo 3:2 en ${cuartosCivil.filter((c) => !c.capturado).map((c) => c.name).join(", ")}: captura el perímetro de cada cuarto limpio (H-243).` });
+  if (cuartoEstimado) avisos.push({ lvl: "warn", msg: `Media caña y muro clasificado estimados con un rectángulo 3:2 en ${cuartosCivil.filter((c) => !c.capturado).map((c) => c.name).join(", ")}: captura el perímetro de cada cuarto clasificado en esta pestaña (H-243).` });
   if (area === 0) avisos.push({ lvl: "warn", msg: "No hay área: captura las áreas de obra en esta pestaña (o el área total a mano) para que la obra civil tenga contenido; ya no se toma de carga térmica (H-265)." });
 
   memo.push(`Superficie total ${n(area, 0)} m², de los cuales ${n(areaLimpia, 0)} m² son cuarto limpio (${n(fracLimpia * 100, 0)} %). Desarrollo de muro ${n(muroM2, 0)} m² a una altura media ponderada de ${n(alturaProm, 2)} m.`);
-  memo.push(`Media caña: ${n(mlCana, 0)} ml${C.mediaCanaDoble ? " (piso y plafón)" : " (solo piso)"}. Sale del perímetro de cada cuarto limpio (capturado o rectángulo 3:2 estimado); es la partida que más se subestima y la que revienta la validación.`);
+  memo.push(`Media caña: ${n(mlCana, 0)} ml${C.mediaCanaDoble ? " (piso y plafón)" : " (solo piso)"}. Sale del perímetro de cada cuarto clasificado (capturado en esta pestaña o rectángulo 3:2 estimado); es la partida que más se subestima y la que revienta la validación.`);
   memo.push("Las cantidades salen de las áreas de obra y de los cuartos clasificados capturados en esta pestaña (o de los totales a mano, si se eligió así). Obra civil es autónoma: no toma las zonas de carga térmica ni los cuartos limpios, y no se mueve si éstos cambian (H-265).");
 
   return { area, areaLimpia, areaNoLimpia, fracLimpia, muroM2, muroLimpio, muroNoLimpio,
@@ -19666,7 +19666,7 @@ const nodoDe = (id) => NODOS.find((n2) => n2.id === id);
    y dos hacia eléctrico, y así se leen en el tooltip. */
 const ARISTAS = [
   { de: "proyecto", a: "hvac",  regla: 0, lane: 225, que: "Sitio, condiciones de diseño y geometría del proyecto" },
-  { de: "proyecto", a: "civil", regla: 0, lane: 217, que: "Alcance de obra y áreas del proyecto" },
+  { de: "proyecto", a: "civil", regla: 0, lane: 217, que: "Alcance de obra del proyecto (las áreas se capturan en obra civil)" },
   { de: "proyecto", a: "estr",  regla: 0, lane: 233, que: "Alcance estructural del proyecto" },
 
 
@@ -19706,11 +19706,11 @@ function estadoArista(ar) {
   return "inerte";
 }
 const ARISTA_TXT = {
-  vigente: "Herencia vigente: el destino está al día con su origen",
+  vigente: "Vigente: el destino tiene aceptado lo último que propone su origen",
   desactualizada: "Desactualizada: cambió el dato de origen y el destino sigue con lo aceptado",
-  propia: "El destino usa un dato capturado a mano, no el heredado",
+  propia: "El destino usa su propio dato capturado, no la propuesta",
   pendiente: "Hay una propuesta del origen sin decidir",
-  inerte: "Todavía no hay dato que heredar",
+  inerte: "Todavía no hay nada que proponer",
 };
 
 /* Trazado ortogonal fijo: sale por el costado derecho del origen, corre al
