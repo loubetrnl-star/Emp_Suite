@@ -4033,7 +4033,8 @@ t("22.13 4.1 un respaldo con el cuarto limpio en formato viejo se migra al sanea
   cerca(c.supply, 64800, 1e-6, "suministro m³/h:");
   eq(c.ffu, 72, "FFU:");
   /* Lo que ya terminaba en el cuarto por omisión sigue igual (huella de INIT y proyectos nuevos). */
-  const def = JSON.stringify({ rooms: [G("defaultRoom")()], ci: 0 });
+  /* H-295: Cuartos limpios guarda también los precios de su cotización (semilla de la casa en un proyecto nuevo). */
+  const def = JSON.stringify({ rooms: [G("defaultRoom")()], ci: 0, precios: { ...G("CLEAN_PRECIO_SEED") } });
   eq(JSON.stringify(G("sanearEstado")(JSON.parse(JSON.stringify(G("INIT")))).clean), def, "clean de INIT:");
   eq(JSON.stringify(G("sanearEstado")({ clean: { rooms: [], x: 1 } }).clean), def, "rooms vacío:");
   eq(JSON.stringify(G("sanearEstado")({ clean: [] }).clean), def, "clean arreglo:");
@@ -9267,6 +9268,26 @@ t("S.174 (H-294) la cotización de Ventilación sale de su propio motor: el prec
     const s = G("sanearEstado")(viejo);
     eq(s.vent.precioCFM, 150, "un proyecto anterior conserva su precio, ahora en Ventilación:");
     eq("fanCFM" in s.quote, false, "la cotización ya no guarda el precio por CFM:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+t("S.175 (H-295) la cotización de Cuartos limpios sale de su propio motor: los precios de FFU, HEPA de repuesto y rejilla se capturan en Cuartos limpios (copia de la semilla de la casa) y la cotización global sólo junta sus renglones tal cual; un proyecto anterior conserva sus precios", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.175";
+    S.perms["clean>quote"] = { ts: 1, via: "S.175" };
+    Object.assign(S.clean.rooms[0], { area: 60, height: 3, iso: "iso7" });
+    G("recompute")();
+    const filas = () => (G("QUOTE").aux || []).filter((a) => a.mot === "clean");
+    if (filas().length !== 3 || !(G("CLEAN").sum.ffu > 0)) throw new Error("el caso no aísla lo que se quiere probar: deben salir FFU, HEPA y rejillas");
+    eq(JSON.stringify(filas().map((a) => a.unit)), JSON.stringify([42000, 9800, 3200]), "un proyecto nuevo arranca con la semilla de la casa (las mismas cifras de antes):");
+    S.clean.precios = { ffu: 45000, hepaSpare: 10000, grille: 3500 }; S.quote.ffu = 1; S.quote.hepaSpare = 1; S.quote.grille = 1; G("recompute")();
+    eq(JSON.stringify(filas().map((a) => a.unit)), JSON.stringify([45000, 10000, 3500]), "los precios salen de la captura de Cuartos limpios, no de la cotización:");
+    eq(JSON.stringify(((G("CLEAN").cot || { aux: [] }).aux).map((a) => [a.desc, a.total])), JSON.stringify(filas().map((a) => [a.desc, a.total])),
+      "la cotización global junta los renglones que armó el motor, tal cual:");
+    const viejo = JSON.parse(JSON.stringify(S)); delete viejo.clean.precios; Object.assign(viejo.quote, { ffu: 41000, hepaSpare: 9000, grille: 3000 });
+    const s = G("sanearEstado")(viejo);
+    eq(JSON.stringify(s.clean.precios), JSON.stringify({ ffu: 41000, hepaSpare: 9000, grille: 3000 }), "un proyecto anterior conserva sus precios, ahora en Cuartos limpios:");
+    eq(["ffu", "hepaSpare", "grille"].some((k) => k in s.quote), false, "la cotización ya no guarda esos precios:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {

@@ -4888,9 +4888,6 @@ const QUOTE_SEED = {
   filtroAire: 38500,      // MXN por etapa de filtración instalada
   aireM: 0,               // 0 = usar el precio por metro del material elegido
   puntoUso: 4850,         // bajada con filtro-regulador, válvula y acople rápido
-  ffu: 42000,             // módulo FFU 1.17×0.57 con filtro HEPA H14, instalado y probado
-  hepaSpare: 9800,        // juego de filtro HEPA de repuesto por módulo
-  grille: 3200,           // rejilla de retorno bajo / extracción con marco
   /* H-17 · Flete, fianzas y financiamiento: en obra industrial son puntos
      completos y no estaban en ningún lado. */
   freight: 0.025,         // flete, maniobras y seguro de tránsito, % del directo
@@ -8793,17 +8790,10 @@ function computeQuote() {
   if (verVent && VENT && VENT.demand > 0 && VENT.cot) {
     aux.push(...VENT.cot.aux.map((x) => ({ ...x }))); pendientes.push(...VENT.cot.pendientes.map((x) => ({ ...x }))); porCotizar.push(...VENT.cot.porCotizar.map((x) => ({ ...x })));
   } else if (VENT && VENT.demand > 0) faltan.push("los ventiladores y extractores del motor de ventilación");
-  if (verClean && CLEAN && CLEAN.sum && CLEAN.sum.ffu > 0) {
-    const nf = CLEAN.sum.ffu;
-    aux.push({ desc: `Módulos FFU con filtro HEPA terminal, instalados y probados (${nf} módulos de ${CLEAN.list.length} cuarto(s) limpio(s))`,
-      descEn: `FFU modules with terminal HEPA filter, installed and tested (${nf} modules across ${CLEAN.list.length} cleanroom(s))`,
-      qty: nf, unit: num(q.ffu, QUOTE_SEED.ffu), total: num(q.ffu, QUOTE_SEED.ffu) * nf , sec: "B", un: "PIEZA", mot: "clean"});
-    aux.push({ desc: `Juego de filtros HEPA de repuesto (uno por módulo)`, descEn: `Spare HEPA filter set (one per module)`,
-      qty: nf, unit: num(q.hepaSpare, QUOTE_SEED.hepaSpare), total: num(q.hepaSpare, QUOTE_SEED.hepaSpare) * nf , sec: "B", un: "JUEGO", mot: "clean"});
-    const nRej = Math.max(1, Math.ceil(CLEAN.sum.supplyCfm / 500));
-    aux.push({ desc: `Rejillas de retorno bajo a 150 mm NPT (${n(CLEAN.sum.supplyCfm, 0)} CFM ÷ 500 CFM por rejilla)`,
-      descEn: `Low return grilles at 150 mm NPT (${n(CLEAN.sum.supplyCfm, 0)} CFM ÷ 500 CFM per grille)`,
-      qty: nRej, unit: num(q.grille, QUOTE_SEED.grille), total: num(q.grille, QUOTE_SEED.grille) * nRej , sec: "B", un: "PIEZA", mot: "clean"});
+  /* H-295 (decisión del dueño, 29-sep-2026): la cotización de Cuartos limpios la arma su motor con sus resultados y sus precios
+     (CLEAN.cot, cotizacionClean); aquí sólo se juntan sus renglones tal cual (copias), sin recalcular nada. */
+  if (verClean && CLEAN && CLEAN.sum && CLEAN.sum.ffu > 0 && CLEAN.cot) {
+    aux.push(...CLEAN.cot.aux.map((x) => ({ ...x }))); pendientes.push(...CLEAN.cot.pendientes.map((x) => ({ ...x }))); porCotizar.push(...CLEAN.cot.porCotizar.map((x) => ({ ...x })));
   } else if (CLEAN && CLEAN.sum && CLEAN.sum.ffu > 0) faltan.push("los FFU, filtros HEPA y rejillas del motor de cuartos limpios");
   /* Rev 2.2.0 · Renglones de las tres disciplinas nuevas, cada una con su
      permiso. Sin ellos, una propuesta integral de instalaciones se entregaba
@@ -9293,6 +9283,29 @@ function cleanRooms() {
   S.clean.ci = Math.min(Math.max(0, S.clean.ci | 0), S.clean.rooms.length - 1);
   return S.clean.rooms;
 }
+/* H-295 (decisión del dueño, 29-sep-2026: cada motor saca su propia cotización de sus propios resultados). Los precios del módulo
+   FFU con HEPA, del juego de HEPA de repuesto y de la rejilla de retorno son de Cuartos limpios: copia en este motor de la semilla de
+   la casa (antes QUOTE_SEED.ffu, hepaSpare y grille; sin fuente, la cotización los marca SEMILLA · SIN FUENTE). Se capturan en la
+   pestaña de Cuartos limpios (S.clean.precios). */
+const CLEAN_PRECIO_SEED = { ffu: 42000, hepaSpare: 9800, grille: 3200 };
+/* H-295: la cotización de Cuartos limpios sale sólo de sus resultados (list, sum) y de su captura (P): los mismos renglones e
+   importes que antes armaba computeQuote leyendo CLEAN en vivo. La cotización global sólo los junta. */
+function cotizacionClean(list, sum, P) {
+  const aux = [], pendientes = [], porCotizar = [];
+  if (!(sum && sum.ffu > 0)) return { aux, pendientes, porCotizar };
+  const p = P && typeof P === "object" ? P : {};
+  const nf = sum.ffu, pF = num(p.ffu, CLEAN_PRECIO_SEED.ffu), pH = num(p.hepaSpare, CLEAN_PRECIO_SEED.hepaSpare), pR = num(p.grille, CLEAN_PRECIO_SEED.grille);
+  aux.push({ desc: `Módulos FFU con filtro HEPA terminal, instalados y probados (${nf} módulos de ${list.length} cuarto(s) limpio(s))`,
+    descEn: `FFU modules with terminal HEPA filter, installed and tested (${nf} modules across ${list.length} cleanroom(s))`,
+    qty: nf, unit: pF, total: pF * nf , sec: "B", un: "PIEZA", mot: "clean"});
+  aux.push({ desc: `Juego de filtros HEPA de repuesto (uno por módulo)`, descEn: `Spare HEPA filter set (one per module)`,
+    qty: nf, unit: pH, total: pH * nf , sec: "B", un: "JUEGO", mot: "clean"});
+  const nRej = Math.max(1, Math.ceil(sum.supplyCfm / 500));
+  aux.push({ desc: `Rejillas de retorno bajo a 150 mm NPT (${n(sum.supplyCfm, 0)} CFM ÷ 500 CFM por rejilla)`,
+    descEn: `Low return grilles at 150 mm NPT (${n(sum.supplyCfm, 0)} CFM ÷ 500 CFM per grille)`,
+    qty: nRej, unit: pR, total: pR * nRej , sec: "B", un: "PIEZA", mot: "clean"});
+  return { aux, pendientes, porCotizar };
+}
 function computeCleanAll() {
   const rooms = cleanRooms();
   const list = rooms.map(computeClean);
@@ -9301,7 +9314,7 @@ function computeCleanAll() {
     supplyCfm: a.supplyCfm + r.supplyCfm, ffu: a.ffu + r.ffu, makeup: a.makeup + r.makeup,
     leak: a.leak + r.leak, ffuHeat: a.ffuHeat + r.ffuHeat,
   }), { area: 0, vol: 0, supply: 0, supplyCfm: 0, ffu: 0, makeup: 0, leak: 0, ffuHeat: 0 });
-  return { list, sum, cur: list[S.clean.ci] || list[0] };
+  return { list, sum, cur: list[S.clean.ci] || list[0], cot: cotizacionClean(list, sum, S.clean.precios) };   /* H-295: su propia cotización */
 }
 function computeClean(c) {
   const cls = ISO_CLASSES[c.iso] || ISO_CLASSES.iso7;
@@ -19575,7 +19588,7 @@ const ENTRADAS = {
      ventilador (miscVent null, que sanearEstado agrega a los proyectos anteriores) pesa lo mismo que una sin el campo: así
      un proyecto sellado con la versión anterior no sale «la captura cambió» sin haber cambiado nada. */
   load: () => ({ zones: (S.zones || []).map((z) => z && "origenOA" in z ? sinClaves(z, ["origenOA"]) : z).map((z) => !z || !("miscVent" in z) ? z : z.miscVent ? { ...z, miscVent: sinClaves(z.miscVent, ["ts"]) } : sinClaves(z, ["miscVent"])),   /* H-281: el origen del aire exterior no es captura */ sitio: S.sitioCarga && typeof S.sitioCarga === "object" ? sinClaves(S.sitioCarga, ["origen", "ts", "label"]) : null, forceTech: S.forceTech, peakScan: S.peakScan }),   /* H-289: sin la diversidad del edificio, que Carga no usa. H-290: su sitio, no el de Proyecto */
-  clean: () => ({ rooms: cleanRooms() }),   /* H-283: el sitio de Proyecto no entra al cálculo de cuartos limpios: fuera de la huella */
+  clean: () => ({ rooms: cleanRooms(), precios: S.clean.precios || null }),   /* H-295: sus precios son de su cotización */   /* H-283: el sitio de Proyecto no entra al cálculo de cuartos limpios: fuera de la huella */
   /* H-267: sólo lo que la selección calcula: sus zonas de selección (la instantánea aceptada va dentro, sin id, origen, fecha ni
      marca de edición, que no cambian el cálculo), la diversidad del edificio, el sitio (capacidad en sitio), la tecnología elegida,
      los modelos por familia y la presión estática externa capturada en esta pestaña (H-274: nada de Ductos). Ya no anida
@@ -19665,11 +19678,11 @@ const motorVer = (id) => MOTOR_VER[id] || "1";
    dueño, 28-sep-2026: no hay re-sello solo). */
 const HUELLA_FORMA = {
   load: { f: 2, que: "H-289: la huella ya no lleva la diversidad del edificio, que Carga térmica no usa (se captura en Selección)" },
-  clean: { f: 2, que: "H-283: la huella ya no lleva el sitio de Proyecto, que Cuartos limpios no usa" },
+  clean: { f: 3, que: "H-295: los precios de FFU, HEPA y rejilla pasaron de la cotización a Cuartos limpios (misma cifra)" },
   duct: { f: 2, que: "H-284: la huella ya no lleva el sitio de Proyecto, que Ductos no usa" },
   hidro: { f: 2, que: "H-285: la huella ya no lleva el sitio de Proyecto, que Hidráulica no usa" },
   fuego: { f: 3, que: "H-293: el precio del rociador pasó de la cotización a Contra incendio (misma cifra)" },
-  quote: { f: 3, que: "H-293/H-294: los precios del rociador y por CFM de ventilación pasaron a su motor (misma cifra)" },
+  quote: { f: 4, que: "H-293–H-295: los precios del rociador, por CFM de ventilación y de FFU, HEPA y rejilla pasaron a su motor (misma cifra)" },
   vent: { f: 3, que: "H-294: el precio por CFM pasó de la cotización a Ventilación (misma cifra)" },
 };
 const formaHuella = (id) => (HUELLA_FORMA[id] ? HUELLA_FORMA[id].f : 1);
@@ -21276,6 +21289,10 @@ function viewLimpio() {
       ${rooms.length > 1 ? `<div style="height:8px"></div><button class="btn-ghost" data-act="cl-del" data-i="${i}">Eliminar este cuarto</button>` : ""}
     </div></div>
     <div class="grid" style="gap:14px">
+      <div class="card"><h3>Precios de Cuartos limpios<span class="tag">su cotización · semilla de la casa sin fuente</span></h3><div class="body">
+        <div class="row">${inp("Módulo FFU con HEPA instalado (MXN)", "clean.precios.ffu", "number", "100")}${inp("Juego HEPA de repuesto (MXN)", "clean.precios.hepaSpare", "number", "100")}</div>
+        ${inp("Rejilla de retorno bajo (MXN)", "clean.precios.grille", "number", "50")}
+      </div></div>
       ${rooms.length > 1 ? `<div class="card"><h3>Suite de cuartos limpios<span class="tag">${rooms.length} cuartos · ${n(S_.area, 0)} m²</span></h3><div class="body">
         <div class="metrics">
           <div class="metric"><div class="k">Suministro total</div><div class="v">${n(S_.supply, 0)} <small>m³/h</small></div></div>
@@ -24568,7 +24585,14 @@ function sanearEstado(d) {
     s.clean = { rooms: [{ ...defaultRoom(old.name || "Cuarto limpio 1"), ...old }], ci: 0 };
     delete s.clean.rooms[0].rooms; delete s.clean.rooms[0].ci;
   }
-  if (!s.clean.rooms.length) s.clean = { rooms: [defaultRoom()], ci: 0 };
+  if (!s.clean.rooms.length) s.clean = { rooms: [defaultRoom()], ci: 0, ...(s.clean.precios ? { precios: s.clean.precios } : {}) };
+  /* H-295: los precios de FFU, HEPA de repuesto y rejilla pasaron de la cotización a Cuartos limpios. Un proyecto anterior conserva
+     las cifras que tenía la cotización (sin ellas, la semilla de la casa, igual que antes) y la cotización deja de guardarlas. */
+  if (!s.clean.precios || typeof s.clean.precios !== "object" || Array.isArray(s.clean.precios)) {
+    const q0 = s.quote && typeof s.quote === "object" ? s.quote : {};
+    s.clean.precios = { ffu: num(q0.ffu, CLEAN_PRECIO_SEED.ffu), hepaSpare: num(q0.hepaSpare, CLEAN_PRECIO_SEED.hepaSpare), grille: num(q0.grille, CLEAN_PRECIO_SEED.grille) };
+  }
+  if (s.quote && typeof s.quote === "object") { delete s.quote.ffu; delete s.quote.hepaSpare; delete s.quote.grille; }
   /* H-265: obra civil autónoma. Proyecto anterior (sin áreas propias de civil): se copian una vez de zonas y cuartos limpios. */
   if (!civilPrevio || !Array.isArray(civilPrevio.areas) || !Array.isArray(civilPrevio.cuartos)) migrarCivilAutonoma(s, civilPrevio);
   delete s.civil.perimZonas; delete s.civil.perimCuartos;
