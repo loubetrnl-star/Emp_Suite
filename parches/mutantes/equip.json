@@ -27,8 +27,8 @@
   "id": "equip.m4",
   "que": "H-267: la huella de selección vuelve a anidar la de carga térmica (un cambio de carga sin aceptar diría «la captura cambió»)",
   "logica": true,
-  "buscar": "  equip: () => ({ zonas: zonasSel().map((z) => sinClaves(z, [\"id\", \"origen\", \"editada\"])), bldDiv: S.bldDiv,",
-  "reemplazar": "  equip: () => ({ load: ENTRADAS.load(), zonas: zonasSel().map((z) => sinClaves(z, [\"id\", \"origen\", \"editada\"])), bldDiv: S.bldDiv,",
+  "buscar": "  equip: () => ({ zonas: zonasSel().map((z) => sinClaves(z, [\"id\", \"origen\", \"editada\"])), bldDiv: S.equip.div ?? null,",
+  "reemplazar": "  equip: () => ({ load: ENTRADAS.load(), zonas: zonasSel().map((z) => sinClaves(z, [\"id\", \"origen\", \"editada\"])), bldDiv: S.equip.div ?? null,",
   "estado": "vigente"
  },
  {
