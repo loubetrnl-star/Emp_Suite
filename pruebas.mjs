@@ -8659,6 +8659,31 @@ t("S.128 (H-274) la memoria de selección ya no imprime la preselección por zon
     if (/Preseleccion por zona/.test(pdf)) throw new Error("la memoria de selección sigue imprimiendo la preselección de carga en vivo");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
+t("S.156 (H-286, X-3) Valor: el consumo por TR de cada sistema alterno sale de su tecnología (la planta o, sin planta, sus terminales, con la eficiencia estimada de su familia y su fuente), no siempre de split DX (decisión del dueño D5, 28-sep-2026)", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.156";
+    const dz = G("defaultZone");
+    S.zones = [{ ...dz("Oficina"), area: 600, height: 3, occ: 40, lights: 6000, equip: 9000 }, { ...dz("Nave"), area: 1500, height: 7, occ: 30, lights: 12000, equip: 30000 }];
+    G("recompute")(); G("propAceptar")("load>equip"); S.sysForce = "chiller"; S.tab = "valor"; G("VZ_CACHE").key = null; G("recompute")();
+    const SYS = G("SYS"); eq(SYS.chosen.id, "chiller", "el caso fija la planta de agua helada:");
+    const EF = G("EFF_EST"), cat = G("CARRIER");
+    const ficha = (o) => { const m = o.plant && o.plant[0] ? o.plant[0].model : o.terms && o.terms[0] ? o.terms[0].model : null; return typeof m === "string" ? cat.find((e) => e.model === m) : m; };
+    const ef = (o) => EF[G("corrKeyOf")(ficha(o))];
+    const V = G("computeIngValor")();
+    let revisadas = 0;
+    SYS.opts.filter((o) => o.id !== SYS.chosen.id).forEach((o) => {
+      const dkW = (ef(SYS.chosen).kWTR - ef(o).kWTR) * SYS.blockTons;
+      if (!(dkW > 0.2)) return;
+      const p = V.props.find((x) => x.id === "sis-" + o.id);
+      if (!p) throw new Error(`${o.id}: falta la medida de sistema alterno`);
+      cerca(p.kW, dkW, 1e-9, `${o.id}: kW menos con la eficiencia de su tecnología:`);
+      contiene(p.justificacion, ef(o).src, `${o.id}: la justificación dice de dónde sale su consumo:`);
+      revisadas++;
+    });
+    if (revisadas < 2) throw new Error("el caso no aísla lo que se quiere probar: debe haber al menos dos alternativas de otra tecnología");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("VZ_CACHE").key = null; G("recompute")(); }
+});
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {
   const guardado = JSON.stringify(S);
   try {

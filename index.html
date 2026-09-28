@@ -19208,7 +19208,7 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "6", clean: "3", equip: "3", duct: "4", vent: "4", quote: "24", valor: "1", kaizen: "1", elec: "9", hidro: "8", fuego: "6", aire: "5", civil: "8", soporte: "12" };
+const MOTOR_VER = { load: "6", clean: "3", equip: "3", duct: "4", vent: "4", quote: "24", valor: "2", kaizen: "1", elec: "9", hidro: "8", fuego: "6", aire: "5", civil: "8", soporte: "12" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
@@ -19218,6 +19218,7 @@ const MOTOR_CAMBIOS = {
     { ver: "6", rev: "2.9.24", que: "H-263 (decisión del dueño, 27-sep-2026): el ventilador SELECCIONADO en Ventilación entra a la zona elegida como misceláneos, HP de referencia del submittal Greenheck (ESTIMADO por la casa en el punto medio del catálogo: rendimiento 0.65, +15 %, ¼ HP; ratificar con placa) × 745.7 W sensibles, como instantánea (si ventilación cambia después, la carga no se mueve sola; se vuelve a seleccionar). Sin selección la carga no cambia" }],
   equip: [{ ver: "2", rev: "2.9.24", que: "H-267 (decisión del dueño, 27-sep-2026): la selección de equipo es autónoma: calcula sólo con sus zonas de selección (capturadas en su pestaña o aceptadas de carga térmica como propuesta load>equip, instantánea con origen y fecha; nombre, TR, CFM, aire exterior, área, sensible y latente, hora pico y perfil horario). Ya no lee la carga EN VIVO (salió del núcleo térmico); ya aceptada no se mueve sola (si la carga cambia sale «desactualizada»). Una zona sin perfil horario deja la simultaneidad por hora pendiente (bloque = suma de picos, sin diversidad supuesta) y sin hora pico no cuenta en la ventana ni en la dispersión. Un proyecto guardado toma una vez la instantánea al abrir: mismas cifras (proyecto fijo: VRF, 16.8989 / 19.8518 TR)" },
     { ver: "3", rev: "2.9.24", que: "H-274 (decisión del dueño, 28-sep-2026): Selección no tiene ningún vínculo con Ductos, ni lectura en vivo ni propuesta aceptada, en ninguna dirección. La presión estática externa que debe vencer el equipo se captura en la pestaña de Selección (S.equip.espCaptura, in.wg); sin captura queda «pendiente» y el criterio de presión no se evalúa (antes, con el permiso duct>equip, se tomaba en vivo la suma de tramos de ductos con 15 % de margen y castigaba el ajuste). Salió el cruce duct>equip, la huella ya no anida la de ductos y la memoria ya no imprime la preselección por zona leída en vivo de Carga térmica. Sin migración: sin captura, el criterio queda pendiente (proyecto fijo: mismas cifras de sistema; esp 0)" }],
+  valor: [{ ver: "2", rev: "2.9.24", que: "H-286 (X-3, decisión del dueño D5, 28-sep-2026): el consumo por TR de cada sistema alterno sale de su tecnología (la ficha de la planta o, sin planta, de sus terminales, con la eficiencia estimada por familia de EFF_EST y su fuente); antes corrKeyOf recibía el nombre y siempre resolvía split DX, así que el ahorro de kW de las alternativas de sistema valía 0. Sin ficha no se compara consumo (no se supone). El equipo alterno de la misma familia sin kWe de catálogo usa la eficiencia de su familia (antes la de split DX)" }],
   vent: [{ ver: "2", rev: "2.9.24", que: "H-154 + H-156: la cobertura real manda en la selección Greenheck (cfmMin ≤ objetivo ≤ cfmMax, sin tolerancia ×0.9); la familia del modo sólo ordena entre los que cubren; si nadie cubre no hay modelo (proyecto fijo: GB-360 → CSW-30 para 11,643 CFM)" },
     { ver: "3", rev: "2.9.24", que: "H-155: sin medidas no hay caudal: campana sin largo o fondo y rejilla sin ancho, alto, área libre o velocidad dan demanda 0 con aviso (antes pisos de 0.1 ft, 5 % y 100 fpm fabricaban 30 y 258 CFM y sus partidas)" },
     { ver: "4", rev: "2.9.24", que: "H-262 (decisión del dueño, 27-sep-2026): ventilación calcula sólo con sus propios datos: el área, la altura y los ocupantes ya no se copian de carga térmica (se capturan en su pestaña; un proyecto guardado conserva los valores que ya tenía copiados). Se retira la propuesta load>vent (aire exterior de carga térmica como reposición: con el local sin capturar fabricaba cambios/h sobre 1 m² × 0.1 m). Sin área o altura capturadas, el caudal por cambios de aire queda pendiente de captura, con aviso. La relación con carga térmica va al revés: el ventilador seleccionado entrega el calor de su motor a una zona (H-263)" }],
@@ -20038,12 +20039,13 @@ function computeIngValor() {
      motor— no corrio ni una sola vez. Se normaliza aqui, una vez, y las dos
      formas quedan aceptadas por si otro punto de la suite entrega la cadena. */
   const fichaDe = (m) => (!m ? null : typeof m === "string" ? (CARRIER.find((e) => e.model === m) || null) : m);
-  const nomDe = (m) => (!m ? null : typeof m === "string" ? m : m.model);
-  const kwTRde = (modelo) => {
-    const nm = nomDe(modelo);
-    const k = nm ? corrKeyOf(nm) : "DX_split";
-    return (EFF_EST[k] || EFF_EST.DX_split).kWTR || EFF_EST.DX_split.kWTR;
-  };
+  /* H-286 (X-3, decisión del dueño D5, 28-sep-2026): la eficiencia sale de la FICHA. corrKeyOf espera la ficha y antes recibía
+     el nombre: siempre resolvía split DX, así que el ahorro de kW de los sistemas alternos valía 0. Un sistema sin planta toma
+     la tecnología de sus terminales. Sin ficha no hay consumo que comparar (null): no se supone. Es la eficiencia estimada por
+     familia de EFF_EST, con su fuente. */
+  const efDe = (modelo) => { const f = fichaDe(modelo); return f ? EFF_EST[corrKeyOf(f)] || null : null; };
+  const kwTRde = (modelo) => { const e = efDe(modelo); return e ? e.kWTR : null; };
+  const modeloSis = (o) => (o.plant && o.plant[0] ? o.plant[0].model : o.terms && o.terms[0] ? o.terms[0].model : null);
   const add = (o) => {
     const mxnCapex = Math.max(0, num(o.mxnCapex)), mxnOpex = Math.max(0, num(o.mxnOpex));
     const mxn = mxnCapex + mxnOpex;
@@ -20063,20 +20065,20 @@ function computeIngValor() {
   /* --- a) Otra tecnología de sistema, de las que la suite ya evaluó --- */
   if (SYS && SYS.chosen && SYS.chosen.id !== "none" && SYS.opts && SYS.opts.length > 1) {
     const act = SYS.chosen;
-    const kwAct = kwTRde(act.plant && act.plant[0] ? act.plant[0].model : null);
+    const efAct = efDe(modeloSis(act)), kwAct = efAct ? efAct.kWTR : null;
     SYS.opts.filter((o) => o.id !== act.id).forEach((o) => {
       const instAct = num(act.instPlant) || num(act.instTerm);
       const instAlt = num(o.instPlant) || num(o.instTerm);
       const dTR = instAct - instAlt;
-      const kwAlt = kwTRde(o.plant && o.plant[0] ? o.plant[0].model : null);
-      const dkW = (kwAct - kwAlt) * Math.max(0, num(SYS.blockTons));
+      const efAlt = efDe(modeloSis(o)), kwAlt = efAlt ? efAlt.kWTR : null;
+      const dkW = kwAct != null && kwAlt != null ? (kwAct - kwAlt) * Math.max(0, num(SYS.blockTons)) : 0;
       if (dTR <= 0.5 && dkW <= 0.2) return;
       add({
         id: "sis-" + o.id, medida: "sistema", fuente: "Catálogo de sistemas",
         titulo: `Evaluar ${o.label} en lugar de ${act.label}`,
         ahora: `${act.label} · ${n(instAct, 1)} TR instalados · ${act.score}/100 en la calificación de la suite`,
         propuesta: `${o.label} · ${n(instAlt, 1)} TR instalados · ${o.score}/100`,
-        justificacion: `Ambas resuelven la misma carga de bloque de ${n(SYS.blockTons, 1)} TR con la misma diversidad calculada. ${dTR > 0.5 ? `La alternativa instala ${n(dTR, 1)} TR menos. ` : ""}${dkW > 0.2 ? `Consumo estimado ${n(kwAlt, 3)} contra ${n(kwAct, 3)} kW/TR: ${n(dkW, 1)} kW menos en operación. ` : ""}${(o.pros || []).slice(0, 2).join(" ")}${(o.cons || []).length ? ` A cambio: ${(o.cons || [])[0]}` : ""}`,
+        justificacion: `Ambas resuelven la misma carga de bloque de ${n(SYS.blockTons, 1)} TR con la misma diversidad calculada. ${dTR > 0.5 ? `La alternativa instala ${n(dTR, 1)} TR menos. ` : ""}${dkW > 0.2 ? `Consumo estimado ${n(kwAlt, 3)} contra ${n(kwAct, 3)} kW/TR (eficiencia estimada por familia: ${efAlt.src} contra ${efAct.src}): ${n(dkW, 1)} kW menos en operación. ` : ""}${(o.pros || []).slice(0, 2).join(" ")}${(o.cons || []).length ? ` A cambio: ${(o.cons || [])[0]}` : ""}`,
         tr: Math.max(0, dTR), kW: Math.max(0, dkW),
         mxnCapex: dTR > 0 && mxnTR > 0 ? dTR * mxnTR : 0,
         mxnOpex: dkW > 0 ? dkW * horas * tarifa : 0,
@@ -20093,14 +20095,14 @@ function computeIngValor() {
       const fam = famOfModel(actual);
       if (!fam) return;
       const requerida = num(p.installed) / Math.max(1, num(p.qty, 1));
-      const capAct = capOf(actual), kweAct = num(actual.kWe) || actual.TR * kwTRde(actual.model);
+      const capAct = capOf(actual), kweAct = num(actual.kWe) || actual.TR * (kwTRde(actual) || 0);
       const pool = CARRIER.filter(fam.filter).filter((e) => e.id !== actual.id);
       let mejor = null;
       pool.forEach((alt) => {
         const cap = capOf(alt);
         if (!(cap >= requerida * 0.99)) return;                 // tiene que cubrir la carga
         if (cap > requerida * 1.35) return;                     // ni sobrarse: eso es otra medida
-        const kwe = num(alt.kWe) || alt.TR * kwTRde(alt.model);
+        const kwe = num(alt.kWe) || alt.TR * (kwTRde(alt) || 0);
         const dTR = (capAct - cap) * num(p.qty, 1);
         const dkW = (kweAct - kwe) * num(p.qty, 1);
         if (dTR <= 0.3 && dkW <= 0.2) return;

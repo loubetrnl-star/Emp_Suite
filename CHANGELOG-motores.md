@@ -78,11 +78,12 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 | 7 | 2.9.24 | H-198: un tramo de agua sin diámetro verificado (fuera del catálogo del material, o PEAD sin SDR ni fuente) va «Por cotizar» con sus metros; ya no se cotiza con el precio del mayor diámetro ni se pide precio de un diámetro que no le corresponde. Proyecto fijo: sin cambio de cifras (cobre) |
 | 6 | 2.9.23 | referencias sólo de California y sólo material (mano de obra por capturar; combinados → Por cotizar); referencias IUSA retiradas; flete, aduana e importación como renglón propio siempre Por cotizar hasta capturarlo |
 
-## Ingeniería de valor (`valor`) · v1
+## Ingeniería de valor (`valor`) · v2
 
 | Versión | Rev | Hallazgo / cambio de lógica |
 |---|---|---|
 | 1 | 2.9.15 | lógica de partida |
+| 2 | 2.9.24 | H-286 (X-3, decisión del dueño D5, 28-sep-2026): `kwTRde` le pasaba el **nombre** del modelo a `corrKeyOf`, que espera la ficha: siempre resolvía split DX y el ahorro de kW de las alternativas de sistema (fuente a) valía 0. Ahora la eficiencia sale de la ficha de la planta o, sin planta, de sus terminales (`EFF_EST`, estimación por familia, con su fuente en la justificación); sin ficha no se compara consumo. En la fuente b, el equipo alterno sin `kWe` de catálogo usa la eficiencia de su familia (antes la de split DX). Caso de S.156 (agua helada contra VRF, split y rooftop, 24.8 TR de bloque): 0 → 4.96, 2.48 y 1.24 kW menos. Proyecto fijo (R.1): mismas cifras. Prueba S.156. |
 
 ## Kaizen (`kaizen`) · v1
 
