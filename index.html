@@ -1484,7 +1484,7 @@ function buildMemoriaPdf() {
   pdfDocHeaderMeta(d);
   pdfHeading(d, "2. Bases de diseño");
   pdfParagraph(d, `Metodo por hora: la carga de cada zona se calcula de las 8 a las 18 horas solares y se reporta la hora de mayor demanda, como lo hace HAP. El punto de rocio del aparato (ADP) se resuelve donde la recta del factor de calor sensible efectivo corta la curva de saturacion, de modo que la temperatura de suministro responde a la carga latente real en lugar de asumir un salto fijo.`);
-  pdfParagraph(d, `Exterior ${SITE.db} °C de bulbo seco y ${SITE.wb} °C de bulbo húmedo · interior ${P.T_IN_DB} °C con ${P.RH_IN * 100} % de humedad relativa · latitud ${P.LAT}° · mes de julio, ${S.peakScan === false ? `hora solar ${P.HOUR}` : `barrido de ${HOURS[0]} a ${HOURS[HOURS.length - 1]} h solares, se reporta la hora pico de cada zona`} · diversidad de edificio ${S.bldDiv}. Método Carrier HAP: DET por orientación con color b = ${P.COLOR_B}, factores de almacenamiento de tablas 7 a 13, aire exterior por el mayor entre ASHRAE 62.1 y tabla 45, y selección de aparato con factor de bypass ${HAP.BF}.`);
+  pdfParagraph(d, `Exterior ${SITE.db} °C de bulbo seco y ${SITE.wb} °C de bulbo húmedo · interior ${P.T_IN_DB} °C con ${P.RH_IN * 100} % de humedad relativa · latitud ${P.LAT}° · mes de julio, ${S.peakScan === false ? `hora solar ${P.HOUR}` : `barrido de ${HOURS[0]} a ${HOURS[HOURS.length - 1]} h solares, se reporta la hora pico de cada zona`} · la diversidad del edificio no entra a la zona: es de Selección de equipo (H-141, H-289). Método Carrier HAP: DET por orientación con color b = ${P.COLOR_B}, factores de almacenamiento de tablas 7 a 13, aire exterior por el mayor entre ASHRAE 62.1 y tabla 45, y selección de aparato con factor de bypass ${HAP.BF}.`);
   /* rev 2.9.23 · hallazgo (prueba de humo del dueño): el PDF no citaba la fuente climática del sitio (ASHRAE, estación, año); sólo la pantalla. */
   pdfParagraph(d, `Fuente climatica: ${SITE.src}${SITE.deshum && SITE.deshum.fuente && SITE.deshum.fuente !== SITE.src ? ` · punto de rocio: ${SITE.deshum.fuente}` : ""}`);
   /* H-11 · Las tablas horarias que son estimación propia se declaran en la
@@ -1834,10 +1834,9 @@ function buildCargaPdf() {
     ["Sitio", `${SITE.label} · ${SITE.db} °C BS / ${SITE.wb} °C BH · altitud ${SITE.alt} m (${n(SITE.pAtm, 1)} kPa) · rango diario ${dailyRangeOf()} K`],
     ["Condicion interior", `${P.T_IN_DB} °C con ${P.RH_IN * 100} % de humedad relativa`],
     ["Hora de diseno", S.peakScan === false ? `Barrido horario desactivado: carga calculada a las ${P.HOUR} h solares` : `Barrido de ${HOURS[0]} a ${HOURS[HOURS.length - 1]} h solares; se reporta la hora de mayor carga de cada zona (latitud ${P.LAT}°, julio)`],
-    ["Diversidad de edificio", n(num(S.bldDiv, 1), 2)],
   ]);
   if (S.peakScan !== false) pdfParagraph(d, `Metodo por hora: la carga de cada zona se calcula de las 8 a las 18 horas solares y se reporta la hora de mayor demanda, como lo hace HAP. El punto de rocio del aparato (ADP) se resuelve donde la recta del factor de calor sensible efectivo corta la curva de saturacion, de modo que la temperatura de suministro responde a la carga latente real en lugar de asumir un salto fijo.`);
-  pdfParagraph(d, `Exterior ${SITE.db} °C de bulbo seco y ${SITE.wb} °C de bulbo húmedo · interior ${P.T_IN_DB} °C con ${P.RH_IN * 100} % de humedad relativa · latitud ${P.LAT}° · mes de julio, ${S.peakScan === false ? `hora solar ${P.HOUR}` : `barrido de ${HOURS[0]} a ${HOURS[HOURS.length - 1]} h solares, se reporta la hora pico de cada zona`} · diversidad de edificio ${S.bldDiv}. Método Carrier HAP: DET por orientación con color b = ${P.COLOR_B}, factores de almacenamiento de tablas 7 a 13, aire exterior por el mayor entre ASHRAE 62.1 y tabla 45, y selección de aparato con factor de bypass ${HAP.BF}.`);
+  pdfParagraph(d, `Exterior ${SITE.db} °C de bulbo seco y ${SITE.wb} °C de bulbo húmedo · interior ${P.T_IN_DB} °C con ${P.RH_IN * 100} % de humedad relativa · latitud ${P.LAT}° · mes de julio, ${S.peakScan === false ? `hora solar ${P.HOUR}` : `barrido de ${HOURS[0]} a ${HOURS[HOURS.length - 1]} h solares, se reporta la hora pico de cada zona`} · la diversidad del edificio no entra a la zona: es de Selección de equipo (H-141, H-289). Método Carrier HAP: DET por orientación con color b = ${P.COLOR_B}, factores de almacenamiento de tablas 7 a 13, aire exterior por el mayor entre ASHRAE 62.1 y tabla 45, y selección de aparato con factor de bypass ${HAP.BF}.`);
   /* rev 2.9.23 · hallazgo (prueba de humo del dueño): el PDF no citaba la fuente climática del sitio (ASHRAE, estación, año); sólo la pantalla. */
   pdfParagraph(d, `Fuente climatica: ${SITE.src}${SITE.deshum && SITE.deshum.fuente && SITE.deshum.fuente !== SITE.src ? ` · punto de rocio: ${SITE.deshum.fuente}` : ""}`);
   pdfHeading(d, "2.1 Criterios de calculo");
@@ -1903,7 +1902,7 @@ function buildCargaPdf() {
       pdfRows(d, [
         ["Masa constructiva", `${n(r.weightFloor, 0)} kg/m2 de piso · clase ${MASA[r.mass] || r.mass} · ${r.run} h/dia`],
         ["Almacenamiento", `solar ${n(r.stor.solar, 2)} · luces ${n(r.stor.lights, 2)} · personas ${n(r.stor.people, 2)} · equipo ${n(r.stor.equip, 2)}`],
-        ["Diversidad", `personas ${r.div.people} · luces ${r.div.lights} · equipo ${r.div.equip} · edificio ${n(num(S.bldDiv, 1), 2)} solo en la planta (criterio Carrier, ratificar con texto; H-141)`],
+        ["Diversidad", `personas ${r.div.people} · luces ${r.div.lights} · equipo ${r.div.equip} · la del edificio va sólo en la planta y se captura en Seleccion de equipo (criterio Carrier, ratificar con texto; H-141, H-289)`],
         ["Estratificacion de luces", n(r.strat, 2)],
         ["Hora de calculo", `${r.hour}:00 solar`],
       ]);
@@ -3439,7 +3438,7 @@ function computeLoad(z, bldDiv, forceTech, hour = P.HOUR) {
   memo.push(`DET de muros y cubierta corregido por sitio ${corrDETsitio() >= 0 ? "+" : ""}${corrDETsitio().toFixed(2)} K = (25.6 − ${P.T_IN_DB}) + ((${SITE.db} − ${dailyRangeOf()}/2) − 29.4), corrección CLTD de ASHRAE Fundamentals 1997 cap. 28 (ratificar con Carrier Parte 1 Tabla 20A).`);
   memo.push(`Masa constructiva ${wFloor.toFixed(0)} kg/m² piso → clase ${mass.toUpperCase()} · ${run} h/día (Tab. 7–12).`);
   memo.push(`Almacenamiento: solar ${stor.solar.toFixed(2)} · luces ${stor.lights.toFixed(2)} · personas ${stor.people.toFixed(2)} · equipo ${stor.equip.toFixed(2)}${swing > 0 ? ` · swing ${swing} °C` : ""}.`);
-  memo.push(`Diversidad ${spaceOf(sp).label}: personas ${div.people} · luces ${div.lights} · equipo ${div.equip}. La diversidad del edificio (${n(Math.min(1, Math.max(.5, bldDiv || 1)), 2)}) NO entra en la zona: se aplica una sola vez, en el objetivo de planta (criterio Carrier, ratificar con texto; H-141).`);
+  memo.push(`Diversidad ${spaceOf(sp).label}: personas ${div.people} · luces ${div.lights} · equipo ${div.equip}. La diversidad del edificio NO entra en la zona: se aplica una sola vez, en el objetivo de planta, y se captura en Selección de equipo (criterio Carrier, ratificar con texto; H-141, H-289).`);
 
   let wallS = 0;
   for (const o of ORI) {
@@ -4487,7 +4486,7 @@ function buildSystem(force) {
     /* H-267: sin zonas de selección con la carga ya capturada, las vistas y la validación leen recomendado/esRecomendacion:
        declarados (contrato de selfCheck), no ausentes. */
     return { opts: [], chosen: vacio, recomendado: null, esRecomendacion: true, blockTons: 0, sumPeaks: 0, plantTarget: 0, nz: 0,
-      blockHour: P.HOUR, blockProfile: [], userDiv: S.bldDiv, haveProf: false,
+      blockHour: P.HOUR, blockProfile: [], userDiv: divSel(), haveProf: false,
       peaks: [], inWindow: 0, hourSpread: 0, diversity: 1, t: totalsSel([]) };
   }
   const t = totalsSel(Z);
@@ -4518,7 +4517,7 @@ function buildSystem(force) {
   const hourSpread = conHora.length ? Math.max(...conHora.map((p) => p.hour)) - Math.min(...conHora.map((p) => p.hour)) : 0;
   {
   }
-  const userDiv = Math.min(1, Math.max(.5, S.bldDiv || 1));
+  const userDiv = divSel();   /* H-289: capturada en Selección */
   const plantTarget = blockTons * userDiv * (1 + P.MARGIN);
   const shf = t.grand > 0 ? t.s / t.grand : .85;
   const opts = [];
@@ -11467,7 +11466,7 @@ function requisitoFam(famId) {
 function defaultState() { return {
   units: "SI", tab: "tablero",
   meta: { name: "Proyecto sin nombre", client: "", location: "Tijuana, B.C.", engineer: "", date: new Date().toISOString().slice(0, 10) },
-  zones: [defaultZone()], zi: 0, bldDiv: 1, forceTech: null, peakScan: true, perms: {},
+  zones: [defaultZone()], zi: 0, forceTech: null, peakScan: true, perms: {},
   /* rev 2.9.14 · formato 2: sellos de cálculo por motor (S.sellos[id] = { ts, huella }). */
   formato: 2, sellos: {},
   /* rev 2.7.0 · Interoperabilidad. `her` guarda, campo por campo, si sigue
@@ -11560,7 +11559,7 @@ let DIAG = null;
 const ZCACHE = new Map();
 function zoneKey(z) {
   return JSON.stringify(z) + "|" + S.site.key + "|" + S.site.db + "|" + S.site.wb + "|" + S.site.alt + "|" + S.site.range + "|" + S.site.dp + "|" + S.site.dpHR + "|" + S.site.dpDB + "|" + (S.site.dpFuente || "") +
-    "|" + S.bldDiv + "|" + S.forceTech + "|" + S.peakScan;
+    "|" + S.forceTech + "|" + S.peakScan;
 }
 /* rev 2.9.20 · DECISIÓN DEL DUEÑO: los cuartos con control de humedad (cuarto limpio o HR especificada) se diseñan con DOS casos
    de ASHRAE: enfriamiento (BS 0.4 % con BH coincidente) y deshumidificación (punto de rocío 0.4 % con su razón de humedad y su
@@ -11671,7 +11670,7 @@ function loadOf(z) {
   const k = zoneKey(z);
   const hit = ZCACHE.get(k);
   if (hit) return hit;
-  const calc = () => S.peakScan === false ? computeLoad(z, S.bldDiv, S.forceTech) : peakLoad(z, S.bldDiv, S.forceTech);
+  const calc = () => S.peakScan === false ? computeLoad(z, 1, S.forceTech) : peakLoad(z, 1, S.forceTech);   /* H-289: la diversidad del edificio no entra a la zona (H-141) */
   let r = calc();
   r.casos = null;
   if (requiereHR(z)) {
@@ -16713,9 +16712,7 @@ function viewProyecto() {
       ${inp("Cliente", "meta.client", "text")}
       ${inp("Ubicación", "meta.location", "text")}
       <div class="row">${inp("Ingeniero responsable", "meta.engineer", "text")}${inp("Fecha", "meta.date", "date")}</div>
-      <div class="field"><label>Diversidad de edificio (multi-zona)</label>
-        <input type="number" step="0.05" min="0.5" max="1" data-path="bldDiv" value="${S.bldDiv}" />
-        ${fieldHelp("bldDiv", { value: S.bldDiv })}${recChips("bldDiv", "bldDiv", S.bldDiv)}</div>
+      <div class="sub" style="margin:4px 0 10px">La diversidad del edificio se captura en Selección de equipo, la única disciplina que la usa (H-289).</div>
       <h4 style="font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:18px 0 8px">Condiciones de sitio</h4>
       ${sel("Localidad", "site.key", Object.entries(SITES).map(([k, v]) => [k, v.label]))}
       ${S.site.key === "custom" ? `<div class="row">${inp("Bulbo seco de verano (°C)", "site.db", "number", "0.5")}${inp("Bulbo húmedo (°C)", "site.wb", "number", "0.5")}</div>
@@ -16801,7 +16798,7 @@ const REF = {
   "zone.oaFixed": { ref: "Caudal de aire exterior fijado por otro cálculo.", rec: "Se usa para traspasar la reposición de cascada de un cuarto limpio. 0 lo deja calcularse: el mayor entre ASHRAE 62.1 y la tabla 45 por persona y por área (y la fracción mínima, si se capturó)." },
   "zone.oaFraction": { ref: "Fracción mínima de aire exterior sobre el suministro.", rec: "0.10–0.20 típico · 1.00 en DOAS",
     warn: (v) => v > .5 && v < 1 ? "Arriba de 50 % conviene evaluar recuperación de energía (90.1 §6.5.6.1)." : "" },
-  "bldDiv":       { ref: "Diversidad de edificio: no todas las zonas pican a la misma hora. Se aplica una sola vez, en el objetivo de planta; las zonas y terminales van al pico (criterio Carrier, ratificar con texto; H-141).", rec: "0.85–0.95 con orientaciones y horarios distintos · 1.00 sin crédito",
+  "bldDiv":       { ref: "Diversidad de edificio: no todas las zonas pican a la misma hora. Se aplica una sola vez, en el objetivo de planta; las zonas y terminales van al pico (criterio Carrier, ratificar con texto; H-141). Se captura en Selección de equipo (H-289).", rec: "0.85–0.95 con orientaciones y horarios distintos · 1.00 sin crédito",
     warn: (v) => v < .75 ? "Abajo de 0.75 hay que justificarlo con perfiles horarios reales." : "" },
   "clean.iso":    { ref: "ISO 14644-1 · equivalencia GMP anexo 1.", rec: "ISO 7 sala de ensamble · ISO 8 corredor y empaque." },
   "clean.level":  { ref: "Rango de cambios de aire por clase (práctica ISO/GMP).", rec: "Medio salvo que el proceso exija recuperación rápida." },
@@ -17348,7 +17345,7 @@ function sysCardHtml() {
     ${y.haveProf && y.nz > 1 ? `<div class="viz-t">Perfil del edificio · el bloque pica a las ${y.blockHour}:00</div>
       ${chartProfile(y.blockProfile.map((p) => ({ hour: p.hour, kW: p.tons, tons: p.tons })), y.blockHour)}
       <div class="ref" style="margin:6px 0 12px">La curva es la suma de todas las zonas hora por hora. Su máximo (${n(y.blockTons, 1)} TR) es lo que debe cubrir la planta; la suma de picos individuales (${n(y.sumPeaks, 1)} TR) sobredimensionaría ${n((y.sumPeaks / Math.max(.01, y.blockTons) - 1) * 100, 0)} %.</div>` : ""}
-    ${S.bldDiv < 1 ? `<div class="hint" style="margin-bottom:12px">Además del ${n(y.diversity * 100, 0)} % de diversidad que ya salió del barrido horario, estás aplicando un factor manual de <b>${S.bldDiv}</b>. Los dos se multiplican: asegúrate de no descontar dos veces lo mismo.</div>` : ""}
+    ${divSel() < 1 ? `<div class="hint" style="margin-bottom:12px">Además del ${n(y.diversity * 100, 0)} % de diversidad que ya salió del barrido horario, estás aplicando un factor manual de <b>${n(divSel(), 2)}</b> (capturado en Selección). Los dos se multiplican: asegúrate de no descontar dos veces lo mismo.</div>` : ""}
     <div class="seg" style="margin-bottom:12px">
       ${y.opts.map((o) => `<button class="segbtn ${o.id === c.id ? "on" : ""}" data-act="sys-tech" data-id="${o.id}">${esc(o.label)} <span class="fit">${o.score}</span></button>`).join("")}
     </div>
@@ -17464,7 +17461,7 @@ const MUDA = {
 function simZone(z, cambios) {
   const copia = JSON.parse(JSON.stringify(z));
   Object.assign(copia, cambios);
-  return S.peakScan === false ? computeLoad(copia, S.bldDiv, S.forceTech) : peakLoad(copia, S.bldDiv, S.forceTech);
+  return S.peakScan === false ? computeLoad(copia, 1, S.forceTech) : peakLoad(copia, 1, S.forceTech);
 }
 
 /* Memoria de Kaizen: firma del proyecto y de los permisos que lo alimentan. */
@@ -17481,7 +17478,7 @@ function kaizenLazy() {
        invalidaba cuando cambiaba la capacidad instalada sin cambiar de
        arquitectura: podía mostrar un Kaizen viejo tras aceptar otro sistema
        del mismo tipo con distinto tonelaje. */
-    "|" + S.site.key + "|" + S.bldDiv + "|" + (SYS && SYS.chosen ? SYS.chosen.key + "|" + num(SYS.chosen.instPlant) + "|" + num(SYS.chosen.instTerm) : "") +
+    "|" + S.site.key + "|" + divSel() + "|" + (SYS && SYS.chosen ? SYS.chosen.key + "|" + num(SYS.chosen.instPlant) + "|" + num(SYS.chosen.instTerm) : "") +
     /* H-267: el sistema integrado ya no sigue a las zonas de carga: sale de las zonas de selección (capturadas o aceptadas). Sin
        ellas en la firma, aceptar otra instantánea o editar una zona de selección con la misma capacidad instalada dejaba un Kaizen
        calculado con la carga de bloque anterior. */
@@ -17682,11 +17679,11 @@ function computeKaizen() {
        estaba muerto por construcción. Lo que de verdad es desperdicio es tener
        diversidad natural y no usarla, o usar un factor más conservador que la real. */
     if (SYS && SYS.sumPeaks > 0 && SYS.diversity < 0.92) {
-      const desaprovechada = num(S.bldDiv, 1) > SYS.diversity + 0.03;
+      const desaprovechada = divSel() > SYS.diversity + 0.03;
       if (desaprovechada) push({
-        muda: "inv", zona: "Planta", tipo: "capex", tr: (num(S.bldDiv, 1) - SYS.diversity) * SYS.sumPeaks,
+        muda: "inv", zona: "Planta", tipo: "capex", tr: (divSel() - SYS.diversity) * SYS.sumPeaks,
         titulo: "Hay diversidad real que el factor capturado no está usando",
-        ahora: `Diversidad natural ${n(SYS.diversity * 100, 0)} % (bloque ${n(SYS.blockTons, 1)} TR a las ${SYS.blockHour}:00 contra ${n(SYS.sumPeaks, 1)} TR de suma de picos), pero el factor capturado es ${n(num(S.bldDiv, 1) * 100, 0)} %`,
+        ahora: `Diversidad natural ${n(SYS.diversity * 100, 0)} % (bloque ${n(SYS.blockTons, 1)} TR a las ${SYS.blockHour}:00 contra ${n(SYS.sumPeaks, 1)} TR de suma de picos), pero el factor capturado en Selección es ${n(divSel() * 100, 0)} %`,
         cambio: "Las zonas no pican a la misma hora y el barrido ya lo demostró. Bajar el factor hasta la diversidad medida deja de comprar toneladas que nunca coinciden. Los terminales no se tocan: cada uno sigue con su propio pico.",
         esfuerzo: "bajo",
       });
@@ -17974,7 +17971,7 @@ function guardState(sink) {
   S.vent = contractProxy(S.vent, "S.vent", sink);
   S.meta = contractProxy(S.meta, "S.meta", sink);
   S.kaizen = contractProxy(S.kaizen, "S.kaizen", sink);
-  /* También la raíz: ahí viven bldDiv, peakScan, site, units y demás escalares.
+  /* También la raíz: ahí viven peakScan, site, units y demás escalares.
      Sin esto se escapaba S.diversidad, que es exactamente el error que se busca. */
   S_REAL = S;
   S = contractProxy(S, "S", sink, 3);
@@ -18440,7 +18437,7 @@ function computeSoporteGobernado(G) {
    (criterio de las familias terminales) y su nombre. Sin perfil horario (zona
    capturada a mano) la simultaneidad por hora queda pendiente: no se inventa.
    ========================================================================= */
-function defaultEquip() { return { zonas: [], tomarDeCarga: null, espCaptura: null, sitio: null, tomarSitio: null }; }
+function defaultEquip() { return { zonas: [], tomarDeCarga: null, espCaptura: null, sitio: null, tomarSitio: null, div: null }; }
 /* H-274 (decisión del dueño, 28-sep-2026): Selección no tiene ningún vínculo con Ductos, ni lectura en vivo ni propuesta
    aceptada, en ninguna dirección. La presión estática externa que debe vencer el equipo (in.wg) se captura aquí; sin captura,
    o con un valor que no sea positivo, vale 0 y queda pendiente: el criterio de presión no se evalúa y no se supone. */
@@ -18458,6 +18455,9 @@ function sitioSel() {
     pAtm: pAtmOf(Math.max(0, alt)), origen: String(s.origen || "capturado en Selección"), ts: num(s.ts, 0) || null };
 }
 /* Lo que del sitio entra al cálculo (la huella): sin nombre, origen ni fecha, que no cambian la capacidad. */
+/* H-289 (D1, decisión del dueño 28-sep-2026: cada pestaña el suyo): la diversidad del edificio es de Selección —es la única que la
+   usa, una sola vez, en el objetivo de planta (H-141)— y se captura en su pestaña. Vacía o fuera de 0.5–1: no se aplica (1.00). */
+function divSel() { const v = numONulo(S.equip && S.equip.div); return v == null || !(v > 0) ? 1 : Math.min(1, Math.max(.5, v)); }
 function sitioSelHuella() { const s = sitioSel(); return s ? [s.db, s.wb, s.alt] : null; }
 /* El sitio de Proyecto como lo propone a Selección: sólo lo que la corrección usa. */
 function sitioProyectoEquip() { const b = siteOf(S.site); return { key: b.key, label: b.label, db: b.db, wb: b.wb, alt: b.alt }; }
@@ -18623,7 +18623,8 @@ function tarjetaZonasEquip() {
       <tbody>${filas}</tbody></table></div>`
       : `<div class="hint" style="margin-top:12px">Sin zonas de selección: acepta la propuesta de Carga térmica o captura aquí cada zona (TR, CFM, aire exterior, área, sensible, latente y hora pico).</div>`}
     <div class="row" style="margin-top:10px"><button class="btn-ghost" data-act="eqz-add">+ Zona capturada aquí</button></div>
-    <div class="sub" style="margin-top:8px">Diversidad de edificio ${n(num(S.bldDiv, 1), 2)} (Proyecto · datos del proyecto): se aplica una sola vez, en el objetivo de planta (H-141).</div>
+    <div class="row" style="margin-top:8px">${inp("Diversidad de edificio (multi-zona) · se captura aquí; vacía, no se aplica", "equip.div", "number", "0.05", "bldDiv", null, "bldDiv")}</div>
+    <div class="sub">Se aplica una sola vez, en el objetivo de planta (H-141); las zonas y los terminales van al pico. Hoy: ${divSel() < 1 ? n(divSel(), 2) : "no se aplica (1.00)"}.</div>
     ${pend.map((p) => `<div class="warnline">${esc(p)}</div>`).join("")}
   </div></div>`;
 }
@@ -19444,13 +19445,13 @@ const ENTRADAS = {
   /* H-263: la fecha de la instantánea del ventilador (miscVent.ts) no cambia el cálculo: fuera de la huella. Una zona sin
      ventilador (miscVent null, que sanearEstado agrega a los proyectos anteriores) pesa lo mismo que una sin el campo: así
      un proyecto sellado con la versión anterior no sale «la captura cambió» sin haber cambiado nada. */
-  load: () => ({ zones: (S.zones || []).map((z) => z && "origenOA" in z ? sinClaves(z, ["origenOA"]) : z).map((z) => !z || !("miscVent" in z) ? z : z.miscVent ? { ...z, miscVent: sinClaves(z.miscVent, ["ts"]) } : sinClaves(z, ["miscVent"])),   /* H-281: el origen del aire exterior no es captura */ site: S.site, bldDiv: S.bldDiv, forceTech: S.forceTech, peakScan: S.peakScan }),
+  load: () => ({ zones: (S.zones || []).map((z) => z && "origenOA" in z ? sinClaves(z, ["origenOA"]) : z).map((z) => !z || !("miscVent" in z) ? z : z.miscVent ? { ...z, miscVent: sinClaves(z.miscVent, ["ts"]) } : sinClaves(z, ["miscVent"])),   /* H-281: el origen del aire exterior no es captura */ site: S.site, forceTech: S.forceTech, peakScan: S.peakScan }),   /* H-289: sin la diversidad del edificio, que Carga no usa */
   clean: () => ({ rooms: cleanRooms() }),   /* H-283: el sitio de Proyecto no entra al cálculo de cuartos limpios: fuera de la huella */
   /* H-267: sólo lo que la selección calcula: sus zonas de selección (la instantánea aceptada va dentro, sin id, origen, fecha ni
      marca de edición, que no cambian el cálculo), la diversidad del edificio, el sitio (capacidad en sitio), la tecnología elegida,
      los modelos por familia y la presión estática externa capturada en esta pestaña (H-274: nada de Ductos). Ya no anida
      ENTRADAS.load(): la carga entra sólo al aceptar la propuesta load>equip. La marca de migración es pasajera: fuera. */
-  equip: () => ({ zonas: zonasSel().map((z) => sinClaves(z, ["id", "origen", "editada"])), bldDiv: S.bldDiv, sitio: sitioSelHuella(), sysForce: S.sysForce, sel: eSel(), esp: espCapturada() }),
+  equip: () => ({ zonas: zonasSel().map((z) => sinClaves(z, ["id", "origen", "editada"])), bldDiv: S.equip.div ?? null, sitio: sitioSelHuella(), sysForce: S.sysForce, sel: eSel(), esp: espCapturada() }),
   duct: () => ({ duct: S.duct }),   /* H-284: el sitio de Proyecto no entra al cálculo de ductos (rho, mu y rugosidad se capturan aquí): fuera de la huella */
   vent: () => ({ vent: sinClaves(S.vent, ["seleccion"]), site: S.site }),   /* H-263: la selección no la lee computeVent */
   hidro: () => ({ hidro: sinClaves(S.hidro, ["equipoHN"]) }),   /* H-285: el sitio de Proyecto no entra al cálculo hidráulico: fuera de la huella */
@@ -19533,6 +19534,7 @@ const motorVer = (id) => MOTOR_VER[id] || "1";
    cambió» (sería falso) sino lo que pasó: cambió la forma del sello y las cifras no. Calcular lo vuelve a sellar (decisión del
    dueño, 28-sep-2026: no hay re-sello solo). */
 const HUELLA_FORMA = {
+  load: { f: 2, que: "H-289: la huella ya no lleva la diversidad del edificio, que Carga térmica no usa (se captura en Selección)" },
   clean: { f: 2, que: "H-283: la huella ya no lleva el sitio de Proyecto, que Cuartos limpios no usa" },
   duct: { f: 2, que: "H-284: la huella ya no lleva el sitio de Proyecto, que Ductos no usa" },
   hidro: { f: 2, que: "H-285: la huella ya no lleva el sitio de Proyecto, que Hidráulica no usa" },
@@ -24321,6 +24323,9 @@ function sanearEstado(d) {
   /* H-288: un proyecto guardado antes corregía la capacidad con el sitio de Proyecto (en vivo): toma UNA vez la copia al abrir
      (recompute consume la marca), con las mismas cifras y marcada como migración. */
   s.equip.tomarSitio = !equipPrevio || !("sitio" in equipPrevio) || equipPrevio.tomarSitio === true ? true : null;
+  /* H-289: la diversidad del edificio que el proyecto guardó en Proyecto (bldDiv) pasa a Selección con la misma cifra. */
+  if (!equipPrevio || !("div" in equipPrevio)) s.equip.div = d && "bldDiv" in d ? numONulo(d.bldDiv) : null;
+  delete s.bldDiv;
   /* H-179 (rev 2.9.24): un proyecto guardado antes trae como dato los valores por omisión viejos (distancia al tablero 30 m,
      transformador 150 kVA, Z 4 %) y las distancias automáticas de las cargas aceptadas de otros motores (distancia al tablero
      + 10 a 30 m). Se conservan (no se mueve ningún número) pero se marcan «sin confirmar» con el valor que traían; la marca
@@ -24818,7 +24823,7 @@ function projDup(id) {
     /* La ubicación es la dirección de la otra obra: no viaja. El clima de
        diseño (site) sí, porque es dato técnico. */
     meta: { ...base.meta, name: "Proyecto nuevo desde plantilla", engineer: keepEng || "" },
-    site: t.site, zones: t.zones, bldDiv: t.bldDiv, peakScan: t.peakScan,
+    site: t.site, zones: t.zones, equip: { ...defaultEquip(), div: t.equip && t.equip.div != null ? t.equip.div : null }, peakScan: t.peakScan,
     clean: t.clean, vent: t.vent, duct: t.duct, elec: t.elec, hidro: t.hidro, fuego: t.fuego,
     aire: t.aire, civil: t.civil, soporte: { ...t.soporte },
   });
@@ -24895,7 +24900,7 @@ function anonimizarRegistro(p, k) {
   const limpio = etiquetasGenericas({
     ...base,
     meta: { ...base.meta, name: `Referencia interna ${k}`, client: "", location: "", engineer: "", date: (d.meta && d.meta.date) || base.meta.date },
-    units: d.units, site: d.site, zones: d.zones, bldDiv: d.bldDiv, peakScan: d.peakScan,
+    units: d.units, site: d.site, zones: d.zones, equip: { ...defaultEquip(), div: d.equip && d.equip.div != null ? d.equip.div : null }, peakScan: d.peakScan,
     clean: d.clean, vent: d.vent, duct: d.duct, elec: d.elec, hidro: d.hidro, fuego: d.fuego,
     aire: d.aire, civil: d.civil, soporte: { ...d.soporte },
     quote: cotizacionTecnica(d.quote),

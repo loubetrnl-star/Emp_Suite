@@ -94,5 +94,21 @@
   "buscar": "sitio: sitioSelHuella(), sysForce: S.sysForce,",
   "reemplazar": "sitio: sitioSelHuella(), site: S.site, sysForce: S.sysForce,",
   "estado": "vigente"
+ },
+ {
+  "id": "equip.m13",
+  "que": "H-289: el objetivo de planta vuelve a ignorar la diversidad capturada en Selección",
+  "logica": true,
+  "buscar": "  const userDiv = divSel();   /* H-289: capturada en Selección */",
+  "reemplazar": "  const userDiv = 1;",
+  "estado": "vigente"
+ },
+ {
+  "id": "equip.m14",
+  "que": "H-289: un proyecto guardado pierde su diversidad del edificio al abrir (cambia el objetivo de planta)",
+  "logica": true,
+  "buscar": "  if (!equipPrevio || !(\"div\" in equipPrevio)) s.equip.div = d && \"bldDiv\" in d ? numONulo(d.bldDiv) : null;",
+  "reemplazar": "  if (!equipPrevio || !(\"div\" in equipPrevio)) s.equip.div = null;",
+  "estado": "vigente"
  }
 ]

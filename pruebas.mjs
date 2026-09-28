@@ -7010,7 +7010,7 @@ t("S.138 (H-281) la reposición de los cuartos limpios entra a carga térmica s�
 t("S.69 (H-141, decisión (a) del dueño) la diversidad del edificio se aplica UNA sola vez, en la planta: las ganancias internas y el pico de cada zona no la llevan; el objetivo de planta sí (×0.8), y la memoria lo declara como criterio Carrier por ratificar", () => {
   const guardado = JSON.stringify(S);
   const pdfTxt = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");
-  const armar = (bldDiv) => { G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.69"; S.zones = [{ ...G("defaultZone")("Oficina"), area: 100, height: 3, occ: 10, lights: 1000, equip: 500, spaceType: "office" }]; S.bldDiv = bldDiv; S.peakScan = false; G("recompute")(); aceptarEquip(); if (!(G("SYS").plantTarget > 0)) throw new Error("el caso no aísla lo que se quiere probar: la planta debe tener objetivo (H-267: selección aceptada)"); return { L: G("LOADS")[0], Y: G("SYS") }; };
+  const armar = (bldDiv) => { G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.69"; S.zones = [{ ...G("defaultZone")("Oficina"), area: 100, height: 3, occ: 10, lights: 1000, equip: 500, spaceType: "office" }]; S.equip.div = bldDiv; S.peakScan = false; G("recompute")(); aceptarEquip(); if (!(G("SYS").plantTarget > 0)) throw new Error("el caso no aísla lo que se quiere probar: la planta debe tener objetivo (H-267: selección aceptada)"); return { L: G("LOADS")[0], Y: G("SYS") }; };
   const linea = (L, k) => L.lines.find((l) => l.label === k);
   try {
     const uno = armar(1), ocho = armar(0.8);
@@ -9120,6 +9120,32 @@ t("S.168 (H-285) el sitio de Proyecto no marca Hidráulica: su cálculo no lo us
     eq(G("selloDe")("hidro").estado, "calculado", "el sello sigue calculado al cambiar el sitio de Proyecto:");
     S.sellos = { hidro: { ts: 5, huella: "0123456789abcd", ver: G("motorVer")("hidro") } };
     contiene(G("selloDe")("hidro").texto, "cambió la forma del sello", "un sello anterior dice qué cambió:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+t("S.169 (H-289) la diversidad del edificio se captura en Selección (decisión del dueño D1, 28-sep-2026: cada pestaña el suyo): Proyecto ya no la pide; la casilla de Selección gobierna el objetivo de planta; Carga térmica no la usa ni la imprime; un proyecto guardado abre con la misma diversidad y las mismas cifras", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.169";
+    S.zones = [{ ...G("defaultZone")("Nave"), area: 400, height: 6, occ: 30, lights: 8000, equip: 12000 }, { ...G("defaultZone")("Oficina"), area: 100, height: 3, occ: 10, lights: 1500, equip: 2000 }];
+    G("recompute")(); aceptarEquip();
+    const t0 = G("SYS").plantTarget, cargas0 = JSON.stringify(G("LOADS").map((r) => [r.tons, r.grand, r.memo]));
+    if (!(t0 > 0)) throw new Error("el caso no aísla lo que se quiere probar: la planta debe tener objetivo");
+    S.tab = "proyecto"; G("render")();
+    if (w.document.querySelector('#view [data-path="bldDiv"]')) throw new Error("la pestaña de Proyecto sigue pidiendo la diversidad del edificio");
+    S.tab = "seleccion"; G("render")();
+    const casilla = w.document.querySelector('#view input[data-path="equip.div"]');
+    if (!casilla) throw new Error("la pestaña de Selección no tiene la casilla de la diversidad del edificio");
+    casilla.value = "0.8"; casilla.dispatchEvent(new w.Event("input", { bubbles: true })); G("recompute")();
+    eq(S.equip.div, 0.8, "la casilla captura la diversidad:");
+    cerca(G("SYS").plantTarget, t0 * 0.8, 1e-9, "y gobierna el objetivo de planta, una sola vez:");
+    eq(JSON.stringify(G("LOADS").map((r) => [r.tons, r.grand, r.memo])), cargas0, "Carga térmica no la usa ni la imprime en su memoria:");
+    if (/Diversidad de edificio/.test(textoPdf(G("buildCargaPdf")()))) throw new Error("la memoria de carga imprime la diversidad del edificio, que es de Selección");
+    const t1 = G("SYS").plantTarget;
+    const viejo = JSON.parse(JSON.stringify(S)); viejo.bldDiv = 0.8; delete viejo.equip.div;
+    G("importarRespaldo")(JSON.stringify(viejo)); G("recompute")();
+    eq(S.equip.div, 0.8, "un proyecto guardado abre con su diversidad en Selección:");
+    cerca(G("SYS").plantTarget, t1, 1e-9, "y con las mismas cifras:");
+    eq(S.bldDiv, undefined, "sin el dato viejo en Proyecto:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {
