@@ -7,8 +7,8 @@ exacto (§2). Manda sobre `PAUSA.md`, `RELEVO.md` y las versiones anteriores de 
 - Repositorio `github.com/loubetrnl-star/emp_suite`, rama de trabajo **`claude/focused-euler-f9knvw`** (todo en origen; `master`
   sigue en `801a326`). Se integra en serie en esta rama, con los dos bancos en verde antes de cada commit.
 - Bancos al corte (después de H-288): ver el último commit (`git log -1`); los dos deben estar en verde.
-- `MOTOR_VER`: load 6 · clean 3 · **equip 4** · duct 4 · vent 4 · quote 24 · **valor 2** · kaizen 1 · elec 9 · hidro 8 ·
-  **fuego 6** · aire 5 · **civil 8** · **soporte 13**.
+- `MOTOR_VER`: **load 7** · clean 3 · **equip 4** · duct 4 · vent 4 · quote 24 · **valor 2** · kaizen 1 · elec 9 · hidro 8 ·
+  **fuego 6** · aire 5 · **civil 8** · **soporte 13**. Sellos con forma de huella (`HUELLA_FORMA`: load, clean, duct, hidro, vent, fuego = 2).
 - **Dos flujos en segundo plano** (worktrees preparados, `node_modules` enlazado, respaldo copiado; NO hacen push):
   - **H-278 · cotización** — `/home/user/wt-quote`, rama `claude/h278-quote` sobre `236edcd`; guion
     `continuacion/flujos/15-h278-quote.js` (trae la nota RETOMA: el trabajo a medias está SIN COMMIT en el worktree).
@@ -28,15 +28,13 @@ exacto (§2). Manda sobre `PAUSA.md`, `RELEVO.md` y las versiones anteriores de 
    `ENTRADAS`, `PROPUESTAS` y pruebas S.36/R.1. Kaizen: su instantánea `load>kaizen` toma el sitio con `siteOf(S.site)`; cuando
    Carga térmica tenga sitio propio (D1) debe tomar el de Carga.
 3. Primer plano, en este orden:
-   - **H-289 · equip** — la diversidad del edificio pasa de `S.bldDiv` (Proyecto) a Selección (`S.equip.div`), con migración
-     (misma cifra) y sin propuesta (sólo la usa Selección). Hacerlo DESPUÉS de integrar Kaizen (hoy Kaizen lee `S.bldDiv`).
-     Quitar también la mención de la diversidad en la memoria de carga (no entra al cálculo desde H-141).
-   - **H-290 · load** — sitio propio de Carga térmica (D1): captura en su pestaña o propuesta `proyecto>load` (copia con fecha);
-     sin sitio, «pendiente». Muchas pruebas arman proyectos nuevos: ayudante que acepte el sitio como el usuario.
+   - HECHOS: H-289 (diversidad en Selección, `59534c4`; Kaizen lee `divSel()` como dependencia) y H-290 (sitio propio de Carga,
+     `1d57c11`; `SITE` = sitio de Carga, `SITE_PROY` = el de Proyecto para aire, Valor, documentos y tablero). Al integrar Kaizen
+     (H-279): su instantánea `load>kaizen` debe tomar el sitio de Carga (`S.sitioCarga`/`SITE`), no `S.site`, y la diversidad de
+     `divSel()`.
    - **H-282 · aire** — presión atmosférica propia (D1), después de integrar la cotización (la cotización lee tanque y red).
    - **H-280 · valor** — después de H-279 (D2 instantáneas; D3 semillas).
-   - **H-283–H-285** — huellas sin sitio (clean, duct, hidro). Re-sello: el dueño decidió que «Calcular» re-sella; ojo, el aviso
-     dice «la captura cambió» cuando sólo cambió la forma de la huella: proponer texto o versión antes.
+   - HECHOS: H-283–H-285, H-291 (vent) y H-292 (fuego): huellas sin sitio, con el aviso honesto de forma de sello (`HUELLA_FORMA`).
 4. **Pregunta abierta al dueño** (no tocar hasta que conteste): la propuesta `motores>soporte` trae los metros de ducto desde
    Ductos (además de hidráulica, incendio y aire). Su regla: «las propuestas hacia Eléctrico, Soportería y Selección se mantienen,
    siempre que ninguna venga de Ductos». ¿Se quitan de esa propuesta los metros de ducto (Soportería los captura a mano) o se queda?
@@ -54,12 +52,16 @@ exacto (§2). Manda sobre `PAUSA.md`, `RELEVO.md` y las versiones anteriores de 
 | `ce3f856` | **H-286 · valor** (X-3, D5): kW/TR de cada sistema alterno por su tecnología (valor 2) |
 | `4832cb4` | **H-287 · load** (X-1): materiales faltantes se limpian en cada corrida |
 | `d6aad4a` | Fusión de los complementos de H-266 (soportería 13; U8 y U10 corregidos por el flujo) |
-| (siguiente) | **H-288 · equip** (D1): sitio de diseño propio de Selección, `proyecto>equip` (equip 4) |
+| `c7056d2` | **H-288 · equip** (D1): sitio de diseño propio de Selección, `proyecto>equip` (equip 4) |
+| `e7759ae`, `1abfd81`, `6fda7de`, `b7def7f`, `d3ed9e6` | **H-283/H-284/H-285/H-291/H-292**: el sitio sale de las huellas de clean, duct, hidro, vent y fuego (no lo usan); sello de forma anterior honesto |
+| `59534c4` (+`aee4ac0`) | **H-289 · equip**: diversidad del edificio capturada en Selección |
+| `1d57c11` | **H-290 · load** (D1): sitio de diseño propio de Carga térmica, `proyecto>load` (load 7); sin sitio, pendiente |
 
 - IDs de prueba usados: S.126–S.128 (H-274), S.130–S.137 (soporte), S.138 (H-281), S.144–S.146, S.156 (H-286), S.157 (H-287),
-  S.158 (H-288). Reservados: S.139–S.143 (H-278, flujo), S.159–S.165 (H-279, flujo). Libres: S.166 en adelante.
-- Números H usados hoy: H-286 (X-3), H-287 (X-1), H-288 (sitio de Selección). Propuestos: H-289 (diversidad a Selección), H-290
-  (sitio de Carga). X-2 se cierra con H-280; X-4 va con H-219.
+  S.158 (H-288), S.166–S.171 (H-283–H-285, H-291, H-292), S.169 (H-289), S.172 (H-290). Reservados: S.139–S.143 (H-278, flujo),
+  S.159–S.165 (H-279, flujo). Libres: S.173 en adelante.
+- Números H usados hoy: H-286 (X-3), H-287 (X-1), H-288 (sitio de Selección), H-289 (diversidad), H-290 (sitio de Carga), H-291
+  (vent), H-292 (fuego). Libre: H-293 en adelante. X-2 se cierra con H-280; X-4 va con H-219.
 
 ## 4. Decisiones del dueño vigentes (28-sep-2026)
 - **Regla de arquitectura:** cada motor es independiente; no se comparten estado, funciones ni resultados y no se crean
