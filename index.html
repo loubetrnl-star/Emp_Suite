@@ -4384,37 +4384,34 @@ const LINKS = {
     why: "Es la verificación cruzada que detecta que los ductos quedaron dimensionados para otra corrida.",
     cost: "Si lo niegas, cada motor se valida solo y nadie avisa si los ductos y la carga dejaron de coincidir.",
   },
-  /* H-67 (decisión del dueño, 15-sep-2026): soportería y obra civil ya leían
-     ductos/hidráulico/incendio/aire/limpios/carga directo, sin pasar por
-     linkAllowed — el único candado era el interruptor interno usarMotores, que
-     no es un permiso auditable como los demás. Entran al sistema de cruces
-     igual que el resto, PERO con una salvaguarda distinta: negar el permiso
-     NUNCA pone la cantidad en cero (un proyecto en trámite sigue necesitando
-     los mismos soportes/m² reales), solo marca la partida "pendiente de
-     autorización" en los avisos — ver computeSoporte/computeCivil. */
+  /* H-67 (15-sep-2026) metió estos cuatro cruces al sistema de permisos cuando soportería leía los motores en vivo. H-266 (decisión
+     del dueño, 27-sep-2026): soportería es autónoma y los metros de otros motores entran SÓLO al aceptar la propuesta
+     motores>soporte (instantánea con fecha), que concede los cuatro; ya no hay conteo en vivo ni aviso de permiso pendiente. Los
+     cruces quedan como registro de esa aceptación y sus textos dicen eso (revisión adversarial U14): autorizarlos aquí no mete
+     metros, y negarlos o revocarlos no cambia lo ya aceptado. */
   "duct>soporte": {
     from: "duct", to: "soporte",
-    what: "Metros y calibre de ducto por tramo, para contar soportes.",
-    why: "La soportería de ducto se cuenta por norma sobre lo que ductos ya dimensionó, no se estima.",
-    cost: "Si lo niegas, los soportes de ducto SÍ se siguen contando y cotizando —nunca se bajan a cero—, pero la sección G queda marcada pendiente de autorizar el cruce.",
+    what: "Metros, sección y calibre de ducto por tramo, para contar soportes. Entran a soportería sólo al aceptar su propuesta («Metros de ducto y tubería contados por los motores»), como instantánea con fecha.",
+    why: "Registra que se aceptó esa propuesta: aceptarla concede este cruce. Autorizarlo aquí no mete metros por sí solo; la soportería cuenta la instantánea aceptada o lo capturado a mano en su pestaña (H-266).",
+    cost: "Si lo niegas o lo revocas no cambia ninguna cifra: la soportería sigue con la instantánea aceptada (no se mueve sola) o con lo capturado a mano. Para dejar de usar la instantánea, «Capturo lo mío» en la tarjeta de la propuesta, en Soportería.",
   },
   "hidro>soporte": {
     from: "hidro", to: "soporte",
-    what: "Metros y diámetro de tubería hidrosanitaria por tramo.",
-    why: "Misma razón que duct>soporte, para la red de agua.",
-    cost: "Si lo niegas, esos soportes se siguen contando y cotizando, marcados pendientes de autorizar.",
+    what: "Metros, diámetro y material de tubería hidrosanitaria por tramo. Entran a soportería sólo al aceptar su propuesta («Metros de ducto y tubería contados por los motores»), como instantánea con fecha.",
+    why: "Registra que se aceptó esa propuesta, igual que duct>soporte: autorizarlo aquí no mete metros por sí solo (H-266).",
+    cost: "Si lo niegas o lo revocas no cambia ninguna cifra: sigue la instantánea aceptada o lo capturado a mano. Para dejar de usar la instantánea, «Capturo lo mío» en la tarjeta de la propuesta, en Soportería.",
   },
   "fuego>soporte": {
     from: "fuego", to: "soporte",
-    what: "Metros y diámetro del cabezal y el montante de la red contra incendio.",
-    why: "Misma razón que duct>soporte, para la red contra incendio.",
-    cost: "Si lo niegas, esos soportes se siguen contando y cotizando, marcados pendientes de autorizar.",
+    what: "Metros, diámetro y material del cabezal y el montante de la red contra incendio. Entran a soportería sólo al aceptar su propuesta («Metros de ducto y tubería contados por los motores»), como instantánea con fecha.",
+    why: "Registra que se aceptó esa propuesta, igual que duct>soporte: autorizarlo aquí no mete metros por sí solo (H-266).",
+    cost: "Si lo niegas o lo revocas no cambia ninguna cifra: sigue la instantánea aceptada o lo capturado a mano. Para dejar de usar la instantánea, «Capturo lo mío» en la tarjeta de la propuesta, en Soportería.",
   },
   "aire>soporte": {
     from: "aire", to: "soporte",
-    what: "Metros y diámetro de la red de aire comprimido por tramo.",
-    why: "Misma razón que duct>soporte, para la red de aire comprimido.",
-    cost: "Si lo niegas, esos soportes se siguen contando y cotizando, marcados pendientes de autorizar.",
+    what: "Metros, diámetro y material de la red de aire comprimido por tramo. Entran a soportería sólo al aceptar su propuesta («Metros de ducto y tubería contados por los motores»), como instantánea con fecha.",
+    why: "Registra que se aceptó esa propuesta, igual que duct>soporte: autorizarlo aquí no mete metros por sí solo (H-266).",
+    cost: "Si lo niegas o lo revocas no cambia ninguna cifra: sigue la instantánea aceptada o lo capturado a mano. Para dejar de usar la instantánea, «Capturo lo mío» en la tarjeta de la propuesta, en Soportería.",
   },
   /* H-265: los cruces load>civil y clean>civil se retiraron: obra civil captura sus áreas y sus cuartos clasificados. */
 };
@@ -8585,7 +8582,10 @@ function computeSoporte(Gc) {
     t.errores.forEach((e) => avisos.push({ lvl: "err", msg: `${t.descripcion || t.id}: ${e}` }));
     t.avisos.forEach((a) => { if (!infoVistos.has(a)) { infoVistos.add(a); avisos.push({ lvl: "info", msg: a }); } });
   });
-  if (nSoportes === 0) avisos.push({ lvl: "warn", msg: "No hay soportes que contar: no hay ductos ni tubería calculados en los motores, ni metros capturados a mano." });
+  /* H-266 (revisión adversarial U16): desde H-266 los metros de los motores no entran solos; el aviso ya no dice «no hay ductos ni
+     tubería calculados en los motores» (falso con tramos en Ductos sin aceptar). computeSoporteGobernado precisa si hay metros
+     en los motores sin aceptar. */
+  if (nSoportes === 0) avisos.push({ lvl: "warn", msg: Gc.usarMotores !== false && Gc.snap ? "No hay soportes que contar: la instantánea aceptada no trae metros de ducto ni de tubería." : "No hay soportes que contar: no hay metros capturados a mano en esta pestaña ni una propuesta de los motores aceptada (H-266)." });
   if (hTrab > 10 && !mesesPendiente && meses < 2) avisos.push({ lvl: "info", msg: `Trabajo a ${n(hTrab, 1)} m con solo ${meses} mes(es) de renta. Revisa el programa: a esa altura casi todo el montaje mecánico y eléctrico necesita plataforma.` });
 
   /* ---- Memoria ---- */
@@ -18315,6 +18315,10 @@ function origenesSnapSoporte(sn, en) {
 /* Soportería con instantánea: el motor de soportería no cambia, pero se le
    presentan los tramos que el usuario ACEPTÓ, no los que hay ahora. Así un
    cambio en ductos no mueve la soportería hasta que alguien lo decida. */
+/* H-266 (U16): la propuesta motores>soporte tiene algo que ofrecer (misma condición que su tarjeta: propuesta con captura real). */
+function propSoporteDisponible() {
+  return seguro(() => PROPUESTAS["motores>soporte"].disponible(), false) && REQUIERE_CAPTURA_PROP["motores>soporte"].some(capturaReal);
+}
 function computeSoporteGobernado(G) {
   const snap = G && G.snap && typeof G.snap === "object" && G.usarMotores !== false ? G.snap : null;
   /* H-266 (decisión del dueño, 27-sep-2026): sin instantánea aceptada, soportería cuenta sólo lo capturado a mano. Los metros de
@@ -18323,6 +18327,12 @@ function computeSoporteGobernado(G) {
   if (!snap) {
     const Rm = computeSoporte({ ...G, usarMotores: false });
     if (G && G.usarMotores !== false) Rm.avisos.unshift({ lvl: "warn", msg: "Soportería: los metros de ductos y tuberías de los otros motores entran sólo al aceptar su propuesta (instantánea); mientras, se cuenta lo capturado a mano (H-266)." });
+    /* H-266 (U16): sin soportes, distingue «hay metros en los motores sin aceptar» de «no hay nada». */
+    if (!(Rm.nSoportes > 0) && propSoporteDisponible()) {
+      const i = Rm.avisos.findIndex((a) => /^No hay soportes que contar/.test(a.msg));
+      const msg = "No hay soportes que contar: ductos, hidrosanitario, contra incendio o aire comprimido ya tienen metros, pero entran a soportería sólo al aceptar su propuesta (arriba, «Metros de ducto y tubería contados por los motores»: siguen sin aceptar); tampoco hay metros capturados a mano en esta pestaña (H-266).";
+      if (i >= 0) Rm.avisos[i] = { lvl: "warn", msg }; else Rm.avisos.push({ lvl: "warn", msg });
+    }
     return Rm;
   }
   const prev = [DUCT, HIDRO, FUEGO, AIRE, QUOTE, S.hidro, S.aire];
@@ -19196,8 +19206,11 @@ const MOTOR_ACC = {
     falta: () => (capturaReal("aire") ? "" : "Faltan puntos de consumo de aire") },
   civil: { donde: "Obra civil", archivo: "Obra-civil", memoria: () => buildCivilPdf(), cot: "civil",
     falta: () => (capturaReal("civil") && CIVIL && CIVIL.part && CIVIL.part.length ? "" : "Falta la geometría: área y altura") },
-  soporte: { donde: "Ductos y calibres o las tuberías", archivo: "Soporteria", memoria: () => buildSoportePdf(), cot: "soporte",
-    falta: () => (capturaReal("soporte") && SOPORTE.part && SOPORTE.part.length ? "" : "Faltan metros de ducto o tubería que soportar") },
+  /* H-266 (revisión adversarial U16): capturar en Ductos o en las tuberías ya no alimenta a soportería: se acepta su propuesta o se
+     capturan los metros aquí. Si los motores ya tienen metros sin aceptar, se dice. */
+  soporte: { donde: "Soportería: acepta la propuesta de los motores (arriba) o captura los metros a mano", archivo: "Soporteria", memoria: () => buildSoportePdf(), cot: "soporte",
+    falta: () => (capturaReal("soporte") && SOPORTE.part && SOPORTE.part.length ? ""
+      : (!S.soporte.snap && propSoporteDisponible() ? "Faltan metros que soportar: los motores ya tienen metros sin aceptar" : "Faltan metros de ducto o tubería que soportar")) },
   estr: { externo: "Estructural corre como archivo aparte (StructCalc v0.1.2): esta suite no lo calcula ni simula su resultado" },
 };
 /* Del identificador de pantalla al motor. El comparativo de zonas es una vista

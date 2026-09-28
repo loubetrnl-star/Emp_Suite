@@ -8070,6 +8070,38 @@ t("S.134 (H-266) la propuesta motores>soporte muestra los metros y Ø de la red 
   } finally { w.eval("clearTimeout(autoT)"); G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+/* ===== S.135 (H-266) textos de soportería que describían el conteo en vivo retirado ===== */
+t("S.135 (H-266) los textos de soportería describen lo que hoy hace: los permisos duct/hidro/fuego/aire → soportería son el registro de la propuesta aceptada (autorizarlos no mete metros; negarlos o revocarlos no cambia lo aceptado) y ya no prometen soportes «que se siguen contando, pendientes de autorizar»; la pestaña no manda a capturar en Ductos y calibres y, sin soportes, distingue «hay metros en los motores sin aceptar» de «no hay nada» (revisión adversarial U14 y U16)", () => {
+  const guardado = JSON.stringify(S);
+  const CRUCES = ["duct>soporte", "hidro>soporte", "fuego>soporte", "aire>soporte"];
+  try {
+    /* U14: el texto del permiso (pantalla de permisos, ventana y aviso al negar) ya no describe la conducta que H-266 quitó. */
+    CRUCES.forEach((k) => {
+      const Lk = G("LINKS")[k], txt = `${Lk.what} ${Lk.why} ${Lk.cost}`, modal = G("linkModal")(k);
+      if (/se siguen contando|pendiente[s]? de autorizar|nunca se bajan a cero/.test(txt) || /se siguen contando/.test(modal)) throw new Error(`${k}: describe el conteo en vivo retirado: ${Lk.cost}`);
+      if (!/propuesta/.test(txt) || !/instantánea/.test(txt) || !/Capturo lo mío/.test(Lk.cost)) throw new Error(`${k}: debe decir que los metros entran al aceptar la propuesta (instantánea) y cómo volver a lo capturado: ${txt}`);
+    });
+    /* La conducta que el texto describe: autorizar no mete metros; lo aceptado no baja al revocar (Q.7). */
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.135";
+    S.duct.segments = [{ ...G("defaultSegment")("TR-1", 3000), length: 20 }, { ...G("defaultSegment")("TR-2", 2000), length: 15 }];
+    CRUCES.forEach((k) => { S.perms[k] = { ts: 1, via: "S.135" }; }); G("recompute")();
+    eq(G("SOPORTE").mDucto, 0, "autorizar los cruces no mete metros:");
+    /* U16: sin soportes, con 35 m en Ductos sin aceptar: la pestaña no manda a capturar en Ductos y calibres y el aviso no dice
+       que no hay ductos calculados. */
+    const razon = G("accEstado")("soporte").calc.razon || "";
+    if (/Ductos y calibres o las tuberías/.test(razon) || !/acepta la propuesta/.test(razon)) throw new Error("la barra de acciones debe mandar a aceptar la propuesta o capturar aquí: " + razon);
+    if (!/sin aceptar/.test(razon)) throw new Error("la barra debe decir que hay metros en los motores sin aceptar: " + razon);
+    let av = G("SOPORTE").avisos.map((a) => a.msg).join(" | ");
+    if (/no hay ductos ni tubería calculados en los motores/.test(av)) throw new Error("el aviso dice que no hay ductos aunque los hay: " + av);
+    if (!/sin aceptar|al aceptar su propuesta/.test(av)) throw new Error("el aviso debe decir que hay metros en los motores sin aceptar: " + av);
+    /* Sin nada en los motores ni capturado: lo dice tal cual. */
+    S.duct.segments = []; G("recompute")();
+    av = G("SOPORTE").avisos.map((a) => a.msg).join(" | ");
+    if (!/No hay soportes que contar/.test(av) || /sin aceptar/.test(av)) throw new Error("sin nada, «no hay nada»: " + av);
+    if (/sin aceptar/.test(G("accEstado")("soporte").calc.razon || "")) throw new Error("sin nada en los motores la barra no habla de metros sin aceptar");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 /* ===== S.103 (H-268) eléctrico autónomo: las cargas de otros motores entran sólo como propuesta aceptada (instantánea) ===== */
 t("S.103 (H-268) eléctrico es autónomo: con permisos y tomarHVAC, sin aceptar la propuesta, la cédula, el ventilador, el compresor, las bombas y los FFU NO entran al cuadro (se retiró el modo en vivo); aceptar concede los cruces y deja una instantánea con fecha que no se mueve sola; un proyecto guardado en vivo migra al abrir con las mismas cifras (sólo con los cruces que tenía); el sello no cambia al reabrir (decisión del dueño, 27-sep-2026)", () => {
   const guardado = JSON.stringify(S);
