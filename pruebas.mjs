@@ -7873,6 +7873,23 @@ t("S.115 (H-265) obra civil: con «De las áreas de obra capturadas aquí» y la
     if (!G("CIVIL").avisos.some((a) => /No hay área/.test(a.msg))) throw new Error("falta el aviso de que no hay área");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
+t("S.116 (H-265) obra civil: un área de obra o un cuarto clasificado sin altura llega a la cotización como «pendiente de altura» (ES/EN), no desaparece de la propuesta sin aviso (regla 6)", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.116";
+    Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.116" }; });
+    S.civil = { ...G("defaultCivil")(), usarZonas: true,
+      areas: [{ id: "a1", nombre: "Nave", area: 400, altura: 6, perimetro: 80 }, { id: "a2", nombre: "Bodega", area: 100, altura: 0, perimetro: 40 }],
+      cuartos: [{ id: "k1", nombre: "Cuarto ISO 7", area: 60, altura: 0, perimetro: 32 }] };
+    G("recompute")();
+    if (!(G("CIVIL").total > 0)) throw new Error("el caso no aísla lo que se quiere probar: la nave con altura sí se cotiza");
+    const P = () => G("QUOTE").pendientes.filter((p) => p.mot === "civil");
+    if (!P().some((p) => /Bodega/.test(p.desc) && /pendiente de altura/.test(p.motivo) && /height pending/.test(p.motivoEn || "") && p.descEn)) throw new Error("el área de obra sin altura no llegó a pendientes de la cotización (ES/EN)");
+    if (!P().some((p) => /Cuarto ISO 7/.test(p.desc) && /pendiente de altura/.test(p.motivo) && /height pending/.test(p.motivoEn || "") && p.descEn)) throw new Error("el cuarto clasificado sin altura no llegó a pendientes de la cotización (ES/EN)");
+    S.civil.areas[1].altura = 3; S.civil.cuartos[0].altura = 3; G("recompute")();
+    if (P().some((p) => /pendiente de altura/.test(p.motivo))) throw new Error("con las alturas capturadas ya no queda pendiente de altura");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
 t("S.102 (H-266) soportería es autónoma: sin la instantánea aceptada no cuenta metros de otros motores (se retiró el conteo en vivo); aceptarla los cuantifica y ya no se mueven solos; alturas y bases se capturan; un proyecto anterior se migra al abrir con las mismas cifras (decisión del dueño, 27-sep-2026)", () => {
   const guardado = JSON.stringify(S);
   try {

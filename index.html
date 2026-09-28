@@ -7574,7 +7574,10 @@ function computeCivil(C) {
   memo.push("Las cantidades salen de las áreas de obra y de los cuartos clasificados capturados en esta pestaña (o de los totales a mano, si se eligió así). Obra civil es autónoma: no toma las zonas de carga térmica ni los cuartos limpios, y no se mueve si éstos cambian (H-265).");
 
   return { area, areaLimpia, areaNoLimpia, fracLimpia, muroM2, muroLimpio, muroNoLimpio,
-    alturaProm, mlMuroLimpio, mlCana, estimado, zonasCivil, cuartosCivil, cuartoEstimado, part, total, sisMuro: mL, sisPlafon: pf, sisPiso: ps, avisos, memo };
+    alturaProm, mlMuroLimpio, mlCana, estimado, zonasCivil, cuartosCivil, cuartoEstimado, part, total,
+    /* H-265 (complemento): lo que no se cuantifica por falta de altura, para que llegue a la cotización como pendiente. */
+    pendAltura: { areas: zonasCivil.filter((z) => z.area > 0 && !(z.h > 0)).map((z) => ({ name: z.name, area: z.area })),
+      cuartos: limpios.filter((c) => c.area > 0 && !(c.h > 0)).map((c) => ({ name: c.name, area: c.area })) }, sisMuro: mL, sisPlafon: pf, sisPiso: ps, avisos, memo };
 }
 
 /* =========================================================================
@@ -8878,6 +8881,15 @@ function computeQuote() {
     pendientes.push({ mot: "soporte", desc: "Renta de elevación", descEn: "Lift rental", motivo: "pendiente de altura de trabajo (sin captura no se supone, H-266)", motivoEn: "working height pending (not assumed without capture, H-266)" });
   else if (typeof SOPORTE !== "undefined" && SOPORTE && SOPORTE.mesesPendiente && (SOPORTE.part || []).length && linkAllowed("soporte>quote"))
     pendientes.push({ mot: "soporte", desc: `Renta de elevación (${SOPORTE.equipo ? SOPORTE.equipo.label.toLowerCase() : "equipo"}, altura de trabajo ${n(SOPORTE.hTrab, 1)} m)`, descEn: `Lift rental (${SOPORTE.equipo ? SOPORTE.equipo.labelEn.toLowerCase() : "equipment"}, working height ${n(SOPORTE.hTrab, 1)} m)`, motivo: "pendiente de meses de renta (sin captura no se suponen)", motivoEn: "rental months pending (not assumed without capture)" });
+  /* H-265 (complemento; dependencia de civil): un área de obra o un cuarto clasificado sin altura no se supone ni desaparece:
+     llega a la cotización y a la propuesta como pendiente (ES/EN). No mueve importes. */
+  if (verCiv && CIVIL && CIVIL.pendAltura) {
+    CIVIL.pendAltura.areas.forEach((z) => pendientes.push({ mot: "civil", desc: `Tabiquería del área de obra «${z.name}» (${n(z.area, 0)} m²)`, descEn: `Partition walls of work area «${z.name}» (${n(z.area, 0)} m²)`,
+      motivo: "pendiente de altura (sin captura no se supone, H-265)", motivoEn: "height pending (not assumed without capture, H-265)" }));
+    CIVIL.pendAltura.cuartos.forEach((c) => pendientes.push({ mot: "civil", desc: `Cuarto clasificado «${c.name}» (${n(c.area, 0)} m²): muro, plafón y piso de área clasificada y media caña`,
+      descEn: `Classified room «${c.name}» (${n(c.area, 0)} m²): classified-area wall, ceiling, floor and cove base`,
+      motivo: "pendiente de altura (sin captura no cuenta como área clasificada; no se supone, H-265)", motivoEn: "height pending (without it the room does not count as classified area; not assumed, H-265)" }));
+  }
   if (verCiv && CIVIL && CIVIL.total > 0) {
     CIVIL.part.forEach((p) => aux.push({ desc: p.desc, descEn: p.descEn, qty: p.qty, unit: p.unit, total: p.total, sec: "A", un: p.un, mot: "civil" }));
   }
