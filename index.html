@@ -1032,8 +1032,9 @@ function carrierSubmittal(e) {
 function filasDeFamilia(e) {
   const fam = famOfModel(e) || { id: "rtu" };
   const c = criterioDe(fam.id);
-  const cfm = caudalDe(e, fam.id), cap = capOf(e);
-  const sen = sensibleDe(e, fam.id);
+  const cfm = caudalDe(e, fam.id), cap = capFicha(e);
+  const sen = sensibleDe(e, fam.id, cap);
+  const SIN_SITIO_FICHA = "pendiente: sin sitio de diseño en Selección (la capacidad en sitio no se supone)";
   const f = [["Criterio de selección de la familia", `Rige ${c.manda}. ${c.nota}`]];
   /* Caudal de agua helada: Q = kW / (4.186 · ΔT). Con ΔT de 5.6 K, que es el
      7/12.8 °C habitual de la región. */
@@ -1041,7 +1042,7 @@ function filasDeFamilia(e) {
   switch (fam.id) {
     case "chiller": {
       const kw = cap * 3.517;
-      f.push(["Caudal de agua helada", `${n(lpsAgua(kw), 1)} L/s (${n(lpsAgua(kw) * 15.85, 0)} gpm) con ΔT de 5.6 K · 7 °C ida / 12.6 °C retorno`]);
+      f.push(["Caudal de agua helada", cap == null ? SIN_SITIO_FICHA : `${n(lpsAgua(kw), 1)} L/s (${n(lpsAgua(kw) * 15.85, 0)} gpm) con ΔT de 5.6 K · 7 °C ida / 12.6 °C retorno`]);
       f.push(["Caída de presión del evaporador", "Del orden de 40 a 70 kPa según paso de tubos: tomarla del reporte de selección"]);
       f.push(["Eficiencia", `EER estimado ${n(e.eer, 1)} · IPLV estimado ${n(e.iplv, 1)} · ${esAgua(e) ? "condensación por torre" : "condensación por aire"}`]);
       f.push(["Arranque y control", "Arrancador de estado sólido o VFD según línea · secuencia de planta y flujo mínimo del evaporador"]);
@@ -1050,7 +1051,7 @@ function filasDeFamilia(e) {
     case "ahu": {
       f.push(["Caudal de aire de diseño", `${n(cfm, 0)} CFM (${n(cfm * 1.699, 0)} m³/h)`]);
       f.push(["Presión estática externa disponible", `Hasta ${n(c.esp, 1)} in.wg con ventilador curvado adelante; de 4 a 8 in.wg con aerodinámico (Form 39M-13PD)`]);
-      f.push(["Capacidad sensible estimada", `${n(sen / 1000, 1)} kW con SHR nominal de familia ${c.shr} · ratificar con la selección del serpentín`]);
+      f.push(["Capacidad sensible estimada", sen == null ? SIN_SITIO_FICHA : `${n(sen / 1000, 1)} kW con SHR nominal de familia ${c.shr} · ratificar con la selección del serpentín`]);
       f.push(["Serpentín", "Agua helada o expansión directa · número de hileras y paso de aletas por selección"]);
       f.push(["Tren de filtros", "G4 de prefiltro más F8 en bolsa; HEPA H14 terminal cuando alimenta cuarto limpio"]);
       f.push(["Secciones", "Mezcla, filtros, serpentín, ventilador y plenum de descarga · acceso por ambos lados"]);
@@ -1059,11 +1060,11 @@ function filasDeFamilia(e) {
     case "fcu": case "vrf_in": {
       f.push(["Caudal de aire", `${n(cfm, 0)} CFM nominal`]);
       f.push(["Presión estática disponible", `${n(c.esp, 2)} in.wg: ${c.esp <= .3 ? "prácticamente sin ducto" : "admite ducto corto"}`]);
-      f.push(["Capacidad sensible estimada", `${n(sen / 1000, 1)} kW con SHR ${c.shr} · es la que baja la temperatura del cuarto`]);
+      f.push(["Capacidad sensible estimada", sen == null ? SIN_SITIO_FICHA : `${n(sen / 1000, 1)} kW con SHR ${c.shr} · es la que baja la temperatura del cuarto`]);
       if (fam.id === "fcu") {
         const kw = cap * 3.517;
         f.push(["Serpentín", "3 ó 4 hileras en 2 tubos; 3+1 en 4 tubos (ficha 42CT)"]);
-        f.push(["Caudal de agua", `${n(lpsAgua(kw), 2)} L/s con ΔT de 5.6 K`]);
+        f.push(["Caudal de agua", cap == null ? SIN_SITIO_FICHA : `${n(lpsAgua(kw), 2)} L/s con ΔT de 5.6 K`]);
       }
       f.push(["Drenaje de condensados", "Bomba de condensados integrada o pendiente mínima de 1 % a la bajada"]);
       break;
@@ -1071,7 +1072,7 @@ function filasDeFamilia(e) {
     case "rtu": {
       f.push(["Caudal de aire", `${n(cfm, 0)} CFM · el ventilador es del propio equipo`]);
       f.push(["Presión estática disponible", `Del orden de ${n(c.esp, 1)} in.wg según opción de motor (estándar, medio o alto)`]);
-      f.push(["Capacidad sensible estimada", `${n(sen / 1000, 1)} kW con SHR ${c.shr}`]);
+      f.push(["Capacidad sensible estimada", sen == null ? SIN_SITIO_FICHA : `${n(sen / 1000, 1)} kW con SHR ${c.shr}`]);
       f.push(["Aire exterior", "Economizador con compuerta modulante y sensor de entalpía cuando el clima lo justifica"]);
       f.push(["Montaje", "Curb de fábrica con aislamiento y sello; verificar capacidad estructural de la cubierta y separación a parapetos"]);
       break;
@@ -1080,7 +1081,7 @@ function filasDeFamilia(e) {
       f.push(["Caudal de aire", `${n(cfm, 0)} CFM nominal`]);
       f.push(["Presión estática disponible", c.esp > 0 ? `${n(c.esp, 2)} in.wg en la evaporadora ducteada` : "Sin ducto: descarga libre"]);
       f.push(["Tubería de refrigerante", "Longitud equivalente y desnivel máximos según Product Data; carga adicional por metro sobre la de fábrica"]);
-      f.push(["Capacidad sensible estimada", `${n(sen / 1000, 1)} kW con SHR ${c.shr}`]);
+      f.push(["Capacidad sensible estimada", sen == null ? SIN_SITIO_FICHA : `${n(sen / 1000, 1)} kW con SHR ${c.shr}`]);
       break;
     }
     case "vrf": {
@@ -1993,9 +1994,10 @@ function buildSeleccionPdf() {
   const y = SYS, c = y.chosen, d = PdfDoc("Memoria de seleccion de equipo");
   /* H-267: la memoria trabaja con las zonas de SELECCIÓN (capturadas o aceptadas de carga térmica, con su procedencia). */
   const vacio = !zonasSel().length || c.id === "none";
+  const sp = sitioSel(), sinAcento = (t) => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   const zn = (i) => (S.zones[i] && S.zones[i].name) || `Zona ${i + 1}`;
   const N = NORMAS.equip;
-  pdfTitle(d, "Memoria de seleccion de equipo", `${S.meta.name || "Proyecto"} · ${vacio ? "sin zonas capturadas" : c.label}`);
+  pdfTitle(d, "Memoria de seleccion de equipo", `${S.meta.name || "Proyecto"} · ${vacio ? (!zonasSel().length ? "sin zonas capturadas" : "sin sitio de diseno") : c.label}`);
   pdfHeading(d, "1. Datos del proyecto");
   pdfDocHeaderMeta(d);
   pdfHeading(d, "2. Bases de calculo");
@@ -2003,19 +2005,21 @@ function buildSeleccionPdf() {
     ["Metodo", "Catalogo Carrier"],
     ["Norma", N ? `${N.norma} · ${N.edicion}${N.extra ? " · " + N.extra : ""}` : "sin declarar"],
     ["Capacidad que se compara", "Capacidad EN SITIO, no la de placa: TR de placa por el factor de correccion por bulbo seco exterior, altitud y bulbo humedo de entrada. Es una correccion de primer orden y no sustituye la seleccion del fabricante."],
-    ["Sitio de diseno", `${SITE.label} · ${n(SITE.db, 1)} C bulbo seco · ${n(SITE.wb, 1)} C bulbo humedo · ${n(SITE.alt, 0)} m`],
+    ["Sitio de diseno (de Seleccion, H-288)", sp ? `${sinAcento(sp.label)} · ${n(sp.db, 1)} C bulbo seco · ${n(sp.wb, 1)} C bulbo humedo · ${n(sp.alt, 0)} m · ${sinAcento(sp.origen)}${sp.ts ? ` · ${fechaCorta(sp.ts)}` : ""}` : "pendiente: Seleccion no tiene sitio de diseno (se captura en su pestana o se acepta el de Proyecto como copia con fecha)"],
     ["Condicion interior", `${n(P.T_IN_DB, 1)} C · ${n(P.RH_IN * 100, 0)} % HR`],
     ["Margen de seleccion", `${n(P.MARGIN * 100, 0)} % sobre la carga, mas ${n(MARGEN_HAP * 100, 0)} % de margen de error HAP ya incluido en cada carga de zona`],
     ["Regla de eleccion de modelo", "Se prueban de 1 a N unidades iguales (hasta 3 en planta de agua helada, 6 en VRF, 3 terminales de agua helada, 6 de VRF y 2 en rooftop y split) y se elige el modelo mas chico cuya capacidad en sitio por unidad alcanza el 98 % de su parte del objetivo. Gana el arreglo de menor penalizacion: quedarse corto pesa mas que sobredimensionar y cada unidad adicional suma penalizacion. La preseleccion por zona acepta desde 95 % del objetivo."],
     ["Diversidad", `Planta sobre la carga de bloque (suma hora por hora de las zonas, no suma de picos); terminales sobre el pico de cada zona. Factor de diversidad del edificio capturado: ${n(y.userDiv, 2)}, aplicado UNA sola vez, en la planta (no en las zonas): criterio Carrier, ratificar con texto (H-141)`],
   ]);
   if (vacio) {
+    const sinZonas = !zonasSel().length;
     pdfHeading(d, "3. Resultado");
-    pdfParagraph(d, "[AVISO] Sin zonas de seleccion: acepta en Seleccion de equipo la propuesta de Carga termica (instantanea con fecha) o captura ahi las zonas.");
+    if (sinZonas) pdfParagraph(d, "[AVISO] Sin zonas de seleccion: acepta en Seleccion de equipo la propuesta de Carga termica (instantanea con fecha) o captura ahi las zonas.");
+    if (!sp) pdfParagraph(d, "[AVISO] Sin sitio de diseno en Seleccion: acepta ahi el sitio de Proyecto (copia con fecha) o captura bulbo seco, bulbo humedo coincidente y altitud. Sin el, la capacidad en sitio queda pendiente y no se selecciona equipo (H-288).");
     pdfHeading(d, "4. Alcance de este calculo");
-    pdfParagraph(d, "Sin zonas de seleccion no hay carga que dimensionar ni equipo que seleccionar. Este documento se emite en blanco para dejar constancia de los criterios y de la version del catalogo.");
+    pdfParagraph(d, `${sinZonas ? "Sin zonas de seleccion no hay carga que dimensionar" : "Sin sitio de diseno no hay capacidad en sitio que comparar"} ni equipo que seleccionar. Este documento se emite en blanco para dejar constancia de los criterios y de la version del catalogo.`);
     pdfFirmas(d);
-    pdfTrazabilidad(d, ["equip", "load"]);
+    pdfTrazabilidad(d, ["equip"]);
     return d.end();
   }
 
@@ -2085,18 +2089,18 @@ function buildSeleccionPdf() {
   if (c.sub) pdfParagraph(d, c.sub);
   if (c.plant.length) {
     pdfTable(d, ["Clave", "Equipo", "Cant", "TR placa c/u", "TR sitio c/u", "TR sitio tot", "Holgura", "Servicio"],
-      c.plant.map((p, i) => [`CH-${i + 1}`, `${p.model.model} (${p.model.productLine})`, String(p.qty), n(p.model.TR, 1), n(capOf(p.model), 1), n(p.installed, 1), `${n(p.over * 100, 0)} %`, p.role]),
+      c.plant.map((p, i) => [`CH-${i + 1}`, `${p.model.model} (${p.model.productLine})`, String(p.qty), n(p.model.TR, 1), n(capSel(p.model), 1), n(p.installed, 1), `${n(p.over * 100, 0)} %`, p.role]),
       [34, 128, 28, 44, 44, 44, 40, 78]);
     pdfParagraph(d, `Holgura = capacidad en sitio instalada contra el objetivo de planta de ${n(y.plantTarget, 1)} TR.`);
   } else if (c.sinPlanta) pdfParagraph(d, "[CRITICO] Sin modelo en la familia de planta que cubra el objetivo: seleccionar a mano.");
   if (c.groups.length) {
     pdfTable(d, ["Clave", "Equipo", "Cant", "TR placa c/u", "TR sitio c/u", "TR sitio tot", "Zonas"],
-      c.groups.map((g, i) => [`${c.plant.length ? "U" : "AC"}-${i + 1}`, `${g.model.model} (${g.model.productLine})`, String(g.qty), n(g.model.TR, 1), n(capOf(g.model), 1), n(g.qty * capOf(g.model), 1), g.zones.join(", ")]),
+      c.groups.map((g, i) => [`${c.plant.length ? "U" : "AC"}-${i + 1}`, `${g.model.model} (${g.model.productLine})`, String(g.qty), n(g.model.TR, 1), n(capSel(g.model), 1), n(g.qty * capSel(g.model), 1), g.zones.join(", ")]),
       [34, 128, 28, 44, 44, 44, 118]);
   }
   if (c.terms.length) {
     pdfTable(d, ["Zona", "TR pico", "Objetivo TR", "Terminal", "Cant", "TR sitio inst."],
-      c.terms.map((tm) => [tm.zone, n(tm.tons, 2), n(tm.need, 2), tm.model ? tm.model.model : "SIN MODELO EN LA FAMILIA", String(tm.qty), tm.model ? n(tm.qty * capOf(tm.model), 1) : "-"]),
+      c.terms.map((tm) => [tm.zone, n(tm.tons, 2), n(tm.need, 2), tm.model ? tm.model.model : "SIN MODELO EN LA FAMILIA", String(tm.qty), tm.model ? n(tm.qty * capSel(tm.model), 1) : "-"]),
       [110, 46, 56, 130, 30, 64]);
   }
   pdfRows(d, [
@@ -2116,7 +2120,7 @@ function buildSeleccionPdf() {
   if (c.notes.length) c.notes.forEach((m) => pdfParagraph(d, "· " + m));
   else pdfParagraph(d, "Sin notas de diseno.");
   const av = [];
-  const cw = capWarn();
+  const cw = capWarnSel();
   if (cw) av.push(["warn", cw]);
   (c.terms || []).filter((tm) => tm.sinModelo).forEach((tm) => av.push(["err", `${tm.zone}: sin modelo en la familia ${c.label}. Seleccionar a mano.`]));
   if (c.sinPlanta) av.push(["err", "La planta no tiene modelo en catalogo para el objetivo de carga."]);
@@ -3726,36 +3730,55 @@ function corrKeyOf(e) {
   }
   return ["DX_split", "paquete", "VRF", "PTAC", "AHU"].indexOf(e.tech) >= 0 ? e.tech : "DX_split";
 }
-/* El factor solo cambia cuando cambia el sitio: se memoriza por familia. */
-let CAP_CACHE = { key: null, map: {} };
-function capFactor(e) {
+/* El factor solo cambia cuando cambia el sitio: se memoriza por familia y por sitio.
+   H-288 (D1, decisión del dueño 28-sep-2026: cada pestaña con su sitio): la corrección es una sola fórmula, pero cada motor la
+   aplica con SU sitio: Carga térmica con el suyo (SITE, en la preselección por zona) y Selección de equipo con el suyo
+   (sitioSel(): capturado en su pestaña o aceptado de Proyecto como copia con fecha). Sin sitio no hay factor: la capacidad en
+   sitio queda pendiente (no se supone). */
+const CAP_CACHE = new Map();
+function capFactorEn(e, sitio) {
+  if (!e || !sitio) return null;
   const k = corrKeyOf(e);
-  const key = `${SITE.key}|${SITE.db}|${SITE.wb}|${SITE.alt}|${P.T_IN_DB}|${P.RH_IN}`;
-  if (CAP_CACHE.key !== key) CAP_CACHE = { key, map: {} };
-  if (CAP_CACHE.map[k] != null) return CAP_CACHE.map[k];
+  const key = `${sitio.key}|${sitio.db}|${sitio.wb}|${sitio.alt}|${P.T_IN_DB}|${P.RH_IN}`;
+  let memo = CAP_CACHE.get(key);
+  if (!memo) { if (CAP_CACHE.size > 16) CAP_CACHE.clear(); memo = {}; CAP_CACHE.set(key, memo); }
+  if (memo[k] != null) return memo[k];
   const c = CAP_CORR[k];
-  const ewb = wbFromW(P.T_IN_DB, wFromRh(P.T_IN_DB, P.RH_IN, SITE.pAtm), SITE.pAtm);
-  const f = (1 - c.db * (SITE.db - 35)) * (1 - c.alt * (Math.max(0, SITE.alt) / 1000)) * (1 + c.wb * (ewb - 19.4));
+  const pAtm = sitio.pAtm || pAtmOf(Math.max(0, sitio.alt));
+  const ewb = wbFromW(P.T_IN_DB, wFromRh(P.T_IN_DB, P.RH_IN, pAtm), pAtm);
+  const f = (1 - c.db * (sitio.db - 35)) * (1 - c.alt * (Math.max(0, sitio.alt) / 1000)) * (1 + c.wb * (ewb - 19.4));
   const v = Math.min(1.15, Math.max(.55, f));
-  CAP_CACHE.map[k] = v;
+  memo[k] = v;
   return v;
 }
-/* Capacidad que el modelo entrega EN ESTE SITIO. Es la cifra contra la que se
-   compara la carga; el TR de placa se sigue mostrando aparte en la cédula. */
-const capOf = (e) => (e ? e.TR * capFactor(e) : 0);
 /* Aviso duro: fuera de estas condiciones la corrección lineal ya no basta. */
-function capWarn() {
+function capWarnEn(sitio) {
+  if (!sitio) return "";
   const w = [];
-  if (SITE.db > 38) w.push(`bulbo seco de diseño ${SITE.db} °C`);
-  if (SITE.alt > 500) w.push(`altitud ${SITE.alt} m`);
+  if (sitio.db > 38) w.push(`bulbo seco de diseño ${sitio.db} °C`);
+  if (sitio.alt > 500) w.push(`altitud ${sitio.alt} m`);
   return w.length
     ? `CAPACIDAD DE CATÁLOGO CORREGIDA POR ${w.join(" y ")}: la selección usa capacidad de sitio, no nominal AHRI. Verificar contra la selección del fabricante antes de comprar.`
     : "";
 }
-const capNote = (e) => {
-  const f = capFactor(e);
-  return `${e.TR} TR de placa → ${(e.TR * f).toFixed(1)} TR en sitio (factor ${f.toFixed(3)}: ${SITE.db} °C BS · ${SITE.alt} m · ${CAP_CORR[corrKeyOf(e)].src}).`;
+const capNoteEn = (e, sitio) => {
+  const f = capFactorEn(e, sitio);
+  if (f == null) return `${e.TR} TR de placa · capacidad en sitio pendiente: sin sitio de diseño.`;
+  return `${e.TR} TR de placa → ${(e.TR * f).toFixed(1)} TR en sitio (factor ${f.toFixed(3)}: ${sitio.db} °C BS · ${sitio.alt} m · ${CAP_CORR[corrKeyOf(e)].src}).`;
 };
+/* Carga térmica (preselección por zona): con SU sitio. Capacidad que el modelo entrega EN ESTE SITIO: es la cifra contra la
+   que se compara la carga; el TR de placa se sigue mostrando aparte en la cédula. */
+function capFactor(e) { return capFactorEn(e, SITE); }
+const capOf = (e) => (e ? e.TR * capFactor(e) : 0);
+function capWarn() { return capWarnEn(SITE); }
+const capNote = (e) => capNoteEn(e, SITE);
+/* Selección de equipo: con SU sitio (H-288). Sin sitio, null: pendiente. */
+const capSel = (e) => { if (!e) return 0; const f = capFactorEn(e, sitioSel()); return f == null ? null : e.TR * f; };
+const capWarnSel = () => capWarnEn(sitioSel());
+const capNoteSel = (e) => capNoteEn(e, sitioSel());
+/* Fichas y submittals del catálogo: en la pestaña de Selección, con el sitio de Selección; fuera de ella, con el de Carga térmica. */
+const sitioFicha = () => (S.tab === "seleccion" ? sitioSel() : SITE);
+const capFicha = (e) => { if (!e) return 0; const f = capFactorEn(e, sitioFicha()); return f == null ? null : e.TR * f; };
 
 function pickEquipment(tons, cfm, area, shf, force) {
   const target = tons * (1 + P.MARGIN), scores = scoreTech(tons, area, shf);
@@ -3817,18 +3840,18 @@ function modularPick(pool, target, maxU = 4) {
   let best = null;
   for (let q = 1; q <= maxU; q++) {
     const per = target / q;
-    const m = [...pool].filter((e) => capOf(e) >= per * .98).sort((a, b) => capOf(a) - capOf(b))[0];
+    const m = [...pool].filter((e) => capSel(e) >= per * .98).sort((a, b) => capSel(a) - capSel(b))[0];
     if (!m) continue;
-    const installed = capOf(m) * q, over = installed / target - 1;
+    const installed = capSel(m) * q, over = installed / target - 1;
     // penaliza quedarse corto mucho más que sobredimensionar, y penaliza multiplicar equipos
     const cost = (over < 0 ? -over * 5 : over) + (q - 1) * .06;
     if (!best || cost < best.cost) best = { model: m, qty: q, installed, installedNom: m.TR * q, over, cost };
   }
   if (!best) {                                    // nada alcanza: repetir el mayor
-    const m = [...pool].sort((a, b) => capOf(b) - capOf(a))[0];
-    if (!m || !(capOf(m) > 0)) return { ...PICK_VACIO };
-    const qty = Math.max(1, Math.ceil(target / capOf(m)));
-    best = { model: m, qty, installed: capOf(m) * qty, installedNom: m.TR * qty, over: capOf(m) * qty / target - 1, cost: 0 };
+    const m = [...pool].sort((a, b) => capSel(b) - capSel(a))[0];
+    if (!m || !(capSel(m) > 0)) return { ...PICK_VACIO };
+    const qty = Math.max(1, Math.ceil(target / capSel(m)));
+    best = { model: m, qty, installed: capSel(m) * qty, installedNom: m.TR * qty, over: capSel(m) * qty / target - 1, cost: 0 };
   }
   return best;
 }
@@ -4454,10 +4477,13 @@ function buildSystem(force) {
   const Z = zonasCalcSel();
   /* Sin zonas de selección no hay nada que seleccionar. Antes se seguía adelante y se
      leía .qty de un resultado nulo, lo que tumbaba la aplicación en cuanto se
-     vaciaba un proyecto o se abría uno recién creado sin zonas. */
-  if (!Z.length) {
-    const vacio = { id: "none", key: "none", label: "Sin zonas de selección", score: 0, plant: [], groups: [], terms: [], notes: [], instPlant: 0, instTerm: 0, units: "",
-      note: "Sin zonas de selección: acepta en Selección de equipo la propuesta de Carga térmica (instantánea con fecha) o captura ahí las zonas (TR, CFM, área, sensible y latente, hora pico).",
+     vaciaba un proyecto o se abría uno recién creado sin zonas.
+     H-288: tampoco sin sitio de Selección: la capacidad en sitio quedaría supuesta. */
+  const sinSitio = !sitioSel();
+  if (!Z.length || sinSitio) {
+    const vacio = { id: "none", key: "none", label: !Z.length ? "Sin zonas de selección" : "Sin sitio de Selección", score: 0, plant: [], groups: [], terms: [], notes: [], instPlant: 0, instTerm: 0, units: "",
+      note: [!Z.length ? "Sin zonas de selección: acepta en Selección de equipo la propuesta de Carga térmica (instantánea con fecha) o captura ahí las zonas (TR, CFM, área, sensible y latente, hora pico)." : "",
+        sinSitio ? "Sin sitio de diseño en Selección: acepta ahí el sitio de Proyecto (copia con fecha) o captura bulbo seco, bulbo húmedo coincidente y altitud; sin él la capacidad en sitio queda pendiente y no se selecciona equipo (H-288)." : ""].filter(Boolean).join(" "),
       installed: 0, instTerm: 0, why: "", pros: [], cons: [] };
     /* H-267: sin zonas de selección con la carga ya capturada, las vistas y la validación leen recomendado/esRecomendacion:
        declarados (contrato de selfCheck), no ausentes. */
@@ -4520,9 +4546,9 @@ function buildSystem(force) {
         `Las manejadoras sí se dimensionan zona por zona, por eso suman ${n(g.reduce((a, x) => a + x.tons, 0), 1)} TR instalados.`,
         "Circuito primario-secundario con bombas gemelas; agua 7 °C ida / 12.8 °C retorno (ΔT 5.8 °C).",
         !plant.model ? "Sin modelo en la familia de chillers para esta carga: la cédula muestra la zona sin equipo y hay que seleccionarlo a mano."
-          : plant.qty > 1 ? `${plant.qty} equipos iguales dan escalonamiento: con uno fuera quedan ${n(plant.installed - capOf(plant.model), 0)} TR de capacidad en sitio, o sea ${n((plant.installed - capOf(plant.model)) / Math.max(1, blockTons) * 100, 0)} % del bloque.`
+          : plant.qty > 1 ? `${plant.qty} equipos iguales dan escalonamiento: con uno fuera quedan ${n(plant.installed - capSel(plant.model), 0)} TR de capacidad en sitio, o sea ${n((plant.installed - capSel(plant.model)) / Math.max(1, blockTons) * 100, 0)} % del bloque.`
           : `Un solo equipo: si el proceso no admite paro, evaluar ${(() => { const rr = modularPick(poolOf(LINE.chiller), plantTarget / 2, 1); return rr && rr.model ? `2 × ${rr.model.model} de ${n(rr.model.TR, 0)} TR en arreglo N+1` : "un segundo chiller de respaldo"; })()}.`,
-        plant.model ? capNote(plant.model) : "",
+        plant.model ? capNoteSel(plant.model) : "",
       ],
     });
   }
@@ -4539,7 +4565,7 @@ function buildSystem(force) {
       why: blockTons < 60 ? "Excelente a carga parcial y control independiente por zona sin obra hidráulica."
         : "A esta carga el tendido de refrigerante y el número de módulos se vuelve difícil de mantener.",
       notes: [
-        plant.model ? `${plant.qty} módulo(s) exteriores en cascada para ${n(plant.installed, 1)} TR de capacidad en sitio (${n(plant.installedNom, 1)} TR de placa). ${capNote(plant.model)}`
+        plant.model ? `${plant.qty} módulo(s) exteriores en cascada para ${n(plant.installed, 1)} TR de capacidad en sitio (${n(plant.installedNom, 1)} TR de placa). ${capNoteSel(plant.model)}`
           : "Sin modelo en la familia de condensadoras VRF para esta carga: seleccionar a mano.",
         `Relación de conexión interior/exterior ${n(g.reduce((a, x) => a + x.tons, 0) / Math.max(1, plant.installed || 1) * 100, 0)} % (Carrier admite 50–130 %).`,
         "Verificar longitud equivalente y desnivel entre módulo y la unidad interior más lejana.",
@@ -11317,11 +11343,13 @@ const CRITERIO_FAM = {
 };
 const criterioDe = (famId) => CRITERIO_FAM[famId] || CRITERIO_FAM.rtu;
 
-/* Capacidad sensible estimada de un equipo en el sitio, en watts. */
-function sensibleDe(e, famId) {
+/* Capacidad sensible estimada de un equipo en el sitio, en watts. H-288: con la capacidad en sitio que le pasa quien la pide
+   (Selección con su sitio); sin capacidad en sitio, null: pendiente. */
+function sensibleDe(e, famId, cap) {
   const c = criterioDe(famId);
   if (!c.shr) return 0;
-  return capOf(e) * P.W_TON * c.shr;
+  const k = cap === undefined ? capOf(e) : cap;
+  return k == null ? null : k * P.W_TON * c.shr;
 }
 /* Caudal nominal del equipo: el del catálogo cuando existe, y si no la regla
    declarada de la familia. */
@@ -11346,9 +11374,11 @@ function selPorFamilia(famId, req) {
   const sensW = Math.max(0, num(req && req.sensible));
   const espReq = Math.max(0, num(req && req.esp));
   const objetivo = tons * (1 + P.MARGIN);
+  /* H-288: sin sitio de Selección no hay capacidad en sitio que comparar: pendiente, no se supone. */
+  if (!sitioSel()) return { fam, criterio: c, cands: [], req: { tons, cfm, sensible: sensW, esp: espReq, objetivo }, recomendado: null, alternos: alternosDe(famId), pendienteSitio: true };
 
   const cands = pool.map((e) => {
-    const cap = capOf(e), cfmE = caudalDe(e, famId), senE = sensibleDe(e, famId);
+    const cap = capSel(e), cfmE = caudalDe(e, famId), senE = sensibleDe(e, famId, cap);
     const marcas = [];
     let puntos = 100, limita = "capacidad";
     /* Capacidad: el criterio que casi todas las familias comparten. */
@@ -11684,6 +11714,12 @@ function recompute() {
     S.equip.tomarDeCarga = null;
     const zs = zonasPropuestasEquip();
     if (zs.some((z) => num(z.tons) > 0)) { aceptarZonasEquip(zs, Date.now()); registrarVinculo("load>equip", "aceptado"); }
+  }
+  if (S.equip.tomarSitio === true) {
+    S.equip.tomarSitio = null;
+    PROPUESTAS["proyecto>equip"].aplicar();
+    S.equip.sitio.origen = "sitio de Proyecto (migración H-288)";
+    registrarVinculo("proyecto>equip", "aceptado");
   }
   SYS = buildSystem(S.sysForce);
   /* Los tres motores nuevos corren DESPUÉS de la selección de equipo y ANTES de la
@@ -17371,7 +17407,7 @@ function sysCardHtml() {
       </tbody>
     </table></div>
     <div class="sub" style="margin-top:6px">TR en sitio = capacidad corregida por bulbo seco exterior y altitud del sitio (H-02). El TR de placa es el nominal AHRI a 35 °C y nivel del mar.</div>
-    ${capWarn() ? `<div class="warnline" style="margin-top:8px">${esc(capWarn())}</div>` : ""}
+    ${capWarnSel() ? `<div class="warnline" style="margin-top:8px">${esc(capWarnSel())}</div>` : ""}
     ${(c.sinModelo || []).length ? `<div class="warnline" style="margin-top:8px">${c.sinModelo.length} zona(s) quedaron sin modelo: ${esc(c.sinModelo.join(", "))}. Revisa la carga de esas zonas o cambia de familia antes de emitir la cédula.</div>` : ""}
 
     <div class="memo" style="margin-top:12px">${c.notes.map((x) => "· " + esc(x)).join("\n")}</div>
@@ -18405,11 +18441,36 @@ function computeSoporteGobernado(G) {
    (criterio de las familias terminales) y su nombre. Sin perfil horario (zona
    capturada a mano) la simultaneidad por hora queda pendiente: no se inventa.
    ========================================================================= */
-function defaultEquip() { return { zonas: [], tomarDeCarga: null, espCaptura: null }; }
+function defaultEquip() { return { zonas: [], tomarDeCarga: null, espCaptura: null, sitio: null, tomarSitio: null }; }
 /* H-274 (decisión del dueño, 28-sep-2026): Selección no tiene ningún vínculo con Ductos, ni lectura en vivo ni propuesta
    aceptada, en ninguna dirección. La presión estática externa que debe vencer el equipo (in.wg) se captura aquí; sin captura,
    o con un valor que no sea positivo, vale 0 y queda pendiente: el criterio de presión no se evalúa y no se supone. */
 function espCapturada() { const e = numONulo(S.equip && S.equip.espCaptura); return e != null && e > 0 ? e : 0; }
+/* H-288 (D1, decisión del dueño 28-sep-2026: cada pestaña con su sitio): el sitio con que Selección corrige la capacidad de
+   catálogo —bulbo seco y bulbo húmedo coincidente de diseño y altitud— es SUYO: capturado en esta pestaña o aceptado de
+   Proyecto como propuesta (proyecto>equip: copia con origen y fecha que no se mueve sola). Sin él la capacidad en sitio queda
+   pendiente y no se selecciona equipo: no se supone un sitio. */
+function sitioSel() {
+  const s = S.equip && S.equip.sitio;
+  if (!s || typeof s !== "object") return null;
+  const db = numONulo(s.db), wb = numONulo(s.wb), alt = numONulo(s.alt);
+  if (db == null || wb == null || alt == null) return null;
+  return { key: String(s.key || "seleccion"), label: String(s.label || "capturado en Selección"), db, wb: Math.min(wb, db - .5), alt: Math.max(0, alt),
+    pAtm: pAtmOf(Math.max(0, alt)), origen: String(s.origen || "capturado en Selección"), ts: num(s.ts, 0) || null };
+}
+/* Lo que del sitio entra al cálculo (la huella): sin nombre, origen ni fecha, que no cambian la capacidad. */
+function sitioSelHuella() { const s = sitioSel(); return s ? [s.db, s.wb, s.alt] : null; }
+/* El sitio de Proyecto como lo propone a Selección: sólo lo que la corrección usa. */
+function sitioProyectoEquip() { const b = siteOf(S.site); return { key: b.key, label: b.label, db: b.db, wb: b.wb, alt: b.alt }; }
+function editarSitioEquip(campo, valor) {
+  if (!["db", "wb", "alt"].includes(campo)) return false;
+  const prev = S.equip.sitio && typeof S.equip.sitio === "object" ? S.equip.sitio : {};
+  S.equip.sitio = { key: "seleccion", label: "capturado en Selección", db: prev.db ?? null, wb: prev.wb ?? null, alt: prev.alt ?? null,
+    [campo]: numONulo(valor), origen: "capturado en Selección", ts: Date.now() };
+  const rec = vinculoDe("proyecto>equip");
+  if (rec && rec.estado === "aceptado") registrarVinculo("proyecto>equip", "propio");
+  return true;
+}
 function zonasSel() { return (S.equip && Array.isArray(S.equip.zonas) ? S.equip.zonas : []).filter((z) => z && typeof z === "object"); }
 function numONulo(v) { return v === null || v === undefined || v === "" || !Number.isFinite(Number(v)) ? null : Number(v); }
 /* Las zonas con la forma que lee el motor. Sale sólo de S.equip.zonas: la carga térmica no se lee aquí. */
@@ -18521,6 +18582,7 @@ function resumenProcedenciaEquip(en, pdf) {
 /* Lo que la selección no puede resolver con lo capturado: se declara «pendiente», no se supone (regla 6). */
 function pendientesEquip() {
   const Z = zonasCalcSel(), out = [];
+  if (!sitioSel()) out.push("Sitio de diseño pendiente: Selección no tiene sitio (se captura en su pestaña o se acepta el de Proyecto como copia con fecha); sin él la capacidad en sitio no se calcula y no se selecciona equipo (H-288).");
   const lista = (xs) => xs.map((z) => z.name).join(", ");
   const sinPerfil = Z.filter((z) => !z.profile), sinHora = Z.filter((z) => z.hour == null), sinSL = Z.filter((z) => z.tons > 0 && !(z.grand > 0)), sinLocal = Z.filter((z) => z.roomS == null);
   if (Z.length && sinPerfil.length) out.push(`Simultaneidad por hora pendiente: ${lista(sinPerfil)} sin perfil horario (capturada a mano, con TR u hora editada, o aceptada de una carga calculada sin barrido horario); la carga de bloque se toma como la suma de picos, sin diversidad calculada.`);
@@ -18564,6 +18626,18 @@ function tarjetaZonasEquip() {
     <div class="row" style="margin-top:10px"><button class="btn-ghost" data-act="eqz-add">+ Zona capturada aquí</button></div>
     <div class="sub" style="margin-top:8px">Diversidad de edificio ${n(num(S.bldDiv, 1), 2)} (Proyecto · datos del proyecto): se aplica una sola vez, en el objetivo de planta (H-141).</div>
     ${pend.map((p) => `<div class="warnline">${esc(p)}</div>`).join("")}
+  </div></div>`;
+}
+
+/* H-288 · Tarjeta del sitio de diseño de Selección: la propuesta de Proyecto y la captura propia. */
+function tarjetaSitioEquip() {
+  const s = sitioSel(), raw = S.equip && S.equip.sitio && typeof S.equip.sitio === "object" ? S.equip.sitio : {};
+  const campo = (c, etiqueta, paso) => `<div class="field"><label>${etiqueta}</label><input type="number" step="${paso}" inputmode="decimal" data-eqsitio="${c}" value="${esc(raw[c] == null ? "" : raw[c])}" /></div>`;
+  return `<div class="card"><h3>Sitio de diseño de Selección<span class="tag">${s ? esc(s.origen) : "pendiente"}</span></h3><div class="body">
+    <div class="sub" style="margin-bottom:10px">Con este sitio se corrige la capacidad de catálogo (bulbo seco exterior, bulbo húmedo coincidente y altitud). Es de esta pestaña: capturado aquí o aceptado de Proyecto como copia con fecha; si Proyecto cambia, no se mueve solo. Sin sitio, la capacidad en sitio queda pendiente y no se selecciona equipo.</div>
+    ${propuestaHtml("proyecto>equip")}
+    <div class="row" style="margin-top:10px">${campo("db", "Bulbo seco de diseño (°C)", "0.1")}${campo("wb", "Bulbo húmedo coincidente (°C)", "0.1")}${campo("alt", "Altitud (m)", "1")}</div>
+    ${s ? `<div class="sub" style="margin-top:6px">${esc(s.label)} · ${n(s.db, 1)} °C BS / ${n(s.wb, 1)} °C BH · ${n(s.alt, 0)} m (${n(s.pAtm, 1)} kPa) · ${esc(s.origen)}${s.ts ? ` · ${fechaCorta(s.ts)}` : ""}</div>` : `<div class="warnline" style="margin-top:6px">Sitio de diseño pendiente: captura los tres datos o acepta el de Proyecto.</div>`}
   </div></div>`;
 }
 
@@ -18657,6 +18731,24 @@ const PROPUESTAS = {
   },
   /* H-267 (decisión del dueño, 27-sep-2026): selección de equipo autónoma. Carga térmica ARMA la propuesta con lo que calculó;
      al aceptarla se escribe la instantánea (zonas de selección con origen y fecha) y ya no se mueve sola. */
+  /* H-288 (D1, decisión del dueño 28-sep-2026): el sitio de Proyecto entra a Selección sólo como copia aceptada, con origen y fecha;
+     si Proyecto cambia de sitio, la propuesta sale desactualizada y Selección sigue con lo aceptado. */
+  "proyecto>equip": {
+    destino: "equip", origen: "Proyecto", permisos: [],
+    titulo: "Sitio de diseño desde Proyecto",
+    que: "El bulbo seco y el bulbo húmedo coincidente de diseño y la altitud del sitio de Proyecto entran a Selección para corregir la capacidad de catálogo. Al aceptar se guarda una copia con origen y fecha: si después cambia el sitio de Proyecto, la propuesta sale desactualizada y Selección sigue con lo aceptado.",
+    disponible: () => !!S.site,
+    firma: () => { const p = sitioProyectoEquip(); return JSON.stringify([p.key, p.db, p.wb, p.alt]); },
+    resumen: () => { const p = sitioProyectoEquip(); return `${p.label} · ${n(p.db, 1)} °C BS / ${n(p.wb, 1)} °C BH · ${n(p.alt, 0)} m`; },
+    actual: () => { const x = sitioSel(); return x ? `${x.label} · ${n(x.db, 1)} °C BS / ${n(x.wb, 1)} °C BH · ${n(x.alt, 0)} m (${x.origen})` : "sin sitio en Selección: la capacidad en sitio queda pendiente"; },
+    enVivo: () => false,
+    aplicar: () => { S.equip.sitio = { ...sitioProyectoEquip(), origen: "Proyecto", ts: Date.now() }; },
+    propio: () => {},   /* el sitio se captura en la tarjeta de sitio de Selección */
+    /* Regla 7: la fila llega al libro de la propuesta con su espejo en inglés. */
+    en: (e) => ({ destino: "Equipment selection", campo: "Design site from the Project tab",
+      valor: e.rec ? (e.rec.estado === "aceptado" ? (() => { const x = sitioSel(); return x ? `${x.label} · ${n(x.db, 1)} °C DB / ${n(x.wb, 1)} °C WB · ${n(x.alt, 0)} m` : "none"; })() : "captured by the user") : "not decided",
+      origen: "Project", estado: { "sin-datos": "No data at the source", pendiente: "Proposal available", aceptado: "Accepted · current", desactualizado: "Out of date · the source changed", propio: "Captured by hand", vivo: "Live (previous mode)" }[e.nivel] }),
+  },
   "load>equip": {
     destino: "equip", origen: "load", permisos: ["load>equip"],
     titulo: "Zonas de selección desde la carga térmica",
@@ -19359,7 +19451,7 @@ const ENTRADAS = {
      marca de edición, que no cambian el cálculo), la diversidad del edificio, el sitio (capacidad en sitio), la tecnología elegida,
      los modelos por familia y la presión estática externa capturada en esta pestaña (H-274: nada de Ductos). Ya no anida
      ENTRADAS.load(): la carga entra sólo al aceptar la propuesta load>equip. La marca de migración es pasajera: fuera. */
-  equip: () => ({ zonas: zonasSel().map((z) => sinClaves(z, ["id", "origen", "editada"])), bldDiv: S.bldDiv, site: S.site, sysForce: S.sysForce, sel: eSel(), esp: espCapturada() }),
+  equip: () => ({ zonas: zonasSel().map((z) => sinClaves(z, ["id", "origen", "editada"])), bldDiv: S.bldDiv, sitio: sitioSelHuella(), sysForce: S.sysForce, sel: eSel(), esp: espCapturada() }),
   duct: () => ({ duct: S.duct, site: S.site }),
   vent: () => ({ vent: sinClaves(S.vent, ["seleccion"]), site: S.site }),   /* H-263: la selección no la lee computeVent */
   hidro: () => ({ hidro: sinClaves(S.hidro, ["equipoHN"]), site: S.site }),
@@ -19382,7 +19474,7 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "6", clean: "3", equip: "3", duct: "4", vent: "4", quote: "24", valor: "2", kaizen: "1", elec: "9", hidro: "8", fuego: "6", aire: "5", civil: "8", soporte: "13" };
+const MOTOR_VER = { load: "6", clean: "3", equip: "4", duct: "4", vent: "4", quote: "24", valor: "2", kaizen: "1", elec: "9", hidro: "8", fuego: "6", aire: "5", civil: "8", soporte: "13" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
@@ -19391,7 +19483,8 @@ const MOTOR_CAMBIOS = {
     { ver: "5", rev: "2.9.24", que: "H-141 (decisión (a) del dueño): la diversidad del edificio se aplica una sola vez, en el objetivo de planta; las ganancias internas de cada zona van al pico sin el factor (antes ×bldDiv en la zona y otra vez en la planta: con 0.8 el objetivo quedaba ×0.713). Criterio Carrier, ratificar con texto" },
     { ver: "6", rev: "2.9.24", que: "H-263 (decisión del dueño, 27-sep-2026): el ventilador SELECCIONADO en Ventilación entra a la zona elegida como misceláneos, HP de referencia del submittal Greenheck (ESTIMADO por la casa en el punto medio del catálogo: rendimiento 0.65, +15 %, ¼ HP; ratificar con placa) × 745.7 W sensibles, como instantánea (si ventilación cambia después, la carga no se mueve sola; se vuelve a seleccionar). Sin selección la carga no cambia" }],
   equip: [{ ver: "2", rev: "2.9.24", que: "H-267 (decisión del dueño, 27-sep-2026): la selección de equipo es autónoma: calcula sólo con sus zonas de selección (capturadas en su pestaña o aceptadas de carga térmica como propuesta load>equip, instantánea con origen y fecha; nombre, TR, CFM, aire exterior, área, sensible y latente, hora pico y perfil horario). Ya no lee la carga EN VIVO (salió del núcleo térmico); ya aceptada no se mueve sola (si la carga cambia sale «desactualizada»). Una zona sin perfil horario deja la simultaneidad por hora pendiente (bloque = suma de picos, sin diversidad supuesta) y sin hora pico no cuenta en la ventana ni en la dispersión. Un proyecto guardado toma una vez la instantánea al abrir: mismas cifras (proyecto fijo: VRF, 16.8989 / 19.8518 TR)" },
-    { ver: "3", rev: "2.9.24", que: "H-274 (decisión del dueño, 28-sep-2026): Selección no tiene ningún vínculo con Ductos, ni lectura en vivo ni propuesta aceptada, en ninguna dirección. La presión estática externa que debe vencer el equipo se captura en la pestaña de Selección (S.equip.espCaptura, in.wg); sin captura queda «pendiente» y el criterio de presión no se evalúa (antes, con el permiso duct>equip, se tomaba en vivo la suma de tramos de ductos con 15 % de margen y castigaba el ajuste). Salió el cruce duct>equip, la huella ya no anida la de ductos y la memoria ya no imprime la preselección por zona leída en vivo de Carga térmica. Sin migración: sin captura, el criterio queda pendiente (proyecto fijo: mismas cifras de sistema; esp 0)" }],
+    { ver: "3", rev: "2.9.24", que: "H-274 (decisión del dueño, 28-sep-2026): Selección no tiene ningún vínculo con Ductos, ni lectura en vivo ni propuesta aceptada, en ninguna dirección. La presión estática externa que debe vencer el equipo se captura en la pestaña de Selección (S.equip.espCaptura, in.wg); sin captura queda «pendiente» y el criterio de presión no se evalúa (antes, con el permiso duct>equip, se tomaba en vivo la suma de tramos de ductos con 15 % de margen y castigaba el ajuste). Salió el cruce duct>equip, la huella ya no anida la de ductos y la memoria ya no imprime la preselección por zona leída en vivo de Carga térmica. Sin migración: sin captura, el criterio queda pendiente (proyecto fijo: mismas cifras de sistema; esp 0)" },
+    { ver: "4", rev: "2.9.24", que: "H-288 (D1, decisión del dueño 28-sep-2026: cada pestaña con su sitio): Selección corrige la capacidad de catálogo con SU sitio de diseño (bulbo seco, bulbo húmedo coincidente y altitud), capturado en su pestaña o aceptado de Proyecto como propuesta proyecto>equip (copia con origen y fecha que no se mueve si Proyecto cambia); antes lo leía en vivo del sitio de Proyecto. Sin sitio, la capacidad en sitio queda pendiente y no se selecciona equipo. Un proyecto guardado toma una vez la copia al abrir: mismas cifras" }],
   valor: [{ ver: "2", rev: "2.9.24", que: "H-286 (X-3, decisión del dueño D5, 28-sep-2026): el consumo por TR de cada sistema alterno sale de su tecnología (la ficha de la planta o, sin planta, de sus terminales, con la eficiencia estimada por familia de EFF_EST y su fuente); antes corrKeyOf recibía el nombre y siempre resolvía split DX, así que el ahorro de kW de las alternativas de sistema valía 0. Sin ficha no se compara consumo (no se supone). El equipo alterno de la misma familia sin kWe de catálogo usa la eficiencia de su familia (antes la de split DX)" }],
   vent: [{ ver: "2", rev: "2.9.24", que: "H-154 + H-156: la cobertura real manda en la selección Greenheck (cfmMin ≤ objetivo ≤ cfmMax, sin tolerancia ×0.9); la familia del modo sólo ordena entre los que cubren; si nadie cubre no hay modelo (proyecto fijo: GB-360 → CSW-30 para 11,643 CFM)" },
     { ver: "3", rev: "2.9.24", que: "H-155: sin medidas no hay caudal: campana sin largo o fondo y rejilla sin ancho, alto, área libre o velocidad dan demanda 0 con aviso (antes pisos de 0.1 ft, 5 % y 100 fpm fabricaban 30 y 258 CFM y sus partidas)" },
@@ -20909,6 +21002,7 @@ function viewSeleccion() {
   return `<div class="grid two">
     <div class="grid" style="gap:14px">
       ${tarjetaZonasEquip()}
+      ${tarjetaSitioEquip()}
       <div class="card"><h3>Familias de equipo<span class="tag">${n(t.tons, 1)} TR de las zonas de selección</span></h3><div class="body">
         <div class="famgrid">
           ${FAMILIES.map((f) => `<button class="fam ${f.id === fam.id ? "on" : ""}" data-act="qfam" data-id="${f.id}">
@@ -20936,6 +21030,7 @@ function viewSeleccion() {
       <div class="card"><h3>${esc(fam.label)}<span class="tag">${pool.length} modelos</span></h3><div class="body">
         <div class="sub" style="margin-bottom:10px">${esc(fam.use)}</div>
         <div class="hint" style="margin-bottom:12px">Precio base <b>${M(q.price[fam.price] || 0)} por TR</b> en equipo de ${PRICE_SEED[fam.price]?.ref} TR · ${esc(PRICE_SEED[fam.price]?.src || "")}. El precio por tonelada baja en equipos mayores (exponente ${q.scaleExp}).</div>
+        ${R.pendienteSitio ? `<div class="warnline">Sin sitio de diseño en Selección no hay capacidad en sitio que comparar: acepta el sitio de Proyecto o captúralo en la tarjeta de sitio.</div>` : ""}
         ${R.cands.map((c, k) => { const e = c.model; const esRec = k === 0; const esSel = elegido && elegido.id === e.id;
           return `<div class="pickw"><button type="button" class="pick ${esSel ? "sel" : ""}" aria-label="Abrir submittal y ficha de ${esc(e.model)}" data-act="detail" data-kind="carrier" data-id="${e.id}">
           ${imgOf(e.id) ? `<img class="thumb" src="${imgOf(e.id)}" alt="" loading="lazy" />` : ""}
@@ -21744,7 +21839,7 @@ function equipSheet(kind, id) {
   const head = carrier
     ? `<div class="metric"><div class="k">Capacidad</div><div class="v">${e.TR} <small>TR</small></div></div>
        <div class="metric"><div class="k">Capacidad térmica</div><div class="v">${e.kWt} <small>kW</small></div></div>
-       <div class="metric"><div class="k">Capacidad en sitio</div><div class="v">${n(capOf(e), 1)} <small>TR</small></div></div>
+       <div class="metric"><div class="k">Capacidad en sitio</div><div class="v">${capFicha(e) == null ? "pendiente" : `${n(capFicha(e), 1)} <small>TR</small>`}</div></div>
        ${e.kWe ? `<div class="metric"><div class="k">Consumo estimado</div><div class="v">${n(e.kWe, 1)} <small>kW</small></div></div>` : ""}
        ${e.eer ? `<div class="metric"><div class="k">EER estimado</div><div class="v">${n(e.eer, 1)}</div></div>` : ""}
        <div class="metric"><div class="k">Caudal nominal</div><div class="v">${n(e.cfmNom, 0)} <small>CFM</small></div></div>
@@ -21768,7 +21863,7 @@ function equipSheet(kind, id) {
   const fr = fueraDeRango(e);
   const notaFuente = `<div class="hint" style="margin-top:12px"><b>Procedencia del dato.</b> ${esc(procedencia(e))}. ${fr ? `<b>Aviso:</b> ${esc(fr)}` : "Dentro del rango declarado de la línea."} Metadata orientativa: ratificar contra el submittal de fábrica antes de comprar.</div>`;
   const notaCat = carrier
-    ? `<div class="hint" style="margin-top:12px"><b>Cómo leer estos datos.</b> La capacidad térmica en kW es la capacidad frigorífica del equipo, no su consumo. La capacidad en sitio es la nominal corregida por ${SITE.db} °C de bulbo seco y ${SITE.alt} m de altitud (H-02). El consumo y el EER son <b>estimación de ingeniería por familia</b> (${esc(e.effSrc || "")}), no dato de fábrica: ratificar contra el submittal AHRI. El caudal nominal es la regla de ${CFM_POR_TR} CFM/TR${e.cfmCat ? "" : " (el catálogo no trae caudal para este modelo)"}, no un dato de catálogo.</div>`
+    ? `<div class="hint" style="margin-top:12px"><b>Cómo leer estos datos.</b> La capacidad térmica en kW es la capacidad frigorífica del equipo, no su consumo. ${sitioFicha() ? `La capacidad en sitio es la nominal corregida por ${sitioFicha().db} °C de bulbo seco y ${sitioFicha().alt} m de altitud (H-02${S.tab === "seleccion" ? "; sitio de Selección, H-288" : ""}).` : "La capacidad en sitio queda pendiente: Selección no tiene sitio de diseño (H-288)."} El consumo y el EER son <b>estimación de ingeniería por familia</b> (${esc(e.effSrc || "")}), no dato de fábrica: ratificar contra el submittal AHRI. El caudal nominal es la regla de ${CFM_POR_TR} CFM/TR${e.cfmCat ? "" : " (el catálogo no trae caudal para este modelo)"}, no un dato de catálogo.</div>`
     : "";
   return `<div class="sheet">
     <div class="sheet-head">${imgOf(id) ? `<img class="sheet-img" src="${imgOf(id)}" alt="${esc(e.model)}" />` : ""}<div><h3>${esc(e.model)}</h3><div class="sub">${esc(e.family)} · ${esc(e.productLine)} · Rev ${esc(sub.rev)}</div></div>
@@ -23521,6 +23616,13 @@ document.addEventListener("change", (e) => {
   toast(el.value ? "Comparativo activado: la hoja CAMBIOS_REV entra al libro" : "Comparativo desactivado");
 });
 
+/* H-288 · Captura del sitio de diseño de Selección (bulbo seco, bulbo húmedo coincidente, altitud). */
+document.addEventListener("change", (e) => {
+  const el = e.target;
+  if (!el.dataset || !el.dataset.eqsitio) return;
+  histSnap("sitio de selección");
+  if (editarSitioEquip(el.dataset.eqsitio, el.value)) { projAutosave(); render(); }
+});
 /* H-267 · Captura de las zonas de selección (nombre, TR, CFM, aire exterior, área, sensible, latente, hora pico). */
 document.addEventListener("change", (e) => {
   const el = e.target;
@@ -24206,6 +24308,9 @@ function sanearEstado(d) {
   s.equip = { ...defaultEquip(), ...(equipPrevio || {}) };
   s.equip.zonas = (Array.isArray(s.equip.zonas) ? s.equip.zonas : []).filter((z) => z && typeof z === "object" && !Array.isArray(z));
   s.equip.tomarDeCarga = !equipPrevio || !Array.isArray(equipPrevio.zonas) || equipPrevio.tomarDeCarga === true ? true : null;
+  /* H-288: un proyecto guardado antes corregía la capacidad con el sitio de Proyecto (en vivo): toma UNA vez la copia al abrir
+     (recompute consume la marca), con las mismas cifras y marcada como migración. */
+  s.equip.tomarSitio = !equipPrevio || !("sitio" in equipPrevio) || equipPrevio.tomarSitio === true ? true : null;
   /* H-179 (rev 2.9.24): un proyecto guardado antes trae como dato los valores por omisión viejos (distancia al tablero 30 m,
      transformador 150 kVA, Z 4 %) y las distancias automáticas de las cargas aceptadas de otros motores (distancia al tablero
      + 10 a 30 m). Se conservan (no se mueve ningún número) pero se marcan «sin confirmar» con el valor que traían; la marca

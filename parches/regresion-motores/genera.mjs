@@ -69,6 +69,9 @@ w.eval(String.raw`
      las zonas, como soportería). Mismas cifras que cuando la leía en vivo; el fixture guardado sigue siendo de antes (sin zonas de
      selección) y se migra al abrirlo: R.1 comprueba que la migración da lo mismo que aceptar. */
   aceptarZonasEquip(zonasPropuestasEquip(), Date.UTC(2026, 8, 21, 12)); registrarVinculo("load>equip", "aceptado"); recompute();
+  /* H-288: Selección corrige con SU sitio: el proyecto fijo acepta el de Proyecto (copia con fecha fija). El fixture guardado es de
+     antes (sin sitio de Selección) y lo copia al abrirlo: R.1 comprueba que la migración da lo mismo que aceptar. */
+  PROPUESTAS["proyecto>equip"].aplicar(); S.equip.sitio.ts = Date.UTC(2026, 8, 21, 12); registrarVinculo("proyecto>equip", "aceptado"); recompute();
   /* H-268: el eléctrico es autónomo. El proyecto fijo nunca estuvo en modo en vivo (tomarHVAC false: sólo sus dos cargas
      capturadas), así que no hay propuesta que aceptar y sus cifras no cambian; el esperado de elec sube sólo de versión (v9). */
 `);

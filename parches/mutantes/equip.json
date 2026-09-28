@@ -62,5 +62,37 @@
   "buscar": "  pdfHeading(d, \"8. Presion estatica externa\");",
   "reemplazar": "  pdfHeading(d, \"8. Presion estatica externa\"); pdfHeading(d, \"8b. Preseleccion por zona (motor de carga termica)\");",
   "estado": "vigente"
+ },
+ {
+  "id": "equip.m9",
+  "que": "H-288: Selección vuelve a corregir la capacidad con el sitio de Proyecto en vivo (SITE) en vez de su sitio propio",
+  "logica": true,
+  "buscar": "const capSel = (e) => { if (!e) return 0; const f = capFactorEn(e, sitioSel());",
+  "reemplazar": "const capSel = (e) => { if (!e) return 0; const f = capFactorEn(e, SITE);",
+  "estado": "vigente"
+ },
+ {
+  "id": "equip.m10",
+  "que": "H-288: sin sitio de Selección se sigue seleccionando (capacidad en sitio supuesta) en vez de quedar pendiente",
+  "logica": true,
+  "buscar": "  const sinSitio = !sitioSel();\r\n  if (!Z.length || sinSitio) {",
+  "reemplazar": "  const sinSitio = false;\r\n  if (!Z.length || sinSitio) {",
+  "estado": "vigente"
+ },
+ {
+  "id": "equip.m11",
+  "que": "H-288: un proyecto guardado ya no toma al abrir la copia del sitio de Proyecto (abre sin sitio: cambia cifras)",
+  "logica": true,
+  "buscar": "  s.equip.tomarSitio = !equipPrevio || !(\"sitio\" in equipPrevio) || equipPrevio.tomarSitio === true ? true : null;",
+  "reemplazar": "  s.equip.tomarSitio = null;",
+  "estado": "vigente"
+ },
+ {
+  "id": "equip.m12",
+  "que": "H-288: la huella de Selección vuelve a llevar el sitio de Proyecto (cambiarlo diría «la captura cambió»)",
+  "logica": true,
+  "buscar": "sitio: sitioSelHuella(), sysForce: S.sysForce,",
+  "reemplazar": "sitio: sitioSelHuella(), site: S.site, sysForce: S.sysForce,",
+  "estado": "vigente"
  }
 ]
