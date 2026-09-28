@@ -26,6 +26,9 @@ w.eval(String.raw`
   reemplazarEstado(defaultState());
   S.meta = { ...S.meta, name: "Regresión por motor", client: "EMP interno", location: "Tijuana", engineer: "Banco de pruebas", date: "2026-09-21" };
   S.site = { key: "tijuana" };
+  /* H-290: Carga térmica calcula con SU sitio: el proyecto fijo acepta el de Proyecto (copia con fecha fija). El fixture guardado es de
+     antes (sin sitio de Carga) y lo copia al abrirlo: R.1 comprueba que la migración da lo mismo que aceptar. */
+  PROPUESTAS["proyecto>load"].aplicar(); S.sitioCarga.ts = Date.UTC(2026, 8, 21, 12); registrarVinculo("proyecto>load", "aceptado");
   const dz = defaultZone;
   S.zones = [
     { ...dz("Producción"), area: 400, height: 6, occ: 30, lights: 8000, equip: 12000, walls: { N: 40, S: 40, E: 30, W: 30, NE: 0, SE: 0, SW: 0, NW: 0 }, roof: 400, glass: { N: 6, S: 4, E: 0, W: 0, NE: 0, SE: 0, SW: 0, NW: 0 } },

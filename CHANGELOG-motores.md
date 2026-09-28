@@ -4,7 +4,7 @@ Cada motor lleva su propia versión (`MOTOR_VER`); sólo sube cuando cambia su l
 
 Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 
-## Carga térmica (`load`) · v6
+## Carga térmica (`load`) · v7
 
 | Versión | Rev | Hallazgo / cambio de lógica |
 |---|---|---|
@@ -14,6 +14,7 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 | 5 | 2.9.24 | H-141 (decisión (a) del dueño, 22-sep-2026): la diversidad del edificio se aplica una sola vez, en el objetivo de planta (`userDiv`); las ganancias internas de cada zona (ocupantes, iluminación, equipo) van al pico sin el factor. Antes se multiplicaban también en la zona: con 0.8 el objetivo quedaba ×0.713. Criterio Carrier (HAP), ratificar con el texto de la Parte 1. Proyecto fijo (bldDiv 1): sin cambio de cifras |
 | 4 | 2.9.24 | H-120: el DET de muros y cubierta se corrige por la condición de diseño del sitio, (25.6 − ti) + (tm − 29.4) K con tm = to − rango/2 (corrección CLTD, ASHRAE Fundamentals 1997 cap. 28, texto secundario; ratificar con Carrier Parte 1 Tabla 20A). Tijuana +0.31 K; Mexicali +9.01 K |
 | 6 | 2.9.24 | H-263 (decisión del dueño, 27-sep-2026): el ventilador SELECCIONADO en Ventilación entra a la zona elegida de carga térmica como «Misceláneos · Ventilación <modelo>», HP de referencia del submittal Greenheck (ESTIMADO por la casa en el punto medio del catálogo: rendimiento 0.65, +15 %, ¼ HP; ratificar con placa) × 745.7 W como carga sensible, íntegra y sin diversidad. Es una instantánea tomada al seleccionar (regla 3): si ventilación cambia después, la carga no se mueve sola y la pantalla de ventilación avisa que la selección ya no coincide; se vuelve a seleccionar o se quita. Sin selección la carga no cambia (proyecto fijo: sin cambio de cifras). |
+| 7 | 2.9.24 | H-290 (D1, decisión del dueño 28-sep-2026: cada pestaña con su sitio): Carga térmica calcula con SU sitio de diseño (`S.sitioCarga`), aceptado de Proyecto como propuesta `proyecto>load` (copia con origen y fecha; si Proyecto cambia de sitio, la propuesta sale desactualizada y la carga no se mueve) o capturado en su pestaña (tarjeta «Sitio de diseño de Carga térmica», los mismos campos que Proyecto). Antes `recompute` tomaba `SITE = siteOf(S.site)` en vivo. Sin sitio no se calcula ninguna zona (`LOADS` vacío, `totals().sinSitio`, Calcular dice qué falta, memorias en blanco con lo que falta, libro «pendiente»): no se supone un sitio. La clave de caché y la huella llevan el sitio de Carga. Los que aún no tienen el suyo siguen con el de Proyecto (`SITE_PROY`): aire (hasta H-282) y Valor (hasta H-280). Un proyecto guardado toma una vez la copia al abrir (`tomarSitioCarga`): mismas cifras (proyecto fijo igual). Prueba S.172. |
 
 ## Cuartos limpios (`clean`) · v3
 

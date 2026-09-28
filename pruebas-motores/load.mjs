@@ -35,7 +35,7 @@ export default async function ({ t, G, S, CM, REG_PROY }) {
   /* Proyecto limpio (defaultState), sitio, barrido, diversidad y UNA zona sobre defaultZone con muros/vidrio completos. */
   const zona = (site, campos, { barrido = false, bldDiv = 1 } = {}) => () => {
     const s = G("S");
-    s.site = { key: site }; s.peakScan = barrido; s.bldDiv = bldDiv;
+    s.site = { key: site }; s.sitioCarga = { key: site, origen: "capturado en Carga térmica" }; s.peakScan = barrido; s.equip.div = bldDiv;   /* H-290: la carga calcula con su sitio; H-289: la diversidad es de Selección */
     const z = { ...G("defaultZone")("Caso a mano"), ...campos };
     z.walls = { ...cero, ...(campos.walls || {}) }; z.glass = { ...cero, ...(campos.glass || {}) };
     s.zones = [z]; s.zi = 0;

@@ -700,5 +700,13 @@
   { "id": "load.m89", "que": "H-281: el origen del aire exterior entra a la huella de carga (aceptar lo mismo marcaría «la captura cambió»)", "logica": true,
     "buscar": "(S.zones || []).map((z) => z && \"origenOA\" in z ? sinClaves(z, [\"origenOA\"]) : z).map(", "reemplazar": "(S.zones || []).map(", "estado": "vigente" },
   { "id": "load.m90", "que": "H-287 (X-1): los materiales faltantes ya no se limpian en cada corrida: un material corregido se sigue avisando hasta recargar", "logica": false,
-    "buscar": "  MISSING_MATS.clear();\r\n  LOADS = S.zones.map(loadOf);", "reemplazar": "  LOADS = S.zones.map(loadOf);", "estado": "vigente" }
+    "buscar": "  MISSING_MATS.clear();\r\n  LOADS = S.zones.map(loadOf);", "reemplazar": "  LOADS = S.zones.map(loadOf);", "estado": "vigente" },
+  { "id": "load.m91", "que": "H-290: sin sitio de Carga se calcula con el de Proyecto (sitio supuesto) en vez de quedar pendiente", "logica": true,
+    "buscar": "  SITE = sitioCargaValido() ? siteOf(S.sitioCarga) : null;", "reemplazar": "  SITE = sitioCargaValido() ? siteOf(S.sitioCarga) : siteOf(S.site);", "estado": "vigente" },
+  { "id": "load.m92", "que": "H-290: Carga térmica vuelve a leer en vivo el sitio de Proyecto (cambiarlo movería la carga sin aceptar)", "logica": true,
+    "buscar": "  SITE = sitioCargaValido() ? siteOf(S.sitioCarga) : null;", "reemplazar": "  SITE = siteOf(S.site);", "estado": "vigente" },
+  { "id": "load.m93", "que": "H-290: un proyecto guardado ya no toma al abrir la copia del sitio de Proyecto (abre sin carga)", "logica": true,
+    "buscar": "  s.tomarSitioCarga = d && typeof d === \"object\" && !(\"sitioCarga\" in d) ? true : (d && d.tomarSitioCarga === true ? true : null);", "reemplazar": "  s.tomarSitioCarga = null;", "estado": "vigente" },
+  { "id": "load.m94", "que": "H-290: la clave de caché de la zona vuelve a llevar el sitio de Proyecto (cambiar el de Carga no recalcula)", "logica": true,
+    "buscar": "  return JSON.stringify(z) + \"|\" + c.key + \"|\" + c.db + \"|\" + c.wb + \"|\" + c.alt + \"|\" + c.range + \"|\" + c.dp + \"|\" + c.dpHR + \"|\" + c.dpDB + \"|\" + (c.dpFuente || \"\") +", "reemplazar": "  return JSON.stringify(z) + \"|\" + S.site.key + \"|\" + S.site.db + \"|\" + S.site.wb + \"|\" + S.site.alt + \"|\" + S.site.range + \"|\" + S.site.dp + \"|\" + S.site.dpHR + \"|\" + S.site.dpDB + \"|\" + (S.site.dpFuente || \"\") +", "estado": "vigente" }
 ]

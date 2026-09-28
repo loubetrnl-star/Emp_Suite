@@ -71,7 +71,7 @@ export default async function ({ t, G, S, CM }) {
   caso(8, "(arranque en ceros; H-167) generar desde la carga no pone longitudes ni accesorios", [
     [null, () => {
       const s = G("S");
-      s.site = { key: "tijuana" };
+      s.site = { key: "tijuana" }; s.sitioCarga = { key: "tijuana", origen: "capturado en Carga térmica" };   /* H-290 */
       const dz = G("defaultZone");
       s.zones = [
         { ...dz("Producción"), area: 400, height: 6, occ: 30, lights: 8000, equip: 12000, walls: { N: 40, S: 40, E: 30, W: 30, NE: 0, SE: 0, SW: 0, NW: 0 }, roof: 400 },

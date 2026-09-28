@@ -1404,7 +1404,7 @@ function pdfDocHeaderMeta(d) {
     ["Fecha", m.date],
     /* H-18 · Con qué motor se calculó este documento. Sin esto, dos memorias del
        mismo proyecto con números distintos son indistinguibles. */
-    ["Version del motor de calculo", `${REV_SELLO()} · sitio ${SITE.label}`],
+    ["Version del motor de calculo", `${REV_SELLO()} · sitio ${SITE_PROY.label}`],
     /* Norma y versión de catálogo en el encabezado de todo documento: es lo
        primero que pregunta quien revisa, y no debería haber que buscarlo. */
     ["Catalogo de equipo", `${CAT_REV.version} · ${CAT_REV.nota}`],
@@ -1479,6 +1479,14 @@ function buildSpecPdf(title, sub, rows) {
 function buildMemoriaPdf() {
   recompute();
   const t = totals(), d = PdfDoc("Memoria de calculo HVAC");
+  /* H-290: sin sitio de Carga no hay carga calculada: la memoria sale en blanco diciendo qué falta (no se supone un sitio). */
+  if (!SITE) {
+    pdfTitle(d, "Memoria de calculo HVAC", `${S.meta.name} · sitio de diseno pendiente`);
+    pdfHeading(d, "1. Datos del proyecto"); pdfDocHeaderMeta(d);
+    pdfHeading(d, "2. Resultado");
+    pdfParagraph(d, "[PENDIENTE] Sin sitio de diseno en Carga termica no se calcula ninguna zona: acepta el sitio de Proyecto (copia con fecha) o capturalo en Carga termica (H-290). Este documento se emite en blanco para dejar constancia de lo que falta.");
+    pdfFirmas(d); pdfTrazabilidad(d, ["load"]); return d.end();
+  }
   pdfTitle(d, "Memoria de cálculo HVAC", `${S.meta.name} · ${S.meta.location}`);
   pdfHeading(d, "1. Datos del proyecto");
   pdfDocHeaderMeta(d);
@@ -1818,6 +1826,14 @@ function buildElecPdf() {
 function buildCargaPdf() {
   recompute();
   const t = totals(), d = PdfDoc("Memoria de carga termica");
+  /* H-290: sin sitio de Carga no hay carga calculada: la memoria sale en blanco diciendo qué falta (no se supone un sitio). */
+  if (!SITE) {
+    pdfTitle(d, "Memoria de carga termica", `${S.meta.name} · sitio de diseno pendiente`);
+    pdfHeading(d, "1. Datos del proyecto"); pdfDocHeaderMeta(d);
+    pdfHeading(d, "2. Resultado");
+    pdfParagraph(d, "[PENDIENTE] Sin sitio de diseno en Carga termica no se calcula ninguna zona: acepta el sitio de Proyecto (copia con fecha) o capturalo en Carga termica (H-290). Este documento se emite en blanco para dejar constancia de lo que falta.");
+    pdfFirmas(d); pdfTrazabilidad(d, ["load"]); return d.end();
+  }
   const zn = (i) => (S.zones[i] && S.zones[i].name) || `Zona ${i + 1}`;
   const disc = DISCIPLINAS.find((x) => x.id === "load"), NL = NORMAS.load || {};
   const GRUPOS = [["envelope", "envolvente"], ["internal", "cargas internas"], ["air", "infiltracion"], ["system", "sistema"], ["oa", "aire exterior"]];
@@ -2297,7 +2313,7 @@ function buildValorPdf() {
     ["Valuacion de la operacion", `Kilowatts que no se consumen por ${n(V.horas, 0)} h/ano por ${n(V.tarifa, 2)} MXN/kWh; es un ahorro por ano.`],
     ["Medida sin valuar", "Se conserva si trae ahorro fisico real (mas de 0.3 TR o de 0.2 kW) aunque todavia no se le pueda poner precio, y se marca SIN VALUAR."],
     ["Orden de presentacion", "El ahorro manda y la tasa historica de aceptacion de la casa lo modula con un factor de 0.6 a 1.4. El ahorro nunca se modifica: solo el orden."],
-    ["Capacidad corregida por sitio", `${SITE.label} · ${SITE.db} C BS · ${SITE.alt} m`],
+    ["Capacidad corregida por sitio", `${SITE_PROY.label} · ${SITE_PROY.db} C BS · ${SITE_PROY.alt} m (sitio de Proyecto, hasta H-280)`],
     ["Moneda del documento", `${cur}${div !== 1 ? ` (importes divididos entre ${n(div, 2)} respecto de MXN)` : ""}`],
   ]);
 
@@ -3223,6 +3239,8 @@ function siteOf(s) {
     QS: P.QS * ratio, QL: P.QL * ratio };
 }
 let SITE = siteOf({ key: "tijuana" });
+/* H-290 (D1): SITE es el sitio de Carga térmica (null sin él: ninguna zona se calcula); SITE_PROY, el de Proyecto. */
+let SITE_PROY = SITE;
 let AIRE = null, CIVIL = null, SOPORTE = null;
 
 function psychro() {
@@ -3775,7 +3793,7 @@ const capSel = (e) => { if (!e) return 0; const f = capFactorEn(e, sitioSel()); 
 const capWarnSel = () => capWarnEn(sitioSel());
 const capNoteSel = (e) => capNoteEn(e, sitioSel());
 /* Fichas y submittals del catálogo: en la pestaña de Selección, con el sitio de Selección; fuera de ella, con el de Carga térmica. */
-const sitioFicha = () => (S.tab === "seleccion" ? sitioSel() : SITE);
+const sitioFicha = () => (S.tab === "seleccion" ? sitioSel() : S.tab === "carga" ? SITE : SITE_PROY);
 const capFicha = (e) => { if (!e) return 0; const f = capFactorEn(e, sitioFicha()); return f == null ? null : e.TR * f; };
 
 function pickEquipment(tons, cfm, area, shf, force) {
@@ -5487,13 +5505,13 @@ function buildPropuestaXlsx(opt) {
     af.push([xT(z.name, XS.TD), xT(seguro(() => spaceOf(z.spaceType).label, "") || "", XS.TD),
       xN(+num(z.area).toFixed(1), XS.NUM), xN(+num(z.height).toFixed(2), XS.NUM),
       xF(`C${rr}*D${rr}`, XS.NUM), xN(num(z.occ), XS.NUM),
-      xN(r ? +r.tons.toFixed(2) : 0, XS.NUM), xN(r ? Math.round(r.cfm) : 0, XS.NUM),
+      r ? xN(+r.tons.toFixed(2), XS.NUM) : xT(L("pendiente", "pending"), XS.TD), r ? xN(Math.round(r.cfm), XS.NUM) : xT(L("pendiente", "pending"), XS.TD),
       xT(L("Capturado en carga termica", "Captured in cooling load"), XS.TD)]);
   });
   const finA = af.length;
   if (S.zones.length) af.push([xT(L("TOTAL", "TOTAL"), XS.SUBT), xT(`${S.zones.length} ${L("zona(s)", "zone(s)")}`, XS.SUBT),
     xF(`SUM(C${iniA}:C${finA})`, XS.SUBT), xV(XS.SUBT), xF(`SUM(E${iniA}:E${finA})`, XS.SUBT),
-    xF(`SUM(F${iniA}:F${finA})`, XS.SUBT), xF(`SUM(G${iniA}:G${finA})`, XS.SUBT), xF(`SUM(H${iniA}:H${finA})`, XS.SUBT), xV(XS.SUBT)]);
+    xF(`SUM(F${iniA}:F${finA})`, XS.SUBT), ...(SITE ? [xF(`SUM(G${iniA}:G${finA})`, XS.SUBT), xF(`SUM(H${iniA}:H${finA})`, XS.SUBT)] : [xT(L("pendiente: sin sitio de diseño", "pending: no design site"), XS.SUBT), xV(XS.SUBT)]), xV(XS.SUBT)]);
   const rooms = seguro(() => cleanRooms(), []) || [];
   if (rooms.length) {
     af.push([]);
@@ -5593,7 +5611,7 @@ function buildPropuestaXlsx(opt) {
   if (LOADS.length || (DUCT && DUCT.segs.length)) {
     const hf = [];
     hf.push([xT(L("BASES DEL SISTEMA HVAC — CARGA TERMICA Y DISTRIBUCION DE AIRE", "HVAC DESIGN BASIS — COOLING LOAD AND AIR DISTRIBUTION"), XS.TIT)]);
-    hf.push([xT(`${L("Metodo Carrier / HAP", "Carrier / HAP method")} · ${SITE.label} · ${SITE.db} °C ${L("BS", "DB")} / ${SITE.wb} °C ${L("BH", "WB")} · ${L("altitud", "altitude")} ${SITE.alt} m · ${L("presion", "pressure")} ${n(SITE.pAtm, 1)} kPa`, XS.SUB)]);
+    hf.push([xT(SITE ? `${L("Metodo Carrier / HAP", "Carrier / HAP method")} · ${SITE.label} · ${SITE.db} °C ${L("BS", "DB")} / ${SITE.wb} °C ${L("BH", "WB")} · ${L("altitud", "altitude")} ${SITE.alt} m · ${L("presion", "pressure")} ${n(SITE.pAtm, 1)} kPa` : L("Metodo Carrier / HAP · sitio de diseño de Carga térmica pendiente (H-290)", "Carrier / HAP method · cooling-load design site pending (H-290)"), XS.SUB)]);
     hf.push([]);
     if (LOADS.length) {
       hf.push([xT(L("CARGAS POR ZONA — CORRIDA DE LA SUITE", "ZONE LOADS — SUITE RUN"), XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC)]);
@@ -6766,7 +6784,7 @@ function buildPropuestaPdf(opt) {
     [L("Moneda", "Currency"), mon + (mon === "USD" ? ` · ${L("tipo de cambio", "exchange rate")} ${fxTexto(lang)}` : S.quote.currency === "USD" ? L(" (USD solicitado sin tipo de cambio fechado: no se convierte)", " (USD requested without a dated exchange rate: not converted)") : "")],
     ...((Q.referencias || []).some((r) => r.moneda === "USD") && mon !== "USD" ? [[L("Tipo de cambio", "Exchange rate"), fxTexto(lang)]] : []),
     [L("Contacto unico", "Single point of contact"), P0.firma],
-    [L("Version del motor de calculo", "Calculation engine version"), `${REV_SELLO()} · ${L("sitio", "site")} ${SITE.label}`],
+    [L("Version del motor de calculo", "Calculation engine version"), `${REV_SELLO()} · ${L("sitio", "site")} ${SITE_PROY.label}`],
     [L("Catalogo de equipo", "Equipment catalogue"), `${CAT_REV.version} · ${CAT_REV.nota}`],
   ]);
 
@@ -7035,7 +7053,7 @@ const rhoAire = (barMan, tC, pAtmKpa) => ((barMan * 100 + (pAtmKpa || 101.325)) 
 function computeAire(A) {
   const avisos = [], memo = [];
   const cls = ISO8573.find((c) => c.id === A.clase) || ISO8573[2];
-  const pAtm = (typeof SITE !== "undefined" && SITE) ? SITE.pAtm : 101.325;
+  const pAtm = (typeof SITE_PROY !== "undefined" && SITE_PROY) ? SITE_PROY.pAtm : 101.325;   /* H-290: aire sigue con el sitio de Proyecto hasta H-282 */
   const tAmb = Math.max(-10, num(A.tempEntrada, 35));
 
   /* ---- 1. Demanda ---- */
@@ -7281,7 +7299,7 @@ function buildAirePdf() {
       .concat([["TOTAL", "", "", "", "", "", "", A.dPtotal.toFixed(3)]]),
     [140, 55, 55, 60, 40, 45, 45, 46]);
   pdfParagraph(d, `Diametros interiores: ${A.diFuente}.`);
-  pdfParagraph(d, `Material ${A.mat.label}. ${A.mat.nota} Densidad del aire a ${A.pDescarga.toFixed(1)} bar y ${A.tAmb} C: ${n(A.rho, 2)} kg/m3, contra ${n(rhoAire(0, A.tAmb, SITE.pAtm), 2)} del aire libre. La red se calcula con la densidad real de linea; hacerlo con densidad atmosferica deja la caida varias veces baja y es el error clasico de esta disciplina.`);
+  pdfParagraph(d, `Material ${A.mat.label}. ${A.mat.nota} Densidad del aire a ${A.pDescarga.toFixed(1)} bar y ${A.tAmb} C: ${n(A.rho, 2)} kg/m3, contra ${n(rhoAire(0, A.tAmb, SITE_PROY.pAtm), 2)} del aire libre. La red se calcula con la densidad real de linea; hacerlo con densidad atmosferica deja la caida varias veces baja y es el error clasico de esta disciplina.`);
 
   pdfHeading(d, "Energia y costo de operacion");
   pdfTable(d, ["Concepto", "Valor"], [
@@ -11467,6 +11485,8 @@ function defaultState() { return {
   units: "SI", tab: "tablero",
   meta: { name: "Proyecto sin nombre", client: "", location: "Tijuana, B.C.", engineer: "", date: new Date().toISOString().slice(0, 10) },
   zones: [defaultZone()], zi: 0, forceTech: null, peakScan: true, perms: {},
+  /* H-290: sitio de diseño de Carga térmica (copia aceptada de Proyecto o captura propia); sin él, la carga queda pendiente. */
+  sitioCarga: null, tomarSitioCarga: null,
   /* rev 2.9.14 · formato 2: sellos de cálculo por motor (S.sellos[id] = { ts, huella }). */
   formato: 2, sellos: {},
   /* rev 2.7.0 · Interoperabilidad. `her` guarda, campo por campo, si sigue
@@ -11558,7 +11578,9 @@ let DIAG = null;
    las que no se movieron. */
 const ZCACHE = new Map();
 function zoneKey(z) {
-  return JSON.stringify(z) + "|" + S.site.key + "|" + S.site.db + "|" + S.site.wb + "|" + S.site.alt + "|" + S.site.range + "|" + S.site.dp + "|" + S.site.dpHR + "|" + S.site.dpDB + "|" + (S.site.dpFuente || "") +
+  /* H-290: la clave lleva el sitio de Carga térmica (con el que se calcula), no el de Proyecto. */
+  const c = S.sitioCarga && typeof S.sitioCarga === "object" ? S.sitioCarga : {};
+  return JSON.stringify(z) + "|" + c.key + "|" + c.db + "|" + c.wb + "|" + c.alt + "|" + c.range + "|" + c.dp + "|" + c.dpHR + "|" + c.dpDB + "|" + (c.dpFuente || "") +
     "|" + S.forceTech + "|" + S.peakScan;
 }
 /* rev 2.9.20 · DECISIÓN DEL DUEÑO: los cuartos con control de humedad (cuarto limpio o HR especificada) se diseñan con DOS casos
@@ -11689,7 +11711,19 @@ function loadOf(z) {
 }
 
 function recompute() {
-  SITE = siteOf(S.site);
+  /* H-290 (D1, decisión del dueño 28-sep-2026: cada pestaña con su sitio): Carga térmica calcula con SU sitio (S.sitioCarga:
+     capturado en su pestaña o aceptado de Proyecto como copia con origen y fecha, proyecto>load). Sin él, SITE es null y ninguna
+     zona se calcula: no se supone un sitio. SITE_PROY es el de Proyecto: lo leen Proyecto, los encabezados de los documentos y los
+     motores que todavía no tienen el suyo (aire hasta H-282, Valor hasta H-280). Un proyecto guardado antes toma UNA vez la copia al
+     abrir (tomarSitioCarga, que deja sanearEstado): mismas cifras. */
+  SITE_PROY = siteOf(S.site);
+  if (S.tomarSitioCarga === true) {
+    S.tomarSitioCarga = null;
+    PROPUESTAS["proyecto>load"].aplicar();
+    S.sitioCarga.origen = "sitio de Proyecto (migración H-290)";
+    registrarVinculo("proyecto>load", "aceptado");
+  }
+  SITE = sitioCargaValido() ? siteOf(S.sitioCarga) : null;
   /* rev 2.7.0 · Regla 1, antes que cualquier motor: la geometria y la ocupacion
      del proyecto se copian a los campos que las heredan. Es una copia, no un
      recalculo, y solo toca los campos que siguen en modo heredado. */
@@ -11698,7 +11732,7 @@ function recompute() {
   /* H-287 (X-1): los materiales faltantes son de ESTA corrida: sin limpiar, un material ya corregido seguía avisándose (validación y
      Kaizen) hasta recargar la página. */
   MISSING_MATS.clear();
-  LOADS = S.zones.map(loadOf);
+  LOADS = SITE ? S.zones.map(loadOf) : [];   /* H-290: sin sitio de Carga, pendiente */
   VENT = computeVent(S.vent);
   DUCT = calcDuct(S.duct);
   CLEAN = computeCleanAll();
@@ -11808,10 +11842,10 @@ function recompute() {
      detecto, asi que va al final y no antes. */
   VALOR = valorLazy();
 }
-const totals = () => LOADS.reduce((a, r) => ({
+const totals = () => ({ ...LOADS.reduce((a, r) => ({
   grand: a.grand + r.grand, tons: a.tons + r.tons, cfm: a.cfm + r.cfm, oa: a.oa + r.oa,
   s: a.s + r.grandS, l: a.l + r.grandL, area: a.area + r.area,
-}), { grand: 0, tons: 0, cfm: 0, oa: 0, s: 0, l: 0, area: 0 });
+}), { grand: 0, tons: 0, cfm: 0, oa: 0, s: 0, l: 0, area: 0 }), sinSitio: !SITE });   /* H-290: sin sitio de Carga, todo pendiente */
 
 /* ---------- Unidades y formato ---------- */
 const U = {
@@ -11846,6 +11880,7 @@ function setPath(path, val) {
      copió, la confirma, aunque sea la misma cifra: deja de ser «de la migración, sin confirmar». */
   if (parts[0] === "soporte" && (parts[1] === "alturaTrabajo" || parts[1] === "alturaEstructura" || parts[1] === "basesEquipo") && S.soporte && S.soporte.sinConfirmar && typeof S.soporte.sinConfirmar === "object")
     delete S.soporte.sinConfirmar[parts[1]];
+  if (parts[0] === "sitioCarga") marcarSitioCargaPropio();   /* H-290 */
 }
 function getPath(path) { return path.split(".").reduce((o, k) => (o == null ? o : o[k]), S); }
 
@@ -16694,6 +16729,38 @@ function chainHtml() {
 }
 
 /* ---------- Tab: Proyecto ---------- */
+/* H-290 · Campos del sitio de diseño (localidad del catálogo o condiciones capturadas, punto de rocío con su fuente, estaciones de
+   referencia) y lo que de ahí se calcula. Los usa Proyecto (su sitio, S.site) y Carga térmica (su sitio, S.sitioCarga). Sin sitio
+   calculado (captura «custom» incompleta), sólo los campos y lo que falta: no se rellena con otro sitio. */
+function htmlSitio(base, raw, SIT) {
+  raw = raw && typeof raw === "object" ? raw : {};
+  const campos = `
+      ${sel("Localidad", base + ".key", Object.entries(SITES).map(([k, v]) => [k, v.label]))}
+      ${raw.key === "custom" ? `<div class="row">${inp("Bulbo seco de verano (°C)", base + ".db", "number", "0.5")}${inp("Bulbo húmedo (°C)", base + ".wb", "number", "0.5")}</div>
+        <div class="row">${inp("Altitud (m)", base + ".alt", "number", "10")}${inp("Rango diario de temperatura (K)", base + ".range", "number", "0.1")}</div>
+        <div class="row">${inp("Punto de rocío 0.4 % (°C)", base + ".dp", "number", "0.1")}${inp("Razón de humedad al DP (g/kg)", base + ".dpHR", "number", "0.1")}${inp("BS coincidente al DP (°C)", base + ".dpDB", "number", "0.1")}</div>` : ""}
+  `;
+  if (!SIT) return campos + `<div class="warnline">Sitio incompleto: captura bulbo seco, bulbo húmedo, altitud y rango diario (o elige una localidad). Mientras, lo que depende del sitio queda pendiente.</div>`;
+  return campos + `
+      ${SIT.deshum && SIT.deshum.referencia ? `<div class="hint"><b>Punto de rocío de estación de referencia</b> (no del sitio): ${esc(SIT.deshum.referencia.nombre)}, WMO ${SIT.deshum.referencia.wmo} (${esc(SIT.deshum.referencia.dist)}) · DP ${n(SIT.deshum.dp, 1)} °C / ${n(SIT.deshum.dpHR, 1)} g/kg / BS coincidente ${n(SIT.deshum.dpDB, 1)} °C · decisión del dueño 21-sep-2026. Así se marca en memoria y PDF.</div>` : ""}
+      ${SIT.deshum && SIT.deshum.fuente && raw.key !== "custom" && !SITES[raw.key].dp ? `<div class="hint">Punto de rocío capturado a mano · fuente: ${esc(SIT.deshum.fuente)}</div>` : ""}
+      ${SIT.deshum ? "" : `<div class="hint" style="color:var(--warn)"><b>Deshumidificación no evaluada: falta dato climático.</b> Este sitio no trae el punto de rocío 0.4 % de ASHRAE; las zonas con control de humedad se diseñan sólo con enfriamiento. Captúralo con su fuente (obligatoria) o adopta una estación de referencia.</div>
+        <div class="row">${inp("Punto de rocío 0.4 % (°C)", base + ".dp", "number", "0.1")}${inp("Razón de humedad al DP (g/kg)", base + ".dpHR", "number", "0.1")}${inp("BS coincidente al DP (°C)", base + ".dpDB", "number", "0.1")}</div>
+        ${inp("Fuente del dato (obligatoria: norma, estación y año)", base + ".dpFuente", "text")}
+        ${SIT.dpPendiente ? `<div class="hint" style="color:var(--warn)">El punto de rocío capturado no se usa hasta que se declare su fuente.</div>` : ""}`}
+      ${SIT.ref && SIT.ref.length ? `<div class="hint" style="margin-top:8px"><b>Estaciones ASHRAE 2021 de referencia (no son dato del sitio; tú decides):</b>
+        ${SIT.ref.map((r, i) => `<div style="margin:6px 0">· <b>${esc(r.nombre)}</b> WMO ${r.wmo}, ${esc(r.dist)} · BS/BH 0.4 % ${n(r.db, 1)}/${n(r.wb, 1)} °C · DP 0.4 % ${n(r.dp, 1)} °C, ${n(r.dpHR, 1)} g/kg, BS coincidente ${n(r.dpDB, 1)} °C · ${esc(r.nota)} <button type="button" class="toolbtn mini" data-act="site-ref-dp" data-base="${base}" data-i="${i}">Usar su punto de rocío como fuente</button></div>`).join("")}</div>` : ""}
+      <div class="ref">${esc(SIT.src)}</div>
+      <div class="tw" style="margin-top:8px"><table><tbody>
+        <tr><td>Exterior de diseño</td><td class="num">${SIT.db} °C BS / ${SIT.wb} °C BH</td></tr>
+        <tr><td>Altitud → presión barométrica</td><td class="num">${SIT.alt} m → ${n(SIT.pAtm, 1)} kPa</td></tr>
+        <tr><td>Coeficientes corregidos</td><td class="num">qs ${n(SIT.QS, 3)} · ql ${n(SIT.QL, 3)}</td></tr>
+        <tr><td>Densidad respecto al nivel del mar</td><td class="num">${n(SIT.ratio * 100, 1)} %</td></tr>
+      </tbody></table></div>
+      ${SIT.alt > 300 ? `<div class="hint" style="margin-top:8px">A ${SIT.alt} m el aire está ${n((1 - SIT.ratio) * 100, 1)} % menos denso: la misma tonelada de refrigeración mueve más metros cúbicos por hora. Los caudales y los ductos suben en consecuencia.</div>` : ""}
+      <div class="hint"><b>Constantes protegidas:</b> interior ${P.T_IN_DB} °C con ${P.RH_IN * 100} % HR, latitud ${P.LAT}°, julio. <b>Margen de error HAP: ${MARGEN_HAP * 100} %</b> aplicado a toda carga sensible y latente. Las condiciones exteriores ya no son fijas: se toman del sitio de arriba.</div>
+  `;
+}
 function viewProyecto() {
   const t = totals();
   const zoneRows = LOADS.map((r, i) => `<tr>
@@ -16714,27 +16781,7 @@ function viewProyecto() {
       <div class="row">${inp("Ingeniero responsable", "meta.engineer", "text")}${inp("Fecha", "meta.date", "date")}</div>
       <div class="sub" style="margin:4px 0 10px">La diversidad del edificio se captura en Selección de equipo, la única disciplina que la usa (H-289).</div>
       <h4 style="font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:18px 0 8px">Condiciones de sitio</h4>
-      ${sel("Localidad", "site.key", Object.entries(SITES).map(([k, v]) => [k, v.label]))}
-      ${S.site.key === "custom" ? `<div class="row">${inp("Bulbo seco de verano (°C)", "site.db", "number", "0.5")}${inp("Bulbo húmedo (°C)", "site.wb", "number", "0.5")}</div>
-        <div class="row">${inp("Altitud (m)", "site.alt", "number", "10")}${inp("Rango diario de temperatura (K)", "site.range", "number", "0.1")}</div>
-        <div class="row">${inp("Punto de rocío 0.4 % (°C)", "site.dp", "number", "0.1")}${inp("Razón de humedad al DP (g/kg)", "site.dpHR", "number", "0.1")}${inp("BS coincidente al DP (°C)", "site.dpDB", "number", "0.1")}</div>` : ""}
-      ${SITE.deshum && SITE.deshum.referencia ? `<div class="hint"><b>Punto de rocío de estación de referencia</b> (no del sitio): ${esc(SITE.deshum.referencia.nombre)}, WMO ${SITE.deshum.referencia.wmo} (${esc(SITE.deshum.referencia.dist)}) · DP ${n(SITE.deshum.dp, 1)} °C / ${n(SITE.deshum.dpHR, 1)} g/kg / BS coincidente ${n(SITE.deshum.dpDB, 1)} °C · decisión del dueño 21-sep-2026. Así se marca en memoria y PDF.</div>` : ""}
-      ${SITE.deshum && SITE.deshum.fuente && S.site.key !== "custom" && !SITES[S.site.key].dp ? `<div class="hint">Punto de rocío capturado a mano · fuente: ${esc(SITE.deshum.fuente)}</div>` : ""}
-      ${SITE.deshum ? "" : `<div class="hint" style="color:var(--warn)"><b>Deshumidificación no evaluada: falta dato climático.</b> Este sitio no trae el punto de rocío 0.4 % de ASHRAE; las zonas con control de humedad se diseñan sólo con enfriamiento. Captúralo con su fuente (obligatoria) o adopta una estación de referencia.</div>
-        <div class="row">${inp("Punto de rocío 0.4 % (°C)", "site.dp", "number", "0.1")}${inp("Razón de humedad al DP (g/kg)", "site.dpHR", "number", "0.1")}${inp("BS coincidente al DP (°C)", "site.dpDB", "number", "0.1")}</div>
-        ${inp("Fuente del dato (obligatoria: norma, estación y año)", "site.dpFuente", "text")}
-        ${SITE.dpPendiente ? `<div class="hint" style="color:var(--warn)">El punto de rocío capturado no se usa hasta que se declare su fuente.</div>` : ""}`}
-      ${SITE.ref && SITE.ref.length ? `<div class="hint" style="margin-top:8px"><b>Estaciones ASHRAE 2021 de referencia (no son dato del sitio; tú decides):</b>
-        ${SITE.ref.map((r, i) => `<div style="margin:6px 0">· <b>${esc(r.nombre)}</b> WMO ${r.wmo}, ${esc(r.dist)} · BS/BH 0.4 % ${n(r.db, 1)}/${n(r.wb, 1)} °C · DP 0.4 % ${n(r.dp, 1)} °C, ${n(r.dpHR, 1)} g/kg, BS coincidente ${n(r.dpDB, 1)} °C · ${esc(r.nota)} <button type="button" class="toolbtn mini" data-act="site-ref-dp" data-i="${i}">Usar su punto de rocío como fuente</button></div>`).join("")}</div>` : ""}
-      <div class="ref">${esc(SITE.src)}</div>
-      <div class="tw" style="margin-top:8px"><table><tbody>
-        <tr><td>Exterior de diseño</td><td class="num">${SITE.db} °C BS / ${SITE.wb} °C BH</td></tr>
-        <tr><td>Altitud → presión barométrica</td><td class="num">${SITE.alt} m → ${n(SITE.pAtm, 1)} kPa</td></tr>
-        <tr><td>Coeficientes corregidos</td><td class="num">qs ${n(SITE.QS, 3)} · ql ${n(SITE.QL, 3)}</td></tr>
-        <tr><td>Densidad respecto al nivel del mar</td><td class="num">${n(SITE.ratio * 100, 1)} %</td></tr>
-      </tbody></table></div>
-      ${SITE.alt > 300 ? `<div class="hint" style="margin-top:8px">A ${SITE.alt} m el aire está ${n((1 - SITE.ratio) * 100, 1)} % menos denso: la misma tonelada de refrigeración mueve más metros cúbicos por hora. Los caudales y los ductos suben en consecuencia.</div>` : ""}
-      <div class="hint"><b>Constantes protegidas:</b> interior ${P.T_IN_DB} °C con ${P.RH_IN * 100} % HR, latitud ${P.LAT}°, julio. <b>Margen de error HAP: ${MARGEN_HAP * 100} %</b> aplicado a toda carga sensible y latente. Las condiciones exteriores ya no son fijas: se toman del sitio de arriba.</div>
+      ${htmlSitio("site", S.site, SITE_PROY)}
     </div></div>
     <div class="grid" style="gap:14px">
       <div class="card"><h3>Resumen del edificio<span class="tag">${S.zones.length} zona(s)</span></h3><div class="body">
@@ -16971,6 +17018,7 @@ function refKey(path) {
     .replace(/^zones\.\d+\./, "zone.")
     .replace(/^clean\.rooms\.\d+\./, "clean.")
     .replace(/^duct\.segments\.\d+\./, "duct.")
+    .replace(/^sitioCarga\./, "site.")
     .replace(/\.(N|NE|E|SE|S|SW|W|NW)$/, ".orient");
 }
 function inp(label, path, type = "number", step, key, obj, rec) {
@@ -17070,11 +17118,24 @@ function chartScores(opts, curId) {
 }
 
 /* ---------- Tab: Carga térmica ---------- */
+/* H-290 · Tarjeta del sitio de diseño de Carga térmica: la propuesta de Proyecto y la captura propia. */
+function tarjetaSitioCarga() {
+  const c = S.sitioCarga && typeof S.sitioCarga === "object" ? S.sitioCarga : null;
+  return `<div class="card" style="margin-bottom:14px"><h3>Sitio de diseño de Carga térmica<span class="tag">${SITE ? `${esc(SITE.label)} · ${esc((c || {}).origen || "")}${c && c.ts ? ` · ${fechaCorta(c.ts)}` : ""}` : "pendiente"}</span></h3><div class="body">
+    <div class="sub" style="margin-bottom:10px">Con este sitio se calcula la carga: condiciones exteriores de diseño, altitud, rango diario y punto de rocío. Es de esta pestaña: aceptado de Proyecto como copia con fecha o capturado aquí; si Proyecto cambia, no se mueve solo. Sin sitio, la carga queda pendiente.</div>
+    ${propuestaHtml("proyecto>load")}
+    ${c ? htmlSitio("sitioCarga", c, SITE) : `<div class="row" style="margin-top:10px"><button class="btn-ghost" data-act="prop-propio" data-id="proyecto>load">Capturar aquí el sitio de Carga térmica</button></div>`}
+  </div></div>`;
+}
 function viewCarga() {
+  /* H-290: sin sitio de Carga no se calcula ninguna zona: la pestaña muestra su tarjeta de sitio y qué falta (las zonas se conservan). */
+  if (!SITE) return `${tarjetaSitioCarga()}<div class="card"><h3>Carga térmica<span class="tag">pendiente</span></h3><div class="body">
+      <div class="warnline">Sin sitio de diseño en Carga térmica no se calcula ninguna zona: acepta arriba el sitio de Proyecto (copia con fecha) o captura el de esta pestaña. ${S.zones.length} zona(s) capturada(s) se conservan.</div>
+    </div></div>`;
   /* Un proyecto sin zonas no tiene nada que mostrar aquí. Antes se leía
      LOADS[S.zi].lines directamente y la pestaña reventaba. */
   if (!S.zones.length || !LOADS.length) {
-    return `<div class="card"><h3>Carga térmica</h3><div class="body">
+    return `${tarjetaSitioCarga()}<div class="card"><h3>Carga térmica</h3><div class="body">
       <div class="sub" style="margin-bottom:14px">Este proyecto todavía no tiene zonas.</div>
       <button class="btn-primary" data-act="zone-add">Agregar la primera zona</button>
     </div></div>`;
@@ -17094,6 +17155,7 @@ function viewCarga() {
   }).join("");
 
   return `
+  ${tarjetaSitioCarga()}
   <div class="zone-tab">
     ${S.zones.map((z2, k) => { const st = estadoZona(k); return `<button data-act="zone" data-i="${k}" aria-pressed="${k === i}"
       title="${esc(st.color === "verde" ? "Zona completa" : st.falta.length ? "Falta: " + st.falta.join(", ") : "Revisar observaciones")}"><span class="zdot ${st.color}"></span>${esc(z2.name)} · ${n(LOADS[k].tons, 1)} TR</button>`; }).join("")}
@@ -17478,7 +17540,7 @@ function kaizenLazy() {
        invalidaba cuando cambiaba la capacidad instalada sin cambiar de
        arquitectura: podía mostrar un Kaizen viejo tras aceptar otro sistema
        del mismo tipo con distinto tonelaje. */
-    "|" + S.site.key + "|" + divSel() + "|" + (SYS && SYS.chosen ? SYS.chosen.key + "|" + num(SYS.chosen.instPlant) + "|" + num(SYS.chosen.instTerm) : "") +
+    "|" + ((S.sitioCarga || {}).key || "sin sitio") + "|" + divSel() + "|" + (SYS && SYS.chosen ? SYS.chosen.key + "|" + num(SYS.chosen.instPlant) + "|" + num(SYS.chosen.instTerm) : "") +
     /* H-267: el sistema integrado ya no sigue a las zonas de carga: sale de las zonas de selección (capturadas o aceptadas). Sin
        ellas en la firma, aceptar otra instantánea o editar una zona de selección con la misma capacidad instalada dejaba un Kaizen
        calculado con la carga de bloque anterior. */
@@ -18010,7 +18072,7 @@ function selfCheck() {
     QUOTE = contractProxy(QUOTE, "QUOTE", sink);
     VALID = contractProxy(VALID, "VALID", sink);
     KAIZEN = contractProxy(KAIZEN, "KAIZEN", sink);
-    SITE = contractProxy(SITE, "SITE", sink);
+    if (SITE) SITE = contractProxy(SITE, "SITE", sink);
     /* El estado del usuario: aquí viven los errores de tecleo en rutas de campo. */
     guardState(sink);
     /* Los catálogos: un material o un equipo leído con el nombre de campo
@@ -18455,6 +18517,21 @@ function sitioSel() {
     pAtm: pAtmOf(Math.max(0, alt)), origen: String(s.origen || "capturado en Selección"), ts: num(s.ts, 0) || null };
 }
 /* Lo que del sitio entra al cálculo (la huella): sin nombre, origen ni fecha, que no cambian la capacidad. */
+/* H-290: el sitio de Carga está completo si es una localidad del catálogo, o si es «custom» con bulbo seco, bulbo húmedo, altitud y
+   rango diario capturados. Incompleto = pendiente (siteOf rellenaría con los de Tijuana: no se supone). */
+function sitioCargaValido() {
+  const c = S.sitioCarga; if (!c || typeof c !== "object") return false;
+  if (c.key !== "custom") return !!SITES[c.key];
+  return ["db", "wb", "alt", "range"].every((k) => numONulo(c[k]) != null);
+}
+/* El sitio de Proyecto como lo propone a Carga: todos sus datos de diseño, sin marcas de origen ni fecha. */
+function sitioDeProyecto() { return sinClaves(S.site && typeof S.site === "object" ? S.site : { key: "tijuana" }, ["origen", "ts"]); }
+/* Capturar un dato del sitio de Carga lo vuelve suyo: deja de ser la copia aceptada de Proyecto. */
+function marcarSitioCargaPropio() {
+  if (!S.sitioCarga || typeof S.sitioCarga !== "object") return;
+  S.sitioCarga.origen = "capturado en Carga térmica"; S.sitioCarga.ts = Date.now();
+  const rec = vinculoDe("proyecto>load"); if (rec && rec.estado === "aceptado") registrarVinculo("proyecto>load", "propio");
+}
 /* H-289 (D1, decisión del dueño 28-sep-2026: cada pestaña el suyo): la diversidad del edificio es de Selección —es la única que la
    usa, una sola vez, en el objetivo de planta (H-141)— y se captura en su pestaña. Vacía o fuera de 0.5–1: no se aplica (1.00). */
 function divSel() { const v = numONulo(S.equip && S.equip.div); return v == null || !(v > 0) ? 1 : Math.min(1, Math.max(.5, v)); }
@@ -18731,6 +18808,24 @@ const PROPUESTAS = {
   },
   /* H-267 (decisión del dueño, 27-sep-2026): selección de equipo autónoma. Carga térmica ARMA la propuesta con lo que calculó;
      al aceptarla se escribe la instantánea (zonas de selección con origen y fecha) y ya no se mueve sola. */
+  /* H-290 (D1, decisión del dueño 28-sep-2026): el sitio de Proyecto entra a Carga térmica sólo como copia aceptada, con origen y
+     fecha; si Proyecto cambia de sitio, la propuesta sale desactualizada y Carga sigue con lo aceptado. */
+  "proyecto>load": {
+    destino: "load", origen: "Proyecto", permisos: [],
+    titulo: "Sitio de diseño desde Proyecto",
+    que: "La localidad del sitio de Proyecto, o sus condiciones capturadas (bulbo seco y húmedo de diseño, altitud, rango diario y punto de rocío con su fuente), entran a Carga térmica. Al aceptar se guarda una copia con origen y fecha: si después cambia el sitio de Proyecto, la propuesta sale desactualizada y Carga térmica sigue con lo aceptado.",
+    disponible: () => !!S.site,
+    firma: () => JSON.stringify(estable(sitioDeProyecto())),
+    resumen: () => { const p = siteOf(S.site); return `${p.label} · ${n(p.db, 1)} °C BS / ${n(p.wb, 1)} °C BH · ${n(p.alt, 0)} m`; },
+    actual: () => SITE ? `${SITE.label} · ${n(SITE.db, 1)} °C BS / ${n(SITE.wb, 1)} °C BH · ${n(SITE.alt, 0)} m (${(S.sitioCarga || {}).origen || "capturado"})` : "sin sitio en Carga térmica: la carga queda pendiente",
+    enVivo: () => false,
+    aplicar: () => { S.sitioCarga = { ...sitioDeProyecto(), origen: "Proyecto", ts: Date.now() }; },
+    propio: () => { if (!S.sitioCarga) S.sitioCarga = { key: "custom", db: null, wb: null, alt: null, range: null, origen: "capturado en Carga térmica", ts: Date.now() }; },
+    /* Regla 7: la fila llega al libro de la propuesta con su espejo en inglés. */
+    en: (e) => ({ destino: "Cooling load", campo: "Design site from the Project tab",
+      valor: e.rec ? (e.rec.estado === "aceptado" ? (SITE ? `${SITE.label} · ${n(SITE.db, 1)} °C DB / ${n(SITE.wb, 1)} °C WB · ${n(SITE.alt, 0)} m` : "none") : "captured by the user") : "not decided",
+      origen: "Project", estado: { "sin-datos": "No data at the source", pendiente: "Proposal available", aceptado: "Accepted · current", desactualizado: "Out of date · the source changed", propio: "Captured by hand", vivo: "Live (previous mode)" }[e.nivel] }),
+  },
   /* H-288 (D1, decisión del dueño 28-sep-2026): el sitio de Proyecto entra a Selección sólo como copia aceptada, con origen y fecha;
      si Proyecto cambia de sitio, la propuesta sale desactualizada y Selección sigue con lo aceptado. */
   "proyecto>equip": {
@@ -19001,7 +19096,7 @@ function capturaReal(id) {
   switch (id) {
     /* H-267: la captura de selección son sus zonas de selección (capturadas o aceptadas de carga térmica) con alguna carga. */
     case "equip": return zonasSel().some((z) => num(z.tons) > 0);
-    case "load": return S.zones.length > 0 && totals().area > 0 && !S.zones.some((z) => (SPACES[z.spaceType] ? z.spaceType : "office") === "cleanroom" && num(z.area) > 0 && !(num(z.achClean, 0) > 0));
+    case "load": return S.zones.length > 0 && S.zones.some((z) => num(z.area) > 0) && !S.zones.some((z) => (SPACES[z.spaceType] ? z.spaceType : "office") === "cleanroom" && num(z.area) > 0 && !(num(z.achClean, 0) > 0));
     case "clean": return cleanRooms().some((r) => num(r.area) > 0 && num(r.height) > 0);
     case "duct": return S.duct.segments.some((g) => num(g.flow) > 0);
     case "vent": {
@@ -19042,10 +19137,11 @@ function semaforoDisciplina(d) {
   const errs = (xs) => (xs || []).filter((x) => x && x.lvl === "err").map((x) => x.msg);
   const real = capturaReal(d.id);
   switch (d.id) {
-    case "load": datos = real && S.zones.length > 0 && t.area > 0;
+    case "load": datos = real && S.zones.length > 0 && S.zones.some((z) => num(z.area) > 0);   /* H-290: la captura cuenta aunque falte el sitio */
       checks = LOADS.flatMap((r, i) => seguro(() => ENGINES.load.checks(r, S.zones[i] ? S.zones[i].name : `Zona ${i + 1}`), []));
       S.zones.forEach((z) => { if (!(num(z.area) > 0)) checks.push({ lvl: "err", msg: `Zona "${z.name}" sin área` }); });
-      R.texto = datos ? `${S.zones.length} zona(s) · ${n(t.area, 0)} m² · ${n(t.tons, 1)} TR` : "sin zonas con área"; break;
+      if (real && !SITE) checks.push({ lvl: "err", msg: "Sin sitio de diseño en Carga térmica: la carga queda pendiente (H-290)" });
+      R.texto = datos ? (SITE ? `${S.zones.length} zona(s) · ${n(t.area, 0)} m² · ${n(t.tons, 1)} TR` : `${S.zones.length} zona(s) · sitio de diseño pendiente`) : "sin zonas con área"; break;
     case "clean": { const rooms = cleanRooms(); datos = real && rooms.length > 0 && CLEAN && CLEAN.sum.supply > 0;
       R.texto = datos ? `${rooms.length} cuarto(s) · ${n(CLEAN.sum.supply, 0)} m³/h` : "sin cuartos con área y altura"; break; }
     case "equip": datos = real && !!(SYS && SYS.chosen && SYS.chosen.id !== "none"); checks = seguro(() => ENGINES.equip.checks(), []);
@@ -19353,7 +19449,7 @@ const ACC_ICONO = {
 const MOTOR_ACC = {
   load: { donde: "Carga térmica › zonas", archivo: "Memoria-carga-termica", memoria: () => buildCargaPdf(),
     sinCot: "La carga térmica no genera partidas: su equipo se cotiza en Selección de equipo",
-    falta: () => (capturaReal("load") ? "" : "Falta al menos una zona con área") },
+    falta: () => (!capturaReal("load") ? "Falta al menos una zona con área" : !SITE ? "Falta el sitio de diseño de Carga térmica (acéptalo de Proyecto o captúralo en su pestaña)" : "") },
   clean: { donde: "Cuartos limpios", archivo: "Memoria-cuartos-limpios", memoria: () => buildLimpioSuitePdf(), cot: "clean",
     falta: () => (capturaReal("clean") && CLEAN && CLEAN.sum && CLEAN.sum.supply > 0 ? "" : "Falta al menos un cuarto con área, altura y clase ISO") },
   equip: { donde: "Selección de equipo › zonas de selección", archivo: "Memoria-seleccion-equipo", memoria: () => buildSeleccionPdf(), cot: "equip",
@@ -19445,7 +19541,7 @@ const ENTRADAS = {
   /* H-263: la fecha de la instantánea del ventilador (miscVent.ts) no cambia el cálculo: fuera de la huella. Una zona sin
      ventilador (miscVent null, que sanearEstado agrega a los proyectos anteriores) pesa lo mismo que una sin el campo: así
      un proyecto sellado con la versión anterior no sale «la captura cambió» sin haber cambiado nada. */
-  load: () => ({ zones: (S.zones || []).map((z) => z && "origenOA" in z ? sinClaves(z, ["origenOA"]) : z).map((z) => !z || !("miscVent" in z) ? z : z.miscVent ? { ...z, miscVent: sinClaves(z.miscVent, ["ts"]) } : sinClaves(z, ["miscVent"])),   /* H-281: el origen del aire exterior no es captura */ site: S.site, forceTech: S.forceTech, peakScan: S.peakScan }),   /* H-289: sin la diversidad del edificio, que Carga no usa */
+  load: () => ({ zones: (S.zones || []).map((z) => z && "origenOA" in z ? sinClaves(z, ["origenOA"]) : z).map((z) => !z || !("miscVent" in z) ? z : z.miscVent ? { ...z, miscVent: sinClaves(z.miscVent, ["ts"]) } : sinClaves(z, ["miscVent"])),   /* H-281: el origen del aire exterior no es captura */ sitio: S.sitioCarga && typeof S.sitioCarga === "object" ? sinClaves(S.sitioCarga, ["origen", "ts", "label"]) : null, forceTech: S.forceTech, peakScan: S.peakScan }),   /* H-289: sin la diversidad del edificio, que Carga no usa. H-290: su sitio, no el de Proyecto */
   clean: () => ({ rooms: cleanRooms() }),   /* H-283: el sitio de Proyecto no entra al cálculo de cuartos limpios: fuera de la huella */
   /* H-267: sólo lo que la selección calcula: sus zonas de selección (la instantánea aceptada va dentro, sin id, origen, fecha ni
      marca de edición, que no cambian el cálculo), la diversidad del edificio, el sitio (capacidad en sitio), la tecnología elegida,
@@ -19474,14 +19570,15 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "6", clean: "3", equip: "4", duct: "4", vent: "4", quote: "24", valor: "2", kaizen: "1", elec: "9", hidro: "8", fuego: "6", aire: "5", civil: "8", soporte: "13" };
+const MOTOR_VER = { load: "7", clean: "3", equip: "4", duct: "4", vent: "4", quote: "24", valor: "2", kaizen: "1", elec: "9", hidro: "8", fuego: "6", aire: "5", civil: "8", soporte: "13" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
     { ver: "3", rev: "2.9.21", que: "cuarto limpio con presión positiva sin infiltración; unidad de aire exterior dedicada + serpentín seco (ADP desde la latente interna); crédito sensible del aire exterior topado en deshumidificación; cambios por hora obligatorios; calor del ventilador Q·ΔP/η" },
     { ver: "4", rev: "2.9.24", que: "H-120: el DET de muros y cubierta se corrige por la condición de diseño del sitio, (25.6 − ti) + (tm − 29.4) K con tm = to − rango/2 (corrección CLTD, ASHRAE Fundamentals 1997 cap. 28; ratificar con Carrier Tabla 20A)" },
     { ver: "5", rev: "2.9.24", que: "H-141 (decisión (a) del dueño): la diversidad del edificio se aplica una sola vez, en el objetivo de planta; las ganancias internas de cada zona van al pico sin el factor (antes ×bldDiv en la zona y otra vez en la planta: con 0.8 el objetivo quedaba ×0.713). Criterio Carrier, ratificar con texto" },
-    { ver: "6", rev: "2.9.24", que: "H-263 (decisión del dueño, 27-sep-2026): el ventilador SELECCIONADO en Ventilación entra a la zona elegida como misceláneos, HP de referencia del submittal Greenheck (ESTIMADO por la casa en el punto medio del catálogo: rendimiento 0.65, +15 %, ¼ HP; ratificar con placa) × 745.7 W sensibles, como instantánea (si ventilación cambia después, la carga no se mueve sola; se vuelve a seleccionar). Sin selección la carga no cambia" }],
+    { ver: "6", rev: "2.9.24", que: "H-263 (decisión del dueño, 27-sep-2026): el ventilador SELECCIONADO en Ventilación entra a la zona elegida como misceláneos, HP de referencia del submittal Greenheck (ESTIMADO por la casa en el punto medio del catálogo: rendimiento 0.65, +15 %, ¼ HP; ratificar con placa) × 745.7 W sensibles, como instantánea (si ventilación cambia después, la carga no se mueve sola; se vuelve a seleccionar). Sin selección la carga no cambia" },
+    { ver: "7", rev: "2.9.24", que: "H-290 (D1, decisión del dueño 28-sep-2026: cada pestaña con su sitio): Carga térmica calcula con SU sitio de diseño (S.sitioCarga: aceptado de Proyecto como copia con origen y fecha, proyecto>load, o capturado en su pestaña); antes leía en vivo el sitio de Proyecto. Sin sitio no se calcula ninguna zona (pendiente, no se supone uno). Un proyecto guardado toma una vez la copia al abrir: mismas cifras" }],
   equip: [{ ver: "2", rev: "2.9.24", que: "H-267 (decisión del dueño, 27-sep-2026): la selección de equipo es autónoma: calcula sólo con sus zonas de selección (capturadas en su pestaña o aceptadas de carga térmica como propuesta load>equip, instantánea con origen y fecha; nombre, TR, CFM, aire exterior, área, sensible y latente, hora pico y perfil horario). Ya no lee la carga EN VIVO (salió del núcleo térmico); ya aceptada no se mueve sola (si la carga cambia sale «desactualizada»). Una zona sin perfil horario deja la simultaneidad por hora pendiente (bloque = suma de picos, sin diversidad supuesta) y sin hora pico no cuenta en la ventana ni en la dispersión. Un proyecto guardado toma una vez la instantánea al abrir: mismas cifras (proyecto fijo: VRF, 16.8989 / 19.8518 TR)" },
     { ver: "3", rev: "2.9.24", que: "H-274 (decisión del dueño, 28-sep-2026): Selección no tiene ningún vínculo con Ductos, ni lectura en vivo ni propuesta aceptada, en ninguna dirección. La presión estática externa que debe vencer el equipo se captura en la pestaña de Selección (S.equip.espCaptura, in.wg); sin captura queda «pendiente» y el criterio de presión no se evalúa (antes, con el permiso duct>equip, se tomaba en vivo la suma de tramos de ductos con 15 % de margen y castigaba el ajuste). Salió el cruce duct>equip, la huella ya no anida la de ductos y la memoria ya no imprime la preselección por zona leída en vivo de Carga térmica. Sin migración: sin captura, el criterio queda pendiente (proyecto fijo: mismas cifras de sistema; esp 0)" },
     { ver: "4", rev: "2.9.24", que: "H-288 (D1, decisión del dueño 28-sep-2026: cada pestaña con su sitio): Selección corrige la capacidad de catálogo con SU sitio de diseño (bulbo seco, bulbo húmedo coincidente y altitud), capturado en su pestaña o aceptado de Proyecto como propuesta proyecto>equip (copia con origen y fecha que no se mueve si Proyecto cambia); antes lo leía en vivo del sitio de Proyecto. Sin sitio, la capacidad en sitio queda pendiente y no se selecciona equipo. Un proyecto guardado toma una vez la copia al abrir: mismas cifras" }],
@@ -19791,7 +19888,7 @@ function viewTablero() {
 
   const cabecera = hayProy ? `<div class="card"><h3>Proyecto abierto<span class="tag">${esc(S.meta.location || "sin ubicación")}</span></h3><div class="body">
       <div style="font-size:22.5px;font-weight:650;margin-bottom:4px">${esc(nombre)}</div>
-      <div class="sub" style="margin-bottom:14px">${esc(S.meta.client || "sin cliente")} · ${esc(SITE.label)} · ${SITE.db} °C BS / ${SITE.wb} °C BH</div>
+      <div class="sub" style="margin-bottom:14px">${esc(S.meta.client || "sin cliente")} · ${esc(SITE_PROY.label)} · ${SITE_PROY.db} °C BS / ${SITE_PROY.wb} °C BH</div>
       <div class="metrics">
         <div class="metric"><div class="k">Con datos</div><div class="v">${cuenta("datos")}</div></div>
         <div class="metric"><div class="k">Incompletas</div><div class="v">${cuenta("incompleta")}</div></div>
@@ -20377,11 +20474,11 @@ function computeIngValor() {
       const fam = famOfModel(actual);
       if (!fam) return;
       const requerida = num(p.installed) / Math.max(1, num(p.qty, 1));
-      const capAct = capOf(actual), kweAct = num(actual.kWe) || actual.TR * (kwTRde(actual) || 0);
+      const capAct = actual.TR * (capFactorEn(actual, SITE_PROY) || 0), kweAct = num(actual.kWe) || actual.TR * (kwTRde(actual) || 0);
       const pool = CARRIER.filter(fam.filter).filter((e) => e.id !== actual.id);
       let mejor = null;
       pool.forEach((alt) => {
-        const cap = capOf(alt);
+        const cap = alt.TR * (capFactorEn(alt, SITE_PROY) || 0);   /* H-290: Valor sigue con el sitio de Proyecto hasta H-280 */
         if (!(cap >= requerida * 0.99)) return;                 // tiene que cubrir la carga
         if (cap > requerida * 1.35) return;                     // ni sobrarse: eso es otra medida
         const kwe = num(alt.kWe) || alt.TR * (kwTRde(alt) || 0);
@@ -20399,7 +20496,7 @@ function computeIngValor() {
         titulo: `${mejor.alt.model} en lugar de ${actual.model}`,
         ahora: `${actual.model} · ${n(capAct, 1)} TR en sitio · ${n(kweAct, 1)} kW${eerA ? ` · EER ${n(eerA, 1)}` : ""}`,
         propuesta: `${mejor.alt.model} · ${n(mejor.cap, 1)} TR en sitio · ${n(mejor.kwe, 1)} kW${eerB ? ` · EER ${n(eerB, 1)}` : ""}`,
-        justificacion: `Misma familia (${fam.label}) . La línea de producto puede cambiar dentro de la familia: ratificar instalación, control y espacio de máquinas. La capacidad corregida por sitio (${SITE.label}, ${SITE.db} °C BS) queda en ${n(mejor.cap, 1)} TR contra ${n(requerida, 1)} TR requeridas por unidad: margen de ${n((mejor.cap / Math.max(.01, requerida) - 1) * 100, 0)} %.${mejor.dkW > 0.2 ? ` Consume ${n(mejor.dkW, 1)} kW menos con la misma carga.` : ""}${mejor.dTR > 0.3 ? ` Instala ${n(mejor.dTR, 1)} TR menos de capacidad ociosa.` : ""}`,
+        justificacion: `Misma familia (${fam.label}) . La línea de producto puede cambiar dentro de la familia: ratificar instalación, control y espacio de máquinas. La capacidad corregida por sitio (${SITE_PROY.label}, ${SITE_PROY.db} °C BS) queda en ${n(mejor.cap, 1)} TR contra ${n(requerida, 1)} TR requeridas por unidad: margen de ${n((mejor.cap / Math.max(.01, requerida) - 1) * 100, 0)} %.${mejor.dkW > 0.2 ? ` Consume ${n(mejor.dkW, 1)} kW menos con la misma carga.` : ""}${mejor.dTR > 0.3 ? ` Instala ${n(mejor.dTR, 1)} TR menos de capacidad ociosa.` : ""}`,
         tr: Math.max(0, mejor.dTR), kW: Math.max(0, mejor.dkW),
         mxnCapex: mejor.dTR > 0 && mxnTR > 0 ? mejor.dTR * mxnTR : 0,
         mxnOpex: mejor.dkW > 0 ? mejor.dkW * horas * tarifa : 0,
@@ -20534,7 +20631,7 @@ function viewValor() {
         <tr><td>Precio por tonelada de equipo</td><td class="num">${V.mxnTR > 0 ? money(V.mxnTR, 1, "MXN") + "/TR" : "no disponible"}</td></tr>
         <tr><td>Tarifa eléctrica</td><td class="num">${n(V.tarifa, 2)} MXN/kWh</td></tr>
         <tr><td>Horas de operación al año</td><td class="num">${n(V.horas, 0)} h</td></tr>
-        <tr><td>Capacidad corregida por sitio</td><td class="num">${SITE.label} · ${SITE.db} °C BS · ${SITE.alt} m</td></tr>
+        <tr><td>Capacidad corregida por sitio</td><td class="num">${SITE_PROY.label} · ${SITE_PROY.db} °C BS · ${SITE_PROY.alt} m</td></tr>
       </tbody></table></div>
     </div></div>
   </div>`;
@@ -21411,6 +21508,7 @@ function viewDuct() {
    semáforo de completitud.
    ------------------------------------------------------------------------- */
 function viewComparativo() {
+  if (!SITE) return `<div class="card"><h3>Comparativo de zonas<span class="tag">pendiente</span></h3><div class="body"><div class="warnline">Sin sitio de diseño en Carga térmica no hay carga que comparar (H-290): acéptalo o captúralo en Carga térmica.</div></div></div>`;
   const t = totals();
   const filas = S.zones.map((z, i) => {
     const r = LOADS[i], st = estadoZona(i);
@@ -23763,9 +23861,12 @@ document.addEventListener("click", (e) => {
         inp.addEventListener("change", () => { const f = inp.files && inp.files[0]; if (!f) return; cxLeerArchivo(f).then((R) => { if (!R.bytes) { toast("No se pudo leer el CSV"); return; } const r = hidroPUImportarCsv(new TextDecoder("utf-8").decode(R.bytes)); recompute(); render(); toast(`${r.ok} precio(s) importados${r.malas.length ? ` · ${r.malas.length} fila(s) rechazadas: ${r.malas.slice(0, 3).join("; ")}` : ""}`, 7000); }); }); }
       inp.value = ""; inp.click(); break; }
     case "site-ref-dp": { /* rev 2.9.22 · adopta el DP de una estación de referencia, con su fuente declarada */
-      const r = (SITE.ref || [])[+b.dataset.i]; if (!r) break;
-      S.site = { ...S.site, dp: r.dp, dpHR: r.dpHR, dpDB: r.dpDB, dpFuente: `ASHRAE Handbook—Fundamentals 2021, estación ${r.nombre} WMO ${r.wmo} (referencia adoptada por el usuario; ${r.dist})` };
-      recompute(); render(); toast(`Punto de rocío de ${r.nombre} adoptado como fuente para ${SITE.label}`); break; }
+      /* H-290: cada tarjeta de sitio (Proyecto o Carga térmica) adopta en SU sitio. */
+      const base = b.dataset.base === "sitioCarga" ? "sitioCarga" : "site", SIT = base === "sitioCarga" ? SITE : SITE_PROY;
+      const r = ((SIT && SIT.ref) || [])[+b.dataset.i]; if (!r) break;
+      S[base] = { ...S[base], dp: r.dp, dpHR: r.dpHR, dpDB: r.dpDB, dpFuente: `ASHRAE Handbook—Fundamentals 2021, estación ${r.nombre} WMO ${r.wmo} (referencia adoptada por el usuario; ${r.dist})` };
+      if (base === "sitioCarga") marcarSitioCargaPropio();
+      recompute(); render(); toast(`Punto de rocío de ${r.nombre} adoptado como fuente para ${SIT.label}`); break; }
     case "seg-del": S.duct.segments.splice(+b.dataset.i, 1); render(); break;
     case "fit-add": S.duct.segments[+b.dataset.i].fittings.push({ type: "elbow_90_smooth", qty: 1, C: .21 }); recompute(); reopenSegment(); break;
     case "fit-del": S.duct.segments[+b.dataset.i].fittings.splice(+b.dataset.k, 1); recompute(); reopenSegment(); break;
@@ -24325,6 +24426,8 @@ function sanearEstado(d) {
   /* H-288: un proyecto guardado antes corregía la capacidad con el sitio de Proyecto (en vivo): toma UNA vez la copia al abrir
      (recompute consume la marca), con las mismas cifras y marcada como migración. */
   s.equip.tomarSitio = !equipPrevio || !("sitio" in equipPrevio) || equipPrevio.tomarSitio === true ? true : null;
+  /* H-290: un proyecto guardado antes calculaba la carga con el sitio de Proyecto (en vivo): toma UNA vez la copia al abrir. */
+  s.tomarSitioCarga = d && typeof d === "object" && !("sitioCarga" in d) ? true : (d && d.tomarSitioCarga === true ? true : null);
   /* H-289: la diversidad del edificio que el proyecto guardó en Proyecto (bldDiv) pasa a Selección con la misma cifra. */
   if (!equipPrevio || !("div" in equipPrevio)) s.equip.div = d && "bldDiv" in d ? numONulo(d.bldDiv) : null;
   delete s.bldDiv;
