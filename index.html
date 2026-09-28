@@ -11693,8 +11693,17 @@ function recompute() {
      y desde ahí no se mueve solo. Las marcas las deja sanearEstado y se consumen aquí, antes de la soportería. */
   if (S.soporte.tomarInstantanea) {
     delete S.soporte.tomarInstantanea;
-    S.soporte.snap = snapshotSoporte(); S.soporte.usarMotores = true;
-    registrarVinculo("motores>soporte", "aceptado");
+    /* H-266 (revisión adversarial U8): la instantánea se toma sólo si el conteo en vivo tenía algo de los motores: metros que
+       soportar o una propuesta con captura real (la misma condición de la tarjeta, REQUIERE_CAPTURA_PROP). Sin nada, quedaba
+       «aceptada» una instantánea vacía que salía enseguida «Desactualizada · el origen cambió», en la tarjeta y en el trazado
+       impreso. Entonces abre a mano con las bases que contaba (tomarBases, abajo): mismas cifras, propuesta «sin datos». */
+    const sn = snapshotSoporte(), mSn = (xs) => (xs || []).reduce((a, x) => a + Math.max(0, num(x.L)), 0);
+    const hayMetros = mSn(sn.duct) + mSn(sn.hidro) + mSn(sn.aire) + num(sn.fuego.Lram) + num(sn.fuego.Lmon) > 0;
+    const hayPropuesta = seguro(() => PROPUESTAS["motores>soporte"].disponible(), false) && REQUIERE_CAPTURA_PROP["motores>soporte"].some(capturaReal);
+    if (hayMetros || hayPropuesta) {
+      S.soporte.snap = sn; S.soporte.usarMotores = true;
+      registrarVinculo("motores>soporte", "aceptado");
+    } else { S.soporte.usarMotores = false; S.soporte.tomarBases = true; }
   }
   if (S.soporte.tomarBases) {
     delete S.soporte.tomarBases;
@@ -16168,12 +16177,19 @@ function cxzHuella(s) {
   if (c.clean && typeof c.clean === "object") { c.clean = { ...c.clean }; delete c.clean.ci; }
   return JSON.stringify(c);
 }
+/* H-266 (revisión adversarial U8; dependencia: proyectos). Las migraciones que se consumen en recompute al abrir (H-266 la
+   instantánea de soportería, H-267 la selección de equipo, H-268 el eléctrico) cambian S respecto al registro guardado sin que
+   el usuario toque nada: todo proyecto anterior abría «con cambios sin guardar». La referencia de un proyecto recién abierto es
+   su estado ya migrado (projOpen), mientras su registro siga igual; si el registro cambia (se guardó), vuelve a ser el registro. */
+let CXZ_BASE = null;
 function cxzSucio() {
   try {
     if (S.pid) {
       const rec = projList().find((p) => p.id === S.pid);
       if (!rec) return true;
-      return cxzHuella(S) !== cxzHuella(sanearEstado(JSON.parse(JSON.stringify(rec.data || {}))));
+      const crudo = JSON.stringify(rec.data || {});
+      if (CXZ_BASE && CXZ_BASE.pid === rec.id && CXZ_BASE.crudo === crudo) return cxzHuella(S) !== CXZ_BASE.huella;
+      return cxzHuella(S) !== cxzHuella(sanearEstado(JSON.parse(crudo)));
     }
     return cxzHuella(S) !== cxzHuella(sanearEstado(JSON.parse(JSON.stringify(INIT))));
   } catch { return false; }
@@ -24434,6 +24450,10 @@ function projOpen(id) {
   else if (rp !== REV) toast(`Proyecto “${p.name}” abierto. OJO: se guardó con el motor rev ${rp} y esta suite es la rev ${REV}. Los resultados pueden diferir de la memoria firmada; vuelve a emitirla si la vas a usar.`, 9000);
   else toast(`Proyecto “${p.name}” abierto`);
   enlazarRevisionAnterior(p);
+  /* H-266 (U8): la referencia de «sucio» es el estado ya migrado, ligada a lo que hoy tiene el registro (enlazarRevisionAnterior
+     puede haberlo tocado): si después el registro cambia, cxzSucio vuelve a compararlo contra él. */
+  const recAbierto = projList().find((x) => x.id === p.id);
+  CXZ_BASE = recAbierto ? { pid: p.id, crudo: JSON.stringify(recAbierto.data || {}), huella: cxzHuella(S) } : null;
 }
 function projDup(id) {
   /* Primero se guarda lo que hay en pantalla y DESPUÉS se lee el registro:

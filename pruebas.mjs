@@ -7933,6 +7933,52 @@ t("S.131 (H-266) con arriostramiento sísmico y sin la altura de la estructura c
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+/* ===== S.132 (H-266) la migración no acepta una instantánea vacía y un proyecto anterior no abre «con cambios sin guardar» ===== */
+t("S.132 (H-266) un proyecto anterior que contaba en vivo sin nada que soportar en los motores de origen abre a mano con sus bases: no registra una aceptación vacía que sale «Desactualizada» en la tarjeta y en el trazado; uno con metros toma su instantánea y, abierto desde Mis proyectos sin tocar nada, no pide «Hay cambios sin guardar» (revisión adversarial U8)", () => {
+  const guardado = JSON.stringify(S), lista = JSON.stringify(G("projList")());
+  try {
+    /* (1) Guardado antes de H-266 (sin alturaEstructura) en el modo por omisión (contaba en vivo, sin instantánea), sin ductos,
+       agua, incendio ni aire; con dos equipos Carrier en la cotización, que el conteo en vivo tomaba como bases. */
+    const fam = G("FAMILIES")[0], m = G("familyPool")(fam.id)[0];
+    if (!m || !G("CARRIER").some((x) => x.id === m.id)) throw new Error("el caso no aísla lo que se quiere probar: hace falta un equipo Carrier cotizable");
+    const p = JSON.parse(JSON.stringify(G("defaultState")())); p.meta.name = "S.132";
+    p.duct.segments = []; p.quote.items = [{ id: m.id, fam: fam.id, qty: 2, unit: null }];
+    p.soporte = { usarMotores: true, sismico: true, alturaTrabajo: 0, mesesElevacion: 3, basesEquipo: 0, rielM: 0 };
+    G("importarRespaldo")(JSON.stringify(p)); G("recompute")();
+    eq(S.vinculos["motores>soporte"], undefined, "sin nada que proponer no queda registrada una aceptación:");
+    eq(S.soporte.snap, undefined, "ni una instantánea vacía:");
+    eq(S.soporte.usarMotores, false, "abre a mano:");
+    eq(G("estadoPropuesta")("motores>soporte").nivel, "sin-datos", "la propuesta sigue «sin datos», no «Desactualizada»:");
+    const fila = G("trazaHerencia")().find((f) => f.campo === G("PROPUESTAS")["motores>soporte"].titulo);
+    if (!fila || /Desactualizada/.test(fila.estado)) throw new Error("el trazado de origen no debe imprimir «Desactualizada»: " + JSON.stringify(fila));
+    eq(G("SOPORTE").nEquipos, 2, "mismas cifras: las 2 bases que contaba:"); eq(S.soporte.basesEquipo, 2, "capturadas una vez:");
+    /* Con metros en un motor de origen, aunque sin captura real (red de aire con longitud y sin consumos), la toma igual: el conteo en
+       vivo los soportaba y abre con las mismas cifras. */
+    const pa = JSON.parse(JSON.stringify(G("defaultState")())); pa.meta.name = "S.132-A";
+    pa.aire = { ...pa.aire, Lprincipal: 30, Lramales: 12 };
+    pa.soporte = { usarMotores: true, sismico: true, alturaTrabajo: 0, mesesElevacion: 3, basesEquipo: 0, rielM: 0 };
+    G("importarRespaldo")(JSON.stringify(pa)); G("recompute")();
+    eq(!!S.soporte.snap, true, "con metros en el origen toma la instantánea:"); eq(G("SOPORTE").mTub, 42, "mismas cifras (30 + 12 m de aire):");
+    /* (2) Guardado antes de H-266 en vivo con 20 m de ducto, en Mis proyectos; se abre y no se toca nada. */
+    const q = JSON.parse(JSON.stringify(G("defaultState")())); q.meta.name = "S.132-B";
+    q.zones = [{ ...G("defaultZone")("Nave"), area: 400, height: 6 }];
+    q.duct.segments = [{ ...G("defaultSegment")("TR-1", 3000), length: 20 }];
+    q.soporte = { usarMotores: true, sismico: true, alturaTrabajo: 0, mesesElevacion: 3, basesEquipo: 0, rielM: 0 };
+    G("projPersist")([{ id: "p132b", name: "S.132-B", ts: 1757000000000, rev: "2.9.20", tons: 0, zones: 1, client: "", location: "", data: q }].concat(JSON.parse(lista)));
+    G("projOpen")("p132b");
+    eq(S.vinculos["motores>soporte"] && S.vinculos["motores>soporte"].estado, "aceptado", "con metros toma la instantánea de lo que contaba:");
+    eq(G("SOPORTE").mDucto, 20, "mismas cifras:");
+    eq(G("cxzSucio")(), false, "abierto sin tocar nada no tiene cambios sin guardar:");
+    S.soporte.rielM = 5; G("recompute")();
+    eq(G("cxzSucio")(), true, "un cambio del usuario sí:");
+    G("projSave")(true);
+    eq(G("cxzSucio")(), false, "guardado, ya no:");
+  } finally {
+    G("closeModal")(); w.eval("clearTimeout(autoT)");
+    G("projPersist")(JSON.parse(lista)); G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")();
+  }
+});
+
 /* ===== S.103 (H-268) eléctrico autónomo: las cargas de otros motores entran sólo como propuesta aceptada (instantánea) ===== */
 t("S.103 (H-268) eléctrico es autónomo: con permisos y tomarHVAC, sin aceptar la propuesta, la cédula, el ventilador, el compresor, las bombas y los FFU NO entran al cuadro (se retiró el modo en vivo); aceptar concede los cruces y deja una instantánea con fecha que no se mueve sola; un proyecto guardado en vivo migra al abrir con las mismas cifras (sólo con los cruces que tenía); el sello no cambia al reabrir (decisión del dueño, 27-sep-2026)", () => {
   const guardado = JSON.stringify(S);
