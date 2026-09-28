@@ -1272,9 +1272,9 @@ t("11.7 el libro sigue siendo un documento vivo: formulas, no numeros pegados", 
     contiene(x, `<f>${hoja}!C${r}</f>`, "la portada apunta a la fila del total:");
   });
 });
-t("11.8 cada hoja trae el trazado de origen de los valores heredados", () => {
-  contiene(LES.txt, "TRAZADO DE ORIGEN DE LOS VALORES HEREDADOS");
-  contiene(LEN.txt, "TRACEABILITY OF INHERITED VALUES");
+t("11.8 cada hoja trae el trazado de origen de los valores aceptados de otra disciplina (H-264, H-265: ninguna hereda; S.144)", () => {
+  contiene(LES.txt, "TRAZADO DE ORIGEN: VALORES ACEPTADOS DE OTRA DISCIPLINA");
+  contiene(LEN.txt, "TRACEABILITY: VALUES ACCEPTED FROM ANOTHER DISCIPLINE");
   const tr = G("trazaHerencia")();
   if (!tr.length) throw new Error("no hay trazado que imprimir");
   contiene(LES.txt, tr[0].campo, "primer dato heredado:");
@@ -7923,6 +7923,15 @@ t("S.118 (H-265) «Nuevo desde plantilla» y «Referencia interna» vuelven gen�
   eq(ref.data.civil.areas[0].area, 400, "los datos técnicos quedan:"); eq(ref.data.civil.cuartos[0].perimetro, 32, "y el perímetro:");
   const pl = G("etiquetasGenericas")({ civil: JSON.parse(JSON.stringify(civil)) });
   if (/OBRA-X/.test(JSON.stringify(pl.civil))) throw new Error("la plantilla conserva el nombre de la obra en obra civil");
+});
+t("S.144 (H-264, H-265) ni el tablero ni el libro de la propuesta (ES/EN) dicen que las disciplinas heredan la geometría o que hay «valores heredados» (decisión del dueño del 27-sep-2026: ninguna hereda; regla 8)", () => {
+  S.tab = "tablero"; G("render")();
+  if (/Heredan la geometr/i.test(w.document.getElementById("view").textContent)) throw new Error("el tablero dice que las disciplinas heredan la geometría");
+  const es = Buffer.from(G("buildPropuestaXlsx")({ lang: "es", mon: "MXN" })).toString("utf8");
+  const en = Buffer.from(G("buildPropuestaXlsx")({ lang: "en", mon: "USD" })).toString("utf8");
+  ["heredan las demas disciplinas", "VALORES HEREDADOS", "valor heredado"].forEach((x) => { if (es.includes(x)) throw new Error(`el libro ES dice «${x}»`); });
+  ["inherited by the other disciplines", "INHERITED VALUES", "inherited value"].forEach((x) => { if (en.includes(x)) throw new Error(`el libro EN dice «${x}»`); });
+  if (/valor heredado/.test(w.document.getElementById("btn-print").title)) throw new Error("el botón de la memoria integral habla de valores heredados");
 });
 t("S.102 (H-266) soportería es autónoma: sin la instantánea aceptada no cuenta metros de otros motores (se retiró el conteo en vivo); aceptarla los cuantifica y ya no se mueven solos; alturas y bases se capturan; un proyecto anterior se migra al abrir con las mismas cifras (decisión del dueño, 27-sep-2026)", () => {
   const guardado = JSON.stringify(S);

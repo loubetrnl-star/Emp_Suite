@@ -844,7 +844,7 @@ nav.col2 .subtabs{display:flex;flex-direction:column;gap:1px;padding:0;border:0}
     <button class="toolbtn" id="btn-projects">Mis proyectos</button>
     <button class="toolbtn" id="btn-export">Respaldo .json</button>
     <button class="toolbtn" id="btn-import">Abrir .json</button>
-    <button class="toolbtn" id="btn-print" title="Un solo PDF por proyecto con todas las disciplinas y el trazado de origen de cada valor heredado">Memoria integral PDF</button>
+    <button class="toolbtn" id="btn-print" title="Un solo PDF por proyecto con todas las disciplinas y el trazado de origen de cada valor aceptado de otra disciplina">Memoria integral PDF</button>
     <input type="file" id="file-input" accept="application/json" hidden />
   </div>
 </header>
@@ -5439,7 +5439,7 @@ function buildPropuestaXlsx(opt) {
       xT(ENTREG[s.id] || "—", XS.TD), xT(NIV[s.nivel] || s.nivel, XS.TD), xT(s.texto, XS.TD)]);
   });
   df.push([]);
-  df.push([xT(L("TRAZADO DE ORIGEN DE LOS VALORES HEREDADOS", "TRACEABILITY OF INHERITED VALUES"), XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC)]);
+  df.push([xT(L("TRAZADO DE ORIGEN: VALORES ACEPTADOS DE OTRA DISCIPLINA", "TRACEABILITY: VALUES ACCEPTED FROM ANOTHER DISCIPLINE"), XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC)]);
   df.push([L("DISCIPLINA DESTINO", "TARGET DISCIPLINE"), L("DATO", "DATUM"), L("VALOR VIGENTE", "CURRENT VALUE"),
     L("ORIGEN", "SOURCE"), L("DESDE / ESTADO", "SINCE / STATUS")].map((x) => xT(x, XS.TH)));
   traza.forEach((r0) => { const r = en && r0.en ? { ...r0, ...r0.en } : r0;   // H-263: espejo EN de las filas que lo traen
@@ -5504,8 +5504,8 @@ function buildPropuestaXlsx(opt) {
   }
   af.push([]);
   const g = geoProyecto();
-  af.push([xT(L(`Geometria del proyecto que heredan las demas disciplinas: ${n(g.area, 0)} m2, altura media ponderada por area ${n(g.altura, 2)} m, ${n(g.volumen, 0)} m3 y ${g.personas} persona(s). Se suma de las zonas capturadas; no se recalcula.`,
-    `Project geometry inherited by the other disciplines: ${n(g.area, 0)} m2, area-weighted mean height ${n(g.altura, 2)} m, ${n(g.volumen, 0)} m3 and ${g.personas} occupant(s). It is summed from the captured zones; it is never recalculated.`), XS.NOTA)]);
+  af.push([xT(L(`Geometria de las zonas de carga termica: ${n(g.area, 0)} m2, altura media ponderada por area ${n(g.altura, 2)} m, ${n(g.volumen, 0)} m3 y ${g.personas} persona(s). Se suma de las zonas capturadas; no se recalcula. Las demas disciplinas capturan la suya (ninguna hereda).`,
+    `Geometry of the heat-load zones: ${n(g.area, 0)} m2, area-weighted mean height ${n(g.altura, 2)} m, ${n(g.volumen, 0)} m3 and ${g.personas} occupant(s). It is summed from the captured zones; it is never recalculated. The other disciplines capture their own (none inherits).`), XS.NOTA)]);
   hojas.push({ nombre: HN.DESGLOSE_AREAS, congelar: 4, anchos: [30, 26, 12, 12, 14, 12, 10, 12, 34], filas: af });
 
   /* ---------- 7) CUMPLIMIENTO DE URS ----------
@@ -5907,8 +5907,8 @@ function buildPropuestaXlsx(opt) {
     `Cooling load: ${selloNorma("load")}. Equipment selection: ${selloNorma("equip")}.`));
   li(L(`Ductos: ${selloNorma("duct")}. Electrico: ${selloNorma("elec")}.`,
     `Ductwork: ${selloNorma("duct")}. Electrical: ${selloNorma("elec")}.`));
-  li(L(`El trazado de origen de cada valor heredado esta en la hoja ${HN.INGENIERIA_DETALLE}.`,
-    `The traceability of every inherited value is in the ${HN.INGENIERIA_DETALLE} tab.`));
+  li(L(`El trazado de origen de cada valor aceptado de otra disciplina esta en la hoja ${HN.INGENIERIA_DETALLE}.`,
+    `The traceability of every value accepted from another discipline is in the ${HN.INGENIERIA_DETALLE} tab.`));
   li(L("Los precios de equipo son de referencia de la lista vigente de la casa y se ratifican contra la seleccion del fabricante antes de comprar.",
     "Equipment prices are reference figures from the current house price list and are ratified against the manufacturer's selection before purchase."));
   secC(L("5. PROXIMOS PASOS", "5. NEXT STEPS"));
@@ -19547,7 +19547,7 @@ function viewTablero() {
     <div class="tablero">${grupo(["load", "clean", "equip", "vent", "duct"])}</div>
 
     <div class="grp">Instalaciones del edificio</div>
-    <div class="gsub">Motores autónomos con su propia norma. Heredan la geometría; los resultados de otros motores les entran solo como propuesta aceptada.</div>
+    <div class="gsub">Motores autónomos con su propia norma. Cada uno captura su geometría en su pestaña; lo de otros motores les entra sólo como propuesta aceptada.</div>
     <div class="tablero">${grupo(["elec", "hidro", "fuego", "aire", "civil", "soporte", "estr"])}</div>
 
     <div class="grp">Entrega</div>
@@ -24727,7 +24727,7 @@ $("#file-input").onchange = (e) => {
   rd.readAsText(f);
 };
 /* rev 2.7.0 · El exportable unico del proyecto: una sola memoria con todas las
-   disciplinas que tienen datos y el trazado de origen de cada valor heredado.
+   disciplinas que tienen datos y el trazado de origen de cada valor aceptado de otra disciplina (desde el 27-sep-2026 ninguna hereda).
    La memoria solo de aire sigue existiendo dentro, como su primer capitulo. */
 $("#btn-print").onclick = () => {
   try {
