@@ -68,7 +68,7 @@ export default async function ({ t, eq, cerca, G, S, CM, REG_PROY }) {
     /* Arranque en ceros: sólo la red hidráulica entrega tramos; ductos, incendio, aire y equipos vacíos. */
     S.hidro = { ...G("defaultHidro")(), material, muebles: MUEBLES,
       tramos: [{ ...G("defaultTramoAgua")("AF-GENERAL"), um: 72, L: 25, alt: 3 }, { ...G("defaultTramoAgua")("AF-RAMAL BAÑOS"), um: 20, L: 18, alt: 3 }] };
-    S.fuego = G("defaultFuego")(); S.aire = G("defaultAire")(); S.duct.segments = []; S.quote.items = [];
+    S.fuego = G("defaultFuego")(); S.aire = G("defaultAire")(); S.duct.segments = []; S.equip.items = [];
     S.soporte = G("defaultSoporte")();
     /* H-266: la soportería cuenta la red de hidro con la instantánea aceptada (ya no en vivo). */
     G("recompute")(); S.soporte.snap = G("snapshotSoporte")(); S.soporte.usarMotores = true; G("recompute")();

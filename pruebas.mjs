@@ -1093,7 +1093,11 @@ if (baseFile) {
     S.quote.contingencia = 0;
     try {
     Gb("S").hidro = JSON.parse(JSON.stringify(S.hidro));
-    Gb("S").quote = JSON.parse(JSON.stringify(S.quote));
+    /* H-293–H-301: la base guarda en la cotización los precios y las partidas que ahora son de cada motor: se le dan en su forma de antes. */
+    const PE = G("preciosEquip")(S.equip);
+    Gb("S").quote = { ...JSON.parse(JSON.stringify(S.quote)), items: JSON.parse(JSON.stringify(S.equip.items)), price: PE.price, scaleExp: PE.scaleExp, priceFactor: PE.priceFactor,
+      instPct: PE.instPct, pipeTR: PE.pipeTR, controls: PE.controls, rociador: S.fuego.precioRociador, fanCFM: S.vent.precioCFM, ...S.clean.precios, ...S.aire.precios,
+      ductKg: S.duct.precios.kg, diffuser: S.duct.precios.difusor };
     Gb("S").perms = JSON.parse(JSON.stringify(S.perms));
     Gb("recompute")(); G("recompute")();
     cerca(G("HIDRO").Qtotal, Gb("HIDRO").Qtotal, 0.001, "gasto probable:");
@@ -1947,13 +1951,13 @@ t("16.7 la misma área repartida en las ocho da una carga solar coherente con la
     eq(G("CX_LOTE").propuestas[1].marcado, false, "la marca no se registró:");
   });
   t("17.6 crear proyecto nuevo abre una instancia limpia e independiente", () => {
-    S.quote.items = [{ fam: "prueba", qty: 3 }];
+    S.equip.items = [{ fam: "prueba", qty: 3 }];   /* H-301: las partidas de equipo son de Selección */
     S.kaizen.items = [{ id: "k-prueba" }];
     w.document.querySelector('#modal [data-act="cx-nuevo"]').dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
     if (S.pid === pidViejo) throw new Error("el proyecto nuevo reutilizó el id del anterior");
     eq(S.zones.length, 1, "entró solo la zona marcada:");
     cerca(S.zones[0].area, 96, .01, "área de la oficina:");
-    eq(S.quote.items.length, 0, "la cotización del proyecto anterior viajó al nuevo:");
+    eq(S.equip.items.length, 0, "las partidas de equipo del proyecto anterior viajaron al nuevo:");
     eq(S.kaizen.items.length, 0, "el Kaizen del proyecto anterior viajó al nuevo:");
     eq(S.meta.client, "", "el cliente del proyecto anterior viajó al nuevo:");
     eq(S.cx.lotes.length, 1, "registro de origen:");
@@ -2565,10 +2569,10 @@ t("16.7 la misma área repartida en las ocho da una carga solar coherente con la
     act("proj-new");
     S.meta.name = "OBRA-HISTORICA-Q"; S.meta.client = "CLIENTE-HISTORICO SA";
     const fam = Object.keys(G("PRICE_SEED"))[0];
-    S.quote.price[fam] = 777777; S.quote.fasar = 1.99; S.quote.indirect = 0.21; S.quote.modo = "licitacion";
+    S.equip.precios.price[fam] = 777777;   /* H-301: los precios de equipo son de Selección */ S.quote.fasar = 1.99; S.quote.indirect = 0.21; S.quote.modo = "licitacion";
     S.quote.refBase = "Folio OBRA-HISTORICA 2026";
     const e = G("CARRIER")[0];
-    S.quote.items = [{ id: e.id, fam: (G("famOfModel")(e) || {}).id || null, qty: 3, unit: 12345 }, { id: "OBRA-HISTORICA-EQ", fam: "x", qty: 2, unit: null }];
+    S.equip.items = [{ id: e.id, fam: (G("famOfModel")(e) || {}).id || null, qty: 3, unit: 12345 }, { id: "OBRA-HISTORICA-EQ", fam: "x", qty: 2, unit: null }];
     S.quote.prop.cliente = "CLIENTE-HISTORICO SA"; S.quote.prop.atencion = "Ing. OBRA-HISTORICA";
     G("projSave")(true);
     const idQ = S.pid;
@@ -2580,12 +2584,12 @@ t("16.7 la misma área repartida en las ocho da una carga solar coherente con la
     const r = registro(idQ);
     eq(r.referencia, true, "marca de referencia:");
     sinViejo(JSON.stringify(r), "registro de la referencia");
-    eq(r.data.quote.price[fam], 777777, "precio capturado:");
+    eq(r.data.equip.precios.price[fam], 777777, "precio capturado (en Selección, H-301):");
     eq(r.data.quote.fasar, 1.99, "FASAR:");
     eq(r.data.quote.indirect, 0.21, "indirectos:");
     eq(r.data.quote.modo, "licitacion", "modalidad:");
-    eq(r.data.quote.items.length, 1, "partidas del catálogo:");
-    eq(r.data.quote.items[0].id, e.id); eq(r.data.quote.items[0].qty, 3, "cantidad:"); eq(r.data.quote.items[0].unit, 12345, "precio unitario:");
+    eq(r.data.equip.items.length, 1, "partidas del catálogo (en Selección, H-301):");
+    eq(r.data.equip.items[0].id, e.id); eq(r.data.equip.items[0].qty, 3, "cantidad:"); eq(r.data.equip.items[0].unit, 12345, "precio unitario:");
     eq(r.data.quote.refBase, "", "folio de la base:");
   });
 
@@ -4698,19 +4702,19 @@ t("P.3 la firma de la caché de Kaizen distingue proyectos con la misma arquitec
 });
 
 t("P.4 las bases de equipo de la instantánea leen S.quote.items directo, no la corrida de QUOTE con un ciclo de retraso; sin instantánea ni captura no se cuentan (H-266)", () => {
-  const g = { items: JSON.parse(JSON.stringify(S.quote.items)), soporte: JSON.parse(JSON.stringify(S.soporte)) };
+  const g = { items: JSON.parse(JSON.stringify(S.equip.items)), soporte: JSON.parse(JSON.stringify(S.soporte)) };   /* H-301: partidas en Selección */
   try {
-    S.quote.items = [];
+    S.equip.items = [];
     S.soporte.basesEquipo = 0; S.soporte.usarMotores = false; delete S.soporte.snap;
     G("recompute")();
     const id = G("CARRIER")[0].id;
-    S.quote.items = [{ id, qty: 3, unit: null }];
+    S.equip.items = [{ id, qty: 3, unit: null }];
     G("recompute")();
     eq(G("SOPORTE").nEquipos, 0, "H-266: sin instantánea ni captura no se cuentan los equipos de la cotización:");
     const aire = Number(G("AIRE") && G("AIRE").totalUnidades) || 0;
     aceptarSoporte();
     eq(G("SOPORTE").nEquipos, 3 + aire, "la instantánea ve las 3 unidades de la cotización sin esperar otra corrida:");
-  } finally { S.quote.items = g.items; S.soporte = g.soporte; G("recompute")(); }
+  } finally { S.equip.items = g.items; S.soporte = g.soporte; G("recompute")(); }
 });
 t("P.5 la declaración de la base de precios en la licitación cita el estado real de la plaza, no siempre Baja California", () => {
   const g = { plaza: S.quote.plaza };
@@ -5727,7 +5731,7 @@ t("S.21 la huella de entradas es sólida: si cambia la salida de un motor, su se
     ["ventilación: cambios de aire", () => { S.vent.ach += 2; }], ["ductos: longitud", () => { S.duct.segments[0].length += 15; }], ["cuarto limpio: área", () => { G("cleanRooms")()[0].area += 20; }],
     ["hidráulico: muebles", () => { S.hidro.muebles[0].cant += 4; }], ["contra incendio: ramal", () => { S.fuego.Lramal += 12; }], ["aire: caudal", () => { S.aire.consumos[0].lmin += 90; }],
     ["eléctrico: carga", () => { S.elec.cargas[0].kW += 5; }], ["civil: firme", () => { S.civil.firmeM2 = 300; }], ["soportería: altura de trabajo", () => { S.soporte.alturaTrabajo = 9; }],
-    ["cotización: factor de lista", () => { S.quote.priceFactor = 0.8; }], ["arquitectura forzada", () => { S.sysForce = "chiller"; }],
+    ["selección: factor de lista", () => { S.equip.precios.priceFactor = 0.8; }], ["arquitectura forzada", () => { S.sysForce = "chiller"; }],
   ];
   const flips = {};
   mutaciones.forEach(([nombre, muta]) => {
@@ -5775,12 +5779,12 @@ const a11yModal = () => w.document.getElementById("modal");
 
 t("S.A11Y.1 ningún elemento con data-act/data-tab/data-units queda sin ser <button>, <a href>, campo, <summary> o role + tabindex=\"0\" (todas las pantallas, listas, tarjetas, catálogo y ventanas)", () => {
   llenarTodoS();
-  const q0 = JSON.stringify(S.quote.items), cat0 = JSON.stringify(S.cat), qfam0 = S.qfam, tab0 = S.tab;
+  const q0 = JSON.stringify(S.equip.items), cat0 = JSON.stringify(S.cat), qfam0 = S.qfam, tab0 = S.tab;
   const malos = new Set(), vistos = { n: 0, noNativos: new Set() }, doc = w.document;
   const ver = (donde, raiz) => a11yRevisar(raiz || doc.body, donde, malos, vistos);
   try {
     /* Con una partida de equipo, para que la lista de la cotización y las tarjetas salgan pintadas. */
-    const c0 = G("CARRIER")[0]; S.quote.items.push({ id: c0.id, fam: G("FAMILIES")[0].id, qty: 1, unit: null }); G("recompute")();
+    const c0 = G("CARRIER")[0]; S.equip.items.push({ id: c0.id, fam: G("FAMILIES")[0].id, qty: 1, unit: null }); G("recompute")();
     const pantallas = [...new Set(G("tabsDeVista")().concat(["tablero", "proyecto", "catalogo", "comparativo"]))];
     pantallas.forEach((tab) => { S.tab = tab; G("render")(); ver(tab); });
     /* Selección de equipo pinta la lista de modelos de cada familia (div.pick + PDF + Seleccionar). */
@@ -5805,7 +5809,7 @@ t("S.A11Y.1 ningún elemento con data-act/data-tab/data-units queda sin ser <but
     G("PENDING_LINK = null; requestLink('load>duct', () => {})"); ver("ventana de cruce", a11yModal()); G("closeModal")();
     G("pedirConfirmacion({ titulo: 'x', detalle: 'y', lista: [], boton: 'ok', onOk: () => {} })"); ver("ventana de confirmación", a11yModal()); G("closeModal")();
   } finally {
-    S.quote.items = JSON.parse(q0); S.cat = JSON.parse(cat0); S.qfam = qfam0; S.tab = tab0;
+    S.equip.items = JSON.parse(q0); S.cat = JSON.parse(cat0); S.qfam = qfam0; S.tab = tab0;
     G("closeModal")(); G("recompute")(); G("render")();
   }
   if (malos.size) throw new Error(`${malos.size} control(es) sin resolver:\n   ` + [...malos].slice(0, 12).join("\n   "));
@@ -5863,12 +5867,12 @@ t("S.A11Y.3 (rev 2.9.16, aplanado) la tarjeta de modelo de Selección es un <but
     eq(salida().length, n0 + 1, "clic en el PDF emite un PDF:");
     eq(a11yModal().hidden, true, "clic en el PDF no abre el detalle:");
   });
-  const sel0 = JSON.stringify(S.sel), q0 = JSON.stringify(S.quote.items);
+  const sel0 = JSON.stringify(S.sel), q0 = JSON.stringify(S.equip.items);
   try {
     clicS(sel);
     eq(((S.sel.modelos || {})[sel.dataset.fam] || {}).id, sel.dataset.id, "clic en Seleccionar registra el modelo elegido:");
     eq(a11yModal().hidden, true, "clic en Seleccionar no abre el detalle:");
-  } finally { S.sel = JSON.parse(sel0); S.quote.items = JSON.parse(q0); G("recompute")(); }
+  } finally { S.sel = JSON.parse(sel0); S.equip.items = JSON.parse(q0); G("recompute")(); }
 });
 
 t("S.A11Y.4 (rev 2.9.16, aplanado) la zona de carga de archivos ya no es un control: es un grupo con nombre, sus dos botones abren el selector una vez cada uno y el arrastre sigue sobre la zona", () => {
@@ -5989,7 +5993,7 @@ t("S.23 captura real: cantidades directas de obra civil, riel de soportería y e
     vacio(); S.vent.mode = "kitchen"; G("recompute")(); eq(cap("vent"), false, "modo cocina sin medidas:"); eq(G("capturaReal")("quote"), false, "y la cotización sigue vacía:");
     S.vent.hoodL = 2.5; S.vent.hoodW = 1.1; G("recompute")(); eq(cap("vent"), true, "modo cocina con medidas:");
     vacio(); S.vent.mode = "louver"; G("recompute")(); eq(cap("vent"), false, "rejilla sin medidas:");
-    vacio(); S.quote.items.push({ id: G("CARRIER")[0].id, fam: "chiller", qty: 1, unit: null }); G("recompute")(); eq(cap("quote"), true, "equipo elegido a mano:");
+    vacio(); S.equip.items.push({ id: G("CARRIER")[0].id, fam: "chiller", qty: 1, unit: null }); G("recompute")(); eq(cap("quote"), true, "equipo elegido a mano:");
     vacio(); S.kaizen.items.push({ id: "k1", titulo: "", estado: "planear", owner: "", ahorro: 0, nota: "" }); G("recompute")(); eq(cap("kaizen"), false, "mejora sin título:");
     S.kaizen.items[0].titulo = "Mejora real"; G("recompute")(); eq(cap("kaizen"), true, "mejora con título:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
@@ -7200,7 +7204,7 @@ t("S.77 (H-228) termoplástico por subtipo, IPC 2009 T308.5 (MCP, secundaria): C
     G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.77"; Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.77" }; });
     S.zones[0].area = 200; S.zones[0].height = 6;
     S.hidro = { ...G("defaultHidro")(), material: "cpvc", muebles, tramos: tramos() };
-    S.fuego = G("defaultFuego")(); S.aire = G("defaultAire")(); S.duct.segments = []; S.quote.items = [];
+    S.fuego = G("defaultFuego")(); S.aire = G("defaultAire")(); S.duct.segments = []; S.equip.items = [];
     /* H-266 (U5): con arriostramiento sísmico, sin la altura de la estructura el anclaje va «Por cotizar» (z/h = 0 no es dato): se captura. */
     S.soporte = { ...G("defaultSoporte")(), alturaColgadoM: 0.5, sismoSDS: 1.0, sismoFuente: "CFE MDOC-Sismo 2015, sitio Tijuana", estructuraTipo: "losa_concreto", estructuraFc: 250, alturaEstructura: 6 };
     aceptarSoporte();   /* H-266 */
@@ -8093,7 +8097,7 @@ t("S.130 (H-266) un proyecto a mano con el sí/no de soportería guardado como t
     /* Con «false» en texto, una instantánea vieja guardada y dos equipos Carrier en la cotización: recupera sus dos bases. */
     const fam = G("FAMILIES")[0], m = G("familyPool")(fam.id)[0];
     if (!m || !G("CARRIER").some((x) => x.id === m.id)) throw new Error("el caso no aísla lo que se quiere probar: hace falta un equipo Carrier cotizable");
-    p.duct.segments = []; p.quote.items = [{ id: m.id, fam: fam.id, qty: 2, unit: null }];
+    p.duct.segments = []; p.equip.items = [{ id: m.id, fam: fam.id, qty: 2, unit: null }];
     p.soporte.snap = { duct: [], hidro: [], hidroMat: "acero", fuego: { nTotal: 0, Lram: 0, ramD: 100, Lmon: 0, monD: 100 }, aire: [], aireMat: "acero", nEquip: 0, ts: 1 };
     G("importarRespaldo")(JSON.stringify(p)); G("recompute")();
     eq(S.soporte.basesEquipo, 2, "a mano con instantánea vieja: toma las 2 bases que contaba (antes 0):");
@@ -8111,7 +8115,7 @@ t("S.131 (H-266) con arriostramiento sísmico y sin la altura de la estructura c
     Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.131" }; });
     const muebles = [{ id: "wc_flux", cant: 4 }, { id: "ming_flux", cant: 2 }, { id: "lavabo", cant: 4 }, { id: "fregadero", cant: 1 }, { id: "manguera", cant: 2 }];
     S.hidro = { ...G("defaultHidro")(), material: "acero", muebles, tramos: [{ ...G("defaultTramoAgua")("AF-GENERAL"), um: 72, L: 25, alt: 3 }, { ...G("defaultTramoAgua")("AF-RAMAL"), um: 20, L: 18, alt: 3 }] };
-    S.fuego = G("defaultFuego")(); S.aire = G("defaultAire")(); S.duct.segments = []; S.quote.items = [];
+    S.fuego = G("defaultFuego")(); S.aire = G("defaultAire")(); S.duct.segments = []; S.equip.items = [];
     S.soporte = { ...G("defaultSoporte")(), alturaColgadoM: 0.5, alturaTrabajo: 5, mesesElevacion: 1,
       sismoSDS: 1.2, sismoFuente: "CFE MDOC-Sismo 2015, sitio Tijuana", estructuraTipo: "losa_concreto", estructuraFc: 250 };
     aceptarSoporte();
@@ -8147,7 +8151,7 @@ t("S.132 (H-266) un proyecto anterior que contaba en vivo sin nada que soportar 
     const fam = G("FAMILIES")[0], m = G("familyPool")(fam.id)[0];
     if (!m || !G("CARRIER").some((x) => x.id === m.id)) throw new Error("el caso no aísla lo que se quiere probar: hace falta un equipo Carrier cotizable");
     const p = JSON.parse(JSON.stringify(G("defaultState")())); p.meta.name = "S.132";
-    p.duct.segments = []; p.quote.items = [{ id: m.id, fam: fam.id, qty: 2, unit: null }];
+    p.duct.segments = []; p.equip.items = [{ id: m.id, fam: fam.id, qty: 2, unit: null }];
     p.soporte = { usarMotores: true, sismico: true, alturaTrabajo: 0, mesesElevacion: 3, basesEquipo: 0, rielM: 0 };
     G("importarRespaldo")(JSON.stringify(p)); G("recompute")();
     eq(S.vinculos["motores>soporte"], undefined, "sin nada que proponer no queda registrada una aceptación:");
@@ -8371,7 +8375,7 @@ t("S.137 (H-266) las bases de equipo que la migración de soportería copia al a
          migración copia las 2 bases que contaba (a mano: tomarBases; en vivo sin nada que soportar: U8, abre a mano). */
       const caso = um ? "en vivo sin nada que soportar:" : "a mano sin bases:";
       const p = JSON.parse(JSON.stringify(G("defaultState")())); p.meta.name = "S.137";
-      p.duct.segments = []; p.quote.items = [{ id: m.id, fam: fam.id, qty: 2, unit: null }];
+      p.duct.segments = []; p.equip.items = [{ id: m.id, fam: fam.id, qty: 2, unit: null }];
       p.soporte = { usarMotores: um, mesesElevacion: 2 };
       G("importarRespaldo")(JSON.stringify(p)); G("recompute")();
       eq(G("SOPORTE").nEquipos, 2, `${caso} la cifra no cambia al abrir:`); const total = G("SOPORTE").total;
@@ -9397,6 +9401,30 @@ t("S.180 (H-300) la cotización de Ductos sale de su propio motor: los difusores
     eq(["ductKg", "diffuser"].some((k) => k in S.quote), false, "la cotización ya no los guarda:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
+t("S.181 (H-301) la cotización de equipos sale de Selección de equipo: sus partidas y sus precios (familia, economía de escala, factor de lista, instalación, tubería por TR y control) se capturan en Selección y la cotización global sólo junta sus renglones; un proyecto anterior conserva partidas y precios", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.181";
+    const fam = G("FAMILIES")[0], m = G("familyPool")(fam.id)[0];
+    S.equip.items = [{ id: m.id, fam: fam.id, qty: 2, unit: null }]; G("recompute")();
+    const L = () => (G("QUOTE").lines || []);
+    eq(L().length, 1, "la partida capturada en Selección entra a la cotización:");
+    const u0 = L()[0].unit;
+    if (!(u0 > 0)) throw new Error("el caso no aísla lo que se quiere probar: la partida debe tener precio de lista");
+    S.equip.precios.priceFactor = 0.5; S.quote.priceFactor = 3; G("recompute")();
+    cerca(L()[0].unit, u0 * 0.5, 1e-6, "el factor de lista es el de Selección, no el de la cotización:");
+    eq(JSON.stringify(G("SYS").cot.lines.map((l) => [l.desc, l.total])), JSON.stringify(L().map((l) => [l.desc, l.total])), "la cotización global junta los renglones de Selección, tal cual:");
+    const inst = (G("QUOTE").aux || []).find((a) => a.mot === "equip" && /^Instalación mecánica/.test(a.desc));
+    cerca(inst.total, L()[0].total * 0.35, 1e-6, "instalación con el porcentaje de Selección:");
+    /* Proyecto anterior: partidas y precios en la cotización. */
+    const viejo = JSON.parse(JSON.stringify(S)); delete viejo.equip.items; delete viejo.equip.precios;
+    viejo.quote.items = [{ id: m.id, fam: fam.id, qty: 3, unit: null }]; viejo.quote.priceFactor = 0.9; viejo.quote.instPct = 0.3; viejo.quote.price = { [fam.price]: 50000 };
+    const s = G("sanearEstado")(viejo);
+    eq(JSON.stringify([s.equip.items.length, s.equip.items[0].qty, s.equip.precios.priceFactor, s.equip.precios.instPct, s.equip.precios.price[fam.price]]), JSON.stringify([1, 3, 0.9, 0.3, 50000]),
+      "un proyecto anterior conserva sus partidas y precios, ahora en Selección:");
+    eq(["items", "price", "priceFactor", "instPct", "pipeTR", "controls", "scaleExp"].some((k) => k in s.quote), false, "la cotización ya no los guarda:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {
   const guardado = JSON.stringify(S);
   try {
@@ -9476,7 +9504,7 @@ t("S.40 una instalación limpia abre con todo en cero: sin proyectos, sin cuarto
   eq(SL.hidro.muebles.length + SL.hidro.tramos.length, 0, "sin muebles ni tramos de agua:"); eq(num(SL.fuego.area), 0, "sin área contra incendio:");
   eq(SL.aire.consumos.length, 0, "sin consumos de aire:"); eq(num(SL.civil.firmeM2) + num(SL.civil.puertasSimples) + num(SL.civil.puertasLimpias), 0, "civil en ceros:");
   eq(num(SL.soporte.rielM) + num(SL.soporte.basesEquipo), 0, "soportería en ceros:");
-  eq(SL.quote.items.length, 0, "sin equipos elegidos:"); eq(JSON.stringify(SL.quote.hidroPU), JSON.stringify(GL("HIDRO_PU_REFERENCIA")), "sólo referencias de mercado de tubería, ningún precio de proveedor:"); eq((SL.quote.hidroPUlog || []).length, 0, "sin bitácora de precios:"); eq(SL.quote.fxFecha, "", "tipo de cambio sin fecha capturada:"); eq(SL.kaizen.items.length, 0, "sin mejoras:");
+  eq(SL.equip.items.length, 0, "sin equipos elegidos:"); eq(JSON.stringify(SL.quote.hidroPU), JSON.stringify(GL("HIDRO_PU_REFERENCIA")), "sólo referencias de mercado de tubería, ningún precio de proveedor:"); eq((SL.quote.hidroPUlog || []).length, 0, "sin bitácora de precios:"); eq(SL.quote.fxFecha, "", "tipo de cambio sin fecha capturada:"); eq(SL.kaizen.items.length, 0, "sin mejoras:");
   eq(Object.keys(SL.sellos).length, 0, "sin sellos:"); eq(Object.keys(SL.perms).length, 0, "sin cruces autorizados:");
   GL("recompute()");
   eq(GL("QUOTE").tot, 0, "cotización en cero:"); eq(GL("totals()").tons, 0, "carga en cero:"); eq(GL("HIDRO").Qtotal, 0, "hidro en cero:"); eq(GL("FUEGO").qTotal, 0, "incendio en cero:"); eq(GL("AIRE").fadRequerido, 0, "aire en cero:"); eq(GL("CIVIL").total + GL("SOPORTE").total, 0, "civil y soportería en cero:");
@@ -9884,7 +9912,7 @@ t("GA.4 sin tocar la ayuda de cada campo: con la guía oculta el aviso de precio
   const g0 = S.guia, t0 = S.tab;
   try {
     S.guia = false; S.tab = "seleccion"; G("render")();
-    const campo = w.document.querySelector('#view input[data-path="quote.priceFactor"]');
+    const campo = w.document.querySelector('#view input[data-path="equip.precios.priceFactor"]');
     if (!campo) throw new Error("no está el campo del factor de ajuste de lista");
     const ayuda = campo.closest(".field").textContent;
     contiene(ayuda, "grado cuarto limpio", "ayuda del factor de lista:");

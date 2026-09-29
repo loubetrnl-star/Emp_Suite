@@ -4794,6 +4794,56 @@ function listPrice(famKey, TR, q) {
   const f = q.priceFactor != null ? q.priceFactor : 1;
   return per * ref * Math.pow(Math.max(.01, TR) / ref, ex) * f;
 }
+/* H-301 (decisión del dueño, 29-sep-2026: cada motor saca su propia cotización de sus propios resultados; la Cotización es un
+   consolidado sin cálculo). Las partidas de equipo y lo que se cotiza con ellas —precio por familia con su economía de escala y su
+   factor de lista, instalación, tubería por TR y control por equipo— son de Selección de equipo: copia en este motor de la lista
+   de referencia de la casa (antes QUOTE_SEED; sin fuente, la cotización las marca SEMILLA · SIN FUENTE). */
+const EQUIP_PRECIO_SEED = { price: Object.fromEntries(Object.entries(PRICE_SEED).map(([k, v]) => [k, v.mxnTR])),
+  scaleExp: 0.85, priceFactor: 1, instPct: 0.35, pipeTR: 9500, controls: 68500 };
+/* Los precios de Selección (captura sobre la semilla; lo que falta, la semilla, como antes). */
+function preciosEquip(E) {
+  const P = E && typeof E === "object" && "precios" in E && E.precios && typeof E.precios === "object" ? E.precios : {};
+  return { ...EQUIP_PRECIO_SEED, ...P, price: { ...EQUIP_PRECIO_SEED.price, ...(P.price && typeof P.price === "object" ? P.price : {}) } };
+}
+/* H-301: la cotización de Selección de equipo sale sólo de sus partidas (S.equip.items) y sus precios: los mismos renglones que antes
+   armaba computeQuote. aux va antes de la lámina y los difusores; auxFin (control por equipo), después, como siempre. */
+function cotizacionEquip(E) {
+  const P = preciosEquip(E), lines = [], aux = [], auxFin = [];
+  const items = E && typeof E === "object" && "items" in E && Array.isArray(E.items) ? E.items : [];
+  items.forEach((it, ix) => {
+    const e = CARRIER.find((x) => x.id === it.id); if (!e) return;
+    const fam = familyOf(it.fam) || famOfModel(e);
+    const unit = it.unit != null ? it.unit : listPrice(fam?.price, e.TR, P);
+    lines.push({ ix, kind: "equip", key: `${fam?.id || "eq"}-${ix + 1}`, model: e, fam,
+      desc: `${e.model} · ${e.productLine} · ${e.TR} TR`, descEn: `${e.model} · ${e.productLine} · ${e.TR} TR`,
+      qty: it.qty, unit, total: unit * it.qty, tons: e.TR * it.qty, sec: "B", un: "PIEZA", mot: "equip" });
+  });
+  const equipTotal = lines.reduce((a, l) => a + l.total, 0);
+  const equipTons = lines.reduce((a, l) => a + l.tons, 0);
+  const nEquip = lines.reduce((a, l) => a + l.qty, 0);
+  const inst = num(P.instPct, EQUIP_PRECIO_SEED.instPct), pTR = num(P.pipeTR, EQUIP_PRECIO_SEED.pipeTR), pC = num(P.controls, EQUIP_PRECIO_SEED.controls);
+  if (equipTotal > 0) aux.push({ desc: `Instalación mecánica, bases, izaje y arranque (${(inst * 100).toFixed(0)} % del equipo)`,
+    descEn: `Mechanical installation, bases, rigging and startup (${(inst * 100).toFixed(0)}% of equipment)`,
+    qty: 1, unit: equipTotal * inst, total: equipTotal * inst , sec: "B", un: "LOTE", mot: "equip"});
+  if (equipTons > 0) aux.push({ desc: `Tubería de refrigerante o hidráulica, aislada (${n(equipTons, 1)} TR)`,
+    descEn: `Insulated refrigerant or hydronic piping (${n(equipTons, 1)} tons)`,
+    qty: equipTons, unit: pTR, total: pTR * equipTons , sec: "B", un: "TR", mot: "equip"});
+  if (nEquip > 0) auxFin.push({ desc: `Control DDC y tablero local por equipo`, descEn: `DDC control and local panel per unit`,
+    qty: nEquip, unit: pC, total: pC * nEquip , sec: "B", un: "PIEZA", mot: "equip"});
+  return { lines, aux, auxFin, equipTotal, equipTons, nEquip };
+}
+/* Lo técnico de Selección que pasa a una referencia interna: partidas del catálogo y precios numéricos (sin textos libres). */
+function equipTecnico(E) {
+  const P = E && typeof E === "object" && E.precios && typeof E.precios === "object" ? E.precios : {};
+  const precios = { ...EQUIP_PRECIO_SEED, price: { ...EQUIP_PRECIO_SEED.price } };
+  ["scaleExp", "priceFactor", "instPct", "pipeTR", "controls"].forEach((k) => { if (typeof P[k] === "number" && Number.isFinite(P[k])) precios[k] = P[k]; });
+  if (P.price && typeof P.price === "object") Object.keys(PRICE_SEED).forEach((k) => { const v = P.price[k]; if (typeof v === "number" && Number.isFinite(v)) precios.price[k] = v; });
+  const items = (E && Array.isArray(E.items) ? E.items : [])
+    .filter((it) => it && typeof it === "object" && typeof it.id === "string" && CARRIER.some((e) => e.id === it.id))
+    .map((it) => ({ id: it.id, fam: typeof it.fam === "string" && FAMILIES.some((f) => f.id === it.fam) ? it.fam : null,
+      qty: Number.isFinite(+it.qty) && +it.qty > 0 ? +it.qty : 1, unit: typeof it.unit === "number" && Number.isFinite(it.unit) ? it.unit : null }));
+  return { items, precios };
+}
 /* rev 2.9.23 · DECISIÓN DEL DUEÑO: precios de REFERENCIA DE MERCADO para el Budget Proposal de la suite (no son costo de
    proveedor). Cada renglón guarda precio tal como se publica (por tramo, con o sin IVA), su fuente, URL y fecha; el motor
    desglosa el IVA y trabaja por metro y antes de IVA. origen "referencia" = Referencia Budget; "proveedor" = Proveedor local
@@ -4853,12 +4903,7 @@ const QUOTE_SEED = {
   modo: "privada",        // privada | licitacion
   plazaFactor: 0,         // 0 = usar el factor de la plaza; >0 lo sustituye
 
-  price: Object.fromEntries(Object.entries(PRICE_SEED).map(([k, v]) => [k, v.mxnTR])),
-  scaleExp: 0.85,         // exponente de economía de escala
-  priceFactor: 1,         // ajuste global de lista (1.00 = base grado cuarto limpio)
-  instPct: 0.35,          // instalación mecánica como % del equipo
-  pipeTR: 9500,           // tubería de refrigerante o hidráulica por TR
-  controls: 68500,        // referencia interna · controlador DDC por equipo
+  /* H-301: precios de equipo, instalación, tubería por TR y control por equipo pasaron a Selección (EQUIP_PRECIO_SEED). */
   /* H-17 · Partidas que la cotización ignoraba aunque la propia suite las
      calculaba: los ventiladores y extractores que salen del motor de ventilación
      y los módulos FFU, filtros HEPA y rejillas que salen del de cuartos limpios.
@@ -4898,7 +4943,7 @@ const QUOTE_SEED = {
   iva: 0.16,
   tarifaKWh: 2.85,        // MXN/kWh · tarifa CFE de referencia para el ahorro de operación
   horasAno: 3500,         // horas de operación al año del sistema
-  items: [],              // partidas agregadas por el usuario
+  /* H-301: las partidas de equipo pasaron a Selección (S.equip.items). */
   prop: null,             // metadatos de la propuesta formal (rev 2.5.0)
 };
 const familyOf = (id) => FAMILIES.find((f) => f.id === id);
@@ -8803,38 +8848,22 @@ function computeQuote() {
      contra su valor de semilla, así un campo vacío vuelve al valor de la casa
      en vez de desaparecer del precio. */
   const q = S.quote, t = totals();
-  const lines = [];
   /* H-97b (17-sep-2026, traducción de descripciones dinámicas): cada renglón
      de aux/lines lleva descEn junto a desc, calculado una sola vez aquí -no
      por documento-, igual que ya se hizo en computeCivil/computeSoporte. Los
      catálogos que alimentan estas frases (TUB_AGUA, TUB_FUEGO, TUB_AIRE,
      SECADORES, ROCIADOR, ELEVACION, PERFILES) ya traen su propio labelEn. */
-  // 1) Equipos agregados
-  q.items.forEach((it, ix) => {
-    const e = CARRIER.find((x) => x.id === it.id); if (!e) return;
-    const fam = familyOf(it.fam) || famOfModel(e);
-    const unit = it.unit != null ? it.unit : listPrice(fam?.price, e.TR, q);
-    lines.push({ ix, kind: "equip", key: `${fam?.id || "eq"}-${ix + 1}`, model: e, fam,
-      desc: `${e.model} · ${e.productLine} · ${e.TR} TR`, descEn: `${e.model} · ${e.productLine} · ${e.TR} TR`,
-      qty: it.qty, unit, total: unit * it.qty, tons: e.TR * it.qty, sec: "B", un: "PIEZA", mot: "equip" });
-  });
-  const equipTotal = lines.reduce((a, l) => a + l.total, 0);
-  const equipTons = lines.reduce((a, l) => a + l.tons, 0);
-  const nEquip = lines.reduce((a, l) => a + l.qty, 0);
-  // 2) Instalación y accesorios ligados al proyecto
-  const aux = [];
-  if (equipTotal > 0) aux.push({ desc: `Instalación mecánica, bases, izaje y arranque (${(num(q.instPct, QUOTE_SEED.instPct) * 100).toFixed(0)} % del equipo)`,
-    descEn: `Mechanical installation, bases, rigging and startup (${(num(q.instPct, QUOTE_SEED.instPct) * 100).toFixed(0)}% of equipment)`,
-    qty: 1, unit: equipTotal * num(q.instPct, QUOTE_SEED.instPct), total: equipTotal * num(q.instPct, QUOTE_SEED.instPct) , sec: "B", un: "LOTE", mot: "equip"});
-  if (equipTons > 0) aux.push({ desc: `Tubería de refrigerante o hidráulica, aislada (${n(equipTons, 1)} TR)`,
-    descEn: `Insulated refrigerant or hydronic piping (${n(equipTons, 1)} tons)`,
-    qty: equipTons, unit: num(q.pipeTR, QUOTE_SEED.pipeTR), total: num(q.pipeTR, QUOTE_SEED.pipeTR) * equipTons , sec: "B", un: "TR", mot: "equip"});
+  /* H-301 (decisión del dueño, 29-sep-2026): los equipos y su instalación, tubería y control los cotiza Selección de equipo
+     (SYS.cot, cotizacionEquip) con sus partidas y sus precios; aquí sólo se juntan sus renglones tal cual (copias). */
+  const EC = typeof SYS !== "undefined" && SYS && SYS.cot ? SYS.cot : { lines: [], aux: [], auxFin: [], equipTotal: 0, equipTons: 0, nEquip: 0 };
+  const lines = EC.lines.map((x) => ({ ...x }));
+  const equipTotal = EC.equipTotal, equipTons = EC.equipTons, nEquip = EC.nEquip;
+  const aux = EC.aux.map((x) => ({ ...x }));
   /* H-300 (decisión del dueño, 29-sep-2026): la cotización de Ductos la arma su motor con sus resultados, sus precios y su captura
      de difusores (DUCT.cot, cotizacionDuct); aquí sólo se juntan sus renglones tal cual (copias), sin recalcular nada. */
   const DC = DUCT && DUCT.cot ? DUCT.cot : { aux: [], pendientes: [], porCotizar: [] };
   aux.push(...DC.aux.map((x) => ({ ...x })));
-  if (nEquip > 0) aux.push({ desc: `Control DDC y tablero local por equipo`, descEn: `DDC control and local panel per unit`,
-    qty: nEquip, unit: num(q.controls, QUOTE_SEED.controls), total: num(q.controls, QUOTE_SEED.controls) * nEquip , sec: "B", un: "PIEZA", mot: "equip"});
+  aux.push(...EC.auxFin.map((x) => ({ ...x })));   /* H-301: control por equipo, de Selección */
   /* H-17 · Renglones automáticos desde los otros dos motores, con la misma
      compuerta de permisos que ya usa el resto de los cruces. */
   const verVent = linkAllowed("vent>quote"), verClean = linkAllowed("clean>quote");
@@ -11887,6 +11916,7 @@ function recompute() {
     registrarVinculo("proyecto>equip", "aceptado");
   }
   SYS = buildSystem(S.sysForce);
+  if (SYS && typeof SYS === "object") SYS.cot = cotizacionEquip(S.equip);   /* H-301: la cotización de Selección de equipo */
   /* Los tres motores nuevos corren DESPUÉS de la selección de equipo y ANTES de la
      cotización, que tiene renglones que salen de los tres. El eléctrico corre AL
      FINAL de hidro/fuego/aire: ya no toma nada de ellos al calcular (H-268: sólo
@@ -17044,9 +17074,9 @@ Object.assign(REF, {
   "quote.currency":  { ref: "Moneda en la que se presenta la cotización.", rec: "Si cotizas en dólares, deja asentado el tipo de cambio y su fecha." },
   "equip.espCaptura": { ref: "Presión estática externa (in.wg) que el ventilador del equipo debe vencer fuera del gabinete: ductos, rejillas, difusores, filtros y accesorios externos. La captura el ingeniero aquí; Selección no la toma de Ductos (H-274). Sin captura queda pendiente y el criterio de presión no se evalúa." },
   "quote.fx":        { ref: "Tipo de cambio, pesos por dólar.", rec: "Fíjalo por escrito con vigencia: en equipo de importación el margen se va en el tipo de cambio." },
-  "quote.priceFactor":{ ref: "Multiplica todos los precios de equipo de la lista base.", rec: "1.00 = precio semilla, que viene de una obra de grado cuarto limpio y corre alto. Para obra comercial suele quedar entre 0.55 y 0.75." },
-  "quote.scaleExp":  { ref: "Exponente de la ley de potencia: el precio por tonelada baja en equipos grandes.", rec: "0.85 es el valor habitual en equipo HVAC. Más bajo castiga más al equipo chico." },
-  "quote.instPct":   { ref: "Instalación como porcentaje del costo de equipo: mano de obra, soportería y accesorios.", rec: "Equipo sencillo 25–35 % · cuarto limpio o difícil acceso 45–70 %." },
+  "equip.precios.priceFactor":{ ref: "Multiplica todos los precios de equipo de la lista base.", rec: "1.00 = precio semilla, que viene de una obra de grado cuarto limpio y corre alto. Para obra comercial suele quedar entre 0.55 y 0.75." },
+  "equip.precios.scaleExp":  { ref: "Exponente de la ley de potencia: el precio por tonelada baja en equipos grandes.", rec: "0.85 es el valor habitual en equipo HVAC. Más bajo castiga más al equipo chico." },
+  "equip.precios.instPct":   { ref: "Instalación como porcentaje del costo de equipo: mano de obra, soportería y accesorios.", rec: "Equipo sencillo 25–35 % · cuarto limpio o difícil acceso 45–70 %." },
   /* Motores de otras disciplinas (rev 2.2.0) */
   "elec.sistema":  { ref: "Sistema de distribución de la acometida. Define tensión entre fases y a neutro.", rec: "220/127 V en obra comercial y nave ligera · 440/254 V cuando la demanda pasa de unos 250 kVA o hay motores grandes." },
   "elec.tempAmb":  { ref: "Temperatura ambiente de la canalización, no del local. NOM-001-SEDE Tabla 310-15(b)(2)(a).", rec: "40 °C en tubería interior en Baja California · 50 °C si el tubo va expuesto en azotea",
@@ -17075,17 +17105,17 @@ Object.assign(REF, {
   "quote.iva":       { ref: "Impuesto al valor agregado aplicable.", rec: "8 % en franja fronteriza · 16 % nacional. Verifica que la obra califique antes de usar el 8 %." },
   "duct.precios.kg": { ref: "Precio por kilogramo de ducto instalado: lámina, refuerzo, colgantes y sellado.", rec: "Cotiza contra el peso que arroja la cédula de ductos, no contra metros lineales." },
   "duct.precios.difusor": { ref: "Precio por difusor o rejilla, montado y con su cuello.", rec: "Perforado de cuarto limpio corre muy por arriba de uno comercial." },
-  "quote.pipeTR":    { ref: "Tubería de refrigerante o hidráulica por tonelada de equipo cotizado: cobre o acero, aislamiento y accesorios.", rec: "Se aplica a las toneladas de todo el equipo de la cotización, sea expansión directa o agua helada." },
-  "quote.controls":  { ref: "Controles: tablero, DDC, sensores y puesta en marcha.", rec: "En cuarto limpio incluye monitoreo de presión diferencial y de ΔP de filtros." },
-  "quote.price.chiller":    { ref: "Precio base por tonelada de enfriador de agua.", rec: "Se ajusta por la ley de potencia según el tamaño del equipo elegido." },
-  "quote.price.ahu":        { ref: "Precio base por tonelada de manejadora.", rec: "El grado cuarto limpio, con secciones de filtrado y acabado sanitario, duplica el comercial." },
-  "quote.price.vrf_out":    { ref: "Precio base por tonelada de condensadora VRF.", rec: "" },
-  "quote.price.vrf_in":     { ref: "Precio base por tonelada de unidad interior VRF.", rec: "" },
-  "quote.price.rtu":        { ref: "Precio base por tonelada de paquete de azotea.", rec: "" },
-  "quote.price.split_duct": { ref: "Precio base por tonelada de split ducted.", rec: "" },
-  "quote.price.mini":       { ref: "Precio base por tonelada de minisplit.", rec: "" },
-  "quote.price.fcu":        { ref: "Precio base por tonelada de fancoil.", rec: "" },
-  "quote.price.ptac":       { ref: "Precio base por tonelada de PTAC.", rec: "" },
+  "equip.precios.pipeTR":    { ref: "Tubería de refrigerante o hidráulica por tonelada de equipo cotizado: cobre o acero, aislamiento y accesorios.", rec: "Se aplica a las toneladas de todo el equipo de la cotización, sea expansión directa o agua helada." },
+  "equip.precios.controls":  { ref: "Controles: tablero, DDC, sensores y puesta en marcha.", rec: "En cuarto limpio incluye monitoreo de presión diferencial y de ΔP de filtros." },
+  "equip.precios.price.chiller":    { ref: "Precio base por tonelada de enfriador de agua.", rec: "Se ajusta por la ley de potencia según el tamaño del equipo elegido." },
+  "equip.precios.price.ahu":        { ref: "Precio base por tonelada de manejadora.", rec: "El grado cuarto limpio, con secciones de filtrado y acabado sanitario, duplica el comercial." },
+  "equip.precios.price.vrf_out":    { ref: "Precio base por tonelada de condensadora VRF.", rec: "" },
+  "equip.precios.price.vrf_in":     { ref: "Precio base por tonelada de unidad interior VRF.", rec: "" },
+  "equip.precios.price.rtu":        { ref: "Precio base por tonelada de paquete de azotea.", rec: "" },
+  "equip.precios.price.split_duct": { ref: "Precio base por tonelada de split ducted.", rec: "" },
+  "equip.precios.price.mini":       { ref: "Precio base por tonelada de minisplit.", rec: "" },
+  "equip.precios.price.fcu":        { ref: "Precio base por tonelada de fancoil.", rec: "" },
+  "equip.precios.price.ptac":       { ref: "Precio base por tonelada de PTAC.", rec: "" },
 
   /* Ventilación */
   "vent.name":   { ref: "Nombre del sistema de extracción o inyección.", rec: "Identifica el local que sirve: sanitarios, cocina, cuarto de máquinas." },
@@ -18478,7 +18508,7 @@ const firmaFilasElec = (f) => JSON.stringify(f.map((c) => [c.nombre, +num(c.kW).
 const resumenFilasElec = (f) => `${f.length} carga(s) · ${n(f.reduce((a, c) => a + num(c.kW) * num(c.cant, 1), 0), 1)} kW · ${f.map((c) => c.nombre.split(" · ")[0]).slice(0, 4).join(", ")}${f.length > 4 ? "…" : ""}`;
 /* H-266: equipos Carrier capturados en la cotización (piezas), sin esperar a que corra la cotización. */
 function equiposCotizados() {
-  return (S.quote && Array.isArray(S.quote.items) ? S.quote.items : [])
+  return (S.equip && Array.isArray(S.equip.items) ? S.equip.items : [])   /* H-301: las partidas de equipo son de Selección */
     .reduce((a, it) => (typeof CARRIER !== "undefined" && CARRIER.some((x) => x.id === it.id)) ? a + num(it.qty, 0) : a, 0);
 }
 function snapshotSoporte() {
@@ -18632,7 +18662,8 @@ function computeSoporteGobernado(G) {
    (criterio de las familias terminales) y su nombre. Sin perfil horario (zona
    capturada a mano) la simultaneidad por hora queda pendiente: no se inventa.
    ========================================================================= */
-function defaultEquip() { return { zonas: [], tomarDeCarga: null, espCaptura: null, sitio: null, tomarSitio: null, div: null }; }
+function defaultEquip() { return { zonas: [], tomarDeCarga: null, espCaptura: null, sitio: null, tomarSitio: null, div: null,
+  items: [], precios: { ...EQUIP_PRECIO_SEED, price: { ...EQUIP_PRECIO_SEED.price } } }; }   /* H-301: su cotización */
 /* H-274 (decisión del dueño, 28-sep-2026): Selección no tiene ningún vínculo con Ductos, ni lectura en vivo ni propuesta
    aceptada, en ninguna dirección. La presión estática externa que debe vencer el equipo (in.wg) se captura aquí; sin captura,
    o con un valor que no sea positivo, vale 0 y queda pendiente: el criterio de presión no se evalúa y no se supone. */
@@ -19255,7 +19286,7 @@ function capturaReal(id) {
       return geo || directas;
     }
     case "soporte": return !!(SOPORTE && SOPORTE.nSoportes > 0) || num((S.soporte || {}).rielM) > 0 || num((S.soporte || {}).basesEquipo) > 0;
-    case "quote": case "valor": return MOTORES_CAPTURA.some(capturaReal) || ((S.quote || {}).items || []).length > 0;
+    case "quote": case "valor": return MOTORES_CAPTURA.some(capturaReal) || ((S.equip || {}).items || []).length > 0;   /* H-301: las partidas de equipo son de Selección */
     case "kaizen": return MOTORES_CAPTURA.some(capturaReal) || ((S.kaizen && S.kaizen.items) || []).some((i) => i && String(i.titulo || "").trim());
     default: return false;
   }
@@ -19680,7 +19711,7 @@ const ENTRADAS = {
      marca de edición, que no cambian el cálculo), la diversidad del edificio, el sitio (capacidad en sitio), la tecnología elegida,
      los modelos por familia y la presión estática externa capturada en esta pestaña (H-274: nada de Ductos). Ya no anida
      ENTRADAS.load(): la carga entra sólo al aceptar la propuesta load>equip. La marca de migración es pasajera: fuera. */
-  equip: () => ({ zonas: zonasSel().map((z) => sinClaves(z, ["id", "origen", "editada"])), bldDiv: S.equip.div ?? null, sitio: sitioSelHuella(), sysForce: S.sysForce, sel: eSel(), esp: espCapturada() }),
+  equip: () => ({ items: S.equip.items || [], precios: S.equip.precios || null, zonas: zonasSel().map((z) => sinClaves(z, ["id", "origen", "editada"])), bldDiv: S.equip.div ?? null, sitio: sitioSelHuella(), sysForce: S.sysForce, sel: eSel(), esp: espCapturada() }),
   duct: () => ({ duct: S.duct }),   /* H-284: el sitio de Proyecto no entra al cálculo de ductos (rho, mu y rugosidad se capturan aquí): fuera de la huella */
   vent: () => ({ vent: sinClaves(S.vent, ["seleccion"]) }),   /* H-263: la selección no la lee computeVent. H-291: el sitio de Proyecto tampoco: fuera de la huella */
   hidro: () => ({ hidro: sinClaves(S.hidro, ["equipoHN"]) }),   /* H-285: el sitio de Proyecto no entra al cálculo hidráulico: fuera de la huella */
@@ -19769,7 +19800,8 @@ const HUELLA_FORMA = {
   duct: { f: 3, que: "H-300: los precios de lámina y difusor y la cantidad de difusores pasaron a Ductos (misma cifra)" },
   hidro: { f: 2, que: "H-285: la huella ya no lleva el sitio de Proyecto, que Hidráulica no usa" },
   fuego: { f: 3, que: "H-293: el precio del rociador pasó de la cotización a Contra incendio (misma cifra)" },
-  quote: { f: 6, que: "H-293–H-300: los precios de rociador, ventilación, FFU, HEPA, rejilla, central de aire, lámina y difusor pasaron a su motor (misma cifra)" },
+  equip: { f: 2, que: "H-301: las partidas de equipo y sus precios pasaron de la cotización a Selección (misma cifra)" },
+  quote: { f: 7, que: "H-293–H-301: los precios de rociador, ventilación, FFU, HEPA, rejilla, central de aire, lámina, difusor y equipos pasaron a su motor (misma cifra)" },
   aire: { f: 2, que: "H-296: los precios de la central de aire pasaron de la cotización a Aire comprimido (misma cifra)" },
   vent: { f: 3, que: "H-294: el precio por CFM pasó de la cotización a Ventilación (misma cifra)" },
 };
@@ -21183,11 +21215,11 @@ function viewCotizacion() {
         </div></div>
 
         <div class="card"><h3>Perillas<span class="tag">se recalcula al soltar</span></h3><div class="body">
-          ${slider("Factor de ajuste de lista", "quote.priceFactor", q.priceFactor, 0.4, 1.6, 0.01, (v) => (+v).toFixed(2) + "×", "1.00 = precio base")}
+          ${slider("Factor de ajuste de lista (Selección de equipo)", "equip.precios.priceFactor", preciosEquip(S.equip).priceFactor, 0.4, 1.6, 0.01, (v) => (+v).toFixed(2) + "×", "1.00 = precio base")}
           ${slider("Indirectos", "quote.indirect", q.indirect, 0, 0.45, 0.01, (v) => (v * 100).toFixed(0) + " %", "oficina, supervisión, seguros")}
           ${slider("Utilidad", "quote.utility", q.utility, 0, 0.40, 0.01, (v) => (v * 100).toFixed(0) + " %", "margen de la empresa")}
           ${slider("Contingencia", "quote.contingencia", num(q.contingencia, QUOTE_SEED.contingencia), 0, 0.30, 0.005, (v) => (v * 100).toFixed(1) + " %", "sobre el costo directo")}
-          ${slider("Instalación sobre equipo", "quote.instPct", q.instPct, 0, 0.90, 0.01, (v) => (v * 100).toFixed(0) + " %", "mano de obra y accesorios")}
+          ${slider("Instalación sobre equipo (Selección de equipo)", "equip.precios.instPct", preciosEquip(S.equip).instPct, 0, 0.90, 0.01, (v) => (v * 100).toFixed(0) + " %", "mano de obra y accesorios")}
           ${slider("Flete local y maniobras en obra", "quote.freight", q.freight, 0, 0.10, 0.005, (v) => (v * 100).toFixed(1) + " %", "sobre el costo directo · parámetro comercial; no incluye importación ni aduana (sección H)")}
           <div class="hint" style="margin-top:8px"><b>Flete, aduana e importación a México</b> · renglón propio (sección H). Sale «Por cotizar» hasta capturarlo con monto, fuente y fecha; nunca se prorratea ni se estima.</div>
           <div class="row">
@@ -21234,10 +21266,12 @@ function viewCotizacion() {
 
 function viewSeleccion() {
   /* H-267: la pestaña trabaja con SUS zonas de selección (capturadas o aceptadas de carga térmica), no con la carga en vivo. */
-  const q = S.quote, Q = QUOTE, t = totalsSel(zonasCalcSel()), fam = familyOf(S.qfam) || FAMILIES[0];
+  /* H-301: Selección cotiza con SUS precios (S.equip.precios) y muestra SU cotización (SYS.cot), en MXN; no lee la Cotización. */
+  const PE = preciosEquip(S.equip), EC = SYS && SYS.cot ? SYS.cot : { lines: [], aux: [], auxFin: [], equipTotal: 0, equipTons: 0, nEquip: 0 };
+  const t = totalsSel(zonasCalcSel()), fam = familyOf(S.qfam) || FAMILIES[0];
   const target = t.tons * (1 + P.MARGIN);
   const pool = familyPool(fam.id).slice().sort((a, b) => a.TR - b.TR);
-  const M = (v) => money(v, Q.div, Q.cur);
+  const M = (v) => money(v, 1, "MXN");
 
   /* Cada familia se compara con SUS criterios, no todas por toneladas. */
   const req = requisitoFam(fam.id);
@@ -21275,7 +21309,7 @@ function viewSeleccion() {
 
       <div class="card"><h3>${esc(fam.label)}<span class="tag">${pool.length} modelos</span></h3><div class="body">
         <div class="sub" style="margin-bottom:10px">${esc(fam.use)}</div>
-        <div class="hint" style="margin-bottom:12px">Precio base <b>${M(q.price[fam.price] || 0)} por TR</b> en equipo de ${PRICE_SEED[fam.price]?.ref} TR · ${esc(PRICE_SEED[fam.price]?.src || "")}. El precio por tonelada baja en equipos mayores (exponente ${q.scaleExp}).</div>
+        <div class="hint" style="margin-bottom:12px">Precio base <b>${M(PE.price[fam.price] || 0)} por TR</b> en equipo de ${PRICE_SEED[fam.price]?.ref} TR · ${esc(PRICE_SEED[fam.price]?.src || "")}. El precio por tonelada baja en equipos mayores (exponente ${PE.scaleExp}).</div>
         ${R.pendienteSitio ? `<div class="warnline">Sin sitio de diseño en Selección no hay capacidad en sitio que comparar: acepta el sitio de Proyecto o captúralo en la tarjeta de sitio.</div>` : ""}
         ${R.cands.map((c, k) => { const e = c.model; const esRec = k === 0; const esSel = elegido && elegido.id === e.id;
           return `<div class="pickw"><button type="button" class="pick ${esSel ? "sel" : ""}" aria-label="Abrir submittal y ficha de ${esc(e.model)}" data-act="detail" data-kind="carrier" data-id="${e.id}">
@@ -21287,7 +21321,7 @@ function viewSeleccion() {
             <div class="sub">${e.TR} TR de placa · ${n(c.cap, 1)} TR en sitio${c.cfm ? ` · ${n(c.cfm, 0)} CFM` : ""}${c.sensible ? ` · sensible ${n(c.sensible / 1000, 1)} kW` : ""}</div>
             <div class="sub">${c.marcas.length ? `<span style="color:var(--warn)">limita ${esc(c.limita)}: ${esc(c.marcas[0])}</span>` : "cumple los criterios de la familia"}</div>
             ${c.fuera ? `<div class="sub" style="color:var(--warn)">fuera del rango del documento: ${esc(c.fuera)}</div>` : ""}
-            <div class="sub" style="color:var(--plano)">${M(listPrice(fam.price, e.TR, q))} por unidad · ${M(listPrice(fam.price, e.TR, q) / e.TR)}/TR</div></div>
+            <div class="sub" style="color:var(--plano)">${M(listPrice(fam.price, e.TR, PE))} por unidad · ${M(listPrice(fam.price, e.TR, PE) / e.TR)}/TR</div></div>
           <span class="fit">${c.fit} %</span></button>
           <button type="button" class="minipdf" aria-label="PDF del submittal de ${esc(e.model)}" data-act="pdf-sub" data-kind="carrier" data-id="${e.id}">PDF</button>
           <button type="button" class="minipdf" style="background:var(--navy)" aria-label="Seleccionar ${esc(e.model)}" data-act="sel-modelo" data-id="${e.id}" data-fam="${fam.id}">Seleccionar</button>
@@ -21308,13 +21342,13 @@ function viewSeleccion() {
     </div>
 
     <div class="grid" style="gap:14px">
-      <div class="card"><h3>Resumen de cotización<span class="tag">${Q.nEquip} equipo(s) · ${n(Q.equipTons, 1)} TR</span></h3><div class="body">
+      <div class="card"><h3>Cotización de Selección<span class="tag">${EC.nEquip} equipo(s) · ${n(EC.equipTons, 1)} TR</span></h3><div class="body">
         <div class="row" style="margin-bottom:10px">
           <button class="btn-primary" data-act="q-fromsys">Traer el sistema integrado</button>
           <button class="btn-ghost" data-act="go-quote">Ir a Cotización</button>
         </div>
-        ${Q.tot > 0 ? `<div class="metric"><div class="k">Total con IVA</div><div class="v">${M(Q.tot)}</div></div>
-          <div class="ref" style="margin-top:8px">El desglose completo, los deslizadores de indirectos y utilidad y el PDF están en la pestaña <b>Cotización</b>.</div>`
+        ${EC.nEquip > 0 ? `<div class="metric"><div class="k">Equipo, instalación, tubería y control (MXN, sin indirectos ni IVA)</div><div class="v">${M(EC.equipTotal + [...EC.aux, ...EC.auxFin].reduce((a, x) => a + x.total, 0))}</div></div>
+          <div class="ref" style="margin-top:8px">Es la cotización de este motor, con sus precios. La pestaña <b>Cotización</b> la junta con las de las demás disciplinas y le aplica indirectos, utilidad, flete e IVA.</div>`
           : `<div class="sub">Aún no hay equipos. Selecciona uno de la lista, o trae el sistema integrado que ya seleccionó el proyecto.</div>`}
       </div></div>
 
@@ -21325,18 +21359,18 @@ function viewSeleccion() {
           ${inp("Fecha del tipo de cambio", "quote.fxFecha", "date")}
           ${inp("Fuente del tipo de cambio", "quote.fxFuente", "text")}
         </div>
-        ${inp("Factor de ajuste de lista", "quote.priceFactor", "number", "0.05")}
+        ${inp("Factor de ajuste de lista", "equip.precios.priceFactor", "number", "0.05")}
         <details><summary>Precios por familia (MXN por TR)</summary>
           ${FAMILIES.map((f) => `<div class="field"><label>${esc(f.label)}</label>
-            <input type="number" step="500" data-path="quote.price.${f.price}" value="${q.price[f.price]}" />
+            <input type="number" step="500" data-path="equip.precios.price.${f.price}" value="${PE.price[f.price]}" />
             <div class="ref">${esc(PRICE_SEED[f.price]?.src || "")}</div></div>`).join("")}
         </details>
         <details><summary>Instalación, distribución y factores</summary>
-          <div class="row">${inp("Instalación (fracción del equipo)", "quote.instPct", "number", "0.01", null, null, "inst")}${inp("Tubería por TR (MXN)", "quote.pipeTR", "number", "500")}</div>
-          ${inp("Control DDC por equipo (MXN)", "quote.controls", "number", "2500")}
+          <div class="row">${inp("Instalación (fracción del equipo)", "equip.precios.instPct", "number", "0.01", null, null, "inst")}${inp("Tubería por TR (MXN)", "equip.precios.pipeTR", "number", "500")}</div>
+          ${inp("Control DDC por equipo (MXN)", "equip.precios.controls", "number", "2500")}
           <div class="row">${inp("Indirectos", "quote.indirect", "number", "0.01")}${inp("Utilidad", "quote.utility", "number", "0.01")}</div>
           ${inp("Contingencia (fracción del costo directo)", "quote.contingencia", "number", "0.005")}
-          ${inp("Exponente de economía de escala", "quote.scaleExp", "number", "0.05")}
+          ${inp("Exponente de economía de escala", "equip.precios.scaleExp", "number", "0.05")}
           <div class="ref" style="margin-top:-8px;margin-bottom:8px">1.00 = precio lineal por TR · 0.85 = un equipo del doble de capacidad cuesta 80 % más, no 100 % más.</div>
           ${sel("IVA", "quote.iva", [[0.08, "8 % región fronteriza"], [0.16, "16 % nacional"], [0, "Sin IVA"]])}
         </details>
@@ -24204,7 +24238,7 @@ document.addEventListener("click", (e) => {
       const r = selPorFamilia(famId, requisitoFam(famId));
       S.sel.modelos[famId] = { id, rec: r.recomendado ? r.recomendado.model.id : null, ts: Date.now() };
       const e = CARRIER.find((x) => x.id === id);
-      if (e) { S.quote.items.push({ id, fam: famId, qty: 1, unit: null }); }
+      if (e) { S.equip.items.push({ id, fam: famId, qty: 1, unit: null }); }
       projAutosave(); render();
       toast(S.sel.modelos[famId].rec && S.sel.modelos[famId].rec !== id
         ? `${e ? e.model : id} seleccionado y agregado. La app recomendaba otro modelo: queda registrado.`
@@ -24213,8 +24247,8 @@ document.addEventListener("click", (e) => {
     }
     case "setnum": { const v = parseFloat(b.dataset.v); if (!Number.isFinite(v)) break; setPath(b.dataset.path, v); projAutosave(); render(); break; }
     case "qfam": S.qfam = b.dataset.id; render(); break;
-    case "q-del": S.quote.items.splice(+b.dataset.i, 1); projAutosave(); render(); break;
-    case "q-clear": S.quote.items = []; projAutosave(); render(); toast("Cotización vaciada"); break;
+    case "q-del": S.equip.items.splice(+b.dataset.i, 1); projAutosave(); render(); break;
+    case "q-clear": S.equip.items = []; projAutosave(); render(); toast("Partidas de equipo vaciadas"); break;
     case "go-quote": irATab("cotizacion"); break;
     case "go-tab": irATab(b.dataset.tab); break;
     /* rev 2.7.0 · Decisiones sobre las propuestas entre disciplinas. */
@@ -24328,8 +24362,8 @@ document.addEventListener("click", (e) => {
     case "q-fromsys": {
       /* H-267: sin zonas de selección no hay sistema que traer; no se vacían las partidas capturadas. */
       if (!SYS || !SYS.chosen || SYS.chosen.id === "none") { toast("Sin sistema integrado: acepta en Selección de equipo la propuesta de Carga térmica o captura ahí las zonas de selección"); break; }
-      if ((S.quote.items || []).length) {
-        const items = S.quote.items.slice();
+      if ((S.equip.items || []).length) {
+        const items = S.equip.items.slice();
         confirmarSiHayDatos({
           titulo: "Traer el sistema borra las partidas de equipo",
           detalle: "La cotización va a quedar con los equipos de la cédula. Las partidas de equipo que tengas capturadas o editadas se reemplazan; los precios unitarios que hayas escrito a mano se pierden.",
@@ -24405,9 +24439,9 @@ document.addEventListener("toggle", (e) => { if (e.target.dataset?.adv) S.advOpe
 document.addEventListener("change", (e) => {
   const el = e.target;
   if (el.dataset?.qty != null) {
-    const it = S.quote.items[+el.dataset.qty]; if (it) { it.qty = Math.max(1, parseInt(el.value) || 1); projAutosave(); render(); }
+    const it = S.equip.items[+el.dataset.qty]; if (it) { it.qty = Math.max(1, parseInt(el.value) || 1); projAutosave(); render(); }
   } else if (el.dataset?.unit != null) {
-    const it = S.quote.items[+el.dataset.unit];
+    const it = S.equip.items[+el.dataset.unit];
     if (it) { const fxv = S.quote.currency === "USD" ? fxVigente() : null; const dv = fxv ? fxv.fx : 1; /* H-250: sin fecha la captura es en MXN */ it.unit = (parseFloat(el.value) || 0) * dv; projAutosave(); render(); }
   }
 }, true);
@@ -24417,13 +24451,13 @@ document.addEventListener("change", (e) => {
    aviso de confirmación cuando sí lo hay. */
 function traerSistemaACotizacion() {
   const c = SYS.chosen;
-  S.quote.items = [];
-  c.plant.filter((p) => p.model).forEach((p) => S.quote.items.push({ id: p.model.id, fam: (famOfModel(p.model) || {}).id, qty: p.qty, unit: null }));
-  c.groups.filter((g) => g.model).forEach((g) => S.quote.items.push({ id: g.model.id, fam: (famOfModel(g.model) || {}).id, qty: g.qty, unit: null }));
+  S.equip.items = [];
+  c.plant.filter((p) => p.model).forEach((p) => S.equip.items.push({ id: p.model.id, fam: (famOfModel(p.model) || {}).id, qty: p.qty, unit: null }));
+  c.groups.filter((g) => g.model).forEach((g) => S.equip.items.push({ id: g.model.id, fam: (famOfModel(g.model) || {}).id, qty: g.qty, unit: null }));
   const f0 = famOfModel(c.plant[0]?.model || c.groups[0]?.model);
   if (f0) S.qfam = f0.id;
   projAutosave(); render();
-  toast(`${c.label} cargado: ${S.quote.items.length} partida(s)`);
+  toast(`${c.label} cargado: ${S.equip.items.length} partida(s)`);
 }
 function chainToDuct(silencioso) {
   if (!linkAllowed("load>duct")) { requestLink("load>duct", chainToDuct); return; }
@@ -24706,6 +24740,16 @@ function sanearEstado(d) {
      tenía la cotización; sin él, la semilla de la casa, igual que antes) y la cotización deja de guardarlo. */
   if (!fuegoTraiaPrecio && "rociador" in s.quote) s.fuego.precioRociador = num(s.quote.rociador, FUEGO_PRECIO_SEED.rociador);
   delete s.quote.rociador;
+  /* H-301: las partidas de equipo y sus precios pasaron de la cotización a Selección de equipo. Un proyecto anterior los conserva
+     allá (las mismas partidas y cifras; lo que no tenía, la semilla, como antes) y la cotización deja de guardarlos. */
+  if (!equipPrevio || !("items" in equipPrevio)) s.equip.items = Array.isArray(s.quote.items) ? s.quote.items : [];
+  if (!Array.isArray(s.equip.items)) s.equip.items = [];
+  if (!equipPrevio || !("precios" in equipPrevio) || !equipPrevio.precios || typeof equipPrevio.precios !== "object") {
+    const q0 = s.quote, P = { ...EQUIP_PRECIO_SEED, price: { ...EQUIP_PRECIO_SEED.price, ...(q0.price && typeof q0.price === "object" ? q0.price : {}) } };
+    ["scaleExp", "priceFactor", "instPct", "pipeTR", "controls"].forEach((k) => { if (k in q0) P[k] = q0[k]; });
+    s.equip.precios = P;
+  }
+  ["items", "price", "scaleExp", "priceFactor", "instPct", "pipeTR", "controls"].forEach((k) => { delete s.quote[k]; });
   /* H-300: los precios de la lámina y del difusor pasaron de la cotización a Ductos (misma cifra; sin ellos, la semilla, como antes). */
   if (!s.duct.precios || typeof s.duct.precios !== "object" || Array.isArray(s.duct.precios))
     s.duct.precios = { kg: num(s.quote.ductKg, DUCT_PRECIO_SEED.kg), difusor: num(s.quote.diffuser, DUCT_PRECIO_SEED.difusor) };
@@ -24742,7 +24786,7 @@ function sanearEstado(d) {
   s.cx.referencias = (Array.isArray(s.cx.referencias) ? s.cx.referencias : []).filter((x) => x && typeof x === "object").slice(-CX_MAX_REFERENCIAS);   // H-272e
   s.cx.archivos = s.cx.archivos.filter((a) => a && typeof a === "object" && typeof a.id === "string" && typeof a.nombre === "string").map((a) => ({ ...a, motor: CXZ_MOTOR_NOMBRE[a.motor] ? a.motor : "sin", estado: CXZ_ESTADOS[a.estado] ? (a.estado === "procesando" ? "espera" : a.estado) : "espera", info: a.info && typeof a.info === "object" ? a.info : {} })).slice(-CX_ZIP_MAX_ENTRADAS);
   s.cx.lotes = s.cx.lotes.filter((l) => l && typeof l === "object" && Array.isArray(l.archivos) && Array.isArray(l.aplicados)).map((l) => ({ ...l, archivos: l.archivos.filter((x) => x && typeof x === "object"), aplicados: l.aplicados.filter((x) => x && typeof x === "object"), equipos: Array.isArray(l.equipos) ? l.equipos.filter((x) => x && typeof x === "object") : [] })).slice(-CX_MAX_LOTES);
-  if (!Array.isArray(s.quote.items)) s.quote.items = [];
+  if ("items" in s.quote && !Array.isArray(s.quote.items)) s.quote.items = [];   /* H-301: pasan a Selección (abajo) */
   s.quote.prop = { ...defaultPropuesta(), ...(s.quote.prop && typeof s.quote.prop === 'object' ? s.quote.prop : {}) };
   if (!Array.isArray(s.quote.prop.hitos)) s.quote.prop.hitos = defaultPropuesta().hitos;
   if (!s.vent || typeof s.vent !== "object") s.vent = base.vent;
@@ -25152,23 +25196,13 @@ function cotizacionTecnica(q) {
     const v = q[k];
     if (llave.test(k) && ((typeof v === "number" && Number.isFinite(v)) || typeof v === "boolean")) out[k] = v;
   });
-  if (q.price && typeof q.price === "object") Object.keys(PRICE_SEED).forEach((k) => {
-    const v = q.price[k];
-    if (typeof v === "number" && Number.isFinite(v)) out.price[k] = v;
-  });
+  /* H-301: precios por familia y partidas de equipo son de Selección (equipTecnico); aquí ya no se copian. */
+  ["price", "scaleExp", "priceFactor", "instPct", "pipeTR", "controls", "items"].forEach((k) => { delete out[k]; });
   const de = (o, k) => typeof k === "string" && Object.prototype.hasOwnProperty.call(o, k);
   if (q.currency === "MXN" || q.currency === "USD") out.currency = q.currency;
   if (de(PLAZAS, q.plaza)) out.plaza = q.plaza;
   if (de(BASES_PRECIO, q.basePrecio)) out.basePrecio = q.basePrecio;
   if (q.modo === "privada" || q.modo === "licitacion") out.modo = q.modo;
-  out.items = (Array.isArray(q.items) ? q.items : [])
-    .filter((it) => it && typeof it === "object" && typeof it.id === "string" && CARRIER.some((e) => e.id === it.id))
-    .map((it) => ({
-      id: it.id,
-      fam: typeof it.fam === "string" && FAMILIES.some((f) => f.id === it.fam) ? it.fam : null,
-      qty: Number.isFinite(+it.qty) && +it.qty > 0 ? +it.qty : 1,
-      unit: typeof it.unit === "number" && Number.isFinite(it.unit) ? it.unit : null,
-    }));
   out.refBase = ""; out.prop = null;
   return out;
 }
@@ -25183,7 +25217,7 @@ function anonimizarRegistro(p, k) {
   const limpio = etiquetasGenericas({
     ...base,
     meta: { ...base.meta, name: `Referencia interna ${k}`, client: "", location: "", engineer: "", date: (d.meta && d.meta.date) || base.meta.date },
-    units: d.units, site: d.site, zones: d.zones, equip: { ...defaultEquip(), div: d.equip && d.equip.div != null ? d.equip.div : null }, peakScan: d.peakScan,
+    units: d.units, site: d.site, zones: d.zones, equip: { ...defaultEquip(), div: d.equip && d.equip.div != null ? d.equip.div : null, ...equipTecnico(d.equip) }, peakScan: d.peakScan,
     clean: d.clean, vent: d.vent, duct: d.duct, elec: d.elec, hidro: d.hidro, fuego: d.fuego,
     aire: d.aire, civil: d.civil, soporte: { ...d.soporte },
     quote: cotizacionTecnica(d.quote),
