@@ -3933,7 +3933,7 @@ t("22.10 3.2 las bases de diseño de la memoria HVAC imprimen el exterior del si
 });
 
 t("22.11 3.3 (rev 2.9.16, decisión del dueño) la red hidráulica se cotiza por diámetro y material con el precio capturado; sin longitud queda «pendiente de longitud» y sin precio «pendiente de precio unitario»: nada se supone", () => {
-  const hidro0 = JSON.parse(JSON.stringify(S.hidro)), perms0 = JSON.parse(JSON.stringify(S.perms ?? null)), pu0 = JSON.parse(JSON.stringify(S.quote.hidroPU || {}));
+  const hidro0 = JSON.parse(JSON.stringify(S.hidro)), perms0 = JSON.parse(JSON.stringify(S.perms ?? null)), pu0 = JSON.parse(JSON.stringify(S.hidro.hidroPU || {}));
   const pdfTxt = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");
   const renglones = () => (G("QUOTE").aux || []).filter((a) => a.mot === "hidro" && a.un === "ML");
   /* H-196: la cisterna sin dotación queda «pendiente de volumen» aparte; aquí sólo se mira la red. */
@@ -3942,7 +3942,7 @@ t("22.11 3.3 (rev 2.9.16, decisión del dueño) la red hidráulica se cotiza por
   const muebles = [{ id: "wc_flux", cant: 4 }, { id: "ming_flux", cant: 2 }, { id: "lavabo", cant: 4 }, { id: "fregadero", cant: 1 }, { id: "manguera", cant: 2 }];
   try {
     S.perms = { ...(S.perms || {}), "hidro>quote": { ts: 1, via: "banco" } };
-    S.quote.hidroPU = {};
+    S.hidro.hidroPU = {};
     /* Sin tramos: nada de metros inventados. */
     S.hidro = { ...G("defaultHidro")(), tramos: [], muebles }; G("recompute")();
     if (!(G("HIDRO").umTotal > 0)) throw new Error("el caso no trae unidades mueble");
@@ -3962,7 +3962,7 @@ t("22.11 3.3 (rev 2.9.16, decisión del dueño) la red hidráulica se cotiza por
     contiene(txt, "PARTIDAS PENDIENTES, NO COTIZADAS", "PDF de cotización:");
     contiene(pdfTxt(G("buildPropuestaPdf")({ lang: "en", mon: "USD" })), "Pending items, not priced", "propuesta en inglés:");
     /* Con precio por diámetro: un renglón por diámetro, metros de los tramos capturados, importe = precio × metros. */
-    noms.forEach((nom, i) => { S.quote.hidroPU[G("claveHidroPU")(H.mat, nom)] = 500 + 100 * i; });
+    noms.forEach((nom, i) => { S.hidro.hidroPU[G("claveHidroPU")(H.mat, nom)] = 500 + 100 * i; });
     G("recompute")();
     const R = renglones();
     eq(R.length, noms.length, "renglones por diámetro:");
@@ -3970,12 +3970,12 @@ t("22.11 3.3 (rev 2.9.16, decisión del dueño) la red hidráulica se cotiza por
     cerca(R.reduce((a, r) => a + r.qty, 0), 43, 1e-9, "metros cotizados (25 + 18):");
     R.forEach((r) => { cerca(r.total, r.qty * r.unit, 1e-9, "importe:"); contiene(r.desc, "de los tramos calculados", "descripción:"); if (/supuesto/.test(r.desc)) throw new Error("un renglón dice supuesto"); });
     /* Un precio basura del respaldo se descarta al abrir. */
-    const sucio = JSON.parse(JSON.stringify(S)); sucio.quote.hidroPU = { "cobre_1_": -5, "x.y": 9, cobre_3_4_: "abc" };
-    const san = G("sanearEstado")(sucio).quote.hidroPU; /* rev 2.9.23: la basura se descarta y entran sólo las referencias de mercado */
+    const sucio = JSON.parse(JSON.stringify(S)); sucio.hidro.hidroPU = { "cobre_1_": -5, "x.y": 9, cobre_3_4_: "abc" };
+    const san = G("sanearEstado")(sucio).hidro.hidroPU;   /* H-302 */ /* rev 2.9.23: la basura se descarta y entran sólo las referencias de mercado */
     eq(JSON.stringify(Object.keys(san).sort()), JSON.stringify(Object.keys(G("HIDRO_PU_REFERENCIA")).sort()), "precios inválidos descartados; quedan las referencias:");
     Object.values(san).forEach((e) => eq(e.origen, "referencia", "todo lo cargado es Referencia Budget:"));
   } finally {
-    S.hidro = hidro0; S.quote.hidroPU = pu0;
+    S.hidro = hidro0; S.hidro.hidroPU = pu0;
     if (perms0 === null) delete S.perms; else S.perms = perms0;
     G("recompute")();
   }
@@ -6303,7 +6303,7 @@ t("S.35 (rev 2.9.19, revisión adversarial de 2.9.16–2.9.18) pendientes en Exc
     /* rev 2.9.23: la cotización formal no sale con tubería sin precio; con precio sí, y el tramo sin UM sigue pendiente. */
     let tiro = ""; try { G("buildLicitacionPdf")(); } catch (e) { tiro = String(e.message); }
     contiene(tiro, "La cotización formal no sale con tubería sin precio", "licitación bloqueada sin precio:");
-    G("hidroDiametrosSinPrecio")().forEach((d) => { S.quote.hidroPU[G("claveHidroPU")("cpvc", d)] = 100; }); G("recompute")();
+    G("hidroDiametrosSinPrecio")().forEach((d) => { S.hidro.hidroPU[G("claveHidroPU")("cpvc", d)] = 100; }); G("recompute")();
     const lic = Buffer.from(licitacionFormal()).toString("latin1");
     contiene(lic, "PARTIDAS PENDIENTES, NO COTIZADAS", "licitación:");
     S.quote.modo = "privada";
@@ -6514,7 +6514,7 @@ t("S.39 (rev 2.9.22, decisión del dueño) precios de tubería hidráulica: PP-R
     S.zones[0].area = 100; S.zones[0].height = 3; S.duct.difusores = 2;   /* H-300: los difusores que daba la zona se capturan en Ductos */
     S.hidro = { ...G("defaultHidro")(), material: "cpvc", tramos: [{ ...G("defaultTramoAgua")("AF-1"), um: 40, L: 25, alt: 0 }, { ...G("defaultTramoAgua")("AF-2"), um: 12, L: 12, alt: 0 }],
       muebles: [{ id: "wc_flux", cant: 4 }, { id: "lavabo", cant: 4 }] };
-    S.quote.hidroPU = {}; S.quote.fx = 18; S.quote.fxFecha = "2026-09-22"; S.quote.fxFuente = "prueba"; G("recompute")(); /* rev 2.9.23: USD sólo con tipo de cambio fechado */
+    S.hidro.hidroPU = {}; S.quote.fx = 18; S.quote.fxFecha = "2026-09-22"; S.quote.fxFuente = "prueba"; Object.assign(S.hidro, { fx: 18, fxFecha: "2026-09-22", fxFuente: "prueba" }); G("recompute")();   /* H-302: Hidrosanitario usa su tipo de cambio */ /* rev 2.9.23: USD sólo con tipo de cambio fechado */
     const sin = G("hidroDiametrosSinPrecio")();
     if (sin.length < 1) throw new Error("debía haber diámetros sin precio");
     eq(G("accEstado")("hidro").cot.ok, false, "cotización de hidro bloqueada sin precios:"); contiene(G("accEstado")("hidro").cot.razon, "Falta el precio", "razón:");
@@ -6607,7 +6607,7 @@ t("S.55 (H-198) CPVC sin renglones «SIN VERIFICAR» arriba de 2\" CTS y PEAD si
     const pc = () => (G("QUOTE").porCotizar || []).filter((x) => x.mot === "hidro" && x.un === "ML"); /* H-196: cisterna y bomba aparte */
     /* CPVC: la general no cabe en 2" CTS. */
     S.hidro = { ...G("defaultHidro")(), material: "cpvc", muebles, tramos: tramos() };
-    S.quote.hidroPU = { [G("claveHidroPU")("cpvc", '2"')]: 300 };
+    S.hidro.hidroPU = { [G("claveHidroPU")("cpvc", '2"')]: 300 };
     G("recompute")();
     let H = G("HIDRO");
     eq(H.tramos[0].fueraCatalogo, true, "la general queda fuera de catálogo:"); eq(H.tramos[1].fueraCatalogo, false, "el ramal cabe en 2\":");
@@ -6618,12 +6618,12 @@ t("S.55 (H-198) CPVC sin renglones «SIN VERIFICAR» arriba de 2\" CTS y PEAD si
     eq(g.qty, 25, "con sus metros:");
     eq(G("hidroDiametrosSinPrecio")().join(","), "", "el tramo fuera de catálogo no pide precio de un diámetro que no le corresponde:");
     S.hidro = { ...G("defaultHidro")(), material: "cpvc", muebles, tramos: tramos().slice(0, 1) };
-    S.quote.hidroPU = {};
+    S.hidro.hidroPU = {};
     G("recompute")();
     eq(G("hidroDiametrosSinPrecio")().join(","), "", "sólo con el tramo fuera de catálogo y sin precios, no se pide el precio del tope:");
     /* PEAD: diámetros sin SDR ni fuente. */
     S.hidro = { ...G("defaultHidro")(), material: "pead", muebles, tramos: tramos() };
-    S.quote.hidroPU = Object.fromEntries(G("TUB_AGUA").pead.d.map((x) => [G("claveHidroPU")("pead", String(x[1]).split(" ·")[0]), 300]));
+    S.hidro.hidroPU = Object.fromEntries(G("TUB_AGUA").pead.d.map((x) => [G("claveHidroPU")("pead", String(x[1]).split(" ·")[0]), 300]));
     G("recompute")(); H = G("HIDRO");
     if (!H.avisos.some((a) => a.lvl === "err" && /PEAD/.test(a.msg) && /SDR/.test(a.msg))) throw new Error("PEAD sin SDR debe dar error visible");
     eq(ml().length, 0, "PEAD no se cotiza por diámetro aunque haya precio capturado:");
@@ -7340,8 +7340,8 @@ t("S.81 (H-253, regla e) la cotización formal no sale con precios que sólo val
     if (!/importaci/.test(w.document.querySelector("#view").textContent.match(/La cotización formal no sale[^]*$/)?.[0] || "")) throw new Error("la pantalla no dice por qué la formal está bloqueada");
     /* Referencia de mercado + mano de obra por capturar: bloquea. */
     S.quote.importacion = { monto: 18500, moneda: "MXN", fuente: "agente aduanal (cotización capturada)", fecha: "2026-09-20" };
-    const clave = Object.keys(S.quote.hidroPU)[0];
-    S.quote.hidroPU[clave] = { precio: 250, moneda: "MXN", iva: false, porTramo: 1, origen: "referencia", alcance: "material", fuente: "Home Depot San Diego CA", ubicacion: "San Diego, California", url: "https://example.org/ref", fecha: "2026-09-20" };
+    const clave = Object.keys(S.hidro.hidroPU)[0];
+    S.hidro.hidroPU[clave] = { precio: 250, moneda: "MXN", iva: false, porTramo: 1, origen: "referencia", alcance: "material", fuente: "Home Depot San Diego CA", ubicacion: "San Diego, California", url: "https://example.org/ref", fecha: "2026-09-20" };
     G("recompute")();
     if (!(G("QUOTE").referencias || []).length) throw new Error("el caso no aísla lo que se quiere probar: debe haber una referencia de mercado");
     B = G("bloqueosFormal")();
@@ -7349,7 +7349,7 @@ t("S.81 (H-253, regla e) la cotización formal no sale con precios que sólo val
     if (!B.some((b) => /mano de obra/.test(b))) throw new Error("la mano de obra por capturar debe bloquear la formal: " + JSON.stringify(B));
     contiene(tiro(), "referencia de mercado", "error de la formal con referencia:");
     /* USD sin tipo de cambio fechado: bloquea. */
-    delete S.quote.hidroPU[clave]; G("recompute")();
+    delete S.hidro.hidroPU[clave]; G("recompute")();
     S.quote.currency = "USD"; S.quote.fx = 18.25; S.quote.fxFecha = ""; G("recompute")();
     if (!G("QUOTE").usdSinFecha) throw new Error("el caso no aísla lo que se quiere probar: USD sin fecha");
     if (!G("bloqueosFormal")().some((b) => /tipo de cambio/.test(b))) throw new Error("USD sin fecha debe bloquear la formal");
@@ -8905,14 +8905,14 @@ t("S.104 (H-267) selección de equipo es autónoma: sin aceptar la propuesta, ca
       eq(fp.motor, "catalogo", "una lista de precios es catálogo:"); eq(fp.estado, "listo", fp.detalle); eq(fp.info.preciosHidro, true, "se reconoce como lista de precios de tubería:");
       eq((S.cx.referencias || []).length, 1, "un renglón de referencia:"); eq(S.cx.referencias[0].precio, 85);
       const clave = G("claveHidroPU")("cpvc", '1/2"');
-      if (S.quote.hidroPU && S.quote.hidroPU[clave]) throw new Error("el precio entró solo a hidrosanitario: debe esperar la orden del usuario");
+      if (S.hidro.hidroPU && S.hidro.hidroPU[clave]) throw new Error("el precio entró solo a hidrosanitario: debe esperar la orden del usuario");
       S.tab = "tablero"; G("render")();
       w.document.querySelector('#view [data-act="cxz-catalogo"]').dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
       const bImp = w.document.querySelector('#modal [data-act="cxz-catalogo-hidro"]');
       if (!bImp) throw new Error("la ventana no ofrece importar la lista a precios de hidrosanitario");
       bImp.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
-      for (let i = 0; i < 100 && !(S.quote.hidroPU && S.quote.hidroPU[clave]); i++) await new Promise((r) => setTimeout(r, 10));
-      if (!(S.quote.hidroPU && S.quote.hidroPU[clave] && S.quote.hidroPU[clave].precio === 85)) throw new Error("la importación a precios de hidro no ocurrió: " + JSON.stringify(S.quote.hidroPU));
+      for (let i = 0; i < 100 && !(S.hidro.hidroPU && S.hidro.hidroPU[clave]); i++) await new Promise((r) => setTimeout(r, 10));
+      if (!(S.hidro.hidroPU && S.hidro.hidroPU[clave] && S.hidro.hidroPU[clave].precio === 85)) throw new Error("la importación a precios de hidro no ocurrió: " + JSON.stringify(S.hidro.hidroPU));
       G("closeModal")();
       /* Quitar el archivo retira sus referencias (no son datos aplicados). */
       await G("cxzQuitar")(fp.id);
@@ -9425,6 +9425,31 @@ t("S.181 (H-301) la cotización de equipos sale de Selección de equipo: sus par
     eq(["items", "price", "priceFactor", "instPct", "pipeTR", "controls", "scaleExp"].some((k) => k in s.quote), false, "la cotización ya no los guarda:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
+t("S.182 (H-302) la cotización hidrosanitaria sale de su propio motor: los precios de tubería y el tipo de cambio con fecha se capturan en Hidrosanitario (no en la Cotización) y un proyecto anterior conserva precios, bitácora y tipo de cambio", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.182"; S.perms["hidro>quote"] = { ts: 1, via: "S.182" };
+    S.hidro = { ...S.hidro, material: "cpvc", tramos: [{ ...G("defaultTramoAgua")("AF-1"), um: 40, L: 25, alt: 0 }], muebles: [{ id: "wc_flux", cant: 4 }] };
+    G("recompute")();
+    const k = G("claveHidroPU")("cpvc", String(G("HIDRO").tramos[0].nom).split(" ·")[0]);
+    S.hidro.hidroPU[k] = { precio: 10, moneda: "USD", iva: false, porTramo: 1, origen: "proveedor", fuente: "prueba", fecha: "2026-09-22" };
+    Object.assign(S.hidro, { fx: 20, fxFecha: "2026-09-22", fxFuente: "tipo de cambio de Hidrosanitario" });
+    Object.assign(S.quote, { fx: 18, fxFecha: "2026-09-22", fxFuente: "tipo de cambio de la Cotización" });
+    G("recompute")();
+    const fila = () => (G("QUOTE").aux || []).find((a) => a.mot === "hidro");
+    if (!fila()) throw new Error("el caso no aísla lo que se quiere probar: debe haber tubería con precio");
+    cerca(fila().unit, 200, 1e-9, "10 USD × 20 MXN/USD de Hidrosanitario (no 18 de la Cotización):");
+    eq(JSON.stringify(G("HIDRO").cot.aux.map((a) => [a.desc, a.total])), JSON.stringify((G("QUOTE").aux || []).filter((a) => a.mot === "hidro").map((a) => [a.desc, a.total])), "la cotización global junta los renglones del motor:");
+    S.hidro.fxFecha = ""; G("recompute")();
+    eq(!!fila(), false, "sin fecha en el tipo de cambio de Hidrosanitario, lo que está en USD no se cotiza:");
+    /* Proyecto anterior: precios, bitácora y tipo de cambio en la cotización. */
+    const viejo = JSON.parse(JSON.stringify(S)); delete viejo.hidro.hidroPU; delete viejo.hidro.hidroPUlog; delete viejo.hidro.fx; delete viejo.hidro.fxFecha; delete viejo.hidro.fxFuente;
+    viejo.quote.hidroPU = { [k]: 150 }; viejo.quote.hidroPUlog = []; Object.assign(viejo.quote, { fx: 18.25, fxFecha: "2026-09-21", fxFuente: "Banxico FIX" });
+    const s = G("sanearEstado")(viejo);
+    eq(JSON.stringify([s.hidro.hidroPU[k], s.hidro.fx, s.hidro.fxFecha, s.hidro.fxFuente]), JSON.stringify([150, 18.25, "2026-09-21", "Banxico FIX"]), "un proyecto anterior conserva precios y tipo de cambio, ahora en Hidrosanitario:");
+    eq(["hidroPU", "hidroPUlog"].some((x) => x in s.quote), false, "la cotización ya no guarda los precios de tubería:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {
   const guardado = JSON.stringify(S);
   try {
@@ -9504,7 +9529,7 @@ t("S.40 una instalación limpia abre con todo en cero: sin proyectos, sin cuarto
   eq(SL.hidro.muebles.length + SL.hidro.tramos.length, 0, "sin muebles ni tramos de agua:"); eq(num(SL.fuego.area), 0, "sin área contra incendio:");
   eq(SL.aire.consumos.length, 0, "sin consumos de aire:"); eq(num(SL.civil.firmeM2) + num(SL.civil.puertasSimples) + num(SL.civil.puertasLimpias), 0, "civil en ceros:");
   eq(num(SL.soporte.rielM) + num(SL.soporte.basesEquipo), 0, "soportería en ceros:");
-  eq(SL.equip.items.length, 0, "sin equipos elegidos:"); eq(JSON.stringify(SL.quote.hidroPU), JSON.stringify(GL("HIDRO_PU_REFERENCIA")), "sólo referencias de mercado de tubería, ningún precio de proveedor:"); eq((SL.quote.hidroPUlog || []).length, 0, "sin bitácora de precios:"); eq(SL.quote.fxFecha, "", "tipo de cambio sin fecha capturada:"); eq(SL.kaizen.items.length, 0, "sin mejoras:");
+  eq(SL.equip.items.length, 0, "sin equipos elegidos:"); eq(JSON.stringify(SL.hidro.hidroPU), JSON.stringify(GL("HIDRO_PU_REFERENCIA")), "sólo referencias de mercado de tubería, ningún precio de proveedor:"); eq((SL.hidro.hidroPUlog || []).length, 0, "sin bitácora de precios:"); eq(SL.quote.fxFecha, "", "tipo de cambio sin fecha capturada:"); eq(SL.kaizen.items.length, 0, "sin mejoras:");
   eq(Object.keys(SL.sellos).length, 0, "sin sellos:"); eq(Object.keys(SL.perms).length, 0, "sin cruces autorizados:");
   GL("recompute()");
   eq(GL("QUOTE").tot, 0, "cotización en cero:"); eq(GL("totals()").tons, 0, "carga en cero:"); eq(GL("HIDRO").Qtotal, 0, "hidro en cero:"); eq(GL("FUEGO").qTotal, 0, "incendio en cero:"); eq(GL("AIRE").fadRequerido, 0, "aire en cero:"); eq(GL("CIVIL").total + GL("SOPORTE").total, 0, "civil y soportería en cero:");
@@ -9523,24 +9548,24 @@ t("S.41 (rev 2.9.23) referencias de mercado: únicamente California y sólo mate
   try {
     /* 1. IUSA fuera: no hay referencias cargadas; el cobre sale Por cotizar. */
     eq(JSON.stringify(G("HIDRO_PU_REFERENCIA")), "{}", "sin referencias cargadas hasta recibir los libros de Craftsman:");
-    if (/IUSA/.test(JSON.stringify(G("defaultState")().quote.hidroPU))) throw new Error("un proyecto nuevo trae IUSA");
+    if (/IUSA/.test(JSON.stringify(G("defaultState")().hidro.hidroPU))) throw new Error("un proyecto nuevo trae IUSA");
     G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.41"; Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.41" }; }); aceptarSitioCarga();   /* H-290 */
     S.zones[0].area = 100; S.zones[0].height = 3; S.duct.difusores = 2;   /* H-300: los difusores que daba la zona se capturan en Ductos */
     S.hidro = { ...G("defaultHidro")(), material: "cobre", tramos: [{ ...G("defaultTramoAgua")("AF-1"), um: 40, L: 25, alt: 0 }, { ...G("defaultTramoAgua")("AF-2"), um: 12, L: 12, alt: 0 }], muebles: [{ id: "wc_flux", cant: 4 }, { id: "lavabo", cant: 4 }] };
-    S.quote.fx = 18.25; S.quote.fxFecha = "2026-09-22"; S.quote.fxFuente = "Banxico FIX"; G("recompute")();
+    S.quote.fx = 18.25; S.quote.fxFecha = "2026-09-22"; S.quote.fxFuente = "Banxico FIX"; Object.assign(S.hidro, { fx: 18.25, fxFecha: "2026-09-22", fxFuente: "Banxico FIX" }); G("recompute")();   /* H-302 */
     const noms = [...new Set(G("HIDRO").tramos.filter((x) => x.Lcap > 0 && x.um > 0).map((x) => String(x.nom).split(" ·")[0]))];
     eq(G("hidroDiametrosSinPrecio")().length, noms.length, "cobre sin precio: todos los diámetros Por cotizar:");
     eq((G("QUOTE").porCotizar || []).filter((p) => p.mot === "hidro" && p.un === "ML").length, noms.length, "una partida Por cotizar por diámetro:");
     eq(G("cotUnificadaEstado")().ok, true, "el Budget sale:"); eq(G("accEstado")("hidro").cot.ok, false, "la formal no:");
     /* 2. Un proyecto guardado con las referencias IUSA las pierde al abrir, con antes/después en la bitácora (archivo, no borrado). */
     const viejo = JSON.parse(JSON.stringify(S));
-    viejo.quote.hidroPU = { cobre_1_: { precio: 2924.99, moneda: "MXN", iva: true, porTramo: 6.10, origen: "referencia", fuente: "Tienda IUSA, menudeo", ubicacion: "México", url: "", fecha: "2026-09-21" }, cobre_2_: 333 };
-    const sv = G("sanearEstado")(viejo).quote;
+    viejo.hidro.hidroPU = { cobre_1_: { precio: 2924.99, moneda: "MXN", iva: true, porTramo: 6.10, origen: "referencia", fuente: "Tienda IUSA, menudeo", ubicacion: "México", url: "", fecha: "2026-09-21" }, cobre_2_: 333 };
+    const sv = G("sanearEstado")(viejo).hidro;   /* H-302: los precios de tubería son de Hidrosanitario */
     eq(sv.hidroPU.cobre_1_, undefined, "la referencia IUSA sale del Budget:"); eq(sv.hidroPU.cobre_2_, 333, "el precio de proveedor local se respeta:");
     eq(sv.hidroPUlog.length, 1, "queda archivada en la bitácora:"); eq(sv.hidroPUlog[0].via, "regla California", "vía:"); eq(sv.hidroPUlog[0].antes.precio, 2924.99, "antes:"); contiene(sv.hidroPUlog[0].despues.fuente, "Por cotizar", "después:");
     /* 3. Referencia de prueba aislada (California, sólo material, USD): se convierte con tipo de cambio fechado; el renglón dice material y la mano de obra queda pendiente. */
     const k0 = G("claveHidroPU")("cobre", noms[0]);
-    S.quote.hidroPU[k0] = REF_PRUEBA("USD"); G("recompute")();
+    S.hidro.hidroPU[k0] = REF_PRUEBA("USD"); G("recompute")();
     const e0 = G("hidroPUEntrada")(k0); cerca(e0.precioM, 4.2 * 18.25, 1e-9, "4.20 USD × 18.25 por metro:"); eq(e0.alcance, "material", "sólo material:"); eq(e0.iva, false, "antes de impuestos tal como lo dice la fuente:");
     const r0 = (G("QUOTE").aux || []).find((a) => a.mot === "hidro" && a.un === "ML"); contiene(r0.desc, "material, precio de referencia de mercado", "renglón: material:"); contiene(r0.desc, "mano de obra por capturar", "y mano de obra por capturar:");
     contiene((G("QUOTE").pendientes || []).map((p) => p.motivo).join("|"), "mano de obra por capturar", "pendiente de mano de obra (no se estima):");
@@ -9550,23 +9575,23 @@ t("S.41 (rev 2.9.23) referencias de mercado: únicamente California y sólo mate
     contiene(pdf, "REFERENCIA DE PRUEBA (no es una fuente real), ed. 2026, p. 1, San Diego, CA, 2026-09-22; 4.2 USD, sólo material, antes de impuestos, lista: costo de material de estimador", "etiqueta honesta completa:");
     contiene(pdf, "18.25 MXN/USD del 2026-09-22 (Banxico FIX)", "tipo de cambio con fecha y fuente:");
     /* 4. Etiqueta honesta: lo que la fuente no dice queda «no especificado», nunca supuesto. */
-    S.quote.hidroPU[k0] = REF_PRUEBA("USD", { iva: null, lista: "", edicion: "", pagina: "" }); G("recompute")();
+    S.hidro.hidroPU[k0] = REF_PRUEBA("USD", { iva: null, lista: "", edicion: "", pagina: "" }); G("recompute")();
     const e1 = G("hidroPUEntrada")(k0); eq(e1.iva, null, "impuestos no especificados:"); eq(e1.lista, "no especificado", "lista no especificada:");
     contiene(txtPdf(G("buildPropuestaPdf")({ lang: "es", mon: "MXN" })), "impuestos: no especificado, lista: no especificado", "el PDF lo dice tal cual:");
     /* 5. Sólo material: si la fuente combina material y mano de obra sin separarlos, Por cotizar. */
-    S.quote.hidroPU[k0] = REF_PRUEBA("USD", { alcance: "material_mo" }); G("recompute")();
+    S.hidro.hidroPU[k0] = REF_PRUEBA("USD", { alcance: "material_mo" }); G("recompute")();
     eq(G("hidroPUEntrada")(k0).combinado, true, "combinado:"); eq(G("hidroDiametrosSinPrecio")().includes(noms[0]), true, "sin precio:");
     eq((G("QUOTE").porCotizar || []).find((p) => p.clave === k0).motivo, "material y mano de obra combinados", "motivo Por cotizar:");
     contiene((G("QUOTE").pendientes || []).map((p) => p.motivo).join("|"), "la fuente combina material y mano de obra", "pendiente con motivo:");
     /* 6. Únicamente California: una referencia de otro sitio no cuenta. */
-    S.quote.hidroPU[k0] = REF_PRUEBA("USD", { ubicacion: "Phoenix, AZ" }); G("recompute")();
+    S.hidro.hidroPU[k0] = REF_PRUEBA("USD", { ubicacion: "Phoenix, AZ" }); G("recompute")();
     eq(G("hidroPUEntrada")(k0).fueraCA, true, "fuera de California:"); eq((G("QUOTE").porCotizar || []).find((p) => p.clave === k0).motivo, "fuera de California", "Por cotizar:");
     /* 7. USD sin tipo de cambio fechado: no se convierte. */
-    S.quote.hidroPU[k0] = REF_PRUEBA("USD"); S.quote.fxFecha = ""; G("recompute")();
+    S.hidro.hidroPU[k0] = REF_PRUEBA("USD"); S.hidro.fxFecha = ""; G("recompute")();
     eq(G("hidroPUEntrada")(k0).sinFx, true, "sin tipo de cambio fechado:"); eq((G("QUOTE").porCotizar || []).find((p) => p.clave === k0).motivo, "tipo de cambio sin capturar", "Por cotizar:");
     /* H-250: el libro en USD ya no se emite sin fecha; el libro en MXN declara la referencia USD sin convertir. */
     contiene(Buffer.from(G("buildPropuestaXlsx")({ lang: "es", mon: "MXN" })).toString("utf8"), "TIPO DE CAMBIO SIN CAPTURAR", "el Excel lo dice:");
-    S.quote.fxFecha = "2026-09-22"; G("recompute")(); eq(G("hidroPUEntrada")(k0).sinFx, false, "con fecha convierte:");
+    S.hidro.fxFecha = "2026-09-22"; G("recompute")(); eq(G("hidroPUEntrada")(k0).sinFx, false, "con fecha convierte:");
     /* 8. Por cotizar en el Budget con contador; la formal bloqueada. */
     const pdf2 = txtPdf(G("buildPropuestaPdf")({ lang: "es", mon: "MXN" }));
     const nPC = (G("QUOTE").porCotizar || []).length; contiene(pdf2, `PARTIDAS POR COTIZAR: ${nPC}`, "contador en la primera hoja:"); contiene(pdf2, "POR COTIZAR", "renglón por cotizar:");
@@ -9586,9 +9611,9 @@ t("S.41 (rev 2.9.23) referencias de mercado: únicamente California y sólo mate
     S.quote.importacion = { monto: 0, moneda: "MXN", fuente: "", fecha: "" };
     /* 10. Proveedor local (pantalla y CSV) sustituye la referencia con antes/después; CSV rechaza referencia sin fuente o fuera de California. */
     G("recompute")(); const antes = G("hidroPUEntrada")(k0).precioM;
-    G("setPath")(`quote.hidroPU.${k0}`, 250); G("recompute")();
+    G("setPath")(`hidro.hidroPU.${k0}`, 250); G("recompute")();
     const e2 = G("hidroPUEntrada")(k0); eq(e2.origen, "proveedor", "Proveedor local:"); cerca(e2.precioM, 250, 1e-9, "por metro antes de IVA:");
-    const lg = S.quote.hidroPUlog[S.quote.hidroPUlog.length - 1]; eq(lg.via, "pantalla", "bitácora:"); cerca(lg.antes.precioM, +antes.toFixed(2), 1e-9, "antes = referencia:"); cerca(lg.despues.precioM, 250, 1e-9, "después = proveedor:");
+    const lg = S.hidro.hidroPUlog[S.hidro.hidroPUlog.length - 1]; eq(lg.via, "pantalla", "bitácora:"); cerca(lg.antes.precioM, +antes.toFixed(2), 1e-9, "antes = referencia:"); cerca(lg.despues.precioM, 250, 1e-9, "después = proveedor:");
     const k1 = G("claveHidroPU")("cobre", noms[noms.length - 1]);
     const r = G("hidroPUImportarCsv")(["material,clave,diametro,precio,por_tramo_m,iva_incluido,moneda,origen,alcance,fuente,edicion,pagina,ubicacion,lista,url,fecha",
       `cobre,,${noms[noms.length - 1]},1830,6.10,si,MXN,proveedor,,"Proveedor local de prueba",,,,,,2026-09-22`,
@@ -9599,7 +9624,7 @@ t("S.41 (rev 2.9.23) referencias de mercado: únicamente California y sólo mate
     const e3 = G("hidroPUEntrada")(k1); eq(e3.origen, "proveedor", "CSV = Proveedor local:"); cerca(e3.precioM, 1830 / 6.1 / 1.16, 1e-9, "por tramo con IVA → por metro antes de IVA:");
     const e4 = G("hidroPUEntrada")("cobre_1_2_"); eq(e4.iva, null, "CSV «no especificado» → impuestos no especificados:"); eq(e4.lista, "costo de material", "lista tal cual:"); eq(e4.edicion, "2026", "edición:"); eq(e4.pagina, "3", "página:");
     /* 11. Pantalla: cada renglón dice su origen y su alcance. */
-    S.quote.hidroPU[k0] = REF_PRUEBA("USD"); G("recompute")();
+    S.hidro.hidroPU[k0] = REF_PRUEBA("USD"); G("recompute")();
     const html = G("hidroPUHtml")(); contiene(html, "Referencia Budget", "pantalla marca la referencia:"); contiene(html, "sólo material", "y el alcance:"); contiene(html, "Por cotizar", "y explica Por cotizar:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
@@ -9650,10 +9675,10 @@ t("S.44 (H-251) una referencia sólo es de California si su estado es California
     G("importarRespaldo")(REG_PROY); S.quote.fx = 18.5; S.quote.fxFecha = "2026-09-22"; S.quote.fxFuente = "fixture";
     const k = "cobre_2_"; /* diámetro en uso en la red del fixture (AF-GENERAL): así tiene partida y puede quedar «Por cotizar» */
     /* 1. Motor: la referencia de Baja California queda fuera y sale «Por cotizar». */
-    S.quote.hidroPU[k] = REF("Tijuana, Baja California"); G("recompute")();
+    S.hidro.hidroPU[k] = REF("Tijuana, Baja California"); G("recompute")();
     eq(G("hidroPUEntrada")(k).fueraCA, true, "«Tijuana, Baja California» está fuera de California:");
     eq(((G("QUOTE").porCotizar || []).find((p) => p.clave === k) || {}).motivo, "fuera de California", "Por cotizar:");
-    S.quote.hidroPU[k] = REF("San Diego, CA"); G("recompute")();
+    S.hidro.hidroPU[k] = REF("San Diego, CA"); G("recompute")();
     eq(G("hidroPUEntrada")(k).fueraCA, false, "«San Diego, CA» sí es California:");
     /* 2. La regla, caso por caso (ubicación libre y columna estado). */
     const ok = (u, extra) => G("referenciaEnCalifornia")({ ubicacion: u, ...(extra || {}) });
@@ -9664,11 +9689,11 @@ t("S.44 (H-251) una referencia sólo es de California si su estado es California
     eq(ok("Tijuana", { estado: "Baja California" }), false, "estado Baja California:"); eq(ok("Mexicali", { estado: "BC" }), false, "estado BC:");
     eq(ok("Carlsbad", { estado: "CA", pais: "México" }), false, "estado CA con país México:"); eq(ok("Carlsbad, CA", { estado: "Baja California" }), false, "la columna estado manda sobre el texto:");
     /* 3. Al abrir un proyecto guardado con esa referencia, se retira con antes/después. */
-    const sv = G("sanearEstado")(JSON.parse(JSON.stringify({ ...S, quote: { ...S.quote, hidroPU: { [k]: REF("Tijuana, Baja California"), cobre_3_4_: REF("Carlsbad, California") }, hidroPUlog: [] } })));
-    eq(sv.quote.hidroPU[k], undefined, "la de Baja California se retira al abrir:"); eq(sv.quote.hidroPU.cobre_3_4_.origen, "referencia", "la de California se queda:");
-    eq(sv.quote.hidroPUlog.length, 1, "queda en la bitácora:"); eq(sv.quote.hidroPUlog[0].via, "regla California", "vía:"); eq(sv.quote.hidroPU.cobre_3_4_.estado, undefined, "sin columna estado no se inventa:");
-    const sv2 = G("sanearEstado")(JSON.parse(JSON.stringify({ ...S, quote: { ...S.quote, hidroPU: { cobre_3_4_: REF("Carlsbad", { estado: "California", pais: "USA" }) }, hidroPUlog: [] } })));
-    eq(sv2.quote.hidroPU.cobre_3_4_.estado, "California", "la columna estado se conserva al abrir:"); eq(sv2.quote.hidroPU.cobre_3_4_.pais, "USA", "y el país:");
+    const sv = G("sanearEstado")(JSON.parse(JSON.stringify({ ...S, hidro: { ...S.hidro, hidroPU: { [k]: REF("Tijuana, Baja California"), cobre_3_4_: REF("Carlsbad, California") }, hidroPUlog: [] } })));
+    eq(sv.hidro.hidroPU[k], undefined, "la de Baja California se retira al abrir:"); eq(sv.hidro.hidroPU.cobre_3_4_.origen, "referencia", "la de California se queda:");
+    eq(sv.hidro.hidroPUlog.length, 1, "queda en la bitácora:"); eq(sv.hidro.hidroPUlog[0].via, "regla California", "vía:"); eq(sv.hidro.hidroPU.cobre_3_4_.estado, undefined, "sin columna estado no se inventa:");
+    const sv2 = G("sanearEstado")(JSON.parse(JSON.stringify({ ...S, hidro: { ...S.hidro, hidroPU: { cobre_3_4_: REF("Carlsbad", { estado: "California", pais: "USA" }) }, hidroPUlog: [] } })));
+    eq(sv2.hidro.hidroPU.cobre_3_4_.estado, "California", "la columna estado se conserva al abrir:"); eq(sv2.hidro.hidroPU.cobre_3_4_.pais, "USA", "y el país:");
     /* 4. CSV: la plantilla trae estado y país; la importación rechaza Baja California y acepta California por ubicación o por columna estado. */
     contiene(G("hidroPUPlantillaCsv")(), "estado", "la plantilla trae la columna estado:"); contiene(G("hidroPUPlantillaCsv")(), "pais", "y país:");
     const r = G("hidroPUImportarCsv")(["material,clave,diametro,precio,por_tramo_m,iva_incluido,moneda,origen,alcance,fuente,edicion,pagina,ubicacion,estado,pais,lista,url,fecha",

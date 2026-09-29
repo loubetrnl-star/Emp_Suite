@@ -62,7 +62,7 @@ w.eval(String.raw`
   const fam = FAMILIES[0], m = familyPool(fam.id)[0]; if (m) S.equip.items = [{ id: m.id, fam: fam.id, qty: 2, unit: null }];
   /* Ruta de referencias con un precio de REFERENCIA DE PRUEBA AISLADO (no es una fuente real; decisión del dueño 22-sep-2026: sin IUSA, únicamente California, sólo material). 1/2" queda como proveedor local numérico. */
   const refPrueba = (p) => ({ precio: p, moneda: "USD", iva: false, porTramo: 1, origen: "referencia", alcance: "material", fuente: "REFERENCIA DE PRUEBA del fixture de regresión (no es una fuente real)", edicion: "", pagina: "", ubicacion: "San Diego, CA (fixture)", lista: "no especificado", url: "", fecha: "2026-09-22" });
-  S.quote.hidroPU = { cobre_1_2_: 128, cobre_3_4_: refPrueba(3.1), cobre_1_: refPrueba(4.6), cobre_1_1_4_: refPrueba(6.2), cobre_1_1_2_: refPrueba(8.0), cobre_2_: refPrueba(12.9), cobre_2_1_2_: refPrueba(22.7), cobre_3_: refPrueba(30.8), cobre_4_: refPrueba(57.4) };
+  S.hidro.hidroPU = { cobre_1_2_: 128, cobre_3_4_: refPrueba(3.1), cobre_1_: refPrueba(4.6), cobre_1_1_4_: refPrueba(6.2), cobre_1_1_2_: refPrueba(8.0), cobre_2_: refPrueba(12.9), cobre_2_1_2_: refPrueba(22.7), cobre_3_: refPrueba(30.8), cobre_4_: refPrueba(57.4) };
   S.quote.fx = 18.5; S.quote.fxFecha = "2026-09-22"; S.quote.fxFuente = "fixture de regresión";
   Object.keys(LINKS).forEach((k) => { S.perms[k] = { ts: 1, via: "regresión" }; });
   S.kaizen.items = [{ id: "k1", titulo: "Ajustar horario de FFU", estado: "hacer", owner: "", ahorro: 0, nota: "" }];
