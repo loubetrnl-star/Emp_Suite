@@ -9521,6 +9521,24 @@ t("S.187 (H-307) soportería calcula sólo con lo suyo: ya no hay propuesta «Me
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); S.tab = tab0; G("recompute")(); }
 });
 
+t("S.188 (H-308) computeSoporte no lee los resultados de los otros motores (DUCT, HIDRO, FUEGO, AIRE, QUOTE, S.hidro ni S.aire): sin fuentes propias no cuenta sus metros aunque «usar los motores» esté activo; con la instantánea guardada calcula con ella, sin intercambiar los globales, y da las mismas cifras", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("recompute")();
+    if (!G("DUCT").segs.some((s) => Number(s.L) > 0)) throw new Error("el caso no aísla lo que se quiere probar: Ductos debe tener un tramo con longitud");
+    /* Sin fuentes propias (sin instantánea): nada de los otros motores, aunque «usar los motores» venga activo. */
+    const R = G("computeSoporte")({ ...S.soporte, usarMotores: true, ductoM: 0, tubHidroM: 0, tubFuegoM: 0, tubAireM: 0 });
+    eq(R.mDucto, 0, "sin fuentes propias no cuenta los metros de Ductos:");
+    eq(R.mTub, 0, "ni los de las tuberías:");
+    /* Con la instantánea guardada: mismas cifras aunque los resultados globales de los otros motores no existan. */
+    aceptarSoporte();
+    const R0 = G("SOPORTE"), cifras = (x) => JSON.stringify([x.mDucto, x.mTub, x.nSoportes, x.nEquipos, x.total]);
+    const esperado = cifras(R0);
+    const R1 = G(`(() => { const sv = [DUCT, HIDRO, FUEGO, AIRE, QUOTE]; try { DUCT = HIDRO = FUEGO = AIRE = QUOTE = null; return computeSoporteGobernado(S.soporte); } finally { [DUCT, HIDRO, FUEGO, AIRE, QUOTE] = sv; } })()`);
+    eq(cifras(R1), esperado, "con la instantánea no depende de los resultados globales:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {
   const guardado = JSON.stringify(S);
   try {

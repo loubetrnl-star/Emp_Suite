@@ -8369,9 +8369,13 @@ function cotizacionSoporte(R, Gc) {
   if (R.total > 0) R.part.forEach((p) => aux.push({ desc: p.desc, descEn: p.descEn, qty: p.qty, unit: p.unit, total: p.total, sec: "G", un: p.un, mot: "soporte" }));
   return { aux, pendientes, porCotizar };
 }
-function computeSoporte(Gc) {
+/* H-308 (decisión del dueño, 29-sep-2026: cada motor calcula por sí solo, sin compartir estado ni resultados): los metros que no
+   se capturan a mano llegan SÓLO en F, las fuentes de la instantánea que soportería guarda (computeSoporteGobernado las arma).
+   Ya no se leen DUCT, HIDRO, FUEGO, AIRE, QUOTE, S.hidro ni S.aire, ni se intercambian mientras corre. Sin F no se cuenta nada
+   de los otros motores, aunque «usar los motores» venga activo. */
+function computeSoporte(Gc, F) {
   const avisos = [], memo = [], part = [];
-  const usa = Gc.usarMotores !== false;
+  const usa = Gc.usarMotores !== false && !!F;
   let idc = 0;
   const nuevoId = (p) => `${p}${++idc}`;
 
@@ -8427,8 +8431,8 @@ function computeSoporte(Gc) {
   /* ---- Ductos: SoporteCalc no distingue material, siempre corre por él ---- */
   let mDucto = 0;
   const tramosSC = [];
-  if (usa && typeof DUCT !== "undefined" && DUCT && DUCT.segs) {
-    DUCT.segs.forEach((s) => {
+  if (usa && F.duct && F.duct.segs) {
+    F.duct.segs.forEach((s) => {
       const L = Math.max(0, num(s.L));
       if (L <= 0) return;
       /* H-166 (dependencia de ductos, soporte v10): el motor de ductos no le dio sección; antes num(null, 400) lo soportaba
@@ -8477,9 +8481,10 @@ function computeSoporte(Gc) {
     });
   };
   if (usa) {
-    if (typeof HIDRO !== "undefined" && HIDRO && HIDRO.tramos)
-      agregarTuberia(HIDRO.tramos, famSoporteAgua(S.hidro && S.hidro.material), "hidrosanitario", "Hidráulica y sanitario", S.hidro && S.hidro.material);
-    if (typeof FUEGO !== "undefined" && FUEGO && FUEGO.nTotal > 0) {
+    if (F.hidro && F.hidro.tramos)
+      agregarTuberia(F.hidro.tramos, famSoporteAgua(F.hidroMaterial), "hidrosanitario", "Hidráulica y sanitario", F.hidroMaterial);
+    const FU = F.fuego;
+    if (FU && FU.nTotal > 0) {
       /* H-XX (15-sep-2026) · Antes se soportaba TODA la red contra incendio
          —cabezal del área de diseño y montante— como un solo tramo, con el
          diámetro del montante (el más grande) aplicado también al cabezal.
@@ -8491,20 +8496,20 @@ function computeSoporte(Gc) {
          galvanizado → acero; cobre → cobre, con el mínimo de MSS SP-58-2018 que ya usa la hidráulica (decisión 4 del dueño);
          CPVC → pendiente: su claro sale de NFPA 13 (Tabla 17.4.2.1(a)), cuyo texto no está (BLOQUEADO), así que no se soporta
          como acero ni con los claros de plomería del IPC. */
-      const tubF = FUEGO.tub || "acero_neg", famF = tubF === "cobre" ? "cobre" : /^acero/.test(tubF) ? "acero" : null;
+      const tubF = FU.tub || "acero_neg", famF = tubF === "cobre" ? "cobre" : /^acero/.test(tubF) ? "acero" : null;
       if (!famF) manualPendientes.push({ que: "Red contra incendio en CPVC", queEn: "CPVC fire protection piping", falta: "claro de soporte de NFPA 13 para CPVC (sin texto de la norma: no se soporta como acero ni con los claros de plomería del IPC)", faltaEn: "NFPA 13 hanger spacing for CPVC (no code text: not supported as steel nor with IPC plumbing spacing)" });
       else {
-        if (FUEGO.ram) agregarTuberia([{ tag: "Cabezal del área de diseño", L: FUEGO.Lram, d: FUEGO.ram.d }], famF, "contra_incendio", "Contra incendio");
-        if (FUEGO.mon) agregarTuberia([{ tag: "Montante", L: FUEGO.Lmon, d: FUEGO.mon.d }], famF, "contra_incendio", "Contra incendio");
+        if (FU.ram) agregarTuberia([{ tag: "Cabezal del área de diseño", L: FU.Lram, d: FU.ram.d }], famF, "contra_incendio", "Contra incendio");
+        if (FU.mon) agregarTuberia([{ tag: "Montante", L: FU.Lmon, d: FU.mon.d }], famF, "contra_incendio", "Contra incendio");
         /* H-266: sin cabezal ni montante resueltos (contra incendio sin longitudes capturadas) ya no se suponen 30 + 12 m a 100 mm
            leídos EN VIVO de S.fuego (se colaban aun con la instantánea aceptada): la red queda pendiente de longitudes (regla 6). */
-        if (!FUEGO.ram && !FUEGO.mon) manualPendientes.push({ que: "Red contra incendio sin longitudes de cabezal y montante", queEn: "Fire protection piping without header and riser lengths",
+        if (!FU.ram && !FU.mon) manualPendientes.push({ que: "Red contra incendio sin longitudes de cabezal y montante", queEn: "Fire protection piping without header and riser lengths",
           falta: "longitudes del cabezal y del montante (se capturan en contra incendio)", faltaEn: "header and riser lengths (captured in fire protection)" });
       }
     }
-    if (typeof AIRE !== "undefined" && AIRE && AIRE.tramos)
-      agregarTuberia(AIRE.tramos.map((t) => ({ tag: t.etiqueta, L: t.L, d: t.d })),
-        (S.aire && S.aire.material === "cobre") ? "cobre" : "acero", "aire_comprimido", "Aire comprimido");
+    if (F.aire && F.aire.tramos)
+      agregarTuberia(F.aire.tramos.map((t) => ({ tag: t.etiqueta, L: t.L, d: t.d })),
+        F.aireMaterial === "cobre" ? "cobre" : "acero", "aire_comprimido", "Aire comprimido");
   } else {
     /* H-230: cada línea a mano lleva su diámetro y su material capturados; sin diámetro no se inventa (antes 50 / 100 / 32 mm de acero). */
     const manual = (tag, tagEn, L, d, mat, disciplina, etiqueta) => {
@@ -8625,7 +8630,7 @@ function computeSoporte(Gc) {
      equipos cotizados + unidades de aire al tomarla); antes el conteo en vivo sumaba AIRE.totalUnidades = 0 del sustituto y se
      perdía el compresor (3 → 2 bases). */
   const nEquipos = num(Gc.basesEquipo, 0) > 0 ? num(Gc.basesEquipo)
-    : (typeof QUOTE !== "undefined" && QUOTE && QUOTE.deSnap) ? num(QUOTE.nEquip, 0)
+    : (F && F.deSnap) ? num(F.nEquip, 0)
     : 0;
   /* H-266 (revisión adversarial de U10; reglas 6 y 8): las bases que la migración copió al abrir se usan con la misma cifra,
      pero se dice de dónde salieron («sin confirmar») en la memoria, las observaciones y la pantalla, hasta que el usuario las
@@ -18574,31 +18579,33 @@ function computeSoporteGobernado(G) {
     /* H-307: sin avisos que lean los otros motores (la propuesta de sus metros se retiró): cuenta lo capturado en esta pestaña. */
     return Rm;
   }
-  const prev = [DUCT, HIDRO, FUEGO, AIRE, QUOTE, S.hidro, S.aire];
   /* H-45/H-46/H-77: reconstruye con las dimensiones, calibre y longitudes
      reales de la instantánea (ver snapshotSoporte para el porqué). Snapshots
      guardados ANTES de este cambio no traen estos campos: num(undefined, X)
      cae al mismo respaldo que había, así que un proyecto viejo no truena, solo
-     sigue viéndose como antes hasta que se vuelva a aceptar la instantánea. */
-  DUCT = { segs: (snap.duct || []).map((s) => ({ L: num(s.L), shape: s.shape,
-    d: num(s.d, 250), w: num(s.w, 400), h: num(s.h, 200), gauge: s.gauge ? { gauge: s.gauge } : undefined,
-    ...(s.error ? { error: "sin sección en la instantánea (H-166)", tag: s.tag } : {}) })) };
-  HIDRO = { tramos: (snap.hidro || []).map((t) => ({ tag: t.tag, L: num(t.L), d: num(t.d) })) };
-  FUEGO = {
-    nTotal: num(snap.fuego && snap.fuego.nTotal),
-    ram: (snap.fuego && num(snap.fuego.Lram) > 0) ? { d: num(snap.fuego.ramD, 100) } : null,
-    Lram: num(snap.fuego && snap.fuego.Lram),
-    mon: (snap.fuego && num(snap.fuego.Lmon) > 0) ? { d: num(snap.fuego.monD, 100) } : null,
-    Lmon: num(snap.fuego && snap.fuego.Lmon),
-    tub: (snap.fuego && snap.fuego.tub) || "acero_neg",   // H-224
+     sigue viéndose como antes hasta que se vuelva a aceptar la instantánea.
+     H-308: las fuentes van como argumento de computeSoporte (antes se escribían encima de DUCT, HIDRO, FUEGO, AIRE, QUOTE,
+     S.hidro y S.aire mientras corría y se restauraban al final): mismos datos, sin tocar el estado de los otros motores. */
+  const F = {
+    duct: { segs: (snap.duct || []).map((s) => ({ L: num(s.L), shape: s.shape,
+      d: num(s.d, 250), w: num(s.w, 400), h: num(s.h, 200), gauge: s.gauge ? { gauge: s.gauge } : undefined,
+      ...(s.error ? { error: "sin sección en la instantánea (H-166)", tag: s.tag } : {}) })) },
+    hidro: { tramos: (snap.hidro || []).map((t) => ({ tag: t.tag, L: num(t.L), d: num(t.d) })) },
+    fuego: {
+      nTotal: num(snap.fuego && snap.fuego.nTotal),
+      ram: (snap.fuego && num(snap.fuego.Lram) > 0) ? { d: num(snap.fuego.ramD, 100) } : null,
+      Lram: num(snap.fuego && snap.fuego.Lram),
+      mon: (snap.fuego && num(snap.fuego.Lmon) > 0) ? { d: num(snap.fuego.monD, 100) } : null,
+      Lmon: num(snap.fuego && snap.fuego.Lmon),
+      tub: (snap.fuego && snap.fuego.tub) || "acero_neg",   // H-224
+    },
+    aire: { tramos: (snap.aire || []).map((t) => ({ etiqueta: t.etiqueta, L: num(t.L), d: num(t.d) })) },
+    nEquip: num(snap.nEquip), deSnap: true,   /* H-231: las bases salen de snap.nEquip, no del conteo en vivo */
+    /* H-228: con el subtipo guardado; una instantánea vieja sin subtipo queda «plastico» y el claro, pendiente de subtipo. */
+    hidroMaterial: snap.hidroSub || snap.hidroMat,
+    aireMaterial: snap.aireMat,
   };
-  AIRE = { tramos: (snap.aire || []).map((t) => ({ etiqueta: t.etiqueta, L: num(t.L), d: num(t.d) })), totalUnidades: 0 };
-  QUOTE = { nEquip: num(snap.nEquip), deSnap: true }; /* H-231: las bases salen de snap.nEquip, no del conteo en vivo */
-  /* H-228: con el subtipo guardado; una instantánea vieja sin subtipo queda «plastico» y el claro, pendiente de subtipo. */
-  S.hidro = { ...(S.hidro || {}), material: snap.hidroSub || snap.hidroMat };
-  S.aire = { ...(S.aire || {}), material: snap.aireMat };
-  try { return computeSoporte(G); }
-  finally { [DUCT, HIDRO, FUEGO, AIRE, QUOTE, S.hidro, S.aire] = prev; }
+  return computeSoporte(G, F);
 }
 
 /* =========================================================================
