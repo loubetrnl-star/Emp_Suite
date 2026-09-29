@@ -1437,6 +1437,8 @@ function pdfTrazabilidad(d, motores, opciones) {
   pdfHeading(d, "Trazabilidad");
   pdfRows(d, [
     ...motores.map((m) => [`Norma · ${NORMAS[m] ? ENGINES[m] ? ENGINES[m].label : ((typeof DISCIPLINAS !== "undefined" && DISCIPLINAS.find((x) => x.id === m)) || {}).nombre || m : m}`, `${NORMAS[m] ? NORMAS[m].norma + " · " + NORMAS[m].edicion : "sin declarar"}${NORMAS[m] && NORMAS[m].extra ? " · " + NORMAS[m].extra : ""}`]),
+    ...motores.filter((m) => MOTORES_COT.includes(m)).map((m) => { const C = comercialDe(S[m]);
+      return [`Cotizacion · ${ENGINES[m] ? ENGINES[m].label : m}`, `plaza ${C.PLZ.label} · factor de plaza aplicado ${n(C.fP, 3)} · base ${C.B.label} · FASAR ${n(C.fasarN, 2)}`]; }),
     ["Catalogo de equipo", `${CAT_REV.version}`],
     ["Motor de calculo", REV_SELLO()],
     ["Emitido", new Date().toLocaleString("es-MX")],
@@ -4770,6 +4772,17 @@ const PLAZAS = {
     nota: "Captura el factor de material y el de mano de obra a mano con base en cotización local." },
 };
 const plazaDe = (k) => PLAZAS[k] || PLAZAS.tijuana;
+/* H-303 (decisión del dueño, 29-sep-2026): todo parámetro de la cotización general que un motor usa se vuelve campo propio de ese
+   motor. Plaza de compra, factor de plaza, base del precio unitario, FASAR y referencia citada se capturan en la cotización de cada
+   motor (S.<motor>.comercial), inicializados con los valores de la cotización general de hoy (mismas cifras). La Cotización
+   consolidada aplica a cada renglón el factor de SU motor; sólo conserva su plaza para lo que es suyo (renglones tal cual, sección H). */
+const COMERCIAL_SEED = { plaza: "tijuana", plazaFactor: 0, basePrecio: "casa", fasar: FASAR_DEF, refBase: "" };
+const MOTORES_COT = ["equip", "duct", "vent", "clean", "elec", "hidro", "fuego", "aire", "civil", "soporte"];
+function comercialDe(E) {
+  const c = E && typeof E === "object" && "comercial" in E && E.comercial && typeof E.comercial === "object" ? E.comercial : {};
+  const x = { ...COMERCIAL_SEED, ...c }, PLZ = plazaDe(x.plaza);
+  return { ...x, PLZ, fP: num(x.plazaFactor, 0) > 0 ? num(x.plazaFactor) : PLZ.f, B: BASES_PRECIO[x.basePrecio] || BASES_PRECIO.casa, fasarN: num(x.fasar, FASAR_DEF) };
+}
 /* H-254 (rev 2.9.24, quote v18; regla d «tal cual»): el factor de plaza es un ajuste del catálogo de la casa; no toca la
    sección H (flete, aduana e importación capturados con fuente y fecha) ni los precios con origen declarado (referencia de
    mercado o proveedor local, que ya son el precio de la plaza). Antes la importación de 18,500 salía 19,980 en Mexicali. */
@@ -6331,9 +6344,9 @@ function recetaDe(part) {
   return null;
 }
 /* Costo de la cuadrilla por jornada, con el FASAR aplicado al salario nominal. */
-function costoCuadrilla(cid) {
+function costoCuadrilla(cid, fasar) {
   const C = CUADRILLAS[cid]; if (!C) return { total: 0, det: [] };
-  const f = num(S.quote.fasar, FASAR_DEF);
+  const f = fasar !== undefined ? num(fasar, FASAR_DEF) : num(S.quote.fasar, FASAR_DEF);   /* H-303: el FASAR del motor de la partida */
   const det = C.comp.map(([cat, n_]) => {
     const M = MO_CAT[cat];
     return { label: M.label, n: n_, nom: M.nom, real: M.nom * f, importe: M.nom * f * n_ };
@@ -6344,11 +6357,13 @@ function costoCuadrilla(cid) {
    y equipo. Devuelve null si el concepto no tiene receta, y eso se declara. */
 function analizarPU(part) {
   const R = recetaDe(part); if (!R) return null;
-  const PLZ = plazaDe(S.quote.plaza);
-  const fP = num(S.quote.plazaFactor, 0) > 0 ? num(S.quote.plazaFactor) : PLZ.f;
+  /* H-303: la plaza, su factor y el FASAR son los de la cotización del motor de la partida. */
+  const CMp = part && MOTORES_COT.includes(part.mot) ? comercialDe(S[part.mot]) : null;
+  const PLZ = CMp ? CMp.PLZ : plazaDe(S.quote.plaza);
+  const fP = part && part.fP != null ? part.fP : CMp ? CMp.fP : (num(S.quote.plazaFactor, 0) > 0 ? num(S.quote.plazaFactor) : PLZ.f);
   const mat = R.mat.map(([desc, un, cant, pu]) => ({ desc, un, cant, pu: pu * fP, importe: cant * pu * fP }));
   const matT = mat.reduce((a, x) => a + x.importe, 0);
-  const cua = costoCuadrilla(R.cua);
+  const cua = costoCuadrilla(R.cua, CMp ? CMp.fasarN : undefined);
   const rend = Math.max(0.01, num(R.rend, 1));
   /* H-78 (decisión del dueño, 15-sep-2026): la mano de obra no llevaba NINGÚN
      factor de plaza (fP arriba solo se aplica a materiales) — una tarjeta de
@@ -6523,15 +6538,15 @@ function preseleccionHidroneumatico(qLps, cdtM, variable) {
 function catalogoConceptos() {
   const Q = QUOTE; if (!Q) return { secciones: [], subtotal: 0 };
   const todos = [
-    ...Q.lines.map((l) => ({ desc: l.desc, descEn: l.descEn || l.desc, un: l.un || "PIEZA", qty: l.qty, unit: l.unit, total: l.total, sec: l.sec || "B", mot: l.mot || "equip", semilla: !!l.semilla })),
-    ...Q.aux.map((a) => ({ desc: a.desc, descEn: a.descEn || a.desc, un: a.un || "LOTE", qty: a.qty, unit: a.unit, total: a.total, sec: a.sec || "B", mot: a.mot || "equip", talCual: exentoPlaza(a), semilla: !!a.semilla })),
+    ...Q.lines.map((l) => ({ desc: l.desc, descEn: l.descEn || l.desc, un: l.un || "PIEZA", qty: l.qty, unit: l.unit, total: l.total, sec: l.sec || "B", mot: l.mot || "equip", semilla: !!l.semilla, fP: l.fP })),
+    ...Q.aux.map((a) => ({ desc: a.desc, descEn: a.descEn || a.desc, un: a.un || "LOTE", qty: a.qty, unit: a.unit, total: a.total, sec: a.sec || "B", mot: a.mot || "equip", talCual: exentoPlaza(a), semilla: !!a.semilla, fP: a.fP })),
   ].filter((x) => x.total > 0);
   /* El factor de plaza multiplica el precio unitario aquí y no antes: una sola
      puerta de salida para que el catálogo, el resumen, el PDF y el Excel vean
      el mismo número y no haya un ajuste escondido al final del documento. */
   const PLZ = plazaDe((S.quote || {}).plaza);
   const fP = num((S.quote || {}).plazaFactor, 0) > 0 ? num((S.quote || {}).plazaFactor) : PLZ.f;
-  todos.forEach((x) => { if (x.talCual) return; x.unit = x.unit * fP; x.total = x.total * fP; });   /* H-254: H y precios con origen, tal cual */
+  todos.forEach((x) => { if (x.talCual) return; const f = x.fP != null ? x.fP : fP; x.unit = x.unit * f; x.total = x.total * f; });   /* H-303: el de su motor */   /* H-254: H y precios con origen, tal cual */
   /* H-252: la marca viaja con la partida a todo documento que lee el catálogo (Budget PDF/Excel, cotización por disciplina). */
   todos.forEach((x) => { if (x.semilla) { x.desc = `${x.desc} · SEMILLA · SIN FUENTE`; x.descEn = `${x.descEn} · SEED · NO SOURCE`; } });
   const secciones = SEC_ORDEN.map((k) => {
@@ -6586,16 +6601,22 @@ function tarjetaCosto(mot, etiqueta) {
   const link = `${mot}>quote`;
   const permitido = !LINKS[link] || linkAllowed(link);
   const c = permitido ? cotizacionDeMotor(mot) : null;
-  const PLZ = plazaDe(S.quote.plaza);
-  const fP = num(S.quote.plazaFactor, 0) > 0 ? num(S.quote.plazaFactor) : PLZ.f;
+  /* H-303: plaza, factor, base, FASAR y referencia de la cotización de ESTE motor, capturados aquí. */
+  const CM = comercialDe(S[mot]), PLZ = CM.PLZ, fP = CM.fP;
+  const capturaCom = `<details style="margin-top:10px"><summary>Parámetros comerciales de ${esc(etiqueta)} (su cotización)</summary>
+      <div class="row">${sel("Plaza de compra", `${mot}.comercial.plaza`, Object.entries(PLAZAS).map(([k, v]) => [k, v.label]))}${inp("Factor de plaza (0 = el de la plaza)", `${mot}.comercial.plazaFactor`, "number", "0.001")}</div>
+      <div class="row">${sel("Base del precio unitario", `${mot}.comercial.basePrecio`, Object.entries(BASES_PRECIO).map(([k, v]) => [k, v.label]))}${inp("FASAR", `${mot}.comercial.fasar`, "number", "0.01")}</div>
+      ${inp("Referencia citada (edición, licitación o folio)", `${mot}.comercial.refBase`, "text")}
+    </details>`;
   if (!permitido) return `<div class="card" style="grid-column:1/-1"><h3>Costo de ${esc(etiqueta)}<span class="tag">sin autorizar</span></h3><div class="body">
     <div class="hint">Este motor no tiene autorizado pasar su resultado a la cotización, así que su costo no se calcula ni entra al catálogo unificado.</div>
     <button class="toolbtn" style="margin-top:12px" data-act="ask-link" data-id="${link}">Autorizar el cruce</button>
   </div></div>`;
   if (!c.partidas.length) return `<div class="card" style="grid-column:1/-1"><h3>Costo de ${esc(etiqueta)}</h3><div class="body">
-    <div class="hint">Todavía no hay partidas: este motor no ha producido un resultado que cotizar.</div></div></div>`;
+    <div class="hint">Todavía no hay partidas: este motor no ha producido un resultado que cotizar.</div>${capturaCom}</div></div>`;
   return `<div class="card" style="grid-column:1/-1"><h3>Costo de ${esc(etiqueta)}<span class="tag">${c.partidas.length} partida(s) · ${n(c.pct * 100, 1)} % del directo</span></h3><div class="body">
-    <div class="sub" style="margin-bottom:10px">Plaza ${esc(PLZ.label)} · factor ${n(fP, 3)} · base ${esc((BASES_PRECIO[S.quote.basePrecio] || BASES_PRECIO.casa).label)}</div>
+    <div class="sub" style="margin-bottom:10px">Plaza ${esc(PLZ.label)} · factor de plaza aplicado ${n(fP, 3)} · base ${esc(CM.B.label)} · FASAR ${n(CM.fasarN, 2)} (de la cotización de este motor)</div>
+    ${capturaCom}
     <div class="tw"><table>
       <thead><tr><th>Clave</th><th>Concepto</th><th>Unidad</th><th class="num">Cantidad</th><th class="num">P.U.</th><th class="num">Importe</th></tr></thead>
       <tbody>${c.partidas.map((p) => `<tr><td>${p.clave}</td><td>${esc(p.desc)}</td><td>${p.un}</td><td class="num">${n(p.qty, 2)}</td><td class="num">${n(p.unit, 2)}</td><td class="num">${n(p.total, 0)}</td></tr>`).join("")}
@@ -6608,18 +6629,17 @@ function buildCotizacionMotorPdf(mot) {
   recompute();
   const M = (typeof DISCIPLINAS !== "undefined" ? DISCIPLINAS.find((x) => x.id === mot) : null) || { nombre: mot, metodo: "" };
   const c = cotizacionDeMotor(mot);
-  const PLZ = plazaDe(S.quote.plaza);
-  const fP = num(S.quote.plazaFactor, 0) > 0 ? num(S.quote.plazaFactor) : PLZ.f;
-  const B = BASES_PRECIO[S.quote.basePrecio] || BASES_PRECIO.casa;
+  /* H-303: plaza, factor, base, FASAR y referencia de la cotización de ESTE motor. */
+  const CM = comercialDe(MOTORES_COT.includes(mot) ? S[mot] : null), PLZ = CM.PLZ, fP = CM.fP, B = CM.B;
   const d = PdfDoc(`Cotizacion ${M.nombre}`);
   pdfTitle(d, `Cotizacion · ${M.nombre}`, `${S.meta.name || "Proyecto"} · ${M.metodo}`);
   pdfTable(d, ["Concepto", "Dato"], [
     ["Base del precio unitario", B.label],
     ["Alcance de esa base", B.defendible],
-    ["Plaza de compra", `${PLZ.label} · factor ${n(fP, 3)}`],
+    ["Plaza de compra", `${PLZ.label} · factor de plaza aplicado ${n(fP, 3)} (capturado en la cotizacion de la disciplina)`],
     ["Ajuste de plaza", PLZ.nota],
-    ["FASAR declarado", `${n(num(S.quote.fasar, 1.45), 2)} (rango de mercado ${FASAR_MIN}-${FASAR_MAX})`],
-    ["Referencia citada", S.quote.refBase || "no capturada"],
+    ["FASAR declarado", `${n(CM.fasarN, 2)} (rango de mercado ${FASAR_MIN}-${FASAR_MAX})`],
+    ["Referencia citada", CM.refBase || "no capturada"],
     ...(mot === "hidro" ? [["Tipo de cambio de la disciplina", fxHidro(S.hidro) ? `${n(fxHidro(S.hidro).fx, 2)} MXN/USD del ${fxHidro(S.hidro).fecha}${fxHidro(S.hidro).fuente ? ` (${fxHidro(S.hidro).fuente})` : ""}` : "sin capturar (lo que esta en USD queda Por cotizar)"]] : []),
   ], [150, 336]);
   pdfHeading(d, "Catalogo de conceptos de esta disciplina");
@@ -6671,6 +6691,7 @@ function buildLicitacionPdf(opt = {}) {
   pdfTable(d, ["Concepto", "Dato"], [
     ["Base de formacion del precio", B.label],
     ["Plaza y factor", `${PLZ.label} · ${n(num(S.quote.plazaFactor, 0) > 0 ? S.quote.plazaFactor : PLZ.f, 3)}`],
+    ["Factor de plaza por disciplina (H-303)", MOTORES_COT.map((m) => `${ENGINES[m] ? ENGINES[m].label : m} ${n(comercialDe(S[m]).fP, 3)}`).join(" · ")],
     ["FASAR aplicado", `${n(f, 3)} (rango de mercado ${FASAR_MIN} a ${FASAR_MAX})`],
     ["Referencia citada", S.quote.refBase || "NO CAPTURADA — obligatoria en licitacion"],
     ["Conceptos en el catalogo", String(cat.secciones.reduce((a, s2) => a + s2.partidas.length, 0))],
@@ -8966,8 +8987,17 @@ function computeQuote() {
      el catálogo y el escalón de precio dejarían de cuadrar. */
   const PLZQ = plazaDe((S.quote || {}).plaza);
   const fPQ = num((S.quote || {}).plazaFactor, 0) > 0 ? num((S.quote || {}).plazaFactor) : PLZQ.f;
+  /* H-303: cada renglón lleva el factor de plaza de SU motor (capturado en su cotización); los que van tal cual (sección H y precios
+     con origen, H-254) se agrupan con el de la Cotización, que no los multiplica. Con un solo factor, la misma cuenta de antes. */
+  const COT_MOT = { equip: SYS, duct: DUCT, vent: VENT, clean: CLEAN, elec: ELEC, hidro: HIDRO, fuego: FUEGO, aire: AIRE, civil: CIVIL, soporte: SOPORTE };
+  const fPde = (mot) => { const R = COT_MOT[mot]; return R && R.cot && R.cot.comercial ? R.cot.comercial.fP : fPQ; };
+  lines.forEach((l) => { l.fP = fPde(l.mot); });
+  aux.forEach((a) => { a.fP = exentoPlaza(a) ? fPQ : fPde(a.mot); });
   const auxTalCual = aux.filter(exentoPlaza).reduce((a, l) => a + l.total, 0);   /* H-254: H y precios con origen fuera del factor */
-  const direct = (equipTotal + auxTotal - auxTalCual) * fPQ + auxTalCual;
+  const gruposP = new Map();
+  lines.forEach((l) => { const g = gruposP.get(l.fP) || [0, 0, 0]; g[0] += l.total; gruposP.set(l.fP, g); });
+  aux.forEach((a) => { const g = gruposP.get(a.fP) || [0, 0, 0]; g[1] += a.total; if (exentoPlaza(a)) g[2] += a.total; gruposP.set(a.fP, g); });
+  const direct = [...gruposP.entries()].reduce((s0, [f, g]) => s0 + (g[0] + g[1] - g[2]) * f, 0) + auxTalCual;
   const ind = direct * num(q.indirect, QUOTE_SEED.indirect), uti = (direct + ind) * num(q.utility, QUOTE_SEED.utility);
   const flete = direct * num(q.freight), fianza = direct * num(q.bond), finan = direct * num(q.financing);
   const contPct = num(q.contingencia, QUOTE_SEED.contingencia), cont = direct * contPct;
@@ -12026,6 +12056,9 @@ function recompute() {
   }
   SOPORTE = computeSoporteGobernado(S.soporte);
   if (!S.quote) S.quote = JSON.parse(JSON.stringify(QUOTE_SEED));
+  /* H-303: cada cotización de motor lleva su propio bloque comercial (plaza, factor, base, FASAR, referencia). */
+  [["equip", SYS], ["duct", DUCT], ["vent", VENT], ["clean", CLEAN], ["elec", ELEC], ["hidro", HIDRO], ["fuego", FUEGO], ["aire", AIRE], ["civil", CIVIL], ["soporte", SOPORTE]]
+    .forEach(([k, R]) => { if (R && typeof R === "object" && R.cot) R.cot.comercial = comercialDe(S[k]); });
   QUOTE = computeQuote();
   VALID = validateAll();
   /* Kaizen simula cada zona con el cambio aplicado: es el motor más caro de la
@@ -19738,12 +19771,12 @@ const ENTRADAS = {
      ventilador (miscVent null, que sanearEstado agrega a los proyectos anteriores) pesa lo mismo que una sin el campo: así
      un proyecto sellado con la versión anterior no sale «la captura cambió» sin haber cambiado nada. */
   load: () => ({ zones: (S.zones || []).map((z) => z && "origenOA" in z ? sinClaves(z, ["origenOA"]) : z).map((z) => !z || !("miscVent" in z) ? z : z.miscVent ? { ...z, miscVent: sinClaves(z.miscVent, ["ts"]) } : sinClaves(z, ["miscVent"])),   /* H-281: el origen del aire exterior no es captura */ sitio: S.sitioCarga && typeof S.sitioCarga === "object" ? sinClaves(S.sitioCarga, ["origen", "ts", "label"]) : null, forceTech: S.forceTech, peakScan: S.peakScan }),   /* H-289: sin la diversidad del edificio, que Carga no usa. H-290: su sitio, no el de Proyecto */
-  clean: () => ({ rooms: cleanRooms(), precios: S.clean.precios || null }),   /* H-295: sus precios son de su cotización */   /* H-283: el sitio de Proyecto no entra al cálculo de cuartos limpios: fuera de la huella */
+  clean: () => ({ rooms: cleanRooms(), precios: S.clean.precios || null, comercial: S.clean.comercial || null }),   /* H-295: sus precios son de su cotización */   /* H-283: el sitio de Proyecto no entra al cálculo de cuartos limpios: fuera de la huella */
   /* H-267: sólo lo que la selección calcula: sus zonas de selección (la instantánea aceptada va dentro, sin id, origen, fecha ni
      marca de edición, que no cambian el cálculo), la diversidad del edificio, el sitio (capacidad en sitio), la tecnología elegida,
      los modelos por familia y la presión estática externa capturada en esta pestaña (H-274: nada de Ductos). Ya no anida
      ENTRADAS.load(): la carga entra sólo al aceptar la propuesta load>equip. La marca de migración es pasajera: fuera. */
-  equip: () => ({ items: S.equip.items || [], precios: S.equip.precios || null, zonas: zonasSel().map((z) => sinClaves(z, ["id", "origen", "editada"])), bldDiv: S.equip.div ?? null, sitio: sitioSelHuella(), sysForce: S.sysForce, sel: eSel(), esp: espCapturada() }),
+  equip: () => ({ items: S.equip.items || [], precios: S.equip.precios || null, comercial: S.equip.comercial || null, zonas: zonasSel().map((z) => sinClaves(z, ["id", "origen", "editada"])), bldDiv: S.equip.div ?? null, sitio: sitioSelHuella(), sysForce: S.sysForce, sel: eSel(), esp: espCapturada() }),
   duct: () => ({ duct: S.duct }),   /* H-284: el sitio de Proyecto no entra al cálculo de ductos (rho, mu y rugosidad se capturan aquí): fuera de la huella */
   vent: () => ({ vent: sinClaves(S.vent, ["seleccion"]) }),   /* H-263: la selección no la lee computeVent. H-291: el sitio de Proyecto tampoco: fuera de la huella */
   hidro: () => ({ hidro: sinClaves(S.hidro, ["equipoHN"]) }),   /* H-285: el sitio de Proyecto no entra al cálculo hidráulico: fuera de la huella */
@@ -19828,14 +19861,17 @@ const motorVer = (id) => MOTOR_VER[id] || "1";
    dueño, 28-sep-2026: no hay re-sello solo). */
 const HUELLA_FORMA = {
   load: { f: 2, que: "H-289: la huella ya no lleva la diversidad del edificio, que Carga térmica no usa (se captura en Selección)" },
-  clean: { f: 3, que: "H-295: los precios de FFU, HEPA y rejilla pasaron de la cotización a Cuartos limpios (misma cifra)" },
-  duct: { f: 3, que: "H-300: los precios de lámina y difusor y la cantidad de difusores pasaron a Ductos (misma cifra)" },
-  hidro: { f: 3, que: "H-302: los precios de tubería y el tipo de cambio pasaron de la cotización a Hidrosanitario (misma cifra)" },
-  fuego: { f: 3, que: "H-293: el precio del rociador pasó de la cotización a Contra incendio (misma cifra)" },
-  equip: { f: 2, que: "H-301: las partidas de equipo y sus precios pasaron de la cotización a Selección (misma cifra)" },
-  quote: { f: 8, que: "H-293–H-302: los precios de rociador, ventilación, FFU, HEPA, rejilla, central de aire, lámina, difusor y equipos pasaron a su motor (misma cifra)" },
-  aire: { f: 2, que: "H-296: los precios de la central de aire pasaron de la cotización a Aire comprimido (misma cifra)" },
-  vent: { f: 3, que: "H-294: el precio por CFM pasó de la cotización a Ventilación (misma cifra)" },
+  clean: { f: 4, que: "H-303: su cotización lleva su propio bloque comercial (plaza, factor, base, FASAR, referencia; mismas cifras)" },
+  duct: { f: 4, que: "H-303: su cotización lleva su propio bloque comercial (plaza, factor, base, FASAR, referencia; mismas cifras)" },
+  hidro: { f: 4, que: "H-303: su cotización lleva su propio bloque comercial (plaza, factor, base, FASAR, referencia; mismas cifras)" },
+  fuego: { f: 4, que: "H-303: su cotización lleva su propio bloque comercial (plaza, factor, base, FASAR, referencia; mismas cifras)" },
+  equip: { f: 3, que: "H-303: su cotización lleva su propio bloque comercial (plaza, factor, base, FASAR, referencia; mismas cifras)" },
+  elec: { f: 2, que: "H-303: su cotización lleva su propio bloque comercial (plaza, factor, base, FASAR, referencia; mismas cifras)" },
+  civil: { f: 2, que: "H-303: su cotización lleva su propio bloque comercial (plaza, factor, base, FASAR, referencia; mismas cifras)" },
+  soporte: { f: 2, que: "H-303: su cotización lleva su propio bloque comercial (plaza, factor, base, FASAR, referencia; mismas cifras)" },
+  quote: { f: 9, que: "H-293–H-303: los precios de rociador, ventilación, FFU, HEPA, rejilla, central de aire, lámina, difusor y equipos pasaron a su motor (misma cifra)" },
+  aire: { f: 3, que: "H-303: su cotización lleva su propio bloque comercial (plaza, factor, base, FASAR, referencia; mismas cifras)" },
+  vent: { f: 4, que: "H-303: su cotización lleva su propio bloque comercial (plaza, factor, base, FASAR, referencia; mismas cifras)" },
 };
 const formaHuella = (id) => (HUELLA_FORMA[id] ? HUELLA_FORMA[id].f : 1);
 function cambiosMotorTexto(id, desde) { return (MOTOR_CAMBIOS[id] || []).filter((c) => +c.ver > +(desde || 1)).map((c) => `v${c.ver} (rev ${c.rev}): ${c.que}`).join("; ") || "cambio de lógica del motor"; }
@@ -24937,6 +24973,16 @@ function sanearEstado(d) {
     /* rev 2.9.23 · los diámetros sin precio propio toman la referencia de mercado vigente (Referencia Budget). */
     Object.keys(HIDRO_PU_REFERENCIA).forEach((k) => { if (!(k in s.hidro.hidroPU)) s.hidro.hidroPU[k] = JSON.parse(JSON.stringify(HIDRO_PU_REFERENCIA[k])); });
     s.hidro.hidroPUlog = Array.isArray(s.hidro.hidroPUlog) ? s.hidro.hidroPUlog.filter((l) => l && typeof l === "object" && l.clave && l.antes && l.despues).slice(-200) : []; }
+  /* H-303: el bloque comercial de cada motor. Sin él (proyecto anterior o nuevo) toma los valores de la cotización general de hoy:
+     mismas cifras; desde ahí es captura del motor y la cotización general no lo mueve. */
+  MOTORES_COT.forEach((k) => {
+    if (!s[k] || typeof s[k] !== "object" || Array.isArray(s[k])) return;
+    const q0 = s.quote && typeof s.quote === "object" ? s.quote : {};
+    const c0 = s[k].comercial && typeof s[k].comercial === "object" && !Array.isArray(s[k].comercial) ? s[k].comercial
+      : Object.fromEntries(Object.keys(COMERCIAL_SEED).map((f) => [f, q0[f] !== undefined && q0[f] !== null ? q0[f] : COMERCIAL_SEED[f]]));
+    s[k].comercial = { plaza: PLAZAS[c0.plaza] ? c0.plaza : COMERCIAL_SEED.plaza, plazaFactor: Math.max(0, num(c0.plazaFactor, 0)),
+      basePrecio: BASES_PRECIO[c0.basePrecio] ? c0.basePrecio : "casa", fasar: num(c0.fasar, FASAR_DEF), refBase: String(c0.refBase || "").slice(0, 200) };
+  });
   return s;
 }
 

@@ -4043,7 +4043,7 @@ t("22.13 4.1 un respaldo con el cuarto limpio en formato viejo se migra al sanea
   eq(c.ffu, 72, "FFU:");
   /* Lo que ya terminaba en el cuarto por omisión sigue igual (huella de INIT y proyectos nuevos). */
   /* H-295: Cuartos limpios guarda también los precios de su cotización (semilla de la casa en un proyecto nuevo). */
-  const def = JSON.stringify({ rooms: [G("defaultRoom")()], ci: 0, precios: { ...G("CLEAN_PRECIO_SEED") } });
+  const def = JSON.stringify({ rooms: [G("defaultRoom")()], ci: 0, precios: { ...G("CLEAN_PRECIO_SEED") }, comercial: { ...G("COMERCIAL_SEED") } });   /* H-303: y su bloque comercial */
   eq(JSON.stringify(G("sanearEstado")(JSON.parse(JSON.stringify(G("INIT")))).clean), def, "clean de INIT:");
   eq(JSON.stringify(G("sanearEstado")({ clean: { rooms: [], x: 1 } }).clean), def, "rooms vacío:");
   eq(JSON.stringify(G("sanearEstado")({ clean: [] }).clean), def, "clean arreglo:");
@@ -7307,7 +7307,8 @@ t("S.80 (H-254, regla d «tal cual») el factor de plaza no toca la sección H n
     S.quote.importacion = { monto: 18500, moneda: "MXN", fuente: "agente aduanal (cotización capturada)", fecha: "2026-09-20" };
     G("recompute")();
     const Q0 = G("QUOTE"), cat0 = G("catalogoConceptos")();
-    S.quote.plaza = "mexicali"; G("recompute")();
+    /* H-303: la plaza de cada motor se captura en su cotización; la de la Cotización general queda para lo que va tal cual. */
+    S.quote.plaza = "mexicali"; G("MOTORES_COT").forEach((k) => { S[k].comercial.plaza = "mexicali"; }); G("recompute")();
     const Q = G("QUOTE"), cat = G("catalogoConceptos")();
     const filas = (c) => c.secciones.flatMap((s) => s.partidas);
     const h = filas(cat).find((p) => p.sec === "H");
@@ -9448,6 +9449,28 @@ t("S.182 (H-302) la cotización hidrosanitaria sale de su propio motor: los prec
     const s = G("sanearEstado")(viejo);
     eq(JSON.stringify([s.hidro.hidroPU[k], s.hidro.fx, s.hidro.fxFecha, s.hidro.fxFuente]), JSON.stringify([150, 18.25, "2026-09-21", "Banxico FIX"]), "un proyecto anterior conserva precios y tipo de cambio, ahora en Hidrosanitario:");
     eq(["hidroPU", "hidroPUlog"].some((x) => x in s.quote), false, "la cotización ya no guarda los precios de tubería:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+t("S.183 (H-303) plaza, factor de plaza, base, FASAR y referencia son campos propios de la cotización de cada motor: el factor de un motor mueve sólo sus renglones, el de la Cotización general ya no los mueve, y un proyecto anterior toma para cada motor los valores de hoy", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.183";
+    S.perms["fuego>quote"] = { ts: 1, via: "S.183" }; S.perms["vent>quote"] = { ts: 1, via: "S.183" };
+    S.fuego = { ...S.fuego, area: 400, altura: 6, Lramal: 20, Lmontante: 8 }; Object.assign(S.vent, { mode: "general", area: 200, height: 4, ach: 6 });
+    G("recompute")();
+    const fila = (m) => G("catalogoConceptos")().secciones.flatMap((s) => s.partidas).find((p) => p.mot === m);
+    if (!fila("fuego") || !fila("vent")) throw new Error("el caso no aísla lo que se quiere probar: deben salir contra incendio y ventilación");
+    const u0 = fila("fuego").unit, v0 = fila("vent").unit, d0 = G("QUOTE").direct;
+    S.fuego.comercial.plazaFactor = 1.1; S.quote.plazaFactor = 0.5; G("recompute")();
+    cerca(fila("fuego").unit, u0 * 1.1, 1e-6, "el factor de plaza de Contra incendio mueve sus renglones:");
+    cerca(fila("vent").unit, v0, 1e-9, "y no los de Ventilación, ni el de la Cotización general:");
+    cerca(G("QUOTE").direct, d0 + G("FUEGO").cot.aux.reduce((a, x) => a + x.total, 0) * 0.1, 1e-6, "el costo directo suma cada renglón con el factor de su motor:");
+    /* Proyecto anterior: la plaza estaba sólo en la cotización general. */
+    const viejo = JSON.parse(JSON.stringify(S)); G("MOTORES_COT").forEach((k) => { if (viejo[k]) delete viejo[k].comercial; });
+    Object.assign(viejo.quote, { plaza: "mexicali", plazaFactor: 1.05, basePrecio: "casa", fasar: 1.5, refBase: "BIMSA 2026" });
+    const s = G("sanearEstado")(viejo);
+    eq(JSON.stringify(G("MOTORES_COT").map((k) => [s[k].comercial.plaza, s[k].comercial.plazaFactor, s[k].comercial.fasar, s[k].comercial.refBase]).filter((x, i, a) => JSON.stringify(x) !== JSON.stringify(a[0]))), "[]", "todos los motores toman los mismos valores:");
+    eq(JSON.stringify([s.fuego.comercial.plaza, s.fuego.comercial.plazaFactor, s.fuego.comercial.fasar, s.fuego.comercial.refBase]), JSON.stringify(["mexicali", 1.05, 1.5, "BIMSA 2026"]), "los de la cotización general de hoy:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {
