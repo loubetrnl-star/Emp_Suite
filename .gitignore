@@ -1,6 +1,7 @@
 node_modules/
 respaldo-rev-*/
 SuiteEmp-*-instalador.zip
-.claude/
+.claude/*
+!.claude/agents/
 x15/
 *.log
