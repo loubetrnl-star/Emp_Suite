@@ -499,7 +499,7 @@ t("4.6 migrada de un proyecto anterior en vivo (H-306: ya no hay propuesta que a
   const ced = (S.elec.cargas || []).filter((c) => c.origen === "cedula");
   if (!ced.length) throw new Error("no entró ninguna carga de la cédula");
   ced.forEach((c) => { if (!c.ts) throw new Error("carga sin fecha de origen"); });
-  eq((G("vinculoDe")("cedula>elec") || {}).estado, "aceptado", "queda registrado su origen:");
+  eq((G("vinculoDe")("cedula>elec") || {}).estado, "migrado", "queda registrado su origen, de la migración y sin confirmar (H-306, auditoría externa):");
 });
 /* H-177 (rev 2.9.24): el equipo con motocompresor se rige por el art. 440 con sus datos de placa; aceptar la cédula
    descartaba MCA y MOP y el cuadro protegía al 250 % de la Tabla 430-52, por arriba del MOP. */
@@ -8176,7 +8176,7 @@ t("S.132 (H-266) un proyecto anterior que contaba en vivo sin nada que soportar 
     q.soporte = { usarMotores: true, sismico: true, alturaTrabajo: 0, mesesElevacion: 3, basesEquipo: 0, rielM: 0 };
     G("projPersist")([{ id: "p132b", name: "S.132-B", ts: 1757000000000, rev: "2.9.20", tons: 0, zones: 1, client: "", location: "", data: q }].concat(JSON.parse(lista)));
     G("projOpen")("p132b");
-    eq(S.vinculos["motores>soporte"] && S.vinculos["motores>soporte"].estado, "aceptado", "con metros toma la instantánea de lo que contaba:");
+    eq(S.vinculos["motores>soporte"] && S.vinculos["motores>soporte"].estado, "migrado", "con metros toma la instantánea de lo que contaba (de la migración, sin confirmar; H-307):");
     eq(G("SOPORTE").mDucto, 20, "mismas cifras:");
     eq(G("cxzSucio")(), false, "abierto sin tocar nada no tiene cambios sin guardar:");
     S.soporte.rielM = 5; G("recompute")();
@@ -8391,7 +8391,7 @@ t("S.103 (H-268) eléctrico es autónomo: con permisos y tomarHVAC, sin aceptar 
     ["hvac", "aire", "hidro", "fuego", "ffu"].forEach((o) => { if (!ced.some((c) => c.kWOrigen === o)) throw new Error(`falta la carga de origen ${o} en la instantánea`); });
     if (!(R.kVAdemanda > demSolo)) throw new Error("aceptadas, la demanda del tablero debe subir");
     eq(R.calc.length, 1 + ced.length, "el cuadro trae la capturada más las aceptadas:");
-    eq((G("vinculoDe")("cedula>elec") || {}).estado, "aceptado", "queda registrado su origen:");
+    eq((G("vinculoDe")("cedula>elec") || {}).estado, "migrado", "queda registrado su origen, de la migración y sin confirmar (H-306, auditoría externa):");
     /* 3) Regla 3: el origen cambia, el cuadro no se mueve, la propuesta avisa; y la propuesta sí refleja el cambio en el mismo ciclo. */
     const dem1 = R.kVAdemanda, comp1 = ced.find((c) => c.kWOrigen === "aire").kW;
     S.aire.consumos = [{ id: "c1", tipo: "actuador", nombre: "Grande 1", cant: 400, lmin: 0, bar: 0, uso: 0 }, { id: "c2", tipo: "pistola", nombre: "Grande 2", cant: 200, lmin: 0, bar: 0, uso: 0 }]; G("recompute")();
@@ -8425,7 +8425,7 @@ t("S.103 (H-268) eléctrico es autónomo: con permisos y tomarHVAC, sin aceptar 
     if (!S.elec.cargas.filter((c) => c.origen === "cedula").every((c) => c.ts > 0)) throw new Error("la instantánea migrada debe llevar fecha");
     eq(JSON.stringify(G("cifrasMotor")("elec")), esperado, "abre con las mismas cifras que tenía en vivo:");
     if (!(G("ELEC").kVAdemanda > antes)) throw new Error("el caso no aísla lo que se quiere probar: las cargas en vivo deben pesar en la demanda");
-    eq((G("vinculoDe")("cedula>elec") || {}).estado, "aceptado", "queda registrada como propuesta aceptada:");
+    eq((G("vinculoDe")("cedula>elec") || {}).estado, "migrado", "queda registrada de la migración, sin confirmar (H-306, auditoría externa):");
     const demMig = G("ELEC").kVAdemanda;
     S.aire.consumos.push({ id: "cx", tipo: "actuador", nombre: "Más", cant: 400, lmin: 0, bar: 0, uso: 0 }); G("recompute")();
     cerca(G("ELEC").kVAdemanda, demMig, 1e-9, "ya migrado no cuenta en vivo:");
@@ -9708,6 +9708,61 @@ t("S.198 (AUD-15/16) hidrosanitario rotula cada presión mínima con SU fuente (
     S.tab = "hidro"; G("render")();
     if (/NFPA 20 exige/.test(w.document.getElementById("view").textContent)) throw new Error("la nota del hidroneumático cita NFPA 20 sin texto de norma");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+t("S.199 (H-306/H-307) al abrir un proyecto anterior, las cargas eléctricas que tomaba en vivo y la instantánea de metros de soportería quedan «de la migración, sin confirmar» (no «aceptado»: nadie las aceptó), cada carga con su motor de origen (equip, vent, aire, hidro, fuego, clean); memoria, PDF y pantalla lo dicen; confirmarlas no mueve cifras ni el sello", () => {
+  const guardado = JSON.stringify(S), tab0 = S.tab;
+  const clic = (sel) => { const b = w.document.querySelector(sel); if (!b) throw new Error(`no hay botón ${sel}`); b.dispatchEvent(new w.MouseEvent("click", { bubbles: true })); };
+  try {
+    /* H-306: proyecto guardado en vivo (tomarHVAC con los cruces autorizados). */
+    const fixture = JSON.parse(fs.readFileSync("parches/regresion-motores/regresion-motores.emp.json", "utf8"));
+    const vivo = JSON.parse(JSON.stringify(fixture)); vivo.elec.tomarHVAC = true;
+    G("importarRespaldo")(JSON.stringify(vivo)); G("recompute")();
+    const ced = S.elec.cargas.filter((c) => c.origen === "cedula");
+    if (!(ced.length >= 6)) throw new Error("el caso no aísla lo que se quiere probar: el fixture debe migrar las seis fuentes: " + ced.length);
+    const rec = G("vinculoDe")("cedula>elec") || {};
+    if (rec.estado === "aceptado") throw new Error("la migración registra las cargas como «aceptado» sin que nadie las aceptara");
+    eq(rec.sinConfirmar, true, "el registro de la migración queda sin confirmar:");
+    const mapa = { hvac: "equip", vent: "vent", aire: "aire", hidro: "hidro", fuego: "fuego", ffu: "clean" };
+    ced.forEach((c) => { eq(c.migrado, true, `${c.nombre}: de la migración, sin confirmar:`); eq(c.origenMotor, mapa[c.kWOrigen], `${c.nombre}: motor de origen del renglón:`); });
+    ["equip", "vent", "aire", "hidro", "fuego", "clean"].forEach((o) => { if (!ced.some((c) => c.origenMotor === o)) throw new Error(`ningún renglón registra el origen ${o}`); });
+    const memo = G("ELEC").memo.join(" ");
+    contiene(memo, "de la migración al abrir, sin confirmar", "la memoria lo dice:");
+    contiene(memo, "Ventilación", "la memoria nombra el motor de origen de cada renglón:");
+    contiene(memo, "Cuartos limpios", "también el de los FFU:");
+    if (!/migracion al abrir, sin confirmar/.test(txtPdfE(G("buildElecPdf")()))) throw new Error("el PDF del eléctrico no dice que las cargas son de la migración, sin confirmar");
+    S.tab = "electrico"; G("render")();
+    contiene(vista(), "de la migración al abrir, sin confirmar", "la pantalla lo dice:");
+    /* Capturar un dato del renglón lo confirma; el botón confirma todas. Ninguna de las dos cosas mueve cifras ni el sello. */
+    const cifras = JSON.stringify(G("cifrasMotor")("elec")), huella = G("huellaMotor")("elec");
+    const i0 = S.elec.cargas.findIndex((c) => c.origen === "cedula");
+    G("setPath")(`elec.cargas.${i0}.nombre`, S.elec.cargas[i0].nombre); G("recompute")();
+    eq(S.elec.cargas[i0].migrado, undefined, "capturar un dato del renglón lo confirma:");
+    G("render")(); clic('[data-act="ec-confirmar-mig"]');
+    eq(S.elec.cargas.filter((c) => c.migrado).length, 0, "confirmadas, ninguna queda de la migración:");
+    eq(G("vinculoDe")("cedula>elec").estado, "aceptado", "confirmadas por el usuario, quedan aceptadas:");
+    eq(JSON.stringify(G("cifrasMotor")("elec")), cifras, "confirmar no mueve cifras:");
+    eq(G("huellaMotor")("elec"), huella, "ni el sello del eléctrico:");
+    if (/de la migración al abrir, sin confirmar/.test(G("ELEC").memo.join(" "))) throw new Error("confirmadas, la memoria sigue diciendo «sin confirmar»");
+    /* H-307: proyecto guardado antes de H-266 que contaba en vivo 20 m de ducto. */
+    const q = JSON.parse(JSON.stringify(G("defaultState")())); q.meta.name = "S.199";
+    q.zones = [{ ...G("defaultZone")("Nave"), area: 400, height: 6 }];
+    q.duct.segments = [{ ...G("defaultSegment")("TR-1", 3000), length: 20 }];
+    q.soporte = { usarMotores: true, sismico: true, alturaTrabajo: 0, mesesElevacion: 3, basesEquipo: 0, rielM: 0 };
+    G("importarRespaldo")(JSON.stringify(q)); G("recompute")();
+    eq(G("SOPORTE").mDucto, 20, "el caso no aísla lo que se quiere probar: toma la instantánea de lo que contaba:");
+    const recS = G("vinculoDe")("motores>soporte") || {};
+    if (recS.estado === "aceptado") throw new Error("la migración registra la instantánea de soportería como «aceptado» sin que nadie la aceptara");
+    eq(recS.sinConfirmar, true, "la instantánea queda sin confirmar:");
+    S.tab = "soporte"; G("render")();
+    contiene(vista(), "de la migración al abrir, sin confirmar", "la pantalla de soportería lo dice:");
+    if (!/migraci.n al abrir, sin confirmar/.test(txtPdfE(G("buildSoportePdf")()))) throw new Error("el PDF de soportería no dice que la instantánea es de la migración, sin confirmar");
+    const tot = G("SOPORTE").total;
+    clic('[data-act="sop-confirmar-mig"]');
+    eq(G("vinculoDe")("motores>soporte").estado, "aceptado", "confirmada por el usuario, queda aceptada:");
+    eq(G("vinculoDe")("motores>soporte").sinConfirmar, false, "ya no sin confirmar:");
+    eq(G("SOPORTE").total, tot, "confirmar no mueve cifras:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); S.tab = tab0; G("recompute")(); }
 });
 
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {

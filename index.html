@@ -1773,7 +1773,9 @@ function buildElecPdf() {
   pdfHeading(d, "2. Bases de calculo");
   pdfRows(d, [
     ["Norma", "NOM-001-SEDE Instalaciones Electricas (utilizacion)"],
-    ["Origen de las cargas", `${R.calc.filter((c) => c.origen === "cedula").length} aceptada(s) de los demas motores como propuesta (instantanea con origen y fecha; no se mueven solas si el origen cambia) y ${R.calc.filter((c) => c.origen !== "cedula").length} capturada(s) en la pestana Electrico. Ninguna entra sin aceptarse (H-268)`],
+    ["Origen de las cargas", `${(() => { const mg = R.calc.filter((c) => c.origen === "cedula" && c.migrado), sa = (t) => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      /* H-306: las migradas al abrir se dicen aparte, con su motor de origen por renglon. */
+      return mg.length ? `${mg.length} de la migracion al abrir, sin confirmar (un proyecto anterior las tomaba solas de otros motores; se copiaron una vez con las mismas cifras): ${mg.map((c) => `${sa(c.nombre)} <- ${sa(origenMotorElecTxt(c, false))}`).join("; ")}. ` : ""; })()}${R.calc.filter((c) => c.origen === "cedula" && !c.migrado).length} aceptada(s) de los demas motores como propuesta (instantanea con origen y fecha; no se mueven solas si el origen cambia) y ${R.calc.filter((c) => c.origen !== "cedula").length} capturada(s) en la pestana Electrico. Ninguna entra sin aceptarse (H-268)`],
     ["Sistema", SISTEMAS.find(([k]) => k === E.sistema)?.[1] || ""],
     ["Conductor", `${R.mat === "aluminio" ? "Aluminio" : "Cobre"} tipo ${AISLAMIENTOS[aislamientoDe((S.elec || {}).aislamiento)].pdf} (ampacidad a 75 C, Tabla 310-15(b)(16)) · canalizacion con las areas de ese mismo conductor (NOM-001-SEDE, Cap. 10, Tabla 5)`],
     ["Temperatura ambiente", `${tempAmbDe(E.tempAmb)} C · factor ${n(fTemp(E.tempAmb), 2)} (Tabla 310-15(b)(2)(a))`],
@@ -10229,6 +10231,11 @@ const KW_ORIGEN = {
   ffu: ["de catálogo de la casa (W por módulo FFU de cuartos limpios, tomados al migrar la carga)", "from the house catalog (W per clean-room FFU module, taken when the load was migrated)", false],
   otro: ["ESTIMADO o de catálogo de otro módulo (sin identificar; no es de placa)", "ESTIMATED or catalog value from another module (unidentified; not nameplate)", true],
 };
+/* H-306 (auditoría externa, 29-sep-2026): motor del que salió cada carga migrada al abrir un proyecto anterior (el renglón guarda la
+   clave; el nombre es propio del eléctrico, sin leer los rótulos de otra disciplina). */
+const ORIGEN_MOTOR_ELEC = { equip: ["Selección de equipo", "Equipment selection"], vent: ["Ventilación", "Ventilation"], aire: ["Aire comprimido", "Compressed air"],
+  hidro: ["Hidrosanitario", "Plumbing"], fuego: ["Contra incendio", "Fire protection"], clean: ["Cuartos limpios", "Clean rooms"] };
+const origenMotorElecTxt = (c, en) => (ORIGEN_MOTOR_ELEC[c.origenMotor] || [c.origenMotor || "otro motor", c.origenMotor || "another module"])[en ? 1 : 0];
 const kWOrigenTexto = (c, en) => (KW_ORIGEN[c.kWOrigen] || KW_ORIGEN.capturado)[en ? 1 : 0];
 const fpOrigenTexto = (c, en) => (c.fpOrigen === "capturado" ? (en ? "captured" : "capturado")
   : c.auto || c.fpCasa != null || c.origen === "cedula" ? (en ? "house criterion (source module assumption)" : "criterio de la casa (supuesto del motor de origen)")
@@ -10616,7 +10623,9 @@ function computeElec(E) {
   if (!conTrafo) memo.push(`Corriente de falla PENDIENTE: falta ${!(kVAtr > 0) && !(z > 0) ? "el transformador de la acometida (kVA y Z de placa)" : !(z > 0) ? `la Z de placa del transformador (kVA capturado: ${n(kVAtr, 0)})` : `la capacidad en kVA del transformador (Z capturada: ${n(z, 1)} %)`}; no se supone, así que tampoco hay capacidad interruptiva sugerida.`);
   else memo.push(`Corriente de falla ESTIMADA en barras: ${n(IccTrafo / 1000, 1)} kA con transformador de ${n(kVAtr, 0)} kVA e impedancia ${n(z, 1)} % (${sinConf.trafoKVA || sinConf.trafoZ ? "valores por omisión de una revisión anterior, SIN CONFIRMAR" : "datos capturados"}). Capacidad interruptiva mínima sugerida ${kAIC} kA simétricos. Es una cota superior para preselección, no un estudio de corto circuito.`);
   memo.push(`Procedencia de cada carga (H-180; sólo «capturado» es dato): ${calc.map((c) => `${c.nombre}: kW ${kWOrigenTexto(c, false)}, fp ${n(c.fp, 2)} ${fpOrigenTexto(c, false)}`).join("; ")}. fp del alimentador ${n(fpAlim, 2)} (${fpAlimOrigen === "casa" ? "criterio de la casa" : "capturado"}), para su caída de tensión.`);
-  memo.push(`Origen de las cargas (H-268): ${calc.filter((c) => c.origen === "cedula").length} aceptada(s) de otros motores como propuesta (instantánea con origen y fecha; si el origen cambia, la propuesta avisa y nada se mueve solo) y ${calc.filter((c) => c.origen !== "cedula").length} capturada(s) en esta pestaña. Ninguna entra sin aceptarse: el eléctrico calcula sólo con lo capturado y lo aceptado aquí.`);
+  /* H-306: las que pasó sola la migración de un proyecto anterior en vivo no son «aceptadas»: se dicen aparte, con su motor de origen. */
+  const migE = calc.filter((c) => c.origen === "cedula" && c.migrado);
+  memo.push(`Origen de las cargas (H-268): ${calc.filter((c) => c.origen === "cedula" && !c.migrado).length} aceptada(s) de otros motores como propuesta (instantánea con origen y fecha; si el origen cambia, la propuesta avisa y nada se mueve solo) y ${calc.filter((c) => c.origen !== "cedula").length} capturada(s) en esta pestaña.${migE.length ? ` ${migE.length} de la migración al abrir, sin confirmar (H-306: un proyecto anterior las tomaba solas de otros motores y al abrirlo se copiaron una sola vez, con las mismas cifras; nadie las ha aceptado): ${migE.map((c) => `${c.nombre} ← ${origenMotorElecTxt(c, false)}`).join("; ")}. Capturar un dato del renglón o «Confirmar las cargas migradas» las confirma.` : ""} ${migE.length ? "Fuera de ésas, ninguna" : "Ninguna"} entra sin aceptarse: el eléctrico calcula sólo con lo capturado y lo aceptado aquí.`);
   memo.push("Criterio de caída de tensión: el capturado para circuito derivado y el acumulado desde la acometida (3 % y 5 % por omisión). No es requisito obligatorio de la NOM-001-SEDE sino recomendación de las notas de los artículos 210-19 y 215-2; se aplica como criterio duro de la casa.");
 
   const R = { calc, demTipo, fases, desbalance, kVAconectada, kVAdemanda, fdem, extraMotor,
@@ -11995,11 +12004,15 @@ function recompute() {
     delete S.elec.tomarPropuesta;
     const f = propuestaElecFilas().filter((c) => cruces.includes(CRUCE_DE_ORIGEN_ELEC[c.kWOrigen] || ""));
     if (f.length) {
-      aceptarCargasElec(f, Date.now());
+      const tsM = Date.now();
+      aceptarCargasElec(f, tsM, true);
       /* H-306: la propuesta «cedula>elec» se retiró (registrarVinculo ya no la conoce): el registro del origen se escribe aquí, con
-         los mismos campos que dejaba aceptar (firma y resumen de lo que SÍ entró). */
+         los mismos campos que dejaba aceptar (firma y resumen de lo que SÍ entró). Auditoría externa (29-sep-2026): nadie las
+         aceptó: quedan «de la migración al abrir, sin confirmar» (marca de H-266), con el motor de origen de cada renglón. */
       if (!S.vinculos || typeof S.vinculos !== "object") S.vinculos = {};
-      S.vinculos["cedula>elec"] = { estado: "aceptado", ts: Date.now(), origen: (DOMAINS.equip || {}).label || "equip",
+      const oms = [...new Set(f.map((c) => MOTOR_DE_ORIGEN_ELEC[c.kWOrigen]).filter(Boolean))];
+      S.vinculos["cedula>elec"] = { estado: "migrado", sinConfirmar: true, ts: tsM,
+        origen: `de la migración al abrir, sin confirmar: ${oms.map((o) => (ORIGEN_MOTOR_ELEC[o] || [o])[0]).join(", ")}`, origenes: oms,
         firma: firmaFilasElec(f), resumen: resumenFilasElec(f), rev: REV };
     }
   } else delete S.elec.tomarPropuesta;
@@ -12037,7 +12050,8 @@ function recompute() {
       /* H-307: registrarVinculo ya no conoce la propuesta: el registro del origen se escribe aquí con los mismos campos. */
       if (!S.vinculos || typeof S.vinculos !== "object") S.vinculos = {};
       const snF = { ...sn }; delete snF.ts;
-      S.vinculos["motores>soporte"] = { estado: "aceptado", ts: Date.now(), origen: origenesSnapSoporte(sn), firma: JSON.stringify(snF), resumen: resumenSnapSoporte(sn), rev: REV };
+      /* Auditoría externa (29-sep-2026): nadie la aceptó: queda «de la migración al abrir, sin confirmar» (marca de H-266). */
+      S.vinculos["motores>soporte"] = { estado: "migrado", sinConfirmar: true, ts: Date.now(), origen: origenesSnapSoporte(sn), firma: JSON.stringify(snF), resumen: resumenSnapSoporte(sn), rev: REV };
     } else { S.soporte.usarMotores = false; S.soporte.tomarBases = true; }
   }
   if (S.soporte.tomarBases) {
@@ -12106,6 +12120,11 @@ function setPath(path, val) {
      copió, la confirma, aunque sea la misma cifra: deja de ser «de la migración, sin confirmar». */
   if (parts[0] === "soporte" && (parts[1] === "alturaTrabajo" || parts[1] === "alturaEstructura" || parts[1] === "basesEquipo") && S.soporte && S.soporte.sinConfirmar && typeof S.soporte.sinConfirmar === "object")
     delete S.soporte.sinConfirmar[parts[1]];
+  /* H-306: capturar un dato de una carga que pasó la migración la confirma (deja de ser «de la migración, sin confirmar»). */
+  if (parts[0] === "elec" && parts[1] === "cargas" && parts.length >= 4 && S.elec && Array.isArray(S.elec.cargas)) {
+    const cM = S.elec.cargas[+parts[2]];
+    if (cM && cM.migrado) { delete cM.migrado; if (!S.elec.cargas.some((x) => x && x.migrado)) confirmarVincMig("cedula>elec"); }
+  }
   if (parts[0] === "sitioCarga") marcarSitioCargaPropio();   /* H-290 */
 }
 function getPath(path) { return path.split(".").reduce((o, k) => (o == null ? o : o[k]), S); }
@@ -18541,6 +18560,8 @@ function propuestaElecFilas() { return memo("elecFilas", propuestaElecFilasCalc)
 const CRUCES_ELEC = ["equip>elec", "vent>elec", "aire>elec", "hidro>elec", "fuego>elec", "clean>elec"];
 /* H-268: cruce que corresponde a cada origen de carga propuesta (la migración de un proyecto en vivo acepta sólo los que tenía). */
 const CRUCE_DE_ORIGEN_ELEC = { hvac: "equip>elec", vent: "vent>elec", aire: "aire>elec", hidro: "hidro>elec", fuego: "fuego>elec", ffu: "clean>elec" };
+/* H-306: motor de origen de cada renglón (se guarda en la carga; no sólo «Selección»). */
+const MOTOR_DE_ORIGEN_ELEC = { hvac: "equip", vent: "vent", aire: "aire", hidro: "hidro", fuego: "fuego", ffu: "clean" };
 function propuestaElecFilasCalc() {
   if (!S.elec) return [];
   const brutas = seguro(() => cargasOtrosMotoresElec(S.elec), []);
@@ -18555,13 +18576,13 @@ function propuestaElecFilasCalc() {
 }
 /* H-268: escribe las filas propuestas en S.elec.cargas como instantánea con origen «cedula» y fecha. Lo usan aceptar la
    propuesta y la migración de un proyecto que las tomaba en vivo (recompute). */
-function aceptarCargasElec(f, ts) {
+function aceptarCargasElec(f, ts, migrado) {
   /* H-178: volver a aceptar conserva lo que el usuario capturó en la carga del mismo nombre (distancia y hp de placa). */
   const previas = new Map((S.elec.cargas || []).filter((c) => c.origen === "cedula").map((c) => [c.nombre, c]));
   const conserva = (p) => (p ? { ...(num(p.L, 0) > 0 ? { L: p.L, ...(p.Lsupuesta != null ? { Lsupuesta: p.Lsupuesta } : {}) } : {}), ...(num(p.hp, 0) > 0 ? { hp: p.hp } : {}), ...(num(p.fp, 0) > 0 ? { fp: p.fp } : {}) } : {});
   S.elec.cargas = (S.elec.cargas || []).filter((c) => c.origen !== "cedula");
   /* H-177: el equipo con motocompresor entra con su MCA y su MOP (art. 440); antes se descartaban. */
-  f.forEach((c, i) => S.elec.cargas.push({ id: `ced${ts.toString(36)}${i}`, nombre: c.nombre, tipo: c.tipo, kW: c.kW, V: c.V, ph: c.ph, cant: c.cant, L: c.L, fp: null, fpCasa: c.fp, ...(c.kWOrigen ? { kWOrigen: c.kWOrigen, kWRef: c.kW } : {}), fija: false, origen: "cedula", ts, modelo: c.modelo, estimado: c.estimado,
+  f.forEach((c, i) => S.elec.cargas.push({ id: `ced${ts.toString(36)}${i}`, nombre: c.nombre, tipo: c.tipo, kW: c.kW, V: c.V, ph: c.ph, cant: c.cant, L: c.L, fp: null, fpCasa: c.fp, ...(c.kWOrigen ? { kWOrigen: c.kWOrigen, kWRef: c.kW } : {}), fija: false, origen: "cedula", ...(MOTOR_DE_ORIGEN_ELEC[c.kWOrigen] ? { origenMotor: MOTOR_DE_ORIGEN_ELEC[c.kWOrigen] } : {}), ...(migrado ? { migrado: true } : {}), ts, modelo: c.modelo, estimado: c.estimado,
     ...(num(c.hpRef, 0) > 0 ? { hpRef: c.hpRef, hpRefOrigen: c.hpRefOrigen } : {}), ...(c.aparato ? { aparato: true } : {}),
     ...(num(c.mop, 0) > 0 ? { mca: c.mca, mop: c.mop, ...(c.placaEstimada ? { placaEst: { mca: c.mca, mop: c.mop } } : {}) } : {}), ...conserva(previas.get(c.nombre)) }));
   S.elec.tomarHVAC = false;
@@ -19062,6 +19083,12 @@ function miscVentHtml(z) {
 function ventAreaVigente() { return Math.max(1, num(S.vent.area, 1)); }
 function ventAlturaVigente() { return Math.max(.1, num(S.vent.height, 3)); }
 
+/* H-306/H-307: el usuario confirma lo que la migración pasó sola al abrir: desde ahí queda aceptado por él, con la fecha de la
+   confirmación (la de la copia se conserva en ts). */
+function confirmarVincMig(id) {
+  const r = vinculoDe(id); if (!r || r.estado !== "migrado") return;
+  r.estado = "aceptado"; r.sinConfirmar = false; r.confirmado = Date.now();
+}
 function vinculoDe(id) { if (!S.vinculos || typeof S.vinculos !== "object") S.vinculos = {}; return S.vinculos[id] || null; }
 function registrarVinculo(id, estado = "aceptado") {
   const P = PROPUESTAS[id]; if (!P) return;
@@ -19704,7 +19731,12 @@ const ENTRADAS = {
   civil: () => ({ civil: S.civil }),   /* H-265: obra civil sólo depende de su propia captura */
   /* H-268: sólo su captura (las cargas aceptadas de otros motores van dentro, como instantánea) y los permisos; tomarHVAC ya no
      interviene en el cálculo y la marca de migración es pasajera: fuera de la huella. */
-  elec: () => ({ elec: sinClaves(S.elec, ["tomarHVAC", "tomarPropuesta"]), perms: ePerms() }),
+  elec: () => {
+    /* H-306: la marca «de la migración, sin confirmar» no es captura: confirmarla no cambia el sello. */
+    const e = sinClaves(S.elec, ["tomarHVAC", "tomarPropuesta"]);
+    if (Array.isArray(e.cargas) && e.cargas.some((c) => c && c.migrado)) e.cargas = e.cargas.map((c) => (c && c.migrado ? sinClaves(c, ["migrado"]) : c));
+    return { elec: e, perms: ePerms() };
+  },
   soporte: () => ({ soporte: sinClaves(S.soporte, ["tomarInstantanea", "tomarBases"]) }),   /* H-266: sólo su captura (la instantánea va dentro) */
   quote: () => ({ quote: sinClaves(S.quote, ["prop"]), qfam: S.qfam, perms: ePerms(),
     /* H-267: la cotización lee la carga (caudal de difusores, cruce load>quote); antes le llegaba anidada en la de selección. */
@@ -22886,7 +22918,7 @@ function viewElec() {
   const M = (v, d = 1) => n(v, d);
   const fila = (c, i) => `<tr>
     <td><div style="font-weight:600">${esc(c.nombre)}</div>
-      <div class="sub">${esc(c.label)}${c.auto ? " · desde otro motor" : ""}${num(c.hpRef, 0) > 0 ? ` · ${esc(String(c.hpRef))} hp del ${esc(hpRefTexto(c, false))}, no de placa` : ""}${c.kWOrigen !== "capturado" ? ` · kW ${esc(kWOrigenTexto(c, false))}` : ""} · fp ${M(c.fp, 2)}${c.fpOrigen === "casa" ? " (criterio de la casa)" : ""}${c.fase ? ` · fase ${c.fase}` : " · 3F"}</div></td>
+      <div class="sub">${esc(c.label)}${c.auto ? " · desde otro motor" : ""}${c.migrado ? ` · de la migración al abrir, sin confirmar (${esc(origenMotorElecTxt(c, false))})` : c.origenMotor ? ` · de ${esc(origenMotorElecTxt(c, false))}` : ""}${num(c.hpRef, 0) > 0 ? ` · ${esc(String(c.hpRef))} hp del ${esc(hpRefTexto(c, false))}, no de placa` : ""}${c.kWOrigen !== "capturado" ? ` · kW ${esc(kWOrigenTexto(c, false))}` : ""} · fp ${M(c.fp, 2)}${c.fpOrigen === "casa" ? " (criterio de la casa)" : ""}${c.fase ? ` · fase ${c.fase}` : " · 3F"}</div></td>
     <td class="num">${c.cant > 1 ? `${c.cant} ×` : ""} ${c.kWsin ? `<span title="Sin kW capturado: la demanda usa la corriente de la tabla">pendiente</span>` : M(c.kW, 2)}</td>
     <td class="num">${c.V} / ${c.ph}F</td>
     ${c.sinI ? `<td class="num" colspan="5" style="color:var(--warn)" title="Sin corriente de tabla ni kW: el ramal no está dimensionado">pendiente</td>` : `<td class="num">${M(c.I, 1)}</td>
@@ -22953,7 +22985,9 @@ function viewElec() {
       ${R.avisos.length ? `<div class="card"><h3>Observaciones<span class="tag">${R.avisos.length}</span></h3><div class="body">
         ${R.avisos.map((a) => `<div class="${a.lvl === "err" ? "warnline" : "hint"}" style="margin-bottom:8px">${esc(a.msg)}</div>`).join("")}
       </div></div>` : ""}
-      ${cargasUsuario.length ? `<div class="card"><h3>Editar cargas capturadas</h3><div class="body">
+      ${cargasUsuario.length ? `<div class="card"><h3>Editar cargas capturadas</h3><div class="body">${cargasUsuario.some((c) => c && c.migrado) ? `
+        <div class="hint" style="margin-bottom:12px">${cargasUsuario.filter((c) => c && c.migrado).length} carga(s) de la migración al abrir, sin confirmar: un proyecto anterior las tomaba solas de ${esc([...new Set(cargasUsuario.filter((c) => c && c.migrado).map((c) => origenMotorElecTxt(c, false)))].join(", "))} y se copiaron una sola vez con las mismas cifras. Nadie las ha aceptado: revísalas; capturar un dato del renglón la confirma (H-306).
+          <div class="row" style="margin-top:8px"><button class="btn-ghost" data-act="ec-confirmar-mig">Confirmar las cargas migradas</button></div></div>` : ""}
         ${cargasUsuario.map((c, i) => `<div class="row" style="grid-template-columns:1.4fr 1fr 1fr 1fr;align-items:end;margin-bottom:6px">
           ${inp("Nombre", `elec.cargas.${i}.nombre`, "text")}
           ${sel("Tipo", `elec.cargas.${i}.tipo`, Object.entries(TIPO_CARGA).map(([k, v]) => [k, v.label]))}
@@ -23223,16 +23257,17 @@ function viewCivil() {
    la conserva como copia propia de soportería (mismas cifras; no se compara con los motores) y puede dejarla para capturar a mano:
    se pregunta antes con lo que deja de contar y se puede deshacer (como «Capturo lo mío», H-266 U15). */
 function instantaneaSopHtml(G) {
-  const rec = vinculoDe("motores>soporte"), ts = rec && rec.estado === "aceptado" && rec.ts ? rec.ts : G.snap.ts;
-  return `<div class="prop aceptado"><div class="ptop"><span class="pdotp"></span><div><b>Instantánea de metros guardada</b><div class="sub">${esc(origenesSnapSoporte(G.snap))} → Soportería · ${ts ? fechaCorta(ts) : "sin fecha registrada"}</div></div></div>
+  const rec = vinculoDe("motores>soporte"), ts = rec && (rec.estado === "aceptado" || rec.estado === "migrado") && rec.ts ? rec.ts : G.snap.ts;
+  const mig = !!(rec && rec.estado === "migrado");   /* H-307 (auditoría externa): la tomó sola la migración; nadie la aceptó */
+  return `<div class="prop ${mig ? "pendiente" : "aceptado"}"><div class="ptop"><span class="pdotp"></span><div><b>Instantánea de metros ${mig ? "· de la migración al abrir, sin confirmar" : "guardada"}</b><div class="sub">${esc(origenesSnapSoporte(G.snap))} → Soportería · ${ts ? fechaCorta(ts) : "sin fecha registrada"}</div></div></div>
     <div class="pbody"><div class="prow"><span class="pk">Cuenta</span><span>${esc(resumenSnapSoporte(G.snap))}</span></div>
-    <div class="sub" style="margin-top:6px">Es copia propia de soportería: ya no se actualiza ni se compara con los otros motores (H-307). Para contar otros metros, captúralos a mano.</div></div>
-    <div class="row" style="margin-top:10px"><button class="btn-ghost" data-act="sop-propio">Capturar a mano (deja la instantánea)</button></div></div>`;
+    <div class="sub" style="margin-top:6px">${mig ? "Un proyecto anterior contaba estos metros en vivo; al abrirlo se copiaron una sola vez, con las mismas cifras. Nadie la ha aceptado: confírmala o captura a mano. " : ""}Es copia propia de soportería: ya no se actualiza ni se compara con los otros motores (H-307). Para contar otros metros, captúralos a mano.</div></div>
+    <div class="row" style="margin-top:10px">${mig ? `<button class="btn-primary" data-act="sop-confirmar-mig">Confirmar la instantánea</button>` : ""}<button class="btn-ghost" data-act="sop-propio">Capturar a mano (deja la instantánea)</button></div></div>`;
 }
 function sopPropioConfirmado() {
   const R = SOPORTE, rec = vinculoDe("motores>soporte");
   const lista = S.soporte.snap && typeof S.soporte.snap === "object" && S.soporte.usarMotores !== false
-    ? [[`Instantánea guardada${rec && rec.estado === "aceptado" && rec.ts ? ` el ${fechaCorta(rec.ts)}` : ""}`, `${n(R ? num(R.mDucto) + num(R.mTub) : 0, 0)} m · ${R ? R.nSoportes : 0} soportes`]] : [];
+    ? [[`Instantánea ${rec && rec.estado === "migrado" ? "de la migración al abrir, sin confirmar," : "guardada"}${rec && (rec.estado === "aceptado" || rec.estado === "migrado") && rec.ts ? ` el ${fechaCorta(rec.ts)}` : ""}`, `${n(R ? num(R.mDucto) + num(R.mTub) : 0, 0)} m · ${R ? R.nSoportes : 0} soportes`]] : [];
   confirmarSiHayDatos({ titulo: "Capturar a mano", etiqueta: "capturar a mano en soportería", boton: "Sí, capturo a mano", lista,
     detalle: "Soportería deja de contar la instantánea guardada y cuenta sólo los metros capturados a mano en su pestaña.",
     onOk: () => { S.soporte.usarMotores = false; delete S.soporte.snap; projAutosave(); render(); toast("Soportería cuenta lo capturado a mano"); } });
@@ -23350,8 +23385,9 @@ function buildSoportePdf() {
   const snapSop = S.soporte && S.soporte.snap && typeof S.soporte.snap === "object" && S.soporte.usarMotores !== false ? S.soporte.snap : null;
   pdfHeading(d, "Origen de los metros");
   if (snapSop) {
-    const recS = vinculoDe("motores>soporte"), tsS = recS && recS.estado === "aceptado" && recS.ts ? recS.ts : snapSop.ts;
-    pdfParagraph(d, `Tramos de la instantánea aceptada el ${tsS ? fechaCorta(tsS) : "(sin fecha registrada)"} (${origenesSnapSoporte(snapSop)}): ${resumenSnapSoporte(snapSop)}. Es copia propia de soportería: no se mueve ni se compara con los otros motores (H-307).`);
+    const recS = vinculoDe("motores>soporte"), tsS = recS && (recS.estado === "aceptado" || recS.estado === "migrado") && recS.ts ? recS.ts : snapSop.ts;
+    /* H-307 (auditoría externa): la que tomó sola la migración no se dice «aceptada». */
+    pdfParagraph(d, `Tramos de la instantánea ${recS && recS.estado === "migrado" ? "de la migración al abrir, sin confirmar (un proyecto anterior los contaba en vivo; se copiaron una vez, con las mismas cifras), tomada" : "aceptada"} el ${tsS ? fechaCorta(tsS) : "(sin fecha registrada)"} (${origenesSnapSoporte(snapSop)}): ${resumenSnapSoporte(snapSop)}. Es copia propia de soportería: no se mueve ni se compara con los otros motores (H-307).`);
   } else pdfParagraph(d, `Metros capturados a mano en la pestaña de soportería: ${n(num(S.soporte.ductoM), 0)} m de ducto, ${n(num(S.soporte.tubHidroM), 0)} m de hidráulica, ${n(num(S.soporte.tubFuegoM), 0)} m de contra incendio y ${n(num(S.soporte.tubAireM), 0)} m de aire. Los metros de los otros motores ya no entran a soportería (H-307).`);
   if (R.porTuberia.length) {
     pdfHeading(d, "Conteo por tramo");
@@ -24122,6 +24158,7 @@ document.addEventListener("click", (e) => {
     case "pdf-cot-motor": accCotizacion(b.dataset.motor); break;
     case "ec-add": S.elec.cargas.push(defaultCarga(`Carga ${S.elec.cargas.length + 1}`)); projAutosave(); render(); break;
     case "ec-del": S.elec.cargas.splice(+b.dataset.i, 1); projAutosave(); render(); break;
+    case "ec-confirmar-mig": { (S.elec.cargas || []).forEach((c) => { if (c) delete c.migrado; }); confirmarVincMig("cedula>elec"); projAutosave(); render(); toast("Cargas migradas confirmadas"); break; }   /* H-306 */
     case "ec-kwplaca": { const c = S.elec.cargas[+b.dataset.i]; if (c) { delete c.kWOrigen; delete c.kWRef; } projAutosave(); render(); break; }
     case "ht-add": S.hidro.tramos.push(defaultTramoAgua(`AF-${S.hidro.tramos.length + 1}`)); projAutosave(); render(); break;
     case "ht-del": S.hidro.tramos.splice(+b.dataset.i, 1); projAutosave(); render(); break;
@@ -24265,6 +24302,7 @@ document.addEventListener("click", (e) => {
     case "q-pdf-espejo": emitirPropuestaPdfEspejo(); break;
     case "prop-propio": propPropioConfirmado(b.dataset.id); break;   /* H-266 (U15): pregunta si deja algo ya cuantificado; se deshace */
     case "sop-propio": sopPropioConfirmado(); break;   /* H-307 */
+    case "sop-confirmar-mig": confirmarVincMig("motores>soporte"); projAutosave(); render(); toast("Instantánea de soportería confirmada"); break;   /* H-307 */
     case "prop-conservar": histSnap("conservar lo aceptado"); propConservar(b.dataset.id); break;   /* H-266 (U15): se puede deshacer */
     case "vent-seleccionar": {
       histSnap("seleccionar ventilador");
