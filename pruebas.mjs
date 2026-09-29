@@ -3943,7 +3943,7 @@ t("22.11 3.3 (rev 2.9.16, decisión del dueño) la red hidráulica se cotiza por
   const pdfTxt = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");
   const renglones = () => (G("QUOTE").aux || []).filter((a) => a.mot === "hidro" && a.un === "ML");
   /* H-196: la cisterna sin dotación queda «pendiente de volumen» aparte; aquí sólo se mira la red. */
-  const pend = () => (G("QUOTE").pendientes || []).filter((p) => p.mot === "hidro" && !/volumen/.test(p.motivo));
+  const pend = () => (G("QUOTE").pendientes || []).filter((p) => p.mot === "hidro" && !/volumen/.test(p.motivo) && p.desc !== "Equipo de bombeo");   /* AUD-14: la bomba pendiente no es de la red */
   const tramo = (tag, um, L) => ({ ...G("defaultTramoAgua")(tag), um, L, alt: 3 });
   const muebles = [{ id: "wc_flux", cant: 4 }, { id: "ming_flux", cant: 2 }, { id: "lavabo", cant: 4 }, { id: "fregadero", cant: 1 }, { id: "manguera", cant: 2 }];
   try {
@@ -4411,7 +4411,7 @@ t("M.2 (H-268) con los cuatro cruces autorizados nada entra solo; al aceptar la 
     S.aire = { ...G("defaultAire")(), consumos: [{ id: "c1", tipo: "pistola", nombre: "Prueba M.2", cant: 4, lmin: 0, bar: 0, uso: 0 }] };
     /* Arranque en ceros: defaultHidro() ya no trae muebles de ejemplo; sin
        ellos H.kWbomba sale 0 y el caso no aísla la bomba de agua. */
-    S.hidro = { ...G("defaultHidro")(), muebles: [{ id: "wc_flux", cant: 4 }, { id: "ming_flux", cant: 2 }, { id: "lavabo", cant: 4 }, { id: "fregadero", cant: 1 }, { id: "manguera", cant: 2 }] };
+    S.hidro = { ...G("defaultHidro")(), presRed: 0, alturaEdificio: 0, muebles: [{ id: "wc_flux", cant: 4 }, { id: "ming_flux", cant: 2 }, { id: "lavabo", cant: 4 }, { id: "fregadero", cant: 1 }, { id: "manguera", cant: 2 }] };
     S.fuego = { ...G("defaultFuego")(), area: 500, altura: 6, Lramal: 30, Lmontante: 12 };   /* H-264: contra incendio ya no hereda área ni altura: se capturan; H-210: sin cabezal ni montante la bomba queda pendiente */
     S.clean = { rooms: [{ ...G("defaultRoom")(), area: 60, height: 2.7, occ: 4, procW: 25 }], ci: 0 };
     S.elec.sistema = "3F4H-220"; S.elec.tomarHVAC = true;
@@ -5604,7 +5604,7 @@ t("S.18 semáforo: un proyecto vacío muestra «Sin datos» en TODAS las discipl
     n = niveles();
     eq(n.quote, "vacia", "quote vacío:");
     ["valor", "kaizen"].forEach((id) => eq(n[id], "gestion", `${id} sin semáforo (rev 2.9.16):`));
-    S.hidro.muebles = [{ id: G("MUEBLES")[0].id, cant: 4 }, { id: G("MUEBLES")[1].id, cant: 4 }]; G("recompute")();
+    S.hidro.muebles = [{ id: G("MUEBLES")[0].id, cant: 4 }, { id: G("MUEBLES")[1].id, cant: 4 }]; S.hidro.presRed = 0; S.hidro.alturaEdificio = 0; G("recompute")();   /* AUD-14: los 0 que antes traía defaultHidro, ahora capturados */
     n = niveles();
     if (n.hidro === "vacia") throw new Error("hidro con muebles capturados sigue vacío");
     /* H-196: cisterna y bomba ya no traen precio semilla; con sólo muebles (sin tramos ni precios) la cotización no tiene
@@ -6337,7 +6337,7 @@ t("S.36 (rev 2.9.20, decisión del dueño) versión por motor en el sello: sólo
      H-194: hidro v5 = presión mínima por mueble de la Tabla 604.3 del IPC 2015 y CDT con máx(residual, mínima); H-195: v6 = equipo de emergencia fuera de Hunter; H-197: v7 = sin pisos sin norma (días, ΔT, pendiente 704.1); H-198: v8 = CPVC sólo hasta 2" CTS, fuera de catálogo y PEAD sin SDR como error.
      H-263: carga v6 = calor del motor del ventilador seleccionado en Ventilación como misceláneos de la zona elegida; H-262: ventilación v4 = ya no hereda de carga térmica;
      H-268: eléctrico v9 = autónomo (las cargas de otros motores sólo como propuesta aceptada). */
-  eq(MV.elec, "9", "eléctrico v9 (H-268):"); eq(MV.hidro, "8", "hidro v8 (H-198):"); eq(MV.load, "7", "carga v7 (H-290):"); eq(MV.duct, "4", "ductos v4 (H-165):"); eq(MV.equip, "4", "selección v4 (H-288):"); eq(MV.kaizen, "1", "Kaizen sin cambio de lógica: v1:");
+  eq(MV.elec, "9", "eléctrico v9 (H-268):"); eq(MV.hidro, "9", "hidro v9 (AUD-14):"); eq(MV.load, "7", "carga v7 (H-290):"); eq(MV.duct, "4", "ductos v4 (H-165):"); eq(MV.equip, "4", "selección v4 (H-288):"); eq(MV.kaizen, "1", "Kaizen sin cambio de lógica: v1:");
   Object.keys(MV).forEach((id) => { const c = G("MOTOR_CAMBIOS")[id] || []; if (MV[id] !== "1" && !c.some((x) => x.ver === MV[id])) throw new Error(`${id}: la versión ${MV[id]} no tiene hallazgo registrado`); });
   const s0 = JSON.stringify(S.sellos || {});
   try {
@@ -6346,9 +6346,9 @@ t("S.36 (rev 2.9.20, decisión del dueño) versión por motor en el sello: sólo
     S.sellos = { kaizen: { ts: 5, huella: G("huellaMotor")("kaizen") }, hidro: { ts: 5, huella: G("huellaMotor")("hidro") } }; G("recompute")();
     eq(G("selloDe")("kaizen").estado, "calculado", "Kaizen (motor v1, sin cambio):");
     const sh = G("selloDe")("hidro");
-    eq(sh.estado, "desactualizado", "hidro (motor v1 → v8):"); contiene(sh.texto, "v1 → v8", "texto:"); contiene(sh.texto, "Hunter", "nombra el hallazgo:"); contiene(sh.texto, "604.3", "nombra H-194:"); contiene(sh.texto, "Z358.1", "nombra H-195:"); contiene(sh.texto, "704.1", "nombra H-197:"); contiene(sh.texto, "catálogo", "nombra H-198:");
+    eq(sh.estado, "desactualizado", "hidro (motor v1 → v9):"); contiene(sh.texto, "v1 → v9", "texto:"); contiene(sh.texto, "Hunter", "nombra el hallazgo:"); contiene(sh.texto, "604.3", "nombra H-194:"); contiene(sh.texto, "Z358.1", "nombra H-195:"); contiene(sh.texto, "704.1", "nombra H-197:"); contiene(sh.texto, "catálogo", "nombra H-198:");
     const m = G("motoresCambiados")();
-    eq(m.map((x) => x.id).join(","), "hidro", "lista para el aviso al abrir:"); eq(m[0].de + ">" + m[0].a, "1>8", "de → a:");
+    eq(m.map((x) => x.id).join(","), "hidro", "lista para el aviso al abrir:"); eq(m[0].de + ">" + m[0].a, "1>9", "de → a:");
     /* Un sello viejo abre sin error y conserva su ver; el saneado acepta ver/resumen/previo y descarta basura. */
     const viejo = JSON.parse(JSON.stringify(S)); viejo.sellos = { hidro: { ts: 5, huella: G("huellaMotor")("hidro"), ver: "3", resumen: { Gasto: "1 L/s" }, previo: { ver: "2", ts: 4, resumen: { Gasto: "0.9 L/s" } } }, duct: { ts: 5, huella: G("huellaMotor")("duct"), ver: "x9", resumen: "no" } };
     const sv = G("sanearEstado")(viejo).sellos;
@@ -6358,14 +6358,15 @@ t("S.36 (rev 2.9.20, decisión del dueño) versión por motor en el sello: sólo
     const Q0 = G("HIDRO").Qtotal;
     clicS(boton("hidro", "calc-motor"));
     const sn = S.sellos.hidro;
-    eq(sn.ver, "8", "sello nuevo con la versión del motor:"); eq(sn.previo.ver, "1", "previo:"); eq(sn.previo.resumen.Gasto, "3.924 L/s", "cifras de antes:");
+    eq(sn.ver, "9", "sello nuevo con la versión del motor:"); eq(sn.previo.ver, "1", "previo:"); eq(sn.previo.resumen.Gasto, "3.924 L/s", "cifras de antes:");
     contiene(sn.resumen.Gasto, G("n")(Q0, 3), "cifras de después:");
     eq(G("selloDe")("hidro").estado, "calculado", "vuelto a sellar:");
     conPdfCapturado((salida) => {
       clicS(boton("hidro", "pdf-memoria-motor"));
       const txt = textoPdf(salida()[salida().length - 1].b);
-      contiene(txt, "CAMBIO DE MOTOR v1 -> v8", "la memoria dice el cambio:"); /* el PDF parte los renglones en varios Tj: se buscan las piezas */
-      contiene(txt, "ANTES", "antes:"); contiene(txt, "3.924 L/s", "cifra de antes:"); contiene(txt, "DESPUES", "después:"); contiene(txt, "motor v1", "versión de antes:"); contiene(txt, "motor v8", "versión de después:");
+      contiene(txt, "CAMBIO DE MOTOR v1 -> v9", "la memoria dice el cambio:"); /* el PDF parte los renglones en varios Tj: se buscan las piezas */
+      contiene(txt, "ANTES", "antes:"); contiene(txt, "3.924 L/s", "cifra de antes:"); contiene(txt, "DESPUES", "después:"); const plano = txt.replace(/\) Tj ET[\s\S]*?\(/g, " ");   /* el renglón puede partirse entre «motor» y la versión */
+      contiene(plano, "motor v1", "versión de antes:"); contiene(plano, "motor v9", "versión de después:");
     });
     eq(w.eval("MEMO_CAMBIO"), null, "la bandera de la memoria se limpia:");
   } finally { S.sellos = JSON.parse(s0); G("recompute")(); }
@@ -8368,7 +8369,7 @@ t("S.103 (H-268) eléctrico es autónomo: con permisos y tomarHVAC, sin aceptar 
     S.zones = [{ ...G("defaultZone")("Nave"), area: 400, height: 6, occ: 30, lights: 8000, equip: 12000 }, { ...G("defaultZone")("Oficina"), area: 100, height: 3, occ: 10, lights: 1500, equip: 2000 }];
     S.vent = { ...S.vent, mode: "general", area: 500, height: 5.4, occ: 40 };
     S.aire = { ...G("defaultAire")(), consumos: [{ id: "c1", tipo: "pistola", nombre: "Prueba S.103", cant: 4, lmin: 0, bar: 0, uso: 0 }] };
-    S.hidro = { ...G("defaultHidro")(), muebles: [{ id: "wc_flux", cant: 4 }, { id: "ming_flux", cant: 2 }, { id: "lavabo", cant: 4 }, { id: "fregadero", cant: 1 }, { id: "manguera", cant: 2 }] };
+    S.hidro = { ...G("defaultHidro")(), presRed: 0, alturaEdificio: 0, muebles: [{ id: "wc_flux", cant: 4 }, { id: "ming_flux", cant: 2 }, { id: "lavabo", cant: 4 }, { id: "fregadero", cant: 1 }, { id: "manguera", cant: 2 }] };
     S.fuego = { ...G("defaultFuego")(), area: 500, altura: 6, Lramal: 30, Lmontante: 12 };   /* H-210: con trayectoria capturada la bomba se dimensiona */
     S.clean = { rooms: [{ ...G("defaultRoom")(), area: 60, height: 2.7, occ: 4, procW: 25 }], ci: 0 };
     S.elec = { ...G("defaultElec")(), trafoKVA: 300, trafoZ: 4, Ltablero: 30, tomarHVAC: true,
@@ -9601,6 +9602,28 @@ t("S.192 (AUD-03) el eléctrico no lee constantes de cuartos limpios: la procede
     contiene(memo, "de catálogo de la casa", "el caso no aísla lo que se quiere probar: la carga debe decir su procedencia de catálogo:");
     const w0 = G("FFU").watts;
     if (memo.includes(`${w0} W por módulo`)) throw new Error(`la memoria del eléctrico cita los ${w0} W por módulo del catálogo de FFU de cuartos limpios`);
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+t("S.193 (AUD-14) hidrosanitario sin presión de la red ni altura del edificio capturadas no calcula con valores inventados (antes 25 m y 6 m): presión residual y carga dinámica quedan pendientes con aviso; la bomba no se dimensiona ni se declara «no alcanza»", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    S.hidro = { ...G("defaultHidro")(), material: "cobre", tramos: [{ ...G("defaultTramoAgua")("AF-1"), id: "s193", um: 40, L: 20, alt: 3 }], muebles: [{ id: "wc_flux", cant: 3 }, { id: "lavabo", cant: 3 }] };
+    eq(G("defaultHidro")().presRed, null, "un proyecto nuevo nace sin presión de la red (pendiente):"); eq(G("defaultHidro")().alturaEdificio, null, "ni altura del edificio:");
+    delete S.hidro.presRed; S.hidro.alturaEdificio = null;   /* sin capturar (ausente o vacío) */
+    G("recompute")();
+    const H = G("HIDRO");
+    if (!(H.Qtotal > 0)) throw new Error("el caso no aísla lo que se quiere probar: debe haber gasto");
+    eq(H.presDisp, null, "presión residual pendiente (sin presión de la red):"); eq(H.presOk, null, "no se sabe si alcanza:");
+    eq(H.cdt, null, "carga dinámica pendiente (sin altura del edificio):"); eq(H.hpBomba, 0, "sin bomba dimensionada:");
+    if (!H.avisos.some((a) => /presión (de la red|en la toma).*pendiente/i.test(a.msg))) throw new Error("falta el aviso de presión de la red pendiente");
+    if (!H.avisos.some((a) => /altura del edificio.*pendiente|pendiente.*altura del edificio/i.test(a.msg))) throw new Error("falta el aviso de altura del edificio pendiente");
+    const C = H.cot;
+    if (C.porCotizar.some((x) => /no alcanza/.test(x.desc))) throw new Error("la cotización de hidrosanitario declara que la presión no alcanza sin saberlo");
+    if (!C.pendientes.some((x) => /bombeo/i.test(x.desc) && /pendiente/.test(x.motivo))) throw new Error("el equipo de bombeo debe quedar pendiente en la cotización de hidrosanitario");
+    /* Con los dos datos capturados, calcula como antes. */
+    S.hidro.presRed = 25; S.hidro.alturaEdificio = 6; G("recompute")();
+    if (!(G("HIDRO").cdt > 6 && G("HIDRO").presDisp !== null)) throw new Error("con presión y altura capturadas debe calcular");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 

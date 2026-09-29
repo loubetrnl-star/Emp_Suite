@@ -2535,7 +2535,7 @@ function buildHidroPdf() {
     ["Tipo de cambio (precios de tuberia en USD)", fxHidro(H) ? `${n(fxHidro(H).fx, 2)} MXN/USD del ${fxHidro(H).fecha}${fxHidro(H).fuente ? ` (${fxHidro(H).fuente})` : ""}, capturado en Hidrosanitario` : "sin capturar: lo que esta en USD queda Por cotizar"],
     ["Velocidad maxima", `${V_MAX_FRIA} m/s en agua fria y ${V_MAX_CAL} m/s en agua caliente`],
     ["Uso", H.uso === "privado" ? "Privado" : "Publico"],
-    ["Presion en la toma", `${n(num(H.presRed, 25), 1)} m de columna de agua`],
+    ["Presion en la toma", R.presRedPend ? "pendiente: sin capturar (no se supone)" : `${n(num(H.presRed), 1)} m de columna de agua`],
   ]);
   pdfHeading(d, "3. Muebles, unidades mueble y de descarga");
   pdfTable(d, ["Mueble", "Cant", "UM c/u", "UM", "UD", "Presion min m (IPC 604.3)"],
@@ -2549,7 +2549,7 @@ function buildHidroPdf() {
   pdfRows(d, [
     ["Gasto probable total", `${n(R.Qtotal, 2)} L/s (${n(R.Qtotal * 60, 0)} L/min)`],
     ["Perdida acumulada", `${n(R.hfTotal, 2)} m`],
-    ["Presion residual en el mueble mas desfavorable", `${n(R.presDisp, 1)} m contra ${n(R.presMinReq, 1)} m requeridos`],
+    ["Presion residual en el mueble mas desfavorable", R.presRedPend ? `pendiente (falta la presion en la toma) · se piden ${n(R.presMinReq, 1)} m` : `${n(R.presDisp, 1)} m contra ${n(R.presMinReq, 1)} m requeridos`],
     ...(R.qEmerg > 0 ? [["Equipo de emergencia", `${n(R.qEmerg * 60, 1)} L/min fijos fuera de Hunter, incluidos en el gasto · ${n(R.volEmerg, 0)} L para ${EMERG_MIN} min (ANSI Z358.1-1990 via cartas de OSHA, secundaria; ratificar con Z358.1-2014)`]] : []),
     ["Agua caliente", `${n(R.Qcal, 2)} L/s · ${n(R.kWcal, 1)} kW termicos para elevar ${n(R.dT, 0)} K`],
   ]);
@@ -2566,8 +2566,8 @@ function buildHidroPdf() {
     ["Dotacion", `${R.dot.l} L por ${R.dot.unidad} y dia · ${R.dot.label}`],
     ["Consumo diario", `${n(R.consumoDia, 0)} L`],
     ["Volumen de cisterna", `${n(R.cisterna, 0)} L = ${n(R.cisterna / 1000, 1)} m3`],
-    ["Carga dinamica total", `${n(R.cdt, 1)} m = altura del edificio ${n(num(H.alturaEdificio, 6), 1)} + friccion ${n(R.hfTramos, 2)} + ${n(R.presCdt, 1)} m en el mueble mas alto (${R.rigeNorma ? "minima de norma, IPC 2015 Tabla 604.3" : "residual de la casa"})`],
-    ["Bomba", `${n(R.Qtotal, 2)} L/s a ${n(R.cdt, 1)} m · ${n(R.kWbomba, 2)} kW al eje · ${n(R.hpBomba, 1)} HP nominales${R.presOk ? " · referencia: la presion de la red alcanza, no se cotiza" : " · hace falta: la presion de la red no alcanza, Por cotizar"}`],
+    ["Carga dinamica total", R.bombaPendiente ? "pendiente: falta la altura del edificio (no se supone)" : `${n(R.cdt, 1)} m = altura del edificio ${n(R.altEdifCap, 1)} + friccion ${n(R.hfTramos, 2)} + ${n(R.presCdt, 1)} m en el mueble mas alto (${R.rigeNorma ? "minima de norma, IPC 2015 Tabla 604.3" : "residual de la casa"})`],
+    ["Bomba", R.bombaPendiente ? "pendiente (sin carga dinamica total)" : `${n(R.Qtotal, 2)} L/s a ${n(R.cdt, 1)} m · ${n(R.kWbomba, 2)} kW al eje · ${n(R.hpBomba, 1)} HP nominales${R.presOk ? " · referencia: la presion de la red alcanza, no se cotiza" : " · hace falta: la presion de la red no alcanza, Por cotizar"}`],
   ]);
   pdfHeading(d, "7. Memoria");
   R.memo.forEach((m) => pdfParagraph(d, "· " + m));
@@ -10802,7 +10802,7 @@ function defaultHidro() {
     uso: "publico",                    // público o privado, cambia la tabla de UM
     material: "cobre",
     muebles: [],
-    presRed: 0,                        // presión disponible en la toma, mca
+    presRed: null,                     // presión disponible en la toma, mca; AUD-14: sin captura = pendiente (antes 0 y, si faltaba, 25)
     tramos: [],
     /* Drenaje */
     pendiente: 2,                      // % del colector
@@ -10811,7 +10811,7 @@ function defaultHidro() {
     tempEntrada: 18, tempSalida: 45,
     /* Cisterna y bombeo */
     dot: "industria", habitantes: 0, diasReserva: 1,
-    alturaEdificio: 0, presResidual: 15,
+    alturaEdificio: null, presResidual: 15,   // AUD-14: altura del edificio sin captura = pendiente (antes 0 y, si faltaba, 6)
     /* H-302: su cotización: precios de tubería por diámetro (referencias de mercado de la casa o proveedor local, con bitácora) y
        su tipo de cambio con fecha y fuente (sin él, lo que está en USD queda «Por cotizar»). */
     hidroPU: JSON.parse(JSON.stringify(HIDRO_PU_REFERENCIA)), hidroPUlog: [], fx: 0, fxFecha: "", fxFuente: "",
@@ -10894,7 +10894,10 @@ function cotizacionHidro(R, E) {
       porCotizar.push({ sec: "F", mot: "hidro", clave: "cisterna", desc: `Cisterna de ${n(m3, 1)} m³ (consumo diario ${n(R.consumoDia, 0)} L × ${n(R.diasReserva, 1)} día(s) de reserva capturados)`,
         descEn: `${n(m3, 1)} m³ cistern (daily demand ${n(R.consumoDia, 0)} L × ${n(R.diasReserva, 1)} captured reserve day(s))`, un: "M3", qty: m3, motivo: "sin precio con fuente y fecha" });
     } else pendientes.push({ mot: "hidro", desc: "Cisterna", descEn: "Cistern", motivo: "pendiente de volumen (dotación, unidades de dotación o días de reserva sin capturar)", motivoEn: "volume pending (demand, demand units or reserve days not captured)" });
-    if (!R.presOk) porCotizar.push({ sec: "F", mot: "hidro", clave: "bombaAgua", desc: `Equipo de bombeo de ${n(R.hpBomba, 1)} HP (${n(R.Qtotal, 2)} L/s a ${n(R.cdt, 1)} m de carga dinámica total): la presión de la red no alcanza al mueble más exigente`,
+    /* AUD-14: sin la presión de la red no se sabe si hace falta bomba; sin la altura del edificio no hay potencia: pendiente, no «no alcanza». */
+    if (R.presRedPend) pendientes.push({ mot: "hidro", desc: "Equipo de bombeo", descEn: "Pumping equipment", motivo: "dato pendiente: falta la presión de la red en la toma (no se sabe si hace falta bomba)", motivoEn: "data pending: the supply pressure at the service connection is not captured (whether a pump is needed is unknown)" });
+    else if (!R.presOk && R.bombaPendiente) pendientes.push({ mot: "hidro", desc: "Equipo de bombeo", descEn: "Pumping equipment", motivo: "dato pendiente: falta la altura del edificio (sin carga dinámica ni potencia)", motivoEn: "data pending: building height not captured (no total dynamic head or power)" });
+    else if (!R.presOk) porCotizar.push({ sec: "F", mot: "hidro", clave: "bombaAgua", desc: `Equipo de bombeo de ${n(R.hpBomba, 1)} HP (${n(R.Qtotal, 2)} L/s a ${n(R.cdt, 1)} m de carga dinámica total): la presión de la red no alcanza al mueble más exigente`,
       descEn: `${n(R.hpBomba, 1)} HP pumping equipment (${n(R.Qtotal, 2)} L/s at ${n(R.cdt, 1)} m total dynamic head): the supply pressure does not reach the most demanding fixture`, un: "LOTE", qty: 1, motivo: "sin precio con fuente y fecha" });
 
   return { aux, pendientes, porCotizar, referencias };
@@ -10974,16 +10977,20 @@ function computeHidro(H) {
   if (tramos.length && qEmerg > 0 && qEmMax < qEmerg * 60 * 0.995)
     avisos.push({ lvl: "warn", msg: `El gasto del equipo de emergencia (${n(qEmerg * 60, 1)} L/min) no lo lleva completo ningún tramo (el que más lleva: ${n(qEmMax, 1)} L/min). Captura en cada tramo el gasto de emergencia que conduce, o sus diámetros no lo incluyen.` });
   const hfTotal = tramos.reduce((a, t) => a + t.perdida, 0);
-  const presDisp = num(H.presRed, 25) - hfTotal;
-  const presOk = presDisp >= presMinReq;
-  if (!presOk) avisos.push({ lvl: "err", msg: `La presión no alcanza: con ${n(num(H.presRed, 25), 1)} m en la toma y ${n(hfTotal, 1)} m de pérdida quedan ${n(presDisp, 1)} m en el mueble más desfavorable, y pide ${n(presMinReq, 1)} m. Hace falta equipo de bombeo o subir diámetros.` });
+  /* AUD-14 (auditoría externa, 29-sep-2026; «nada se estima»): sin la presión de la red capturada no se supone ninguna (antes 25 m):
+     la presión residual y si alcanza quedan pendientes, con aviso. */
+  const presRedCap = numONulo(H.presRed), presRedPend = presRedCap == null;
+  const presDisp = presRedPend ? null : presRedCap - hfTotal;
+  const presOk = presRedPend ? null : presDisp >= presMinReq;
+  if (presRedPend) avisos.push({ lvl: "warn", msg: "Presión en la toma pendiente: sin la presión de la red capturada no se sabe si alcanza al mueble más desfavorable ni si hace falta equipo de bombeo; no se supone ninguna (antes 25 m si faltaba el dato). Captúrala." });
+  else if (!presOk) avisos.push({ lvl: "err", msg: `La presión no alcanza: con ${n(presRedCap, 1)} m en la toma y ${n(hfTotal, 1)} m de pérdida quedan ${n(presDisp, 1)} m en el mueble más desfavorable, y pide ${n(presMinReq, 1)} m. Hace falta equipo de bombeo o subir diámetros.` });
   tramos.forEach((t) => {
     if (t.V > (t.caliente ? V_MAX_CAL : V_MAX_FRIA) + .01)
       avisos.push({ lvl: "warn", msg: `${t.tag}: ${n(t.V, 2)} m/s supera el límite de ${t.caliente ? V_MAX_CAL : V_MAX_FRIA} m/s. Arriba de eso el agua se oye en el tubo y el cobre se erosiona.` });
     if (t.V > 0 && t.V < .6)
       avisos.push({ lvl: "info", msg: `${t.tag}: ${n(t.V, 2)} m/s es baja. El diámetro está sobrado y en agua caliente favorece el estancamiento.` });
   });
-  memo.push(`Pérdida total sumando todos los tramos capturados, de agua fría y caliente, ${n(hfTotal, 2)} m (incluye 30 % de longitud equivalente por accesorios y la altura estática); la trayectoria más desfavorable no se aísla. Presión residual ${n(presDisp, 1)} m contra ${n(presMinReq, 1)} m requeridos.`);
+  memo.push(`Pérdida total sumando todos los tramos capturados, de agua fría y caliente, ${n(hfTotal, 2)} m (incluye 30 % de longitud equivalente por accesorios y la altura estática); la trayectoria más desfavorable no se aísla. ${presRedPend ? `Presión residual PENDIENTE: falta la presión de la red en la toma (se piden ${n(presMinReq, 1)} m en el mueble más desfavorable).` : `Presión residual ${n(presDisp, 1)} m contra ${n(presMinReq, 1)} m requeridos.`}`);
 
   /* 3) Drenaje */
   const ramal = sizeDrenaje(udTotal, wcTotal, "ramal", 0);
@@ -11041,28 +11048,32 @@ function computeHidro(H) {
   const rigeNorma = presMinReq > presResidual;
   const presCdt = Math.max(presResidual, presMinReq);
   const hfTramos = tramos.reduce((a, t) => a + t.hf, 0);
-  const cdt = num(H.alturaEdificio, 6) + hfTramos + presCdt;
+  /* AUD-14: sin la altura del edificio capturada no se supone ninguna (antes 6 m): la carga dinámica y la bomba quedan pendientes. */
+  const altEdifCap = numONulo(H.alturaEdificio), bombaPendiente = altEdifCap == null;
+  const cdt = bombaPendiente ? null : altEdifCap + hfTramos + presCdt;
+  if (bombaPendiente && Qtotal > 0) avisos.push({ lvl: "warn", msg: "Equipo de bombeo pendiente: falta la altura del edificio (m); sin ella no hay carga dinámica total ni potencia de la bomba. No se supone ninguna (antes 6 m)." });
   /* 2.2 · Decisión del dueño (15-sep-2026): la altura estática que manda es la
      del edificio (dato de proyecto, más confiable que sumar lo que cada tramo
      trae capturado); si la suma de las alturas de los tramos no coincide con
      ella por más de 0.5 m, se avisa para que se revise a mano, pero el cálculo
      sigue con la del edificio. */
   const altTramos = tramos.reduce((a, t) => a + t.alt, 0);
-  const difAltura = altTramos - num(H.alturaEdificio, 6);
+  const difAltura = bombaPendiente ? 0 : altTramos - altEdifCap;
   if (tramos.length && Math.abs(difAltura) > 0.5)
-    avisos.push({ lvl: "warn", msg: `La altura del edificio capturada (${n(num(H.alturaEdificio, 6), 1)} m) no coincide con la suma de alturas de los tramos (${n(altTramos, 1)} m), una diferencia de ${n(Math.abs(difAltura), 1)} m. Se usa la del edificio para la carga dinámica: revisar la captura de tramos.` });
+    avisos.push({ lvl: "warn", msg: `La altura del edificio capturada (${n(altEdifCap, 1)} m) no coincide con la suma de alturas de los tramos (${n(altTramos, 1)} m), una diferencia de ${n(Math.abs(difAltura), 1)} m. Se usa la del edificio para la carga dinámica: revisar la captura de tramos.` });
   /* Potencia hidráulica / eficiencia del conjunto bomba-motor (0.6 típico en
      equipo de edificio pequeño). P(kW) = ρ·g·Q·H / η = 9.81·Q(L/s)·H(m)/1000/η */
-  const kWbomba = 9.81 * Qtotal * cdt / 1000 / .6;
-  const hpBomba = Math.ceil(kWbomba / .746 * 2) / 2;
+  const kWbomba = bombaPendiente ? 0 : 9.81 * Qtotal * cdt / 1000 / .6;
+  const hpBomba = bombaPendiente ? 0 : Math.ceil(kWbomba / .746 * 2) / 2;
   memo.push(`Cisterna: dotación ${dot.l} L por ${dot.unidad} y día × ${n(num(H.habitantes, 0), 0)} = ${n(consumoDia, 0)} L/día · ${n(num(H.diasReserva, 1), 1)} día(s) de reserva = ${n(cisterna, 0)} L (${n(cisterna / 1000, 1)} m³).`);
   if (volEmerg > 0 && cisterna < volEmerg)
     avisos.push({ lvl: "warn", msg: `La cisterna (${n(cisterna, 0)} L) no guarda los ${n(volEmerg, 0)} L que el equipo de emergencia necesita para ${EMERG_MIN} min (Z358.1-1990 vía OSHA, secundaria).` });
-  memo.push(`Equipo de bombeo: ${n(Qtotal, 2)} L/s a ${n(cdt, 1)} m de carga dinámica total (altura del edificio ${n(num(H.alturaEdificio, 6), 1)} m + fricción de los tramos ${n(hfTramos, 2)} m + ${n(presCdt, 1)} m en el mueble más alto: ${rigeNorma ? `rige la mínima de norma del mueble más exigente, ${masExigente ? masExigente.nombre.toLowerCase() : "mueble"}, IPC 2015 Tabla 604.3, sobre el residual de ${n(presResidual, 1)} m de la casa` : `rige el residual de ${n(presResidual, 1)} m, criterio de la casa, sobre la mínima de norma de ${n(presMinReq, 1)} m`}) → ${n(kWbomba, 2)} kW al eje, ${n(hpBomba, 1)} HP nominales con 60 % de eficiencia del conjunto. ${presOk ? "La presión de la red alcanza al mueble más exigente: el equipo de bombeo se dimensiona como referencia y no se cotiza (H-196)." : "La presión de la red no alcanza: el equipo de bombeo hace falta y va «Por cotizar»."} Hidroneumático o velocidad variable según el perfil de demanda.`);
+  if (bombaPendiente) memo.push(`Equipo de bombeo PENDIENTE: falta la altura del edificio; sin ella no hay carga dinámica total ni potencia (gasto ${n(Qtotal, 2)} L/s; ${n(presCdt, 1)} m en el mueble más alto).`);
+  else memo.push(`Equipo de bombeo: ${n(Qtotal, 2)} L/s a ${n(cdt, 1)} m de carga dinámica total (altura del edificio ${n(altEdifCap, 1)} m + fricción de los tramos ${n(hfTramos, 2)} m + ${n(presCdt, 1)} m en el mueble más alto: ${rigeNorma ? `rige la mínima de norma del mueble más exigente, ${masExigente ? masExigente.nombre.toLowerCase() : "mueble"}, IPC 2015 Tabla 604.3, sobre el residual de ${n(presResidual, 1)} m de la casa` : `rige el residual de ${n(presResidual, 1)} m, criterio de la casa, sobre la mínima de norma de ${n(presMinReq, 1)} m`}) → ${n(kWbomba, 2)} kW al eje, ${n(hpBomba, 1)} HP nominales con 60 % de eficiencia del conjunto. ${presOk ? "La presión de la red alcanza al mueble más exigente: el equipo de bombeo se dimensiona como referencia y no se cotiza (H-196)." : "La presión de la red no alcanza: el equipo de bombeo hace falta y va «Por cotizar»."} Hidroneumático o velocidad variable según el perfil de demanda.`);
 
   const R = { lista, umTotal, udTotal, wcTotal, tipoSistema, umCal, presMinReq, masExigente, qEmerg, volEmerg, Qtotal,
-    tramos, hfTotal, presDisp, presOk, ramal, bajada, colector, pend, pendCap, pendMin, pendSubida, ventD,
-    Qcal, dT, kWcal, dot, consumoDia, diasReserva, cisterna, presResidual, presCdt, rigeNorma, hfTramos, cdt, kWbomba, hpBomba, mat, memo, avisos };
+    tramos, hfTotal, presDisp, presOk, presRedPend, ramal, bajada, colector, pend, pendCap, pendMin, pendSubida, ventD,
+    Qcal, dT, kWcal, dot, consumoDia, diasReserva, cisterna, presResidual, presCdt, rigeNorma, hfTramos, cdt, kWbomba, hpBomba, bombaPendiente, altEdifCap, mat, memo, avisos };
   R.cot = cotizacionHidro(R, H);   /* H-302: su propia cotización */
   return R;
 }
@@ -19678,7 +19689,7 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "7", clean: "3", equip: "4", duct: "4", vent: "4", quote: "24", valor: "2", kaizen: "1", elec: "9", hidro: "8", fuego: "6", aire: "5", civil: "8", soporte: "13" };
+const MOTOR_VER = { load: "7", clean: "3", equip: "4", duct: "4", vent: "4", quote: "24", valor: "2", kaizen: "1", elec: "9", hidro: "9", fuego: "6", aire: "5", civil: "8", soporte: "13" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
@@ -19708,7 +19719,8 @@ const MOTOR_CAMBIOS = {
     { ver: "5", rev: "2.9.24", que: "H-194: presión mínima en la salida de cada mueble por la Tabla 604.3 del IPC 2015 (WC con fluxómetro 35 psi = 24.6 m, antes 10.5 m sin fuente; mingitorio 25, WC de tanque 20, regadera 20 por §424.3, lavabo/fregadero/lavadero/bebedero/manguera 8 psi); la carga dinámica de la bomba lleva máx(residual capturado, mínima de norma del mueble más exigente), antes sólo el residual fijo de 15 m" },
     { ver: "6", rev: "2.9.24", que: "H-195: regadera de emergencia (20 gpm = 75.7 L/min) y lavaojos fijo (0.4 gal/min = 1.5 L/min, mueble nuevo) fuera de Hunter con gasto fijo sumado al del sistema, antes 6 unidades mueble cada uno; volumen para 15 min; el tramo declara el gasto de emergencia que conduce (L/min) con aviso si ninguno lo lleva. Fuente secundaria: ANSI Z358.1-1990 citada por OSHA (cartas del 18-abr-2002 y 22-nov-1993); ratificar con Z358.1-2014" },
     { ver: "7", rev: "2.9.24", que: "H-197: sin pisos sin norma. Días de reserva capturados se respetan (0 = cisterna pendiente con aviso; antes piso de 0.5 día); ΔT ≤ 0 = calentador pendiente con aviso (antes piso de 5 K); la pendiente del colector se respeta y sólo sube, con aviso, a la mínima de IPC 2015 §704.1 para su diámetro (antes piso de 0.5 % sin norma)" },
-    { ver: "8", rev: "2.9.24", que: "H-198: CPVC sin los renglones de 2 1/2\", 3\" y 4\" «SIN VERIFICAR» (CTS SDR-11 llega a 2\"); un tramo que no cabe en el mayor diámetro verificado queda fuera de catálogo con error visible, y PEAD (diámetros genéricos sin SDR ni fuente) da error visible" }],
+    { ver: "8", rev: "2.9.24", que: "H-198: CPVC sin los renglones de 2 1/2\", 3\" y 4\" «SIN VERIFICAR» (CTS SDR-11 llega a 2\"); un tramo que no cabe en el mayor diámetro verificado queda fuera de catálogo con error visible, y PEAD (diámetros genéricos sin SDR ni fuente) da error visible" },
+    { ver: "9", rev: "2.9.24", que: "AUD-14 (auditoría externa, 29-sep-2026; «nada se estima»): sin la presión de la red en la toma capturada no se suponen 25 m: la presión residual y si alcanza quedan pendientes con aviso, y el equipo de bombeo queda «dato pendiente» en su cotización (antes «no alcanza»); sin la altura del edificio capturada no se suponen 6 m: carga dinámica total y bomba pendientes con aviso. Un proyecto nuevo nace con los dos datos sin capturar (antes 0, que se tomaba como captura); un 0 capturado sigue siendo dato" }],
   fuego: [{ ver: "2", rev: "2.9.16", que: "sin área no hay demanda, bomba ni reserva; área mínima de operación NFPA 13 con aviso" },
     { ver: "3", rev: "2.9.24", que: "H-205: la altura heredada de las zonas es la MÁXIMA (rociador más alto), no la media ponderada: estática y CDT al rociador más alto y aviso de rack con la altura real (proyecto fijo: 4.71 → 6 m, +1.29 m de CDT)" },
     { ver: "4", rev: "2.9.24", que: "H-264 (decisión del dueño, 27-sep-2026): contra incendio es autónomo: el área a proteger y la altura al rociador más alto se capturan en su pestaña; ya no se heredan de carga térmica ni se toma el área en vivo (cruce load>fuego retirado). Un proyecto guardado conserva los valores que ya tenía copiados; sin área capturada no hay demanda" },
@@ -22962,7 +22974,7 @@ function viewHidro() {
         <div class="metrics">
           <div class="metric"><div class="k">Unidades mueble</div><div class="v">${n(R.umTotal, 1)}</div><div class="sub">curva de ${R.tipoSistema === "fluxometro" ? "fluxómetro" : "tanque"}</div></div>
           <div class="metric"><div class="k">Gasto probable</div><div class="v">${n(R.Qtotal, 2)} <small>L/s</small></div><div class="sub">${n(R.Qtotal * 60, 0)} L/min</div></div>
-          <div class="metric"><div class="k">Presión residual</div><div class="v" style="color:${R.presOk ? "var(--dato)" : "var(--warn);font-weight:700;text-decoration:underline dotted"}">${n(R.presDisp, 1)} <small>m</small></div><div class="sub">pide ${n(R.presMinReq, 1)} m</div></div>
+          <div class="metric"><div class="k">Presión residual</div><div class="v" style="color:${R.presOk ? "var(--dato)" : "var(--warn);font-weight:700;text-decoration:underline dotted"}">${R.presRedPend ? "pendiente" : `${n(R.presDisp, 1)} <small>m</small>`}</div><div class="sub">pide ${n(R.presMinReq, 1)} m</div></div>
           <div class="metric"><div class="k">Agua caliente</div><div class="v">${n(R.kWcal, 1)} <small>kW</small></div><div class="sub">${n(R.Qcal, 2)} L/s a ΔT ${n(R.dT, 0)} K</div></div>
         </div>
         <div class="tw" style="margin-top:12px"><table>
@@ -23005,8 +23017,8 @@ function viewHidro() {
         <div class="metrics" style="margin-top:10px">
           <div class="metric"><div class="k">Consumo diario</div><div class="v">${n(R.consumoDia, 0)} <small>L</small></div></div>
           <div class="metric"><div class="k">Cisterna</div><div class="v">${n(R.cisterna / 1000, 1)} <small>m³</small></div></div>
-          <div class="metric"><div class="k">Carga dinámica</div><div class="v">${n(R.cdt, 1)} <small>m</small></div></div>
-          <div class="metric"><div class="k">Bomba</div><div class="v">${n(R.hpBomba, 1)} <small>HP</small></div><div class="sub">${n(R.kWbomba, 2)} kW al eje</div></div>
+          <div class="metric"><div class="k">Carga dinámica</div><div class="v">${R.bombaPendiente ? "pendiente" : `${n(R.cdt, 1)} <small>m</small>`}</div></div>
+          <div class="metric"><div class="k">Bomba</div>${R.bombaPendiente ? `<div class="v" style="color:var(--warn)">pendiente</div><div class="sub">falta la altura del edificio</div>` : `<div class="v">${n(R.hpBomba, 1)} <small>HP</small></div><div class="sub">${n(R.kWbomba, 2)} kW al eje</div>`}</div>
         </div>
       </div></div>
       <div class="card"><h3>Memoria de cálculo</h3><div class="body">
