@@ -292,7 +292,7 @@
       77000
      ],
      [
-      "Red de aire comprimido en aluminio calibrado tipo push-fit: troncal 1 1/4\" y ramales 1/2\", instalada y probada (diámetros indicativos: DI del fabricante pendiente)",
+      "Red de aire comprimido en aluminio calibrado tipo push-fit: diámetros pendientes (DI del fabricante), instalada y probada",
       60,
       70260
      ],
@@ -444,7 +444,7 @@
    }
   },
   "aire": {
-   "ver": "5",
+   "ver": "6",
    "cifras": {
     "fad": 2019.6,
     "unidades": 1,

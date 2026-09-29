@@ -7062,8 +7062,10 @@ function cotizacionAire(R, P) {
       qty: nF, unit: puF, total: puF * nF, sec: "E", un: "ETAPA", mot: "aire" });
     const mRed = R.tramos.reduce((a, t) => a + t.L, 0);
     const puR = num(p.aireM, 0) > 0 ? num(p.aireM) : R.mat.mxnM;
-    if (mRed > 0) aux.push({ desc: `Red de aire comprimido en ${R.mat.label.toLowerCase()}: troncal ${R.tramos[0].nom} y ramales ${R.tramos[1].nom}, instalada y probada${R.diPendiente ? " (diámetros indicativos: DI del fabricante pendiente)" : ""}`,
-      descEn: `Compressed air piping in ${R.mat.labelEn.toLowerCase()}: ${R.tramos[0].nom} main and ${R.tramos[1].nom} branches, installed and tested${R.diPendiente ? " (indicative diameters: manufacturer's ID pending)" : ""}`,
+    /* AUD-14: sin material la red queda pendiente (sin importe); sin DI del fabricante, sus diámetros quedan pendientes. */
+    if (mRed > 0 && !R.matCap) pendientes.push({ mot: "aire", desc: "Red de aire comprimido", descEn: "Compressed air piping", motivo: "pendiente de material", motivoEn: "material pending" });
+    else if (mRed > 0) aux.push({ desc: `Red de aire comprimido en ${R.mat.label.toLowerCase()}: ${R.diPendiente ? "diámetros pendientes (DI del fabricante)" : `troncal ${R.tramos[0].nom} y ramales ${R.tramos[1].nom}`}, instalada y probada`,
+      descEn: `Compressed air piping in ${R.mat.labelEn.toLowerCase()}: ${R.diPendiente ? "diameters pending (manufacturer's ID)" : `${R.tramos[0].nom} main and ${R.tramos[1].nom} branches`}, installed and tested`,
       qty: mRed, unit: puR, total: puR * mRed, sec: "E", un: "ML", mot: "aire" });
     if (R.nPuntos > 0) {
       const puP = num(p.puntoUso, AIRE_PRECIO_SEED.puntoUso);
@@ -7189,15 +7191,22 @@ function computeAire(A) {
   if (sec.perdida > 0) memo.push(`El desecante consume ${n(purgaLmin, 0)} L/min en la purga de regeneración (${n(sec.perdida * 100, 0)} % del caudal tratado). Ese aire se compra: ya está sumado al FAD requerido.`);
 
   /* ---- 6. Red de distribución ---- */
-  const mat = TUB_AIRE[A.material] || TUB_AIRE.aluminio;
+  /* AUD-14 (auditoría externa, 29-sep-2026; «nada se estima»): un material que no está en la lista ya no se toma como aluminio: la
+     red queda pendiente de material (sin diámetros, caída ni importe). */
+  const matCap = TUB_AIRE[A.material] ? A.material : null;
+  const mat = matCap ? TUB_AIRE[matCap] : { label: "Material sin capturar", labelEn: "Material not captured", eps: 0, mxnM: 0,
+    nota: "Material de la red pendiente de captura: sin él no se dimensiona ni se cotiza la red (AUD-14)." };
   /* H-218 (rev 2.9.24, aire v5): el diámetro interior es del material. Cobre tipo L: DI de ASTM B88 (los mismos de
      DI_COBRE_L_AIRE, su copia; AUD-03); acero cédula 40: ASME B36.10 (DIAM_AIRE); aluminio calibrado e inoxidable: el DI real es del fabricante y
      queda pendiente: se dimensiona con cédula 40 sólo como indicativo y se avisa. Antes cédula 40 para todo material (cobre de
      55 m: 1" con 26.6 mm cuando el DI real de 26.04 mm obliga a 1 1/4"). */
-  const matId = TUB_AIRE[A.material] ? A.material : "aluminio";
+  /* AUD-14: en aluminio calibrado e inoxidable el DI real es del fabricante; ya no se dimensiona con cédula 40 «indicativa»: los
+     diámetros y la caída de la red quedan pendientes hasta tener el DI del fabricante (o elegir cobre o acero). */
+  const matId = matCap;
   const DI = matId === "cobre" ? { d: DI_COBRE_L_AIRE, fuente: "ASTM B88 tipo L (DI real por diámetro; CDA Copper Tube Handbook 2006, tabla 2b)", pendiente: false }
     : (matId === "acero_gal" || matId === "acero_neg") ? { d: DIAM_AIRE, fuente: "cédula 40 (ASME B36.10)", pendiente: false }
-    : { d: DIAM_AIRE, fuente: "cédula 40 sólo como indicativo; el DI del fabricante (el real) queda pendiente", pendiente: true };
+    : matId ? { d: null, fuente: "DI del fabricante pendiente: no se dimensiona con cédula 40 (AUD-14)", pendiente: true }
+    : { d: null, fuente: "material de la red pendiente", pendiente: true };
   const rho = rhoAire(pDescarga, tAmb, pAtm);
   const mu = 1.85e-5;
   const Lp = Math.max(0, num(A.Lprincipal, 120)), Lr = Math.max(0, num(A.Lramales, 90));
@@ -7218,6 +7227,7 @@ function computeAire(A) {
      no solo la velocidad, que fue como quedó a la primera y sacaba ramales de
      3/8" con 2.2 bar de pérdida. */
   const dimRed = (Qlmin, L, etiqueta, vMax, dPmax) => {
+    if (!DI.d) return { etiqueta, d: null, nom: "pendiente", L, Q: Qlmin, rige: "pendiente", pendiente: true, V: null, Re: null, Pam: null, dPbar: 0 };
     const Qm3s = Qlmin / 1000 / 60 * (101.325 / (pDescarga * 100 + pAtm));
     for (const [d, nom] of DI.d) {
       const r = evalD(d, Qm3s, L);
@@ -7232,13 +7242,14 @@ function computeAire(A) {
     dimRed(fadRequerido, Lp, "Troncal principal (anillo)", 8, dPred * 0.5),
     dimRed(fadRequerido * 0.4, Lr, "Ramales y bajadas a punto de uso", 15, dPred * 0.5),
   ];
-  const dPtotal = tramos.reduce((a, t) => a + t.dPbar, 0);
+  const redPend = tramos.some((t) => t.pendiente);
+  const dPtotal = redPend ? null : tramos.reduce((a, t) => a + t.dPbar, 0);
   /* H-218: un tramo cuyo gasto no cabe en el mayor diámetro del catálogo del material queda fuera de catálogo: error visible (la
      hidráulica se muestra con el tope sólo para ver cuánto se pasa). */
   tramos.filter((t) => t.tope && t.L > 0).forEach((t) => avisos.push({ lvl: "err", msg: `${t.etiqueta}: ${n(t.Q, 0)} L/min no caben en el mayor diámetro del catálogo de ${mat.label.toLowerCase()} (${t.nom}, ${n(t.V, 1)} m/s): el tramo queda fuera de catálogo. Cambia de material o divide la red.` }));
   const diPendiente = DI.pendiente && tramos.some((t) => t.L > 0);
-  if (diPendiente) avisos.push({ lvl: "warn", msg: `Red en ${mat.label.toLowerCase()}: los diámetros se eligieron con DI de cédula 40 sólo como indicativo; el DI del fabricante (el real) queda pendiente, y con él el diámetro y la caída definitivos (H-218).` });
-  if (dPtotal > dPred + .01) avisos.push({ lvl: "warn", msg: `La caída calculada de la red es ${dPtotal.toFixed(2)} bar y el diseño se armó con ${dPred.toFixed(2)}. Sube un diámetro en la troncal o acorta la corrida: cada 0.1 bar de más son ~0.7 % de energía todo el año.` });
+  if (diPendiente) avisos.push({ lvl: "warn", msg: matCap ? `Red en ${mat.label.toLowerCase()}: el DI del fabricante (el real) queda pendiente; sin él la red no se dimensiona (ya no se usa cédula 40 como indicativo, AUD-14) y su caída queda pendiente. Captura el DI del fabricante o usa cobre o acero, que tienen DI con fuente.` : `Material de la red pendiente: «${A.material || "(vacío)"}» no está en la lista; la red no se dimensiona ni se cotiza hasta capturar su material (AUD-14).` });
+  if (dPtotal != null && dPtotal > dPred + .01) avisos.push({ lvl: "warn", msg: `La caída calculada de la red es ${dPtotal.toFixed(2)} bar y el diseño se armó con ${dPred.toFixed(2)}. Sube un diámetro en la troncal o acorta la corrida: cada 0.1 bar de más son ~0.7 % de energía todo el año.` });
   if (rho < 1) avisos.push({ lvl: "err", msg: "Densidad de línea menor a la atmosférica: revisa la presión de descarga." });
   memo.push(`Red en ${mat.label.toLowerCase()}: densidad del aire a ${pDescarga.toFixed(1)} bar y ${tAmb} °C = ${n(rho, 2)} kg/m³, contra ${n(rhoAire(0, tAmb, pAtm), 2)} del aire libre. Dimensionar con densidad atmosférica es el error clásico de esta disciplina y deja la caída ${n(rho / rhoAire(0, tAmb, pAtm), 1)} veces baja.`);
   memo.push(`Longitud equivalente: ${n(Leq * 100 - 100, 0)} % adicional por válvulas, tes y codos (criterio de la casa, declarado).`);
@@ -7262,7 +7273,7 @@ function computeAire(A) {
   const R = { cls, lista, nPuntos, pico, medio, simul, simulAuto, demandaProceso, fugasLmin, conFugas,
     reservaLmin, purgaLmin, fadRequerido, pUso, dPred, dPfiltros, pDescarga, corrP, exento,
     principal, cubre, nUnidades, totalUnidades, redund, tanque, tanqueUnit, nTanques, vTeorico, arr, dPt,
-    sec, capSecador, fT, fP, fadCompresor, enA1, secadorPendiente, trenFiltros, mat, diFuente: DI.fuente, diPendiente, rho, tramos, dPtotal, Leq,
+    sec, capSecador, fT, fP, fadCompresor, enA1, secadorPendiente, trenFiltros, mat, matCap, diFuente: DI.fuente, diPendiente, rho, tramos, dPtotal, Leq,
     kWoper, kWhAno, mxnAno, mxnFugas, horas, tarifa, tAmb, avisos, memo };
   R.cot = cotizacionAire(R, A.precios);   /* H-296: su propia cotización */
   return R;
@@ -7321,8 +7332,8 @@ function buildAirePdf() {
 
   pdfHeading(d, "Red de distribucion");
   pdfTable(d, ["Tramo", "Q L/min", "Diametro", "Interior mm", "m/s", "Pa/m", "Long m", "dP bar"],
-    A.tramos.map((t) => [t.etiqueta, n(t.Q, 0), t.nom, n(t.d, 1), n(t.V, 1), n(t.Pam, 1), n(t.L, 0), t.dPbar.toFixed(3)])
-      .concat([["TOTAL", "", "", "", "", "", "", A.dPtotal.toFixed(3)]]),
+    A.tramos.map((t) => t.pendiente ? [t.etiqueta, n(t.Q, 0), "pendiente", "-", "-", "-", n(t.L, 0), "pendiente"] : [t.etiqueta, n(t.Q, 0), t.nom, n(t.d, 1), n(t.V, 1), n(t.Pam, 1), n(t.L, 0), t.dPbar.toFixed(3)])
+      .concat([["TOTAL", "", "", "", "", "", "", A.dPtotal == null ? "pendiente" : A.dPtotal.toFixed(3)]]),
     [140, 55, 55, 60, 40, 45, 45, 46]);
   pdfParagraph(d, `Diametros interiores: ${A.diFuente}.`);
   pdfParagraph(d, `Material ${A.mat.label}. ${A.mat.nota} Densidad del aire a ${A.pDescarga.toFixed(1)} bar y ${A.tAmb} C: ${n(A.rho, 2)} kg/m3, contra ${n(rhoAire(0, A.tAmb, SITE_PROY.pAtm), 2)} del aire libre. La red se calcula con la densidad real de linea; hacerlo con densidad atmosferica deja la caida varias veces baja y es el error clasico de esta disciplina.`);
@@ -19702,7 +19713,7 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "7", clean: "3", equip: "4", duct: "4", vent: "4", quote: "24", valor: "2", kaizen: "1", elec: "10", hidro: "9", fuego: "6", aire: "5", civil: "8", soporte: "14" };
+const MOTOR_VER = { load: "7", clean: "3", equip: "4", duct: "4", vent: "4", quote: "24", valor: "2", kaizen: "1", elec: "10", hidro: "9", fuego: "6", aire: "6", civil: "8", soporte: "14" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
@@ -19743,7 +19754,8 @@ const MOTOR_CAMBIOS = {
   aire: [{ ver: "2", rev: "2.9.16", que: "sin demanda no se cuentan unidades" },
     { ver: "3", rev: "2.9.24", que: "H-215: secador por ISO 7183:2007 Tabla 2 opción A1: capacidad = todo el caudal del compresor a las condiciones nominales (35 °C, 7 bar(e)), factor 1.0; fuera de A1 la corrección es del fabricante y queda pendiente con aviso (antes FAD requerido / (0.92 × 0.90) de memoria: proyecto fijo 2.46 → 2.43 m³/min)" },
     { ver: "4", rev: "2.9.24", que: "H-216: el tanque pulmón no se trunca a 5,000 L en silencio: si el teórico rebasa el mayor de la lista comercial se instalan varios de 5,000 L en paralelo (capacidad instalada ≥ teórica), con aviso y memoria veraz (13,103 L → 3 × 5,000 = 15,000 L; antes 5,000). Proyecto fijo: sin cambio (3,000 L)" },
-    { ver: "5", rev: "2.9.24", que: "H-218: diámetro interior por material: cobre tipo L con los DI de ASTM B88 (TUB_AGUA.cobre: 55 m de cobre 1\" → 1 1/4\"), acero con cédula 40, aluminio e inoxidable con cédula 40 sólo como indicativo y el DI del fabricante pendiente (aviso, memoria, PDF y partida). Proyecto fijo (aluminio): sin cambio de cifras, con la pendencia declarada" }],
+    { ver: "5", rev: "2.9.24", que: "H-218: diámetro interior por material: cobre tipo L con los DI de ASTM B88 (TUB_AGUA.cobre: 55 m de cobre 1\" → 1 1/4\"), acero con cédula 40, aluminio e inoxidable con cédula 40 sólo como indicativo y el DI del fabricante pendiente (aviso, memoria, PDF y partida). Proyecto fijo (aluminio): sin cambio de cifras, con la pendencia declarada" },
+    { ver: "6", rev: "2.9.24", que: "AUD-14 (auditoría externa, 29-sep-2026; «nada se estima»): un material de red que no está en la lista ya no se toma como aluminio (red pendiente de material, sin diámetros, caída ni importe); en aluminio calibrado e inoxidable ya no se dimensiona con cédula 40 «indicativa»: diámetros y caída de la red quedan pendientes del DI del fabricante, con aviso (la partida de la red dice «diámetros pendientes»)" }],
   civil: [{ ver: "2", rev: "2.9.16", que: "sin área clasificada no hay partidas de área clasificada" }, { ver: "3", rev: "2.9.19", que: "un cuarto limpio vacío no cuenta como área clasificada" }, { ver: "4", rev: "2.9.24", que: "H-243: muro clasificado y media caña cuarto por cuarto (perímetro capturado o rectángulo 3:2 declarado «estimado» en la partida) × su altura; antes la fracción de área del edificio entre la altura media (proyecto fijo 31.11 ml / 73.32 m² → 89.44 ml / 134.16 m²)" }, { ver: "5", rev: "2.9.24", que: "H-244 (decisión 5): la tabiquería es un perímetro capturable por zona; sin captura, rectángulo 3:2 × altura marcado «estimado» en la partida; los muros de carga térmica ya no entran (capturar un muro exterior bajaba el muro civil)" },
     { ver: "6", rev: "2.9.24", que: "H-265 (decisión del dueño, 27-sep-2026): obra civil es autónoma: sus áreas de obra (área, altura, perímetro de tabiquería) y sus cuartos clasificados (área, altura, perímetro) se capturan en su pestaña; ya no se leen las zonas de carga térmica ni los cuartos limpios (cruces load>civil y clean>civil retirados). Un proyecto guardado los copia una vez al abrirlo, con las mismas cifras. Sin altura capturada no se suponen 2.8 m: el muro queda pendiente" },
     { ver: "7", rev: "2.9.24", que: "H-265 (complemento): con «De las áreas de obra capturadas aquí» y la lista vacía el área es 0 y no se cotiza nada; antes se usaban los totales a mano que la pantalla oculta en ese modo (500 m² y 300 m² de muro → 1,690,210 MXN en la cotización)" },
@@ -23118,8 +23130,8 @@ function viewAire() {
       <div class="tw" style="margin-top:14px"><table>
         <caption class="sub" style="text-align:left;caption-side:top">Diámetros interiores: ${esc(R.diFuente)}</caption>
         <thead><tr><th>Tramo</th><th class="num">Q L/min</th><th>Diám.</th><th class="num">m/s</th><th class="num">Pa/m</th><th class="num">ΔP bar</th></tr></thead>
-        <tbody>${R.tramos.map((t) => `<tr><td>${esc(t.etiqueta)}</td><td class="num">${n(t.Q, 0)}</td><td>${t.nom}</td><td class="num">${n(t.V, 1)}</td><td class="num">${n(t.Pam, 1)}</td><td class="num">${t.dPbar.toFixed(3)}</td></tr>`).join("")}
-        <tr><td><b>Total</b></td><td class="num"></td><td></td><td class="num"></td><td class="num"></td><td class="num"><b>${R.dPtotal.toFixed(3)}</b></td></tr></tbody>
+        <tbody>${R.tramos.map((t) => t.pendiente ? `<tr><td>${esc(t.etiqueta)}</td><td class="num">${n(t.Q, 0)}</td><td>pendiente</td><td class="num">—</td><td class="num">—</td><td class="num">pendiente</td></tr>` : `<tr><td>${esc(t.etiqueta)}</td><td class="num">${n(t.Q, 0)}</td><td>${t.nom}</td><td class="num">${n(t.V, 1)}</td><td class="num">${n(t.Pam, 1)}</td><td class="num">${t.dPbar.toFixed(3)}</td></tr>`).join("")}
+        <tr><td><b>Total</b></td><td class="num"></td><td></td><td class="num"></td><td class="num"></td><td class="num"><b>${R.dPtotal == null ? "pendiente" : R.dPtotal.toFixed(3)}</b></td></tr></tbody>
       </table></div>
       <div class="hint" style="margin-top:10px">Tren de filtración: ${R.trenFiltros.map((f) => esc(f.label)).join(" → ")}</div>
     </div></div>

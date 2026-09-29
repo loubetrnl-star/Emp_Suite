@@ -9660,6 +9660,26 @@ t("S.195 (AUD-14) soportería: la tubería capturada a mano sin material no se s
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+t("S.196 (AUD-14) aire comprimido no dimensiona la red con datos que nadie capturó: material desconocido ya no se toma como aluminio, y en aluminio o inoxidable (DI del fabricante pendiente) no se usa cédula 40 «indicativa»: diámetros y caída de la red quedan pendientes con aviso", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    const arma = (material) => { S.aire = { ...G("defaultAire")(), material, Lprincipal: 60, Lramales: 20, consumos: [{ id: "s196", tipo: "generico", nombre: "Prueba S.196", cant: 4, lmin: 500, bar: 6, uso: .5 }] }; G("recompute")(); return G("AIRE"); };
+    let A = arma("aluminio");
+    if (!(A.fadRequerido > 0)) throw new Error("el caso no aísla lo que se quiere probar: debe haber demanda");
+    eq(A.tramos.every((t) => t.d == null && t.pendiente === true), true, "aluminio sin DI del fabricante: diámetros pendientes (sin cédula 40 indicativa):");
+    eq(A.dPtotal, null, "caída de la red pendiente:");
+    if (!A.avisos.some((a) => /DI del fabricante/.test(a.msg) && /pendiente/.test(a.msg))) throw new Error("falta el aviso de DI del fabricante pendiente");
+    A = arma("material_raro");
+    eq(A.mat.label === G("TUB_AIRE").aluminio.label, false, "un material desconocido no se toma como aluminio:");
+    eq(A.tramos.every((t) => t.d == null), true, "sin material no se dimensiona la red:");
+    if (!A.avisos.some((a) => /[Mm]aterial de la red/.test(a.msg) && /pendiente/.test(a.msg))) throw new Error("falta el aviso de material pendiente");
+    if (!A.cot.pendientes.some((p) => /[Rr]ed de aire/.test(p.desc))) throw new Error("la red sin material debe quedar pendiente en la cotización de aire");
+    /* Con cobre (DI de ASTM B88) sí se dimensiona. */
+    A = arma("cobre");
+    eq(A.tramos.every((t) => t.d > 0), true, "en cobre se dimensiona:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {
   const guardado = JSON.stringify(S);
   try {
