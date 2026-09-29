@@ -1,0 +1,58 @@
+{
+  "norma": "SMACNA HVAC Duct Construction Standards, Metal and Flexible, 2nd Ed. 1995, Addendum No. 1 (1997)",
+  "tabla": "3-2A",
+  "titulo": "TABLE 3-2A ROUND DUCT GAGE UNREINFORCED POSITIVE PRESSURE",
+  "pagina": "3.3",
+  "fuente": "normas/smacna.duct.1995.pdf, página 139 del archivo (impresa 3.3), SHA-256 074d19f86c65d819d9a2e97c9e954af81c79dfac157572593c70ce352f97a5b5; cotejada con normas/smacna.duct.1995.html, SHA-256 0bab514ac5fa5e50d623c650f4153218c094fda8e797657d3e316c9bccc0db68 (ver normas/FUENTE.md)",
+  "transcripcion": "Del PDF escaneado (la página no trae texto), renderizada a 144 y 288 ppp; cotejada renglón por renglón con la tabla del HTML de la misma URL.",
+  "unidades": { "diametro": "in", "presion": "in w.g.", "calibre": "número de calibre (gage) tal como lo imprime la tabla; no se convierte a espesor" },
+  "encabezado_diametro": "MAX. DIA.",
+  "columnas": [
+    { "id": "p2_spiral", "encabezado": "+2\" w.g. / Spiral Seam", "clase_presion_inwg": 2, "signo": "+", "costura": "spiral" },
+    { "id": "p2_long", "encabezado": "+2\" w.g. / Long. Seam", "clase_presion_inwg": 2, "signo": "+", "costura": "longitudinal" },
+    { "id": "p4_spiral", "encabezado": "+4\" w.g. / Spiral Seam", "clase_presion_inwg": 4, "signo": "+", "costura": "spiral" },
+    { "id": "p4_long", "encabezado": "+4\" w.g. / Long. Seam", "clase_presion_inwg": 4, "signo": "+", "costura": "longitudinal" },
+    { "id": "p10_spiral", "encabezado": "+10\" w.g. / Spiral Seam", "clase_presion_inwg": 10, "signo": "+", "costura": "spiral" },
+    { "id": "p10_long", "encabezado": "+10\" w.g. / Long. Seam", "clase_presion_inwg": 10, "signo": "+", "costura": "longitudinal" }
+  ],
+  "renglones": [
+    { "diametro_texto": "6\"", "diametro_min_in": null, "diametro_max_in": 6, "diametro_min_mm": null, "diametro_max_mm": null, "calibres": { "p2_spiral": 28, "p2_long": 28, "p4_spiral": 28, "p4_long": 28, "p10_spiral": 28, "p10_long": 28 }, "nota": null },
+    { "diametro_texto": "8\"", "diametro_min_in": null, "diametro_max_in": 8, "diametro_min_mm": null, "diametro_max_mm": null, "calibres": { "p2_spiral": 28, "p2_long": 28, "p4_spiral": 28, "p4_long": 28, "p10_spiral": 28, "p10_long": 26 }, "nota": null },
+    { "diametro_texto": "10\"", "diametro_min_in": null, "diametro_max_in": 10, "diametro_min_mm": null, "diametro_max_mm": null, "calibres": { "p2_spiral": 28, "p2_long": 26, "p4_spiral": 28, "p4_long": 26, "p10_spiral": 28, "p10_long": 26 }, "nota": null },
+    { "diametro_texto": "12\"", "diametro_min_in": null, "diametro_max_in": 12, "diametro_min_mm": null, "diametro_max_mm": null, "calibres": { "p2_spiral": 28, "p2_long": 26, "p4_spiral": 28, "p4_long": 26, "p10_spiral": 26, "p10_long": 24 }, "nota": null },
+    { "diametro_texto": "14\"", "diametro_min_in": null, "diametro_max_in": 14, "diametro_min_mm": null, "diametro_max_mm": null, "calibres": { "p2_spiral": 28, "p2_long": 26, "p4_spiral": 26, "p4_long": 24, "p10_spiral": 26, "p10_long": 24 }, "nota": null },
+    { "diametro_texto": "16\"", "diametro_min_in": null, "diametro_max_in": 16, "diametro_min_mm": null, "diametro_max_mm": null, "calibres": { "p2_spiral": 26, "p2_long": 24, "p4_spiral": 26, "p4_long": 24, "p10_spiral": 24, "p10_long": 22 }, "nota": null },
+    { "diametro_texto": "18\"", "diametro_min_in": null, "diametro_max_in": 18, "diametro_min_mm": null, "diametro_max_mm": null, "calibres": { "p2_spiral": 26, "p2_long": 24, "p4_spiral": 24, "p4_long": 24, "p10_spiral": 24, "p10_long": 22 }, "nota": null },
+    { "diametro_texto": "19-26\"", "diametro_min_in": 19, "diametro_max_in": 26, "diametro_min_mm": null, "diametro_max_mm": null, "calibres": { "p2_spiral": 26, "p2_long": 24, "p4_spiral": 24, "p4_long": 22, "p10_spiral": 24, "p10_long": 22 }, "nota": null },
+    { "diametro_texto": "27-36\"", "diametro_min_in": 27, "diametro_max_in": 36, "diametro_min_mm": null, "diametro_max_mm": null, "calibres": { "p2_spiral": 24, "p2_long": 22, "p4_spiral": 22, "p4_long": 20, "p10_spiral": 22, "p10_long": 20 }, "nota": null },
+    { "diametro_texto": "37-50\"", "diametro_min_in": 37, "diametro_max_in": 50, "diametro_min_mm": null, "diametro_max_mm": null, "calibres": { "p2_spiral": 22, "p2_long": 20, "p4_spiral": 20, "p4_long": 20, "p10_spiral": 20, "p10_long": 20 }, "nota": null },
+    { "diametro_texto": "51-60\"", "diametro_min_in": 51, "diametro_max_in": 60, "diametro_min_mm": null, "diametro_max_mm": null, "calibres": { "p2_spiral": 20, "p2_long": 18, "p4_spiral": 18, "p4_long": 18, "p10_spiral": 18, "p10_long": 18 }, "nota": null },
+    { "diametro_texto": "61-84\"", "diametro_min_in": 61, "diametro_max_in": 84, "diametro_min_mm": null, "diametro_max_mm": null, "calibres": { "p2_spiral": 18, "p2_long": 16, "p4_spiral": 18, "p4_long": 16, "p10_spiral": 18, "p10_long": 16 }, "nota": null }
+  ],
+  "notas": [
+    "REFERENCES FOR ROUND DUCT CONSTRUCTION",
+    "1. Pressure and Velocity Classification, page 1-6.",
+    "2. Sealing requirements, page 1-9.",
+    "3. Specifications for duct and fittings, page 3-1.",
+    "4. Longitudinal seams, page 3-7. Note: Fig. 3-1 has other pressure limits.",
+    "5. Transverse joints, page 3-8. Note: Fig. 3-2 has other pressure limits.",
+    "6. Elbows, page 3-9.",
+    "7. Inline offsets and transitions, page 2-9.",
+    "8. Tees and laterals, pages 3-10 and 3-11.",
+    "9. Rectangular main to round branch, page 2-9.",
+    "10. Flexible connections, pages 3-15 to 3-18.",
+    "11. Dampers, page 2-16",
+    "12. Access doors, page 2-14.",
+    "13. Hangers, page 4-8.",
+    "14. Aluminum duct Schedule, page 3-6.",
+    "15. Polyvinyl coated steel or stainless steel: Use galvanized steel schedule."
+  ],
+  "observaciones": [
+    "La tabla sólo da el diámetro MÁXIMO (columna «MAX. DIA.») en pulgadas. En los renglones de un solo valor (6\" a 18\") el mínimo no está impreso: diametro_min_in = null (no se infiere del renglón anterior). En los renglones con rango (19-26\" …) el mínimo es el impreso.",
+    "La tabla no trae milímetros: diametro_min_mm y diametro_max_mm = null. La versión métrica es otra tabla, TABLE 3-2AM (pág. 3.4), con diámetro máximo en mm y espesor nominal en mm (no calibres); no se mezcla aquí.",
+    "No hay celdas ilegibles ni vacías en esta tabla.",
+    "El HTML escribe «Long. seam» (minúscula) en la columna +4\"; la imagen dice «Long. Seam». Se transcribe la imagen. Los valores numéricos del HTML coinciden con la imagen en los 72 renglón-columna.",
+    "Las notas son la lista «REFERENCES FOR ROUND DUCT CONSTRUCTION» impresa bajo la tabla en la misma página; no hay notas al pie numeradas propias de la tabla. La referencia 14 remite a «page 3-6», pero la TABLE 3-3 de aluminio está impresa en la pág. 3.7 de esta impresión: se transcribe tal cual.",
+    "El Addendum No. 1 (nov 1997) no menciona esta tabla (búsqueda de texto en su sección del HTML)."
+  ]
+}
