@@ -5362,7 +5362,7 @@ t("S.6 Memoria de cálculo emite el PDF de cada disciplina: con el nombre del pr
   eq(emitidos, 14, "catorce disciplinas con memoria propia:");
 });
 
-t("S.7 Cotización de esta disciplina reúne las partidas del motor; sin partidas o sin cruce autorizado se apaga con su razón", () => {
+t("S.7 Cotización de esta disciplina reúne las partidas del motor; sin partidas se apaga con su razón; H-304: ya no depende del permiso hacia la Cotización general", () => {
   llenarTodoS();
   let emitidos = 0, apagados = 0;
   conPdfCapturado((salida) => {
@@ -5378,13 +5378,13 @@ t("S.7 Cotización de esta disciplina reúne las partidas del motor; sin partida
     });
   });
   if (emitidos < 6) throw new Error(`sólo ${emitidos} cotizaciones emitidas`);
-  /* Sin autorizar el cruce, la razón trae el botón para autorizarlo. */
+  /* H-304: la cotización de la disciplina es de su motor: sin el cruce hacia la Cotización general sigue saliendo. */
   const perm = S.perms["elec>quote"];
   try {
     delete S.perms["elec>quote"]; G("recompute")();
     const b = boton("electrico", "pdf-cot-motor");
-    eq(apagado(b), true, "cruce sin autorizar:");
-    contiene(w.document.querySelector("#view .accbar").innerHTML, 'data-act="ask-link" data-id="elec>quote"', "botón para autorizar:");
+    eq(G("accEstado")("elec").cot.autorizar, undefined, "sin el cruce hacia la Cotización general, la de la disciplina no pide autorizarlo:");
+    eq(/data-act="ask-link" data-id="elec>quote"/.test(w.document.querySelector("#view .accbar").innerHTML), false, "ni ofrece el botón para autorizarlo:");
   } finally { S.perms["elec>quote"] = perm; G("recompute")(); }
 });
 
@@ -9471,6 +9471,19 @@ t("S.183 (H-303) plaza, factor de plaza, base, FASAR y referencia son campos pro
     const s = G("sanearEstado")(viejo);
     eq(JSON.stringify(G("MOTORES_COT").map((k) => [s[k].comercial.plaza, s[k].comercial.plazaFactor, s[k].comercial.fasar, s[k].comercial.refBase]).filter((x, i, a) => JSON.stringify(x) !== JSON.stringify(a[0]))), "[]", "todos los motores toman los mismos valores:");
     eq(JSON.stringify([s.fuego.comercial.plaza, s.fuego.comercial.plazaFactor, s.fuego.comercial.fasar, s.fuego.comercial.refBase]), JSON.stringify(["mexicali", 1.05, 1.5, "BIMSA 2026"]), "los de la cotización general de hoy:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+t("S.184 (H-304) la cotización de cada disciplina (tarjeta y PDF) sale de la cotización de su motor, con su bloque comercial: no depende del permiso hacia la Cotización general y con el permiso da los mismos renglones e importes que el catálogo", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.184"; S.perms = {};
+    S.fuego = { ...S.fuego, area: 400, altura: 6, Lramal: 20, Lmontante: 8 }; G("recompute")();
+    const c = G("cotizacionDeMotor")("fuego");
+    eq(c.partidas.length > 0, true, "sin permiso hacia la Cotización general, contra incendio tiene su cotización:");
+    eq(G("accEstado")("fuego").cot.ok, true, "y su PDF sale:");
+    S.perms["fuego>quote"] = { ts: 1, via: "S.184" }; G("recompute")();
+    const cat = G("catalogoConceptos")().secciones.flatMap((s) => s.partidas).filter((p) => p.mot === "fuego");
+    eq(JSON.stringify(G("cotizacionDeMotor")("fuego").partidas.map((p) => [p.desc, p.unit, p.total])), JSON.stringify(cat.map((p) => [p.desc, p.unit, p.total])), "con el permiso, lo mismo que el catálogo:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {

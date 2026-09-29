@@ -6564,11 +6564,24 @@ function catalogoConceptos() {
 /* Cotización por módulo. Cada motor ve LO QUE ÉL APORTA al catálogo, con sus
    partidas y su importe, sin tener que abrir la pestaña de cotización. Es lo
    que permite revisar disciplina por disciplina antes de unificar. */
+/* H-304 (decisión del dueño, 29-sep-2026: cada motor saca su cotización por sí solo). La cotización de una disciplina sale de la
+   cotización de SU motor (X.cot) con SU bloque comercial, no del catálogo de la Cotización general: no depende del permiso x>quote
+   del consolidado ni de las demás disciplinas. Mismos renglones, factor de plaza y marca SEMILLA · SIN FUENTE que el catálogo; la
+   clave se numera dentro de la disciplina. Ya no dice qué porcentaje del proyecto aporta: eso es del consolidado. */
+const COT_RESULTADO = () => ({ equip: SYS, duct: DUCT, vent: VENT, clean: CLEAN, elec: ELEC, hidro: HIDRO, fuego: FUEGO, aire: AIRE, civil: CIVIL, soporte: SOPORTE });
 function cotizacionDeMotor(mot) {
-  const cat = catalogoConceptos();
-  const p = cat.secciones.flatMap((s) => s.partidas.filter((x) => x.mot === mot));
-  const sub = p.reduce((a, x) => a + x.total, 0);
-  return { partidas: p, sub, pct: cat.subtotal > 0 ? sub / cat.subtotal : 0, directo: cat.subtotal };
+  const R = COT_RESULTADO()[mot], C = R && typeof R === "object" && R.cot ? R.cot : null;
+  const CM = C && C.comercial ? C.comercial : comercialDe(MOTORES_COT.includes(mot) ? S[mot] : null);
+  if (!C) return { partidas: [], sub: 0, pendientes: [], porCotizar: [], comercial: CM };
+  /* «in»: sólo la cotización de Selección trae lines y auxFin (la comprobación de contratos cuenta como faltante leer lo que no hay). */
+  const filas = [...("lines" in C ? C.lines : []).map((l) => ({ ...l, semilla: true })), ...("aux" in C ? C.aux : []), ...("auxFin" in C ? C.auxFin : [])]
+    .map((x) => ({ desc: x.desc, descEn: x.descEn || x.desc, un: x.un || "LOTE", qty: x.qty, unit: x.unit, total: x.total, sec: x.sec || "B", mot,
+      talCual: exentoPlaza(x), semilla: "semilla" in x ? !!x.semilla : !("origen" in x && x.origen) && x.sec !== "H" }))
+    .filter((x) => x.total > 0);
+  filas.forEach((x) => { if (x.talCual) return; x.unit = x.unit * CM.fP; x.total = x.total * CM.fP; });
+  filas.forEach((x) => { if (x.semilla) { x.desc = `${x.desc} · SEMILLA · SIN FUENTE`; x.descEn = `${x.descEn} · SEED · NO SOURCE`; } });
+  const partidas = SEC_ORDEN.flatMap((k) => filas.filter((x) => x.sec === k).map((x, i) => ({ ...x, clave: `${k}${101 + i}` })));
+  return { partidas, sub: partidas.reduce((a, x) => a + x.total, 0), pendientes: "pendientes" in C ? C.pendientes : [], porCotizar: "porCotizar" in C ? C.porCotizar : [], comercial: CM };
 }
 /* Tarjeta de costo que se inserta en la pantalla de cada motor. */
 
@@ -6598,9 +6611,7 @@ function tarjetaHidroneumatico() {
 }
 
 function tarjetaCosto(mot, etiqueta) {
-  const link = `${mot}>quote`;
-  const permitido = !LINKS[link] || linkAllowed(link);
-  const c = permitido ? cotizacionDeMotor(mot) : null;
+  const c = cotizacionDeMotor(mot);   /* H-304: la de SU motor; no depende del permiso del consolidado */
   /* H-303: plaza, factor, base, FASAR y referencia de la cotización de ESTE motor, capturados aquí. */
   const CM = comercialDe(S[mot]), PLZ = CM.PLZ, fP = CM.fP;
   const capturaCom = `<details style="margin-top:10px"><summary>Parámetros comerciales de ${esc(etiqueta)} (su cotización)</summary>
@@ -6608,13 +6619,9 @@ function tarjetaCosto(mot, etiqueta) {
       <div class="row">${sel("Base del precio unitario", `${mot}.comercial.basePrecio`, Object.entries(BASES_PRECIO).map(([k, v]) => [k, v.label]))}${inp("FASAR", `${mot}.comercial.fasar`, "number", "0.01")}</div>
       ${inp("Referencia citada (edición, licitación o folio)", `${mot}.comercial.refBase`, "text")}
     </details>`;
-  if (!permitido) return `<div class="card" style="grid-column:1/-1"><h3>Costo de ${esc(etiqueta)}<span class="tag">sin autorizar</span></h3><div class="body">
-    <div class="hint">Este motor no tiene autorizado pasar su resultado a la cotización, así que su costo no se calcula ni entra al catálogo unificado.</div>
-    <button class="toolbtn" style="margin-top:12px" data-act="ask-link" data-id="${link}">Autorizar el cruce</button>
-  </div></div>`;
   if (!c.partidas.length) return `<div class="card" style="grid-column:1/-1"><h3>Costo de ${esc(etiqueta)}</h3><div class="body">
     <div class="hint">Todavía no hay partidas: este motor no ha producido un resultado que cotizar.</div>${capturaCom}</div></div>`;
-  return `<div class="card" style="grid-column:1/-1"><h3>Costo de ${esc(etiqueta)}<span class="tag">${c.partidas.length} partida(s) · ${n(c.pct * 100, 1)} % del directo</span></h3><div class="body">
+  return `<div class="card" style="grid-column:1/-1"><h3>Costo de ${esc(etiqueta)}<span class="tag">${c.partidas.length} partida(s) · su cotización</span></h3><div class="body">
     <div class="sub" style="margin-bottom:10px">Plaza ${esc(PLZ.label)} · factor de plaza aplicado ${n(fP, 3)} · base ${esc(CM.B.label)} · FASAR ${n(CM.fasarN, 2)} (de la cotización de este motor)</div>
     ${capturaCom}
     <div class="tw"><table>
@@ -6622,7 +6629,7 @@ function tarjetaCosto(mot, etiqueta) {
       <tbody>${c.partidas.map((p) => `<tr><td>${p.clave}</td><td>${esc(p.desc)}</td><td>${p.un}</td><td class="num">${n(p.qty, 2)}</td><td class="num">${n(p.unit, 2)}</td><td class="num">${n(p.total, 0)}</td></tr>`).join("")}
       <tr><td></td><td><b>APORTA AL COSTO DIRECTO</b></td><td></td><td></td><td></td><td class="num"><b>$ ${n(c.sub, 0)}</b></td></tr></tbody>
     </table></div>
-    ${pendientesTexto(QUOTE, mot).length ? `<div class="hint" style="margin-top:10px">Pendiente, sin cotizar: ${esc(pendientesTexto(QUOTE, mot).join(" · "))}.</div>` : ""}
+    ${pendientesTexto(c, mot).length ? `<div class="hint" style="margin-top:10px">Pendiente, sin cotizar: ${esc(pendientesTexto(c, mot).join(" · "))}.</div>` : ""}
   </div></div>`;
 }
 function buildCotizacionMotorPdf(mot) {
@@ -6647,9 +6654,9 @@ function buildCotizacionMotorPdf(mot) {
     c.partidas.map((p) => [p.clave, p.desc, p.un, n(p.qty, 2), n(p.unit, 2), n(p.total, 0)])
       .concat([["", "APORTA AL COSTO DIRECTO", "", "", "", n(c.sub, 0)]]),
     [45, 213, 42, 58, 62, 66]);
-  pdfParagraph(d, `Esta disciplina aporta ${n(c.pct * 100, 1)} % del costo directo del proyecto. Los porcentajes de indirectos, utilidad, flete, fianzas e impuesto se aplican sobre el conjunto y se ven en la cotizacion unificada, no aqui: repartirlos por disciplina daria un numero que no se puede facturar.`);
+  pdfParagraph(d, `Esta es la cotizacion de la disciplina, con sus precios y su factor de plaza. Los porcentajes de indirectos, utilidad, flete, fianzas e impuesto se aplican sobre el conjunto y se ven en la cotizacion unificada, no aqui: repartirlos por disciplina daria un numero que no se puede facturar.`);
   pdfParagraph(d, `Art. 185 del Reglamento de la Ley de Obras Publicas: el precio unitario es el importe total que debe cubrirse por unidad de concepto TERMINADO. Cada renglon de este catalogo esta formado a concepto terminado.`);
-  if (pendientesTexto(QUOTE, mot).length) pdfParagraph(d, "PARTIDAS PENDIENTES, NO COTIZADAS (falta un dato; no se supone): " + pendientesTexto(QUOTE, mot).join(" · ") + ".");
+  if (pendientesTexto(c, mot).length) pdfParagraph(d, "PARTIDAS PENDIENTES, NO COTIZADAS (falta un dato; no se supone): " + pendientesTexto(c, mot).join(" · ") + ".");
   pdfTrazabilidad(d, [mot]);
   return d.end();
 }
@@ -19955,8 +19962,8 @@ function accEstado(id) {
     R.cot = { ok: false, razon: M.sinCot };
   } else {
     const link = `${M.cot}>quote`;
-    if (LINKS[link] && !linkAllowed(link)) R.cot = { ok: false, razon: "El cruce hacia la cotización no está autorizado", autorizar: link };
-    else if (M.cot === "hidro" && hidroDiametrosSinPrecio().length) R.cot = { ok: false, razon: `Falta el precio por metro de ${hidroDiametrosSinPrecio().join(", ")} (Cotización › Tubería hidráulica)` };
+    /* H-304: la cotización de la disciplina es de su motor: no pide el permiso x>quote del consolidado. */
+    if (M.cot === "hidro" && hidroDiametrosSinPrecio().length) R.cot = { ok: false, razon: `Falta el precio por metro de ${hidroDiametrosSinPrecio().join(", ")} (Hidrosanitario › Precios de tubería)` };
     else R.cot = (!falta || MOTORES_CAPTURA.some(capturaReal)) && seguro(() => cotizacionDeMotor(M.cot).partidas.length, 0) > 0 ? { ok: true }
       : { ok: false, razon: falta ? aca : "Todavía no hay partidas de esta disciplina" };
   }
