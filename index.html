@@ -4857,8 +4857,6 @@ const QUOTE_SEED = {
   scaleExp: 0.85,         // exponente de economía de escala
   priceFactor: 1,         // ajuste global de lista (1.00 = base grado cuarto limpio)
   instPct: 0.35,          // instalación mecánica como % del equipo
-  ductKg: 165,            // MXN por kg de lámina instalada
-  diffuser: 6850,         // referencia interna · difusor perforado con plenum
   pipeTR: 9500,           // tubería de refrigerante o hidráulica por TR
   controls: 68500,        // referencia interna · controlador DDC por equipo
   /* H-17 · Partidas que la cotización ignoraba aunque la propia suite las
@@ -8831,16 +8829,10 @@ function computeQuote() {
   if (equipTons > 0) aux.push({ desc: `Tubería de refrigerante o hidráulica, aislada (${n(equipTons, 1)} TR)`,
     descEn: `Insulated refrigerant or hydronic piping (${n(equipTons, 1)} tons)`,
     qty: equipTons, unit: num(q.pipeTR, QUOTE_SEED.pipeTR), total: num(q.pipeTR, QUOTE_SEED.pipeTR) * equipTons , sec: "B", un: "TR", mot: "equip"});
-  /* H-165 (dependencia de ductos, quote v23): los kilos de grasa (acero soldado, UMC 2018 §510.5) no van en la lámina galvanizada. */
-  const kgGrasa = DUCT?.boq?.kgGrasa || 0;
-  const kg = Math.max(0, (DUCT?.boq?.kg || 0) - kgGrasa);
-  if (kg > 0) aux.push({ desc: `Ducto de lámina ${({ galvanized: "galvanizada", aluminum: "de aluminio", stainless: "de acero inoxidable" })[S.duct.meta.material] || "galvanizada"} instalado y sellado (${n(kg, 0)} kg del cálculo de ductos)`,
-    descEn: `Installed and sealed ${({ galvanized: "galvanized", aluminum: "aluminum", stainless: "stainless steel" })[S.duct.meta.material] || "galvanized"} sheet metal duct (${n(kg, 0)} kg from the duct calculation)`,
-    qty: kg, unit: num(q.ductKg, QUOTE_SEED.ductKg), total: num(q.ductKg, QUOTE_SEED.ductKg) * kg , sec: "B", un: "KG", mot: "duct"});
-  const nDif = t.cfm > 0 ? Math.ceil(t.cfm / 400) : 0;
-  if (nDif > 0) aux.push({ desc: `Difusores y rejillas con caja plenum (${n(t.cfm, 0)} CFM ÷ 400 CFM por boca)`,
-    descEn: `Diffusers and grilles with plenum box (${n(t.cfm, 0)} CFM ÷ 400 CFM per outlet)`,
-    qty: nDif, unit: num(q.diffuser, QUOTE_SEED.diffuser), total: num(q.diffuser, QUOTE_SEED.diffuser) * nDif , sec: "B", un: "PIEZA", mot: "duct"});
+  /* H-300 (decisión del dueño, 29-sep-2026): la cotización de Ductos la arma su motor con sus resultados, sus precios y su captura
+     de difusores (DUCT.cot, cotizacionDuct); aquí sólo se juntan sus renglones tal cual (copias), sin recalcular nada. */
+  const DC = DUCT && DUCT.cot ? DUCT.cot : { aux: [], pendientes: [], porCotizar: [] };
+  aux.push(...DC.aux.map((x) => ({ ...x })));
   if (nEquip > 0) aux.push({ desc: `Control DDC y tablero local por equipo`, descEn: `DDC control and local panel per unit`,
     qty: nEquip, unit: num(q.controls, QUOTE_SEED.controls), total: num(q.controls, QUOTE_SEED.controls) * nEquip , sec: "B", un: "PIEZA", mot: "equip"});
   /* H-17 · Renglones automáticos desde los otros dos motores, con la misma
@@ -8849,24 +8841,10 @@ function computeQuote() {
   const faltan = [];
   /* rev 2.9.16 · Partidas que se conocen pero no se cotizan porque falta un dato del usuario: se declaran, no se inventan. */
   const pendientes = [];
-  /* H-166 (dependencia de ductos, quote v21): el tramo sin sección no entra a los kilos de lámina; queda pendiente con su razón. */
-  ((typeof DUCT !== "undefined" && DUCT && DUCT.segs) || []).filter((s) => s.error && num(s.L) > 0).forEach((s) => pendientes.push({ mot: "duct",
-    desc: `Ducto de lámina, tramo ${s.tag} (${n(s.L, 1)} m)`, descEn: `Sheet metal duct, run ${s.tag} (${n(s.L, 1)} m)`,
-    motivo: `pendiente de medida: ${s.error}`, motivoEn: `size pending: ${s.errorEn || s.error}` }));
-  /* H-167 (dependencia de ductos, quote v22): un tramo sin longitud capturada no lleva lámina; queda pendiente de longitud. */
-  ((typeof DUCT !== "undefined" && DUCT && DUCT.segs) || []).filter((s) => !(num(s.L) > 0)).forEach((s) => pendientes.push({ mot: "duct",
-    desc: `Ducto de lámina, tramo ${s.tag}`, descEn: `Sheet metal duct, run ${s.tag}`,
-    motivo: "pendiente de longitud (sin metros capturados no se suponen)", motivoEn: "length pending (no meters are assumed without capture)" }));
+  pendientes.push(...DC.pendientes.map((x) => ({ ...x })));   /* H-300: tramos sin medida o sin longitud (H-166, H-167) y difusores sin capturar */
   /* rev 2.9.23 · Partidas sin precio que el Budget Proposal imprime «Por cotizar», y renglones con precio de referencia. */
   const porCotizar = [], referencias = [];
-  /* H-165: el ducto de grasa soldado no tiene precio con fuente: sale «Por cotizar» con sus kilos y su norma. */
-  if (kgGrasa > 0) {
-    const inox = S.duct && S.duct.meta && S.duct.meta.material === "stainless";
-    porCotizar.push({ sec: "B", mot: "duct", clave: "ductoGrasa", un: "KG", qty: kgGrasa,
-      desc: `Ducto de grasa de ${inox ? "acero inoxidable 18 MSG" : "acero al carbón 16 MSG"} con soldadura externa continua hermética (UMC 2018 §510.5), ${n(kgGrasa, 0)} kg`,
-      descEn: `Grease duct, ${inox ? "18 MSG stainless steel" : "16 MSG carbon steel"}, liquid-tight continuous external weld (UMC 2018 §510.5), ${n(kgGrasa, 0)} kg`,
-      motivo: "sin precio con fuente para ducto de grasa soldado" });
-  }
+  porCotizar.push(...DC.porCotizar.map((x) => ({ ...x })));   /* H-300: ducto de grasa soldado «Por cotizar» (H-165) */
   /* rev 2.9.23 · DECISIÓN DEL DUEÑO: flete, aduana e importación a México es un renglón propio, siempre «Por cotizar» hasta
      capturarlo con monto, fuente y fecha. Nunca se prorratea ni se estima. */
   const imp = (q.importacion && typeof q.importacion === "object") ? q.importacion : {};
@@ -9770,6 +9748,51 @@ function calcSegment(s, meta) {
    es de toda la red. Se declara cuál es cuál en la pantalla de ductos.
    ========================================================================= */
 const DUCT_AHU = ["supply", "return"];
+/* H-300 (decisión del dueño, 29-sep-2026: cada motor saca su propia cotización de sus propios resultados; las propuestas entre
+   motores se retiran). Los precios de la lámina instalada y del difusor con plenum son de Ductos: copia en este motor de la semilla
+   de la casa (antes QUOTE_SEED.ductKg 165 MXN/kg y diffuser 6,850 MXN, sin fuente; la cotización los marca SEMILLA · SIN FUENTE).
+   El número de difusores y rejillas se captura en Ductos (S.duct.difusores); ya no sale de los CFM de Carga térmica. Sin captura y
+   con tramos de suministro, «pendiente de cantidad». */
+const DUCT_PRECIO_SEED = { kg: 165, difusor: 6850 };
+function cotizacionDuct(R, D) {
+  const aux = [], pendientes = [], porCotizar = [];
+  if (!R) return { aux, pendientes, porCotizar };
+  const P = D && typeof D === "object" && "precios" in D && D.precios && typeof D.precios === "object" ? D.precios : {};
+  const mat = (D && D.meta && D.meta.material) || "galvanized";
+  /* H-165 (dependencia de ductos, quote v23): los kilos de grasa (acero soldado, UMC 2018 §510.5) no van en la lámina galvanizada. */
+  const kgGrasa = (R.boq && R.boq.kgGrasa) || 0;
+  const kg = Math.max(0, ((R.boq && R.boq.kg) || 0) - kgGrasa);
+  const pKg = num(P.kg, DUCT_PRECIO_SEED.kg), pDif = num(P.difusor, DUCT_PRECIO_SEED.difusor);
+  if (kg > 0) aux.push({ desc: `Ducto de lámina ${({ galvanized: "galvanizada", aluminum: "de aluminio", stainless: "de acero inoxidable" })[mat] || "galvanizada"} instalado y sellado (${n(kg, 0)} kg del cálculo de ductos)`,
+    descEn: `Installed and sealed ${({ galvanized: "galvanized", aluminum: "aluminum", stainless: "stainless steel" })[mat] || "galvanized"} sheet metal duct (${n(kg, 0)} kg from the duct calculation)`,
+    qty: kg, unit: pKg, total: pKg * kg , sec: "B", un: "KG", mot: "duct"});
+  const nDif = D && typeof D === "object" && "difusores" in D && Number.isFinite(Number(D.difusores)) && Number(D.difusores) > 0 ? Math.round(Number(D.difusores)) : 0;
+  const mig = D && typeof D === "object" && "difusoresSinConfirmar" in D && D.difusoresSinConfirmar && typeof D.difusoresSinConfirmar === "object" && D.difusoresSinConfirmar.n === nDif ? D.difusoresSinConfirmar : null;
+  /* Un proyecto anterior abre con la cantidad que salía de Carga térmica (1 por 400 CFM), copiada una vez al abrir y «sin confirmar»:
+     el renglón dice lo mismo que antes, con los CFM de ese momento. */
+  if (nDif > 0) aux.push({ desc: mig ? `Difusores y rejillas con caja plenum (${n(mig.cfm, 0)} CFM ÷ 400 CFM por boca)` : `Difusores y rejillas con caja plenum (${nDif} piezas capturadas en Ductos)`,
+    descEn: mig ? `Diffusers and grilles with plenum box (${n(mig.cfm, 0)} CFM ÷ 400 CFM per outlet)` : `Diffusers and grilles with plenum box (${nDif} pieces entered in Ductwork)`,
+    qty: nDif, unit: pDif, total: pDif * nDif , sec: "B", un: "PIEZA", mot: "duct"});
+  else if ((R.segs || []).some((s) => s.service === "supply")) pendientes.push({ mot: "duct", desc: "Difusores y rejillas con caja plenum", descEn: "Diffusers and grilles with plenum box",
+    motivo: "pendiente de cantidad (se captura en Ductos; ya no se calcula con los CFM de Carga térmica)", motivoEn: "quantity pending (entered in Ductwork; no longer computed from the Thermal load CFM)" });
+  /* H-166 (dependencia de ductos, quote v21): el tramo sin sección no entra a los kilos de lámina; queda pendiente con su razón. */
+  (R.segs || []).filter((s) => s.error && num(s.L) > 0).forEach((s) => pendientes.push({ mot: "duct",
+    desc: `Ducto de lámina, tramo ${s.tag} (${n(s.L, 1)} m)`, descEn: `Sheet metal duct, run ${s.tag} (${n(s.L, 1)} m)`,
+    motivo: `pendiente de medida: ${s.error}`, motivoEn: `size pending: ${s.errorEn || s.error}` }));
+  /* H-167 (dependencia de ductos, quote v22): un tramo sin longitud capturada no lleva lámina; queda pendiente de longitud. */
+  (R.segs || []).filter((s) => !(num(s.L) > 0)).forEach((s) => pendientes.push({ mot: "duct",
+    desc: `Ducto de lámina, tramo ${s.tag}`, descEn: `Sheet metal duct, run ${s.tag}`,
+    motivo: "pendiente de longitud (sin metros capturados no se suponen)", motivoEn: "length pending (no meters are assumed without capture)" }));
+  /* H-165: el ducto de grasa soldado, sin precio con fuente, sale «Por cotizar» con sus kilos y su norma. */
+  if (kgGrasa > 0) {
+    const inox = mat === "stainless";
+    porCotizar.push({ sec: "B", mot: "duct", clave: "ductoGrasa", un: "KG", qty: kgGrasa,
+      desc: `Ducto de grasa de ${inox ? "acero inoxidable 18 MSG" : "acero al carbón 16 MSG"} con soldadura externa continua hermética (UMC 2018 §510.5), ${n(kgGrasa, 0)} kg`,
+      descEn: `Grease duct, ${inox ? "18 MSG stainless steel" : "16 MSG carbon steel"}, liquid-tight continuous external weld (UMC 2018 §510.5), ${n(kgGrasa, 0)} kg`,
+      motivo: "sin precio con fuente para ducto de grasa soldado" });
+  }
+  return { aux, pendientes, porCotizar };
+}
 function calcDuct(duct) {
   const segs = duct.segments.map((s) => calcSegment(s, duct.meta));
   const delAire = segs.filter((s) => DUCT_AHU.includes(s.service));
@@ -9785,7 +9808,9 @@ function calcDuct(duct) {
     kgGrasa: segs.filter((s) => s.gauge && s.gauge.grasa).reduce((a, s) => a + s.kg, 0),
   };
   boq.despiece = despieceProyecto(segs, duct.meta);
-  return { segs, path, pathOtros, pathTotal, critical, boq, maxV: segs.reduce((a, s) => Math.max(a, s.V), 0) };
+  const R = { segs, path, pathOtros, pathTotal, critical, boq, maxV: segs.reduce((a, s) => Math.max(a, s.V), 0) };
+  R.cot = cotizacionDuct(R, duct);   /* H-300: su propia cotización */
+  return R;
 }
 /* La suma de tramos (DUCT.path) solo acota el recorrido crítico de los tramos
    que están capturados: no cubre rejillas, persianas, filtros ni tramos que
@@ -11624,6 +11649,8 @@ function defaultState() { return {
        CFM + SA-RAMAL 800 CFM) que no eran del proyecto real. Un proyecto
        nuevo nace sin ductos; se capturan o se generan desde la carga. */
     segments: [],
+    /* H-300: su cotización: precios (semilla de la casa sin fuente) y difusores capturados aquí (null = pendiente). */
+    precios: { ...DUCT_PRECIO_SEED }, difusores: null,
   },
   /* rev 2.5.0 · El catálogo ya no se vuelca completo al entrar: se navega como
      un explorador de archivos. `vista` guarda si se está en árbol o en malla,
@@ -11834,6 +11861,12 @@ function recompute() {
   MISSING_MATS.clear();
   LOADS = SITE ? S.zones.map(loadOf) : [];   /* H-290: sin sitio de Carga, pendiente */
   VENT = computeVent(S.vent);
+  /* H-300: la migración de difusores (una sola vez, con la carga de este momento; desde ahí es captura de Ductos). */
+  if ("tomarDifusores" in S.duct && S.duct.tomarDifusores === true) {
+    S.duct.tomarDifusores = null;
+    const cfmMig = totals().cfm;
+    if (cfmMig > 0) { S.duct.difusores = Math.ceil(cfmMig / 400); S.duct.difusoresSinConfirmar = { n: S.duct.difusores, cfm: cfmMig }; }
+  }
   DUCT = calcDuct(S.duct);
   CLEAN = computeCleanAll();
   /* H-267 (decisión del dueño, 27-sep-2026): la selección de equipo calcula sólo con sus zonas de selección. Un proyecto anterior
@@ -17040,8 +17073,8 @@ Object.assign(REF, {
   "quote.contingencia": { ref: "Contingencia: reserva para imprevistos de obra (cantidades, alcance, condiciones de sitio) calculada solo sobre el costo directo. No genera indirectos ni utilidad.", rec: "Política de la casa: 15 % de arranque. En licitación pública confirma que la convocatoria la admita." },
   "quote.utility":   { ref: "Utilidad de la empresa sobre el costo ya indirecto.", rec: "8–15 % en obra pública · 12–20 % en obra privada con riesgo." },
   "quote.iva":       { ref: "Impuesto al valor agregado aplicable.", rec: "8 % en franja fronteriza · 16 % nacional. Verifica que la obra califique antes de usar el 8 %." },
-  "quote.ductKg":    { ref: "Precio por kilogramo de ducto instalado: lámina, refuerzo, colgantes y sellado.", rec: "Cotiza contra el peso que arroja la cédula de ductos, no contra metros lineales." },
-  "quote.diffuser":  { ref: "Precio por difusor o rejilla, montado y con su cuello.", rec: "Perforado de cuarto limpio corre muy por arriba de uno comercial." },
+  "duct.precios.kg": { ref: "Precio por kilogramo de ducto instalado: lámina, refuerzo, colgantes y sellado.", rec: "Cotiza contra el peso que arroja la cédula de ductos, no contra metros lineales." },
+  "duct.precios.difusor": { ref: "Precio por difusor o rejilla, montado y con su cuello.", rec: "Perforado de cuarto limpio corre muy por arriba de uno comercial." },
   "quote.pipeTR":    { ref: "Tubería de refrigerante o hidráulica por tonelada de equipo cotizado: cobre o acero, aislamiento y accesorios.", rec: "Se aplica a las toneladas de todo el equipo de la cotización, sea expansión directa o agua helada." },
   "quote.controls":  { ref: "Controles: tablero, DDC, sensores y puesta en marcha.", rec: "En cuarto limpio incluye monitoreo de presión diferencial y de ΔP de filtros." },
   "quote.price.chiller":    { ref: "Precio base por tonelada de enfriador de agua.", rec: "Se ajusta por la ley de potencia según el tamaño del equipo elegido." },
@@ -19733,10 +19766,10 @@ const motorVer = (id) => MOTOR_VER[id] || "1";
 const HUELLA_FORMA = {
   load: { f: 2, que: "H-289: la huella ya no lleva la diversidad del edificio, que Carga térmica no usa (se captura en Selección)" },
   clean: { f: 3, que: "H-295: los precios de FFU, HEPA y rejilla pasaron de la cotización a Cuartos limpios (misma cifra)" },
-  duct: { f: 2, que: "H-284: la huella ya no lleva el sitio de Proyecto, que Ductos no usa" },
+  duct: { f: 3, que: "H-300: los precios de lámina y difusor y la cantidad de difusores pasaron a Ductos (misma cifra)" },
   hidro: { f: 2, que: "H-285: la huella ya no lleva el sitio de Proyecto, que Hidráulica no usa" },
   fuego: { f: 3, que: "H-293: el precio del rociador pasó de la cotización a Contra incendio (misma cifra)" },
-  quote: { f: 5, que: "H-293–H-296: los precios del rociador, por CFM de ventilación, de FFU, HEPA y rejilla y de la central de aire pasaron a su motor (misma cifra)" },
+  quote: { f: 6, que: "H-293–H-300: los precios de rociador, ventilación, FFU, HEPA, rejilla, central de aire, lámina y difusor pasaron a su motor (misma cifra)" },
   aire: { f: 2, que: "H-296: los precios de la central de aire pasaron de la cotización a Aire comprimido (misma cifra)" },
   vent: { f: 3, que: "H-294: el precio por CFM pasó de la cotización a Ventilación (misma cifra)" },
 };
@@ -21300,7 +21333,6 @@ function viewSeleccion() {
         </details>
         <details><summary>Instalación, distribución y factores</summary>
           <div class="row">${inp("Instalación (fracción del equipo)", "quote.instPct", "number", "0.01", null, null, "inst")}${inp("Tubería por TR (MXN)", "quote.pipeTR", "number", "500")}</div>
-          <div class="row">${inp("Ducto instalado (MXN/kg)", "quote.ductKg", "number", "5")}${inp("Difusor con plenum (MXN)", "quote.diffuser", "number", "250")}</div>
           ${inp("Control DDC por equipo (MXN)", "quote.controls", "number", "2500")}
           <div class="row">${inp("Indirectos", "quote.indirect", "number", "0.01")}${inp("Utilidad", "quote.utility", "number", "0.01")}</div>
           ${inp("Contingencia (fracción del costo directo)", "quote.contingencia", "number", "0.005")}
@@ -21500,6 +21532,9 @@ function viewDuct() {
         ${sel("Hoja de lámina", "duct.meta.hoja", HOJAS_LAMINA.map((h, i) => [i, h[1]]), "duct.hoja", S.duct.meta)}
       </div>
       <div class="sub" style="margin:-6px 0 10px">Con qué se compra: cambian el despiece y la merma, no el cálculo hidráulico.</div>
+      <div class="row">${inp("Ducto instalado (MXN/kg · semilla sin fuente)", "duct.precios.kg", "number", "5")}${inp("Difusor con plenum (MXN · semilla sin fuente)", "duct.precios.difusor", "number", "250")}</div>
+      ${inp("Difusores y rejillas (piezas)", "duct.difusores", "number", "1")}
+      ${"difusoresSinConfirmar" in S.duct && S.duct.difusoresSinConfirmar && S.duct.difusoresSinConfirmar.n === S.duct.difusores ? `<div class="hint" style="margin:-6px 0 10px">Sin confirmar: cantidad de la migración al abrir (antes 1 por 400 CFM de Carga térmica, ${n(S.duct.difusoresSinConfirmar.cfm, 0)} CFM).</div>` : ""}
       <button class="btn-primary" data-act="seg-add">Agregar tramo</button>
       <div style="height:8px"></div>
       ${propuestaHtml("load>duct")}
@@ -24663,11 +24698,18 @@ function sanearEstado(d) {
   });
   if (!s.duct || typeof s.duct !== "object") s.duct = base.duct;
   if (!Array.isArray(s.duct.segments)) s.duct.segments = [];
+  /* H-300: un proyecto anterior contaba los difusores con los CFM de Carga térmica: se copian una vez al abrir (recompute, después de
+     calcular la carga) como captura de Ductos «sin confirmar». */
+  if (!("difusores" in s.duct)) { s.duct.difusores = null; s.duct.tomarDifusores = true; }
   if (!s.quote || typeof s.quote !== "object") s.quote = JSON.parse(JSON.stringify(QUOTE_SEED));
   /* H-293: el precio del rociador pasó de la cotización a Contra incendio. Un proyecto anterior lo conserva allá (la misma cifra que
      tenía la cotización; sin él, la semilla de la casa, igual que antes) y la cotización deja de guardarlo. */
   if (!fuegoTraiaPrecio && "rociador" in s.quote) s.fuego.precioRociador = num(s.quote.rociador, FUEGO_PRECIO_SEED.rociador);
   delete s.quote.rociador;
+  /* H-300: los precios de la lámina y del difusor pasaron de la cotización a Ductos (misma cifra; sin ellos, la semilla, como antes). */
+  if (!s.duct.precios || typeof s.duct.precios !== "object" || Array.isArray(s.duct.precios))
+    s.duct.precios = { kg: num(s.quote.ductKg, DUCT_PRECIO_SEED.kg), difusor: num(s.quote.diffuser, DUCT_PRECIO_SEED.difusor) };
+  delete s.quote.ductKg; delete s.quote.diffuser;
   /* H-296: los precios de la central de aire pasaron de la cotización a Aire comprimido. Un proyecto anterior conserva las cifras que
      tenía la cotización (sin ellas, la lista de la casa, igual que antes) y la cotización deja de guardarlas. */
   if (!aireTraiaPrecios) s.aire.precios = Object.fromEntries(Object.keys(AIRE_PRECIO_SEED).map((k) => [k, num(s.quote[k], AIRE_PRECIO_SEED[k])]));

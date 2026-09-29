@@ -97,6 +97,9 @@ function proyectoDePrueba() {
   /* H-250: el banco emite espejos EN-USD; sin tipo de cambio fechado ya no se emiten, así que el proyecto de prueba lo captura. */
   S.quote.fx = 18.5; S.quote.fxFecha = "2026-09-22"; S.quote.fxFuente = "banco de pruebas";
   G("recompute")();
+  /* H-300: los difusores ya no salen de los CFM de Carga térmica: se capturan en Ductos. El proyecto de prueba captura los mismos que
+     antes daba la carga (1 por 400 CFM), para que las cifras del resto del banco no cambien. */
+  S.duct.difusores = Math.ceil(G("totals")().cfm / 400); G("recompute")();
   /* H-267: la selección de equipo ya no lee la carga en vivo; el proyecto de prueba acepta la propuesta de carga térmica, como el
      usuario, para que el sistema integrado (y todo lo que se alimenta de él) tenga las mismas cifras que antes. */
   aceptarEquip();
@@ -2331,6 +2334,7 @@ t("16.7 la misma área repartida en las ocho da una carga solar coherente con la
       glass: { N: 4, NE: 0, E: 6, SE: 0, S: 12, SW: 0, W: 8, NW: 0 },
       lights: 1200, equip: 1440, ach: .4 }];
     aceptarSitioCarga();   /* H-290: el proyecto nuevo acepta el sitio de Proyecto */
+    S.duct.difusores = 3;   /* H-300: los difusores se capturan en Ductos (los que antes daba la zona) */
     G("projSave")(true);
     const idB = S.pid, linB = S.linaje;
     act("proj-rev", idB);
@@ -2731,6 +2735,7 @@ t("16.7 la misma área repartida en las ocho da una carga solar coherente con la
       glass: { N: 4, NE: 0, E: 6, SE: 0, S: 12, SW: 0, W: 8, NW: 0 },
       lights: 1200, equip: 1440, ach: .4 }];
     aceptarSitioCarga();   /* H-290: el proyecto nuevo acepta el sitio de Proyecto */
+    S.duct.difusores = 3;   /* H-300: los difusores se capturan en Ductos (los que antes daba la zona) */
     G("projSave")(true);
     const base = registro(S.pid);
     const crea = (id, comparaCon, ts) => {
@@ -6502,7 +6507,7 @@ t("S.39 (rev 2.9.22, decisión del dueño) precios de tubería hidráulica: PP-R
     contiene(csv, "cpvc,cpvc_1_1_4_,\"1 1/4\"\"\",,1,no,MXN,proveedor,no especificado,,,,,no especificado,,", "fila CPVC 1 1/4 (el diámetro lleva comillas):");
     if (/IUSA/.test(csv)) throw new Error("la plantilla no debe traer referencias IUSA (regla: únicamente California)");
     G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.39"; Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.39" }; }); aceptarSitioCarga();   /* H-290 */
-    S.zones[0].area = 100; S.zones[0].height = 3;
+    S.zones[0].area = 100; S.zones[0].height = 3; S.duct.difusores = 2;   /* H-300: los difusores que daba la zona se capturan en Ductos */
     S.hidro = { ...G("defaultHidro")(), material: "cpvc", tramos: [{ ...G("defaultTramoAgua")("AF-1"), um: 40, L: 25, alt: 0 }, { ...G("defaultTramoAgua")("AF-2"), um: 12, L: 12, alt: 0 }],
       muebles: [{ id: "wc_flux", cant: 4 }, { id: "lavabo", cant: 4 }] };
     S.quote.hidroPU = {}; S.quote.fx = 18; S.quote.fxFecha = "2026-09-22"; S.quote.fxFuente = "prueba"; G("recompute")(); /* rev 2.9.23: USD sólo con tipo de cambio fechado */
@@ -9365,6 +9370,33 @@ t("S.179 (H-299) la cotización eléctrica la arma su propio motor (ELEC.cot: al
     eq(deElec(G("computeQuote")()), JSON.stringify([[["RENGLÓN DEL MOTOR", 1]], ["PENDIENTE DEL MOTOR"]]), "la cotización global usa la cotización del motor, sin recalcular:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
+t("S.180 (H-300) la cotización de Ductos sale de su propio motor: los difusores se capturan en Ductos (ya no salen de los CFM de Carga térmica), los precios de lámina y difusor son de Ductos, y un proyecto anterior abre con la misma cantidad y los mismos precios", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.180"; aceptarSitioCarga();
+    S.zones = [{ ...G("defaultZone")("Zona 1"), area: 400, height: 3, occ: 20, lights: 4000, equip: 4000 }];
+    S.duct.segments = [{ ...G("defaultSegment")("TR-1", 1000), length: 12 }];
+    G("recompute")();
+    if (!(G("totals")().cfm > 0) || !(G("DUCT").boq.kg > 0)) throw new Error("el caso no aísla lo que se quiere probar: debe haber carga con CFM y lámina");
+    const dif = () => (G("QUOTE").aux || []).find((a) => a.mot === "duct" && /^Difusores/.test(a.desc));
+    eq(!!dif(), false, "sin captura en Ductos, los difusores no salen de los CFM de Carga térmica:");
+    eq((G("QUOTE").pendientes || []).some((p) => p.mot === "duct" && /^Difusores/.test(p.desc)), true, "quedan pendientes de cantidad:");
+    S.duct.difusores = 5; S.duct.precios = { kg: 170, difusor: 7000 }; S.quote.diffuser = 1; S.quote.ductKg = 1; G("recompute")();
+    eq(JSON.stringify([dif().qty, dif().unit]), JSON.stringify([5, 7000]), "la cantidad y el precio salen de Ductos:");
+    eq((G("QUOTE").aux || []).find((a) => a.mot === "duct" && /^Ducto de lámina/.test(a.desc)).unit, 170, "el precio de la lámina sale de Ductos:");
+    S.zones[0].area = 800; G("recompute")();
+    eq(dif().qty, 5, "cambiar la carga térmica ya no mueve los difusores:");
+    /* Proyecto anterior: sin difusores ni precios en Ductos; los precios estaban en la cotización. */
+    const viejo = JSON.parse(JSON.stringify(S)); delete viejo.duct.difusores; delete viejo.duct.precios; delete viejo.duct.difusoresSinConfirmar;
+    viejo.quote.diffuser = 6000; viejo.quote.ductKg = 160;
+    G("reemplazarEstado")(viejo); G("recompute")();
+    const nMig = Math.ceil(G("totals")().cfm / 400);
+    eq(S.duct.difusores, nMig, "un proyecto anterior abre con la cantidad que daba la carga (1 por 400 CFM), ahora capturada en Ductos:");
+    eq(JSON.stringify([dif().qty, dif().unit, /CFM ÷ 400 CFM por boca/.test(dif().desc)]), JSON.stringify([nMig, 6000, true]), "mismo renglón que antes:");
+    eq(JSON.stringify(S.duct.precios), JSON.stringify({ kg: 160, difusor: 6000 }), "los precios de la cotización pasan a Ductos:");
+    eq(["ductKg", "diffuser"].some((k) => k in S.quote), false, "la cotización ya no los guarda:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {
   const guardado = JSON.stringify(S);
   try {
@@ -9465,7 +9497,7 @@ t("S.41 (rev 2.9.23) referencias de mercado: únicamente California y sólo mate
     eq(JSON.stringify(G("HIDRO_PU_REFERENCIA")), "{}", "sin referencias cargadas hasta recibir los libros de Craftsman:");
     if (/IUSA/.test(JSON.stringify(G("defaultState")().quote.hidroPU))) throw new Error("un proyecto nuevo trae IUSA");
     G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.41"; Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.41" }; }); aceptarSitioCarga();   /* H-290 */
-    S.zones[0].area = 100; S.zones[0].height = 3;
+    S.zones[0].area = 100; S.zones[0].height = 3; S.duct.difusores = 2;   /* H-300: los difusores que daba la zona se capturan en Ductos */
     S.hidro = { ...G("defaultHidro")(), material: "cobre", tramos: [{ ...G("defaultTramoAgua")("AF-1"), um: 40, L: 25, alt: 0 }, { ...G("defaultTramoAgua")("AF-2"), um: 12, L: 12, alt: 0 }], muebles: [{ id: "wc_flux", cant: 4 }, { id: "lavabo", cant: 4 }] };
     S.quote.fx = 18.25; S.quote.fxFecha = "2026-09-22"; S.quote.fxFuente = "Banxico FIX"; G("recompute")();
     const noms = [...new Set(G("HIDRO").tramos.filter((x) => x.Lcap > 0 && x.um > 0).map((x) => String(x.nom).split(" ·")[0]))];
@@ -9627,7 +9659,8 @@ t("S.42 (rev 2.9.23) «Flete local y maniobras en obra»: parámetro comercial, 
   const txtPdf = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");
   try {
     G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.42"; Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.42" }; }); aceptarSitioCarga();   /* H-290 */
-    S.zones[0].area = 100; S.zones[0].height = 3; S.quote.freight = 0.025; G("recompute")();
+    /* H-300: los difusores ya no salen de la carga térmica; se capturan en Ductos (antes esta zona daba la partida). */
+    S.zones[0].area = 100; S.zones[0].height = 3; S.quote.freight = 0.025; S.duct.difusores = 2; G("recompute")();
     const nota = "NO incluye flete de importacion, aduana ni internacion a Mexico: eso va en la seccion H";
     const prop = txtPdf(G("buildPropuestaPdf")({ lang: "es", mon: "MXN" }));
     contiene(prop, "Flete local y maniobras en obra 2.5 %", "propuesta PDF: nombre nuevo con porcentaje:"); contiene(prop, nota, "propuesta PDF: aclaración de no doble cobro:");
