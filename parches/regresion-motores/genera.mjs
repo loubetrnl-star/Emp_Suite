@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 /* Regresión por motor: construye un proyecto fijo, lo guarda como fixture (formato de guardado de la suite) y escribe las
    cifras esperadas de cada motor junto con la versión del motor con la que se generaron.
-   Uso: node parches/regresion-motores/genera.mjs [index.html] [motor ... | todos] [--fixture]
+   Uso: node parches/regresion-motores/genera.mjs [index.html] [motor ... | todos] [--fixture] [--fixture2]
+   AUD-12 (29-sep-2026): también escribe el esperado del SEGUNDO proyecto fijo (regresion-motores-2.*), con las mismas reglas. Su
+   fixture es de formato vigente, capturado disciplina por disciplina (proyecto-2.arma.js); sólo se reescribe con --fixture2 (o si
+   no existe). El esperado 2 se calcula abriendo ese fixture, igual que la prueba R.4.
    U6 (28-sep-2026): el fixture versionado es un proyecto GUARDADO CON VERSIONES ANTERIORES (herencia, conteo en vivo, sin áreas
    propias de civil…): al abrirlo, R.1 prueba las migraciones «misma cifra al abrir». Por eso ya no se reescribe: sólo con --fixture
    (y entonces se revisa a mano que siga siendo de formato anterior). Sin la bandera sólo se escribe el esperado.
@@ -18,7 +21,7 @@ const { JSDOM } = require("jsdom");
 const args = process.argv.slice(2);
 const file = args[0] && args[0].endsWith(".html") ? args[0] : path.join(RAIZ, "index.html");
 const escribirFixture = args.includes("--fixture");
-const solo = args.filter((a) => !a.endsWith(".html") && a !== "--fixture");
+const solo = args.filter((a) => !a.endsWith(".html") && a !== "--fixture" && a !== "--fixture2");
 const dom = new JSDOM(fs.readFileSync(file, "utf8"), { runScripts: "dangerously", url: "https://emp.local/", pretendToBeVisual: true });
 const w = dom.window; await new Promise((r) => setTimeout(r, 1500));
 const G = (e) => w.eval(e);
@@ -95,4 +98,34 @@ Object.keys(MV).forEach((id) => {
 });
 fs.writeFileSync(esperadoPath, JSON.stringify(esperado, null, 1));
 console.log(escribirFixture ? "fixture y esperado escritos en" : "esperado escrito en", AQUI);
+
+/* ---- AUD-12 · segundo proyecto fijo ---- */
+const FIX2 = path.join(AQUI, "regresion-motores-2.emp.json"), ESP2 = path.join(AQUI, "regresion-motores-2.esperado.json");
+if (args.includes("--fixture2") || !fs.existsSync(FIX2)) {
+  G(fs.readFileSync(path.join(AQUI, "proyecto-2.arma.js"), "utf8"));
+  fs.writeFileSync(FIX2, JSON.stringify(JSON.parse(G(`JSON.stringify({ v: FORMATO_GUARDADO, ...S })`)), null, 1));
+  console.log("proyecto 2: fixture escrito (capturado disciplina por disciplina, proyecto-2.arma.js)");
+}
+G(`importarRespaldo(${JSON.stringify(fs.readFileSync(FIX2, "utf8"))}); S.tab = "tablero"; if (typeof KZ_CACHE !== "undefined") KZ_CACHE.key = null; if (typeof VZ_CACHE !== "undefined") VZ_CACHE.key = null; recompute();`);
+const cifras2 = {}; Object.keys(MV).forEach((id) => { cifras2[id] = G(`cifrasMotor(${JSON.stringify(id)})`); });
+/* Soportería también a mano: el mismo proyecto sin la instantánea (cuenta los metros capturados en su pestaña). */
+G("S.soporte.usarMotores = false; recompute();");
+const variantes2 = { "soporte·a mano": { motor: "soporte", cifras: G('cifrasMotor("soporte")') } };
+let previo2 = null; try { previo2 = JSON.parse(fs.readFileSync(ESP2, "utf8")); } catch { /* primera vez */ }
+const esperado2 = { generadoCon: REV, proyecto: "regresion-motores-2.emp.json", motores: {}, variantes: {} };
+Object.keys(MV).forEach((id) => {
+  const p = previo2 && previo2.motores && previo2.motores[id];
+  const regenera = !p || p.ver !== MV[id] || solo.includes(id) || solo.includes("todos");
+  esperado2.motores[id] = regenera ? { ver: MV[id], cifras: cifras2[id] } : p;
+  if (!regenera && JSON.stringify(p.cifras) !== JSON.stringify(cifras2[id])) console.log(`OJO proyecto 2 · ${id}: las cifras cambiaron sin subir MOTOR_VER (v${MV[id]}). No se regenera.`);
+  if (regenera) console.log(`proyecto 2 · ${id}: esperado v${MV[id]}${p ? ` (antes v${p.ver})` : " (nuevo)"}`);
+});
+Object.entries(variantes2).forEach(([k, x]) => {
+  const p = previo2 && previo2.variantes && previo2.variantes[k], id = x.motor;
+  const regenera = !p || p.ver !== MV[id] || solo.includes(id) || solo.includes("todos");
+  esperado2.variantes[k] = regenera ? { motor: id, ver: MV[id], cifras: x.cifras } : p;
+  if (!regenera && JSON.stringify(p.cifras) !== JSON.stringify(x.cifras)) console.log(`OJO proyecto 2 · ${k}: las cifras cambiaron sin subir MOTOR_VER (v${MV[id]}). No se regenera.`);
+});
+fs.writeFileSync(ESP2, JSON.stringify(esperado2, null, 1));
+console.log("proyecto 2: esperado escrito en", ESP2);
 process.exit(0);

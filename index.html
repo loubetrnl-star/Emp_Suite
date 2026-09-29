@@ -19751,7 +19751,9 @@ function cifrasMotor(id) {
     equip: { chosen: SYS && SYS.chosen ? SYS.chosen.id : null, plantTarget: SYS ? SYS.plantTarget : null, instPlant: SYS && SYS.chosen ? SYS.chosen.instPlant : null },
     duct: { kg: DUCT.boq.kg, path: DUCT.path, segs: DUCT.segs.map((g) => [g.Pam, g.V, g.w || null, g.h || null, g.d || null]) },
     vent: { m3h: VENT.m3h, demand: VENT.demand, sp: VENT.sp, primary: VENT.eq && VENT.eq.primary ? VENT.eq.primary.model : null },
-    elec: { kVAdemanda: ELEC.kVAdemanda, principal: ELEC.principal, alim: [ELEC.alim.awg, ELEC.alim.tubo.d, ELEC.alim.ocpd], calc: ELEC.calc.map((c) => [c.cond.awg, c.cond.ocpd, c.cond.tubo.d]) },
+    /* AUD-12: también tierra, caída de tensión (alimentador y cada circuito), corriente de falla en barras y capacidad interruptiva. */
+    elec: { kVAdemanda: ELEC.kVAdemanda, principal: ELEC.principal, alim: [ELEC.alim.awg, ELEC.alim.tubo.d, ELEC.alim.ocpd], calc: ELEC.calc.map((c) => [c.cond.awg, c.cond.ocpd, c.cond.tubo.d]),
+      tierra: [ELEC.alim.tierra, ...ELEC.calc.map((c) => c.cond.tierra)], dv: [ELEC.alim.dv, ...ELEC.calc.map((c) => c.cond.dv)], Icc: ELEC.IccTrafo, kAIC: ELEC.kAIC },
     hidro: { Qtotal: HIDRO.Qtotal, cdt: HIDRO.cdt, hpBomba: HIDRO.hpBomba, cisterna: HIDRO.cisterna, tramos: HIDRO.tramos.map((x) => [x.nom, x.Q, x.hf]) },
     fuego: { qTotal: FUEGO.qTotal, nTotal: FUEGO.nTotal, qBomba: FUEGO.qBomba, hpBomba: FUEGO.hpBomba, reserva: FUEGO.reserva, mcaTotal: FUEGO.mcaTotal },
     aire: { fad: AIRE.fadRequerido, unidades: AIRE.totalUnidades, hp: AIRE.principal ? AIRE.principal.hp : null, tanque: AIRE.tanque, nTanques: AIRE.nTanques, secador: AIRE.capSecador },

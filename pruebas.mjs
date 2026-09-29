@@ -8915,6 +8915,8 @@ t("S.104 (H-267) selección de equipo es autónoma: sin aceptar la propuesta, ca
 const REG_DIR = "parches/regresion-motores/";
 const REG_PROY = fs.readFileSync(REG_DIR + "regresion-motores.emp.json", "utf8");
 const REG_ESP = JSON.parse(fs.readFileSync(REG_DIR + "regresion-motores.esperado.json", "utf8"));
+const REG_PROY2 = fs.readFileSync(REG_DIR + "regresion-motores-2.emp.json", "utf8");   /* AUD-12 */
+const REG_ESP2 = JSON.parse(fs.readFileSync(REG_DIR + "regresion-motores-2.esperado.json", "utf8"));
 t("S.126 (H-274) selección de equipo no tiene ningún vínculo con ductos, en ninguna dirección (decisión del dueño, 28-sep-2026): con todos los permisos, alargar el troncal no mueve la presión ni la huella de selección; no hay cruce, propuesta ni flecha entre los dos y la pantalla no habla de ductos", () => {
   const guardado = JSON.stringify(S);
   try {
@@ -9553,6 +9555,49 @@ t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esper
     });
     if (fallas.length) throw new Error(fallas.join("\n   "));
     eq(Object.keys(REG_ESP.motores).length, Object.keys(MV).length, "todos los motores tienen esperado:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+/* AUD-12 (auditoría externa, 29-sep-2026): desde H-262 se retiraron herencias y cruces y subieron varias versiones, pero el proyecto
+   fijo no ejercitaba las ramas nuevas. El segundo proyecto fijo (parches/regresion-motores/proyecto-2.arma.js) se captura disciplina
+   por disciplina en su propia pestaña y las ejercita; sus cifras (también soportería a mano) se vigilan como las de R.1. */
+t("R.4 (AUD-12) segundo proyecto fijo capturado disciplina por disciplina: ejercita motor con MCA/MOP, aluminio, protección > 300 A sin distancia ni transformador, diversidad ≠ 1, ΔP negativa < 5 Pa, ducto de grasa, ventilador sin cobertura, regadera de emergencia, CPVC fuera de catálogo, varios tanques, cobre en aire y soportería con instantánea y a mano; el eléctrico vigila tierra, caída de tensión, Icc y kAIC; si un motor cambia sin subir MOTOR_VER, truena", () => {
+  const guardado = JSON.stringify(S), P = JSON.parse(REG_PROY2);
+  try {
+    G("importarRespaldo")(REG_PROY2); S.tab = "tablero"; G("KZ_CACHE").key = null; G("VZ_CACHE").key = null; G("recompute")();
+    /* Ninguna disciplina se generó a partir de otra: sin propuestas aceptadas, sitios propios, zonas de selección capturadas. */
+    eq(Object.keys(P.vinculos || {}).length, 0, "sin propuestas aceptadas:");
+    eq(P.sitioCarga.origen, "capturado en Carga térmica", "sitio de Carga capturado en su pestaña:");
+    eq(P.equip.sitio.origen, "capturado en Selección", "sitio de Selección capturado en su pestaña:");
+    eq(P.equip.zonas.every((z) => !z.origen), true, "zonas de selección capturadas en su pestaña:");
+    /* Las ramas que el proyecto debe ejercitar: si el fixture las pierde, la regresión deja de verlas. */
+    const E = G("ELEC"), D = G("DUCT"), V = G("VENT"), H = G("HIDRO"), A = G("AIRE");
+    eq(E.mat, "aluminio", "eléctrico en aluminio:");
+    if (!E.calc.some((c) => c.art440 && !c.mcaEst && !c.mopEst)) throw new Error("falta el motor con MCA y MOP de placa");
+    if (!(E.principal > 300)) throw new Error("la protección principal debe pasar de 300 A: " + E.principal);
+    eq(E.alim.dv, null, "sin distancia al tablero (caída del alimentador pendiente):"); eq(E.IccTrafo, null, "sin transformador (Icc pendiente):");
+    if (!E.calc.some((c) => c.sinL)) throw new Error("falta una carga sin distancia capturada");
+    if (!(G("divSel")() < 1)) throw new Error("la diversidad del edificio debe ser distinta de 1");
+    if (!P.clean.rooms.some((r) => r.dp < 0 && Math.abs(r.dp) < 5)) throw new Error("falta el cuarto con ΔP negativa menor que 5 Pa");
+    if (!D.segs.some((s) => s.gauge && s.gauge.grasa)) throw new Error("falta el ducto de grasa");
+    if (!(V.demand > 0) || (V.eq && V.eq.primary)) throw new Error("el ventilador debe quedar sin cobertura del catálogo");
+    if (!P.hidro.muebles.some((m) => m.id === "lavaojos")) throw new Error("falta la regadera de emergencia");
+    if (!(P.hidro.material === "cpvc" && H.tramos.some((t) => t.fueraCatalogo))) throw new Error("falta el CPVC fuera de catálogo");
+    if (!(A.nTanques > 1)) throw new Error("faltan los varios tanques pulmón"); eq(P.aire.material, "cobre", "cobre en aire:");
+    if (!(S.soporte.snap && S.soporte.usarMotores === true && Number(S.soporte.ductoM) > 0)) throw new Error("soportería debe traer instantánea guardada y metros a mano");
+    /* El eléctrico vigila también tierra, caída de tensión, Icc y kAIC. */
+    const ce = G("cifrasMotor")("elec");
+    ["tierra", "dv", "Icc", "kAIC"].forEach((k) => { if (!ce || !(k in ce)) throw new Error(`cifras vigiladas del eléctrico: falta ${k}`); });
+    /* Cifras de cada motor contra su esperado (quote, kaizen y valor sólo se vigilan: congelados). */
+    const MV = G("MOTOR_VER"), fallas = [];
+    const compara = (nom, id, e, ahora) => {
+      if (!e) { fallas.push(`${nom}: sin esperado (corre node parches/regresion-motores/genera.mjs)`); return; }
+      if (e.ver !== MV[id]) fallas.push(`${nom}: MOTOR_VER subió a v${MV[id]} y el esperado es de v${e.ver}: regenera el esperado (genera.mjs) en el mismo commit`);
+      else if (JSON.stringify(ahora) !== JSON.stringify(e.cifras)) fallas.push(`${nom}: las cifras cambiaron con la MISMA versión v${MV[id]}: sube MOTOR_VER con su hallazgo y regenera el esperado`);
+    };
+    Object.keys(MV).forEach((id) => compara(id, id, REG_ESP2.motores[id], G("cifrasMotor")(id)));
+    S.soporte.usarMotores = false; G("recompute")();
+    compara("soporte·a mano", "soporte", REG_ESP2.variantes && REG_ESP2.variantes["soporte·a mano"], G("cifrasMotor")("soporte"));
+    if (fallas.length) throw new Error(fallas.join("\n   "));
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 t("R.2 abrir un proyecto viejo nunca recalcula solo: los sellos quedan como venían, las disciplinas afectadas dicen Desactualizado y nada se vuelve a sellar ni a guardar", () => {
