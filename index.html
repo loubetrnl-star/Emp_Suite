@@ -10790,7 +10790,9 @@ const DRENAJE = [
 /* IPC 2015 §704.1, Tabla 704.1 (up.codes, releída 25-sep-2026): pendiente mínima del drenaje horizontal, en %. */
 const pendMin704 = (d) => (d <= 65 ? 0.25 : d <= 150 ? 0.125 : 0.0625) / 12 * 100;
 function sizeDrenaje(ud, wc, tipo, pend) {
-  const key = tipo === "bajada" ? "bajada" : tipo === "colector" ? (pend >= 2 ? "col2" : "col1") : "ramal";
+  /* AUD-18 (auditoría externa, 29-sep-2026): col2 es la columna de ¼ in/ft de IPC 2015 Tabla 710.1(1) y ¼ in/ft = 0.25/12 = 2.0833 %
+     (la misma conversión de pendMin704); antes se tomaba desde 2 %, menos que ¼ in/ft. Abajo de ¼ in/ft rige col1 (⅛ in/ft). */
+  const key = tipo === "bajada" ? "bajada" : tipo === "colector" ? (pend >= 0.25 / 12 * 100 - 1e-9 ? "col2" : "col1") : "ramal";
   const f = DRENAJE.find((x) => (x[key] || 0) >= ud && (tipo === "colector" || wc <= x.wcMax));
   return f || DRENAJE[DRENAJE.length - 1];
 }
@@ -19713,7 +19715,7 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "7", clean: "3", equip: "4", duct: "4", vent: "4", quote: "24", valor: "2", kaizen: "1", elec: "10", hidro: "9", fuego: "6", aire: "6", civil: "8", soporte: "14" };
+const MOTOR_VER = { load: "7", clean: "3", equip: "4", duct: "4", vent: "4", quote: "24", valor: "2", kaizen: "1", elec: "10", hidro: "10", fuego: "6", aire: "6", civil: "8", soporte: "14" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
@@ -19745,7 +19747,8 @@ const MOTOR_CAMBIOS = {
     { ver: "6", rev: "2.9.24", que: "H-195: regadera de emergencia (20 gpm = 75.7 L/min) y lavaojos fijo (0.4 gal/min = 1.5 L/min, mueble nuevo) fuera de Hunter con gasto fijo sumado al del sistema, antes 6 unidades mueble cada uno; volumen para 15 min; el tramo declara el gasto de emergencia que conduce (L/min) con aviso si ninguno lo lleva. Fuente secundaria: ANSI Z358.1-1990 citada por OSHA (cartas del 18-abr-2002 y 22-nov-1993); ratificar con Z358.1-2014" },
     { ver: "7", rev: "2.9.24", que: "H-197: sin pisos sin norma. Días de reserva capturados se respetan (0 = cisterna pendiente con aviso; antes piso de 0.5 día); ΔT ≤ 0 = calentador pendiente con aviso (antes piso de 5 K); la pendiente del colector se respeta y sólo sube, con aviso, a la mínima de IPC 2015 §704.1 para su diámetro (antes piso de 0.5 % sin norma)" },
     { ver: "8", rev: "2.9.24", que: "H-198: CPVC sin los renglones de 2 1/2\", 3\" y 4\" «SIN VERIFICAR» (CTS SDR-11 llega a 2\"); un tramo que no cabe en el mayor diámetro verificado queda fuera de catálogo con error visible, y PEAD (diámetros genéricos sin SDR ni fuente) da error visible" },
-    { ver: "9", rev: "2.9.24", que: "AUD-14 (auditoría externa, 29-sep-2026; «nada se estima»): sin la presión de la red en la toma capturada no se suponen 25 m: la presión residual y si alcanza quedan pendientes con aviso, y el equipo de bombeo queda «dato pendiente» en su cotización (antes «no alcanza»); sin la altura del edificio capturada no se suponen 6 m: carga dinámica total y bomba pendientes con aviso. Un proyecto nuevo nace con los dos datos sin capturar (antes 0, que se tomaba como captura); un 0 capturado sigue siendo dato" }],
+    { ver: "9", rev: "2.9.24", que: "AUD-14 (auditoría externa, 29-sep-2026; «nada se estima»): sin la presión de la red en la toma capturada no se suponen 25 m: la presión residual y si alcanza quedan pendientes con aviso, y el equipo de bombeo queda «dato pendiente» en su cotización (antes «no alcanza»); sin la altura del edificio capturada no se suponen 6 m: carga dinámica total y bomba pendientes con aviso. Un proyecto nuevo nace con los dos datos sin capturar (antes 0, que se tomaba como captura); un 0 capturado sigue siendo dato" },
+    { ver: "10", rev: "2.9.24", que: "AUD-18 (auditoría externa, 29-sep-2026): el colector usa la columna de ¼ in/ft de IPC 2015 Tabla 710.1(1) sólo desde ¼ in/ft = 2.0833 % (antes desde 2 %, menos que ¼ in/ft); entre ⅛ y ¼ in/ft rige la de ⅛ in/ft, con la misma conversión que pendMin704 (p. ej. 200 UD al 2 %: 150 mm, antes 100)" }],
   fuego: [{ ver: "2", rev: "2.9.16", que: "sin área no hay demanda, bomba ni reserva; área mínima de operación NFPA 13 con aviso" },
     { ver: "3", rev: "2.9.24", que: "H-205: la altura heredada de las zonas es la MÁXIMA (rociador más alto), no la media ponderada: estática y CDT al rociador más alto y aviso de rack con la altura real (proyecto fijo: 4.71 → 6 m, +1.29 m de CDT)" },
     { ver: "4", rev: "2.9.24", que: "H-264 (decisión del dueño, 27-sep-2026): contra incendio es autónomo: el área a proteger y la altura al rociador más alto se capturan en su pestaña; ya no se heredan de carga térmica ni se toma el área en vivo (cruce load>fuego retirado). Un proyecto guardado conserva los valores que ya tenía copiados; sin área capturada no hay demanda" },

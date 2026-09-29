@@ -6334,7 +6334,7 @@ t("S.36 (rev 2.9.20, decisión del dueño) versión por motor en el sello: sólo
      H-194: hidro v5 = presión mínima por mueble de la Tabla 604.3 del IPC 2015 y CDT con máx(residual, mínima); H-195: v6 = equipo de emergencia fuera de Hunter; H-197: v7 = sin pisos sin norma (días, ΔT, pendiente 704.1); H-198: v8 = CPVC sólo hasta 2" CTS, fuera de catálogo y PEAD sin SDR como error.
      H-263: carga v6 = calor del motor del ventilador seleccionado en Ventilación como misceláneos de la zona elegida; H-262: ventilación v4 = ya no hereda de carga térmica;
      H-268: eléctrico v9 = autónomo (las cargas de otros motores sólo como propuesta aceptada). */
-  eq(MV.elec, "10", "eléctrico v10 (AUD-14):"); eq(MV.hidro, "9", "hidro v9 (AUD-14):"); eq(MV.load, "7", "carga v7 (H-290):"); eq(MV.duct, "4", "ductos v4 (H-165):"); eq(MV.equip, "4", "selección v4 (H-288):"); eq(MV.kaizen, "1", "Kaizen sin cambio de lógica: v1:");
+  eq(MV.elec, "10", "eléctrico v10 (AUD-14):"); eq(MV.hidro, "10", "hidro v10 (AUD-18):"); eq(MV.load, "7", "carga v7 (H-290):"); eq(MV.duct, "4", "ductos v4 (H-165):"); eq(MV.equip, "4", "selección v4 (H-288):"); eq(MV.kaizen, "1", "Kaizen sin cambio de lógica: v1:");
   Object.keys(MV).forEach((id) => { const c = G("MOTOR_CAMBIOS")[id] || []; if (MV[id] !== "1" && !c.some((x) => x.ver === MV[id])) throw new Error(`${id}: la versión ${MV[id]} no tiene hallazgo registrado`); });
   const s0 = JSON.stringify(S.sellos || {});
   try {
@@ -6343,9 +6343,9 @@ t("S.36 (rev 2.9.20, decisión del dueño) versión por motor en el sello: sólo
     S.sellos = { kaizen: { ts: 5, huella: G("huellaMotor")("kaizen") }, hidro: { ts: 5, huella: G("huellaMotor")("hidro") } }; G("recompute")();
     eq(G("selloDe")("kaizen").estado, "calculado", "Kaizen (motor v1, sin cambio):");
     const sh = G("selloDe")("hidro");
-    eq(sh.estado, "desactualizado", "hidro (motor v1 → v9):"); contiene(sh.texto, "v1 → v9", "texto:"); contiene(sh.texto, "Hunter", "nombra el hallazgo:"); contiene(sh.texto, "604.3", "nombra H-194:"); contiene(sh.texto, "Z358.1", "nombra H-195:"); contiene(sh.texto, "704.1", "nombra H-197:"); contiene(sh.texto, "catálogo", "nombra H-198:");
+    eq(sh.estado, "desactualizado", "hidro (motor v1 → v10):"); contiene(sh.texto, "v1 → v10", "texto:"); contiene(sh.texto, "Hunter", "nombra el hallazgo:"); contiene(sh.texto, "604.3", "nombra H-194:"); contiene(sh.texto, "Z358.1", "nombra H-195:"); contiene(sh.texto, "704.1", "nombra H-197:"); contiene(sh.texto, "catálogo", "nombra H-198:");
     const m = G("motoresCambiados")();
-    eq(m.map((x) => x.id).join(","), "hidro", "lista para el aviso al abrir:"); eq(m[0].de + ">" + m[0].a, "1>9", "de → a:");
+    eq(m.map((x) => x.id).join(","), "hidro", "lista para el aviso al abrir:"); eq(m[0].de + ">" + m[0].a, "1>10", "de → a:");
     /* Un sello viejo abre sin error y conserva su ver; el saneado acepta ver/resumen/previo y descarta basura. */
     const viejo = JSON.parse(JSON.stringify(S)); viejo.sellos = { hidro: { ts: 5, huella: G("huellaMotor")("hidro"), ver: "3", resumen: { Gasto: "1 L/s" }, previo: { ver: "2", ts: 4, resumen: { Gasto: "0.9 L/s" } } }, duct: { ts: 5, huella: G("huellaMotor")("duct"), ver: "x9", resumen: "no" } };
     const sv = G("sanearEstado")(viejo).sellos;
@@ -6355,15 +6355,15 @@ t("S.36 (rev 2.9.20, decisión del dueño) versión por motor en el sello: sólo
     const Q0 = G("HIDRO").Qtotal;
     clicS(boton("hidro", "calc-motor"));
     const sn = S.sellos.hidro;
-    eq(sn.ver, "9", "sello nuevo con la versión del motor:"); eq(sn.previo.ver, "1", "previo:"); eq(sn.previo.resumen.Gasto, "3.924 L/s", "cifras de antes:");
+    eq(sn.ver, "10", "sello nuevo con la versión del motor:"); eq(sn.previo.ver, "1", "previo:"); eq(sn.previo.resumen.Gasto, "3.924 L/s", "cifras de antes:");
     contiene(sn.resumen.Gasto, G("n")(Q0, 3), "cifras de después:");
     eq(G("selloDe")("hidro").estado, "calculado", "vuelto a sellar:");
     conPdfCapturado((salida) => {
       clicS(boton("hidro", "pdf-memoria-motor"));
       const txt = textoPdf(salida()[salida().length - 1].b);
-      contiene(txt, "CAMBIO DE MOTOR v1 -> v9", "la memoria dice el cambio:"); /* el PDF parte los renglones en varios Tj: se buscan las piezas */
+      contiene(txt, "CAMBIO DE MOTOR v1 -> v10", "la memoria dice el cambio:"); /* el PDF parte los renglones en varios Tj: se buscan las piezas */
       contiene(txt, "ANTES", "antes:"); contiene(txt, "3.924 L/s", "cifra de antes:"); contiene(txt, "DESPUES", "después:"); const plano = txt.replace(/\) Tj ET[\s\S]*?\(/g, " ");   /* el renglón puede partirse entre «motor» y la versión */
-      contiene(plano, "motor v1", "versión de antes:"); contiene(plano, "motor v9", "versión de después:");
+      contiene(plano, "motor v1", "versión de antes:"); contiene(plano, "motor v10", "versión de después:");
     });
     eq(w.eval("MEMO_CAMBIO"), null, "la bandera de la memoria se limpia:");
   } finally { S.sellos = JSON.parse(s0); G("recompute")(); }
@@ -9678,6 +9678,14 @@ t("S.196 (AUD-14) aire comprimido no dimensiona la red con datos que nadie captu
     A = arma("cobre");
     eq(A.tramos.every((t) => t.d > 0), true, "en cobre se dimensiona:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+t("S.197 (AUD-18) el colector usa la columna de ¼ in/ft de IPC 2015 Tabla 710.1(1) sólo desde ¼ in/ft = 2.083 % (antes desde 2 %, que es menos que ¼ in/ft): al 2 % rige la de ⅛ in/ft, la misma conversión de pendMin704", () => {
+  const sd = G("sizeDrenaje");
+  eq(sd(200, 0, "colector", 2).d, 150, "200 UD al 2 % (< 2.083 %): columna ⅛ in/ft, 4\" admite 180 → 6\":");
+  eq(sd(200, 0, "colector", 2.09).d, 100, "200 UD al 2.09 % (≥ 2.083 %): columna ¼ in/ft, 4\" admite 216:");
+  eq(sd(200, 0, "colector", 0.25 / 12 * 100).d, 100, "justo en ¼ in/ft rige la columna ¼:");
+  cerca(G("pendMin704")(50), 0.25 / 12 * 100, 1e-9, "pendMin704 usa la misma conversión (¼ in/ft = 2.0833 %):");
 });
 
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {

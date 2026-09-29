@@ -481,7 +481,7 @@ fila("CM.hidro.9.t", "colector con 150 UD al 1.05 % (≥ 1/8 in/ft = 1.042 %): 1
   "columna 1/8 in/ft: 3\" 36 < 150; 4\" 180 ≥ 150", "IPC 2015 Table 710.1(1) (up.codes)", PRIM,
   "sizeDrenaje(150, 0, \"colector\", 1.05).d", colectorIPC(150, 1.05, false), 0);
 fila("CM.hidro.9.u", "colector con 150 UD al 2 %: 100 mm", E9,
-  "2 % queda entre 1/8 (1.042 %) y 1/4 in/ft (2.083 %): rige la columna 1/8: 3\" 36 < 150; 4\" 180 ≥ 150 (la suite usa la columna 1/4 desde 2 %: 216; mismo resultado)", "IPC 2015 Table 710.1(1) (up.codes)", PRIM,
+  "2 % queda entre 1/8 (1.042 %) y 1/4 in/ft (2.083 %): rige la columna 1/8: 3\" 36 < 150; 4\" 180 ≥ 150 (desde AUD-18 la suite también usa la 1/8 abajo de 2.083 %)", "IPC 2015 Table 710.1(1) (up.codes)", PRIM,
   "sizeDrenaje(150, 0, \"colector\", 2).d", colectorIPC(150, 2, false), 0);
 fila("CM.hidro.9.v", "colector con 700 UD al 1.05 %: 150 mm", E9,
   "columna 1/8 in/ft: 4\" 180 < 700; 6\" 700 ≥ 700", "IPC 2015 Table 710.1(1) (up.codes)", PRIM,
@@ -490,8 +490,8 @@ fila("CM.hidro.9.w", "ramal con 12 UD y 3 WC: 100 mm por la regla de la casa (do
   "3\" admite 20 ≥ 12 UD, pero wcMax(75) = 2 < 3 → 100 mm", CASA("9801-9811") + " (el IPC 2015 no trae la nota)", NCASA,
   "sizeDrenaje(12, 3, \"ramal\", 0).d", ramalIPC(12, 3, true), 0);
 /* fase 2 · H-201 filas mal transcritas de 710.1 */
-fila("CM.hidro.9.x", "colector con 30 UD al 2 %: 75 mm (hoy 100: la suite trae 27 UD para 75 mm; IPC 42)", E9,
-  "columna 1/8 in/ft (2 % < 2.083 %): 3\" 36 ≥ 30 (la suite usa 1/4 desde 2 %: 42; mismo resultado)", "IPC 2015 Table 710.1(1) (up.codes)", PRIM,
+fila("CM.hidro.9.x", "colector con 30 UD al 2 %: 75 mm (hoy 100: desde AUD-18 al 2 % rige la columna 1/8 in/ft y la suite trae 20 UD para 75 mm; IPC 36)", E9,
+  "columna 1/8 in/ft (2 % < 2.083 %; desde AUD-18 la suite también): 3\" 36 ≥ 30 (la suite trae 20 UD para 75 mm en esa columna, H-201)", "IPC 2015 Table 710.1(1) (up.codes)", PRIM,
   "sizeDrenaje(30, 0, \"colector\", 2).d", colectorIPC(30, 2, false), 0, "fase2:H-201");
 fila("CM.hidro.9.y", "colector con 30 UD al 1.05 %: 75 mm (hoy 100: la suite trae 20 UD para 75 mm; IPC 36)", E9,
   "columna 1/8 in/ft: 3\" 36 ≥ 30", "IPC 2015 Table 710.1(1) (up.codes)", PRIM,
