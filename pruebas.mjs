@@ -76,6 +76,11 @@ const capturaTramos = () => { G("recompute")(); const t = G("totals")(), ds = G(
     shape: "round", method: "velocity", targetV: 5, length: 0, fittings: [] }));
   if (t.oa > 0) segs.push({ ...ds("OA-EXTERIOR", Math.round(t.oa / 3.6)), service: "supply", shape: "round", method: "velocity", targetV: 4, length: 0, fittings: [] });
   S.duct.segments = segs; G("recompute")(); };
+/* H-306: la propuesta cedula>elec se retiró (el eléctrico calcula sólo con las cargas de su cuadro). Las pruebas que necesitan en
+   el cuadro las cargas de los demás motores las meten por la única vía que queda: la migración al abrir un proyecto anterior en
+   modo en vivo (la marca tomarPropuesta que deja sanearEstado con los cruces que tenía autorizados, H-268), que las acepta una vez
+   como instantánea con origen y fecha, con las mismas cifras que daba aceptar la propuesta. */
+const migraCargasElec = (cruces) => { G("recompute")(); S.elec.tomarPropuesta = [...(cruces || G("CRUCES_ELEC"))]; G("recompute")(); };
 
 /* --------------------------------------------------- proyecto de prueba */
 function proyectoDePrueba() {
@@ -312,8 +317,9 @@ t("2.0.5 las flechas son las herencias declaradas, no adorno", () => {
 t("2.0.6 cada flecha se pinta con el estado de lo que declara: cada nivel de su propuesta da su color (H-264, H-265: ya no hay herencias; U4 de la revisión: la prueba vuelve a exigir el color de cada nivel)", () => {
   S.tab = "inicio"; G("render")();
   if (G("ARISTAS").some((x) => x.regla === 1)) throw new Error("quedó una flecha de herencia");
-  const ar = G("ARISTAS").find((x) => x.de === "hvac" && x.a === "elec" && x.regla === 2);
-  if (!ar) throw new Error("no existe la flecha de propuesta de HVAC a eléctrico");
+  /* H-306: las flechas de propuesta hacia el eléctrico se retiraron; se prueba con la de soportería. */
+  const ar = G("ARISTAS").find((x) => x.de === "hvac" && x.a === "soporte" && x.regla === 2);
+  if (!ar) throw new Error("no existe la flecha de propuesta de HVAC a soportería");
   const orig = w.estadoPropuesta;
   const esperado = { aceptado: "vigente", vigente: "vigente", desactualizado: "desactualizada", propio: "propia", pendiente: "pendiente", vivo: "pendiente", "sin-datos": "inerte" };
   try {
@@ -462,13 +468,14 @@ t("4.3 al aceptar entra, y queda registrado el origen y la fecha", () => {
    banco sigue con las mismas cifras. */
 capturaTramos();
 t("4.4 el usuario puede declarar que captura lo suyo, y también queda escrito", () => {
-  /* H-262: la propuesta load>vent ya no existe; se prueba con la de la cédula eléctrica, sin dejar rastro en el estado. */
+  /* H-262: la propuesta load>vent ya no existe; H-306: la de la cédula eléctrica tampoco. Se prueba con la de selección de equipo
+     (load>equip), sin dejar rastro en el estado. */
   const guardado = JSON.stringify(S);
   try {
-    G("propPropio")("cedula>elec");
-    const v = G("vinculoDe")("cedula>elec");
+    G("propPropio")("load>equip");
+    const v = G("vinculoDe")("load>equip");
     eq(v.estado, "propio");
-    eq(G("estadoPropuesta")("cedula>elec").nivel, "propio");
+    eq(G("estadoPropuesta")("load>equip").nivel, "propio");
     eq(G("PROPUESTAS")["load>vent"], undefined, "H-262: no queda propuesta carga térmica → ventilación:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
@@ -476,21 +483,20 @@ t("4.5 (H-268) la cédula de equipos no entra al cuadro de cargas sin aceptarla:
   eq(S.elec.tomarHVAC, false, "el modo automático viene apagado:");
   const auto = (G("ELEC").calc || []).filter((c) => c.auto);
   eq(auto.length, 0, "cargas que entraron solas:");
-  eq(G("estadoPropuesta")("cedula>elec").nivel, "pendiente");
+  eq(G("PROPUESTAS")["cedula>elec"], undefined, "H-306: la propuesta de cargas de los demás motores se retiró:");
   /* H-268: el modo en vivo se retiró: con los cruces autorizados y tomarHVAC tampoco entra nada sin aceptar la propuesta. */
   const perms0 = JSON.parse(JSON.stringify(S.perms)), n0 = G("ELEC").calc.length;
   try {
     G("CRUCES_ELEC").forEach((k) => { S.perms[k] = { ts: 1, via: "prueba 4.5" }; }); S.elec.tomarHVAC = true; G("recompute")();
     eq(G("ELEC").calc.length, n0, "con tomarHVAC y los cruces autorizados nada entra sin aceptar la propuesta:");
-    eq(G("estadoPropuesta")("cedula>elec").nivel, "pendiente", "la propuesta sigue por decidir, no «vivo»:");
   } finally { S.elec.tomarHVAC = false; Object.keys(S.perms).forEach((k) => delete S.perms[k]); Object.assign(S.perms, perms0); G("recompute")(); }
 });
-t("4.6 aceptada, cada carga queda como carga propia del cuadro con su origen", () => {
-  G("propAceptar")("cedula>elec");
+t("4.6 migrada de un proyecto anterior en vivo (H-306: ya no hay propuesta que aceptar), cada carga queda como carga propia del cuadro con su origen", () => {
+  migraCargasElec();
   const ced = (S.elec.cargas || []).filter((c) => c.origen === "cedula");
   if (!ced.length) throw new Error("no entró ninguna carga de la cédula");
   ced.forEach((c) => { if (!c.ts) throw new Error("carga sin fecha de origen"); });
-  eq(G("estadoPropuesta")("cedula>elec").nivel, "aceptado");
+  eq((G("vinculoDe")("cedula>elec") || {}).estado, "aceptado", "queda registrado su origen:");
 });
 /* H-177 (rev 2.9.24): el equipo con motocompresor se rige por el art. 440 con sus datos de placa; aceptar la cédula
    descartaba MCA y MOP y el cuadro protegía al 250 % de la Tabla 430-52, por arriba del MOP. */
@@ -640,7 +646,8 @@ t("S.48 (H-179, H-268) las seis cargas que proponen otros motores (cédula HVAC,
   if (!ids.some((id) => id.startsWith("hvac-"))) throw new Error("falta la cédula HVAC");
   R.calc.forEach((c) => { eq(c.L, null, `${c.id}, L:`); eq(c.cond.dv, null, `${c.id}, caída:`); });
   const a = R.avisos.find((x) => x.lvl === "err" && /sin longitud capturada/.test(x.msg));
-  if (!a || !/acepta la propuesta «Cargas eléctricas de los demás motores»/.test(a.msg)) throw new Error("el aviso de las cargas propuestas debe decir cómo capturar su distancia");
+  if (!a || !/captúrala en «Editar cargas capturadas»/.test(a.msg)) throw new Error("el aviso de las cargas de otros motores debe decir cómo capturar su distancia");
+  if (/acepta la propuesta/.test(a.msg)) throw new Error("H-306: el aviso sigue mandando a aceptar una propuesta que ya no existe");
   G("recompute")();
   const f = G("propuestaElecFilas")();
   f.forEach((c) => { if (c.L != null && c.L !== 0) throw new Error(`${c.nombre}: la propuesta la entrega con L = ${c.L} m que nadie capturó`); });
@@ -752,30 +759,23 @@ t("S.50 (H-178) cargas de otros motores: el hp de catálogo o estimado no es de 
   } finally { S.fuego = JSON.parse(fuego0); G("recompute")(); }
 });
 /* H-178: un proyecto que aceptó la cédula con elec v7 guardó las cargas sin hp de referencia ni marca de aparato. */
-t("S.51 (H-178) proyecto que aceptó la cédula antes de la rev 2.9.24: los FFU abren como aparato, la propuesta sale «Desactualizada» y al volver a aceptarla trae el hp de referencia sin perder la distancia capturada", () => {
+t("S.51 (H-178, H-306) proyecto que aceptó la cédula antes de la rev 2.9.24: los FFU abren como aparato y cada carga conserva la distancia capturada (H-306: la propuesta se retiró; ya no hay «volver a aceptar»)", () => {
   const guardado = JSON.stringify(S);
   try {
     G("reemplazarEstado")(JSON.parse(fs.readFileSync("parches/regresion-motores/regresion-motores.emp.json", "utf8"))); G("recompute")();
-    G("propAceptar")("cedula>elec"); G("recompute")();
+    migraCargasElec();
     /* Así lo guardaba elec v7: sin hpRef, hpRefOrigen ni aparato en las cargas de la cédula, sin la marca h178 y con la firma de
        cinco campos. La distancia de 23 m la capturó el usuario. */
     const viejo = JSON.parse(JSON.stringify(S));
     delete viejo.elec.h178;
     viejo.elec.cargas.forEach((c) => { if (c.origen === "cedula") { delete c.hpRef; delete c.hpRefOrigen; delete c.aparato; c.L = 23; } });
-    viejo.vinculos["cedula>elec"].firma = JSON.stringify(G("propuestaElecFilas")().map((c) => [c.nombre, +Number(c.kW).toFixed(2), c.cant, c.V, c.ph]));
     G("reemplazarEstado")(viejo); G("recompute")();
-    eq(G("estadoPropuesta")("cedula>elec").nivel, "desactualizado", "la propuesta aceptada sin hp de referencia ni aparato sale desactualizada:");
     const ffu = G("ELEC").calc.find((c) => /^Módulos FFU/.test(c.nombre));
     if (!ffu) throw new Error("el proyecto de regresión no trae FFU");
     eq(ffu.aparato, true, "el FFU abre como aparato (430-6(a)(1) Exc. 2):");
     cerca(ffu.I, ffu.kW * 1000 / (ffu.V * ffu.fp), 1e-9, "y su corriente es W/(V·fp), no la de un motor de la Tabla 430-248:");
-    G("propAceptar")("cedula>elec"); G("recompute")();
-    eq(G("estadoPropuesta")("cedula>elec").nivel, "aceptado", "vuelta a aceptar:");
     const ced = S.elec.cargas.filter((c) => c.origen === "cedula");
-    const comp = ced.find((c) => /^Compresor/.test(c.nombre));
-    eq(comp.hpRef, G("AIRE").principal.hp, "el compresor trae su hp de catálogo como referencia:"); eq(comp.hpRefOrigen, "catalogo", "origen:");
-    eq(ced.find((c) => /^Módulos FFU/.test(c.nombre)).aparato, true, "el FFU vuelve como aparato:");
-    eq(ced.every((c) => c.L === 23), true, "volver a aceptar conserva la distancia capturada en cada carga:");
+    eq(ced.every((c) => c.L === 23), true, "cada carga conserva la distancia capturada:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 /* H-180 (rev 2.9.24): trazabilidad de lo que no es dato. El kW que no es de placa (familia de equipo, caudal × presión, bombas
@@ -834,7 +834,7 @@ t("S.52 (H-180) kW estimados y de catálogo con su procedencia; fp por carga edi
     vivas.forEach((c) => { eq(c.kWOrigen, esperado[c.id.split("-")[0]], `${c.id}, procedencia del kW:`); eq(c.fpOrigen, "casa", `${c.id}, fp:`); });
     vivas.forEach((c) => eq(c.kWEst, ["hvac", "vent", "hidro", "fuego"].includes(c.id.split("-")[0]), c.id + ", estimado (equipo HVAC, extractor y bombas):"));
     /* La cédula aceptada: kW de familia estimado, compresor y FFU de catálogo de la casa. */
-    G("propAceptar")("cedula>elec"); G("recompute")();
+    migraCargasElec();   /* H-306 */
     R = G("ELEC"); memo = R.memo.join(" ");
     const cf = (re) => { const c = R.calc.find((x) => x.origen === "cedula" && re.test(x.nombre)); if (!c) throw new Error(`la cédula no trae ${re}`); return c; };
     const hv = R.calc.find((x) => x.origen === "cedula" && x.modelo);
@@ -869,10 +869,8 @@ t("S.52 (H-180) kW estimados y de catálogo con su procedencia; fp por carga edi
     eq(hv2.fp, 0.9, "y el fp capturado se usa aunque la cédula traiga el suyo:");
     cerca(hv2.I, (kW0 + 1) * 1000 / ((hv2.ph === 3 ? Math.sqrt(3) : 1) * hv2.V * 0.9), 1e-6, "la corriente sale del kW y el fp capturados:");
     S.elec.cargas[i].kW = kW0; G("recompute")();
-    /* Volver a aceptar la cédula conserva el fp capturado en la carga del mismo nombre. */
+    /* H-306: ya no hay «volver a aceptar la cédula» (la propuesta se retiró). */
     const nom = S.elec.cargas[i].nombre;
-    G("propAceptar")("cedula>elec"); G("recompute")();
-    eq(S.elec.cargas.find((c) => c.origen === "cedula" && c.nombre === nom).fp, 0.9, "volver a aceptar conserva el fp capturado:");
     S.elec.cargas.find((c) => c.origen === "cedula" && c.nombre === nom).fp = null; G("recompute")();
     /* Proyecto guardado antes de H-180 (fp de la cédula como dato, sin procedencia del kW, fp del alimentador 0.95), con cargas
        renombradas y una anonimizada (sin origen ni modelo, como la deja etiquetasGenericas): abren con procedencia, mismos números. */
@@ -1522,7 +1520,7 @@ t("13.6 las flechas que salían de las cinco ahora salen del nodo HVAC", () => {
   const de = (a, b) => A.filter((x) => x.de === a && x.a === b).length;
   eq(de("hvac", "fuego"), 0, "hacia contra incendio (H-264: ya no hereda; es autónomo):");
   eq(de("hvac", "civil"), 0, "hacia obra civil (H-265: ya no hereda; es autónoma):");
-  eq(de("hvac", "elec"), 3, "hacia eléctrico (cédula de equipos, ventilador y FFU de cuartos limpios):");
+  eq(de("hvac", "elec"), 0, "hacia eléctrico (H-306: el eléctrico ya no recibe propuesta de cargas de los demás motores):");
   eq(de("hvac", "soporte"), 1, "hacia soportería:");
   eq(de("proyecto", "hvac"), 1, "y el proyecto sigue alimentándolo:");
   /* Las que corrían entre las cinco desaparecen: son tránsito interno. */
@@ -4428,7 +4426,7 @@ t("M.2 (H-268) con los cuatro cruces autorizados nada entra solo; al aceptar la 
     if (!(C.sum.ffu > 0)) throw new Error("el caso no aísla lo que se quiere probar: el cuarto limpio por omisión debe tener FFU > 0");
     /* H-268: con los cruces autorizados y tomarHVAC, sin aceptar la propuesta, nada entra. */
     if (G("ELEC").calc.some((c) => c.auto || c.origen === "cedula")) throw new Error("una carga de otro motor entró al cuadro sin aceptar la propuesta");
-    G("propAceptar")("cedula>elec");
+    migraCargasElec();   /* H-306: la propuesta se retiró; entran por la migración de un proyecto anterior en vivo */
     const E = G("ELEC"), de = (o) => E.calc.find((c) => c.origen === "cedula" && c.kWOrigen === o);
     const aire1 = de("aire"), hidro1 = de("hidro"), fuego1 = de("fuego"), ffu1 = de("ffu");
     if (!aire1) throw new Error("el compresor no llegó al cuadro al aceptar la propuesta");
@@ -4460,9 +4458,7 @@ t("M.3 aceptar la propuesta combinada escribe las cuatro cargas nuevas con orige
     limpiarPermisosElecBalance();
     G("CRUCES_ELEC").forEach((k) => { S.perms[k] = { ts: 1, via: "prueba M.3" }; });
     G("recompute")();
-    G("PROPUESTAS")["cedula>elec"].aplicar();
-    G("registrarVinculo")("cedula>elec", "aceptado");
-    G("recompute")();
+    migraCargasElec();   /* H-306 */
     const ced = S.elec.cargas.filter((c) => c.origen === "cedula");
     if (ced.length < 4) throw new Error(`se esperaban al menos 4 cargas aceptadas (compresor, bomba de agua, bomba de incendio, FFU); llegaron ${ced.length}`);
     const E = G("ELEC");
@@ -4486,7 +4482,7 @@ t("M.4 (reordenamiento, H-268) un cambio en el compresor se refleja en la PROPUE
     if (!propChico) throw new Error("la propuesta no trae el compresor");
     eq(propChico.kW, kWchico, "con el compresor chico, la propuesta ya trae su kW en el primer recompute:");
     if (G("ELEC").calc.some((c) => c.kWOrigen === "aire")) throw new Error("H-268: el compresor no debe entrar al cuadro sin aceptar la propuesta");
-    G("propAceptar")("cedula>elec");
+    migraCargasElec();   /* H-306 */
     eq(G("ELEC").calc.find((c) => c.kWOrigen === "aire").kW, kWchico, "aceptada, el cuadro trae el kW del compresor chico:");
     S.aire = { ...G("defaultAire")(), consumos: [
       { id: "c1", tipo: "actuador", nombre: "Grande 1", cant: 400, lmin: 0, bar: 0, uso: 0 },
@@ -4497,7 +4493,6 @@ t("M.4 (reordenamiento, H-268) un cambio en el compresor se refleja en la PROPUE
     if (!(kWgrande > kWchico)) throw new Error("el caso no aísla lo que se quiere probar: el segundo compresor debe ser más grande");
     eq(G("propuestaElecFilas")().find((c) => c.kWOrigen === "aire").kW, kWgrande, "un solo recompute() basta: la propuesta ya trae el kW del compresor grande, no el del chico:");
     eq(G("ELEC").calc.find((c) => c.kWOrigen === "aire").kW, kWchico, "la instantánea aceptada no se mueve sola (regla 3):");
-    eq(G("estadoPropuesta")("cedula>elec").nivel, "desactualizado", "y la propuesta avisa que el origen cambió:");
   } finally { S.aire = g.aire; S.elec = g.elec; Object.keys(S.perms).forEach((k) => delete S.perms[k]); Object.assign(S.perms, g.perms); Object.keys(S.vinculos || {}).forEach((k) => delete S.vinculos[k]); Object.assign(S.vinculos, g.vinculos); G("recompute")(); }
 });
 
@@ -4969,7 +4964,7 @@ t("Q.5 H-51 (H-268) el cuadro eléctrico carga TODAS las unidades de aire compri
     const prop = G("propuestaElecFilas")().find((c) => c.kWOrigen === "aire");
     if (!prop) throw new Error("la propuesta no trae el compresor");
     eq(prop.cant, A.nUnidades, "cant del compresor propuesto = unidades en servicio:");
-    G("propAceptar")("cedula>elec");
+    migraCargasElec();   /* H-306 */
     const fila = G("ELEC").calc.find((c) => c.origen === "cedula" && c.kWOrigen === "aire");
     if (!fila) throw new Error("no se encontró la carga del compresor en el cuadro eléctrico tras aceptar la propuesta");
     eq(fila.cant, A.nUnidades, "cant de la carga del compresor = unidades en servicio:");
@@ -6013,7 +6008,7 @@ t("S.24 propuestas entre disciplinas: un proyecto vacío no ofrece «Propuestas 
   try {
     G("reemplazarEstado")(G("defaultState")()); S.meta.name = "Vacío S.24";
     Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.24" }; }); G("recompute")();
-    ["cedula>elec", "motores>soporte"].forEach((id) => { const e = G("estadoPropuesta")(id); if (e.nivel === "pendiente" || e.nivel === "vivo") throw new Error(`${id}: propuesta «${e.nivel}» en proyecto vacío`); });
+    ["motores>soporte"].forEach((id) => {   /* H-306: cedula>elec se retiró */ const e = G("estadoPropuesta")(id); if (e.nivel === "pendiente" || e.nivel === "vivo") throw new Error(`${id}: propuesta «${e.nivel}» en proyecto vacío`); });
     /* Con captura en el origen sí se ofrece. */
     S.fuego.area = 300; G("recompute")();
     if (G("estadoPropuesta")("motores>soporte").nivel === "sin-datos") throw new Error("con contra incendio capturado la propuesta de soportería debía estar disponible");
@@ -8408,7 +8403,7 @@ t("S.137 (H-266) las bases de equipo que la migración de soportería copia al a
 });
 
 /* ===== S.103 (H-268) eléctrico autónomo: las cargas de otros motores entran sólo como propuesta aceptada (instantánea) ===== */
-t("S.103 (H-268) eléctrico es autónomo: con permisos y tomarHVAC, sin aceptar la propuesta, la cédula, el ventilador, el compresor, las bombas y los FFU NO entran al cuadro (se retiró el modo en vivo); aceptar concede los cruces y deja una instantánea con fecha que no se mueve sola; un proyecto guardado en vivo migra al abrir con las mismas cifras (sólo con los cruces que tenía); el sello no cambia al reabrir (decisión del dueño, 27-sep-2026)", () => {
+t("S.103 (H-268) eléctrico es autónomo: con permisos y tomarHVAC, sin aceptar la propuesta, la cédula, el ventilador, el compresor, las bombas y los FFU NO entran al cuadro (se retiró el modo en vivo); la migración (H-306: la propuesta se retiró) deja una instantánea con fecha que no se mueve sola; un proyecto guardado en vivo migra al abrir con las mismas cifras (sólo con los cruces que tenía); el sello no cambia al reabrir (decisión del dueño, 27-sep-2026)", () => {
   const guardado = JSON.stringify(S);
   try {
     G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.103"; aceptarSitioCarga();   /* H-290 */
@@ -8431,27 +8426,23 @@ t("S.103 (H-268) eléctrico es autónomo: con permisos y tomarHVAC, sin aceptar 
     let R = G("ELEC");
     eq(R.calc.length, 1, "sin aceptar la propuesta sólo cuenta la carga capturada (nada entra en vivo):");
     if (R.calc.some((c) => c.auto)) throw new Error("una carga entró en vivo desde otro motor");
-    eq(G("PROPUESTAS")["cedula>elec"].enVivo(), false, "ya no existe el modo en vivo:");
-    eq(G("estadoPropuesta")("cedula>elec").nivel, "pendiente", "la propuesta está por decidir, no «vivo»:");
+    eq(G("PROPUESTAS")["cedula>elec"], undefined, "H-306: la propuesta se retiró:");
     const demSolo = R.kVAdemanda;
-    /* 2) Aceptar: concede los seis cruces y deja las cargas como instantánea con origen y fecha. */
-    G("CRUCES_ELEC").forEach((k) => { delete S.perms[k]; });
-    G("propAceptar")("cedula>elec"); R = G("ELEC");
-    G("CRUCES_ELEC").forEach((k) => { if (!S.perms[k]) throw new Error("aceptar la propuesta debe conceder " + k); });
+    /* 2) La migración (H-306: ya no hay propuesta que aceptar) deja las cargas como instantánea con origen y fecha. */
+    migraCargasElec(); R = G("ELEC");
     const ced = S.elec.cargas.filter((c) => c.origen === "cedula");
     eq(ced.length, prop.length, "las cargas propuestas quedan en el cuadro con origen «cedula»:");
     ced.forEach((c) => { if (!(c.ts > 0)) throw new Error(`${c.nombre}: sin fecha de aceptación`); });
     ["hvac", "aire", "hidro", "fuego", "ffu"].forEach((o) => { if (!ced.some((c) => c.kWOrigen === o)) throw new Error(`falta la carga de origen ${o} en la instantánea`); });
     if (!(R.kVAdemanda > demSolo)) throw new Error("aceptadas, la demanda del tablero debe subir");
     eq(R.calc.length, 1 + ced.length, "el cuadro trae la capturada más las aceptadas:");
-    eq(G("estadoPropuesta")("cedula>elec").nivel, "aceptado", "aceptada y vigente:");
+    eq((G("vinculoDe")("cedula>elec") || {}).estado, "aceptado", "queda registrado su origen:");
     /* 3) Regla 3: el origen cambia, el cuadro no se mueve, la propuesta avisa; y la propuesta sí refleja el cambio en el mismo ciclo. */
     const dem1 = R.kVAdemanda, comp1 = ced.find((c) => c.kWOrigen === "aire").kW;
     S.aire.consumos = [{ id: "c1", tipo: "actuador", nombre: "Grande 1", cant: 400, lmin: 0, bar: 0, uso: 0 }, { id: "c2", tipo: "pistola", nombre: "Grande 2", cant: 200, lmin: 0, bar: 0, uso: 0 }]; G("recompute")();
     if (!(G("AIRE").principal.kW > comp1)) throw new Error("el caso no aísla lo que se quiere probar: el compresor nuevo debe ser mayor");
     cerca(G("ELEC").kVAdemanda, dem1, 1e-9, "ya aceptada, la instantánea no se mueve sola aunque el compresor cambie:");
     eq(S.elec.cargas.find((c) => c.kWOrigen === "aire").kW, comp1, "el kW aceptado se conserva:");
-    eq(G("estadoPropuesta")("cedula>elec").nivel, "desactualizado", "la propuesta avisa que el origen cambió:");
     cerca(G("propuestaElecFilas")().find((c) => c.kWOrigen === "aire").kW, G("AIRE").principal.kW, 1e-9, "la propuesta trae el compresor nuevo en el mismo recompute:");
     /* 4) Los permisos ya no mueven el cuadro: las aceptadas son captura propia con origen; los parámetros propios mandan. */
     G("CRUCES_ELEC").forEach((k) => { delete S.perms[k]; }); G("recompute")();
@@ -8464,13 +8455,12 @@ t("S.103 (H-268) eléctrico es autónomo: con permisos y tomarHVAC, sin aceptar 
     if (/en vivo/i.test(v)) throw new Error("la pantalla sigue hablando del modo en vivo");
     contiene(G("GUIA").electrico.ojo, "autónomo", "la guía lo declara:");
     if (!G("ELEC").memo.some((m) => /Origen de las cargas \(H-268\)/.test(m) && /aceptada\(s\) de otros motores/.test(m))) throw new Error("la memoria no dice de dónde salen las cargas");
-    if (/EN VIVO/.test(G("PROPUESTAS")["cedula>elec"].actual())) throw new Error("la propuesta sigue hablando del modo en vivo");
     /* 6) Proyecto guardado en vivo (tomarHVAC con los cruces autorizados): abre con las MISMAS cifras que hoy da aceptar la propuesta, como instantánea con fecha, y desde ahí no cuenta en vivo. */
     const fixture = JSON.parse(fs.readFileSync("parches/regresion-motores/regresion-motores.emp.json", "utf8"));
     if (fixture.elec.tomarHVAC || "h268" in fixture.elec) throw new Error("el caso no aísla lo que se quiere probar: el fixture debe ser de antes de H-268 y sin modo en vivo");
     G("importarRespaldo")(JSON.stringify(fixture)); G("recompute")();
     const antes = G("ELEC").kVAdemanda;
-    G("propAceptar")("cedula>elec");
+    migraCargasElec();   /* H-306 */
     const esperado = JSON.stringify(G("cifrasMotor")("elec")), nCed = S.elec.cargas.filter((c) => c.origen === "cedula").length;
     if (!(nCed >= 6)) throw new Error("el fixture debe proponer las seis fuentes (cédula, extractor, compresor, bombas, FFU): " + nCed);
     const vivo = JSON.parse(JSON.stringify(fixture)); vivo.elec.tomarHVAC = true;
@@ -8481,18 +8471,16 @@ t("S.103 (H-268) eléctrico es autónomo: con permisos y tomarHVAC, sin aceptar 
     eq(JSON.stringify(G("cifrasMotor")("elec")), esperado, "abre con las mismas cifras que tenía en vivo:");
     if (!(G("ELEC").kVAdemanda > antes)) throw new Error("el caso no aísla lo que se quiere probar: las cargas en vivo deben pesar en la demanda");
     eq((G("vinculoDe")("cedula>elec") || {}).estado, "aceptado", "queda registrada como propuesta aceptada:");
-    eq(G("estadoPropuesta")("cedula>elec").nivel, "aceptado", "vigente:");
     const demMig = G("ELEC").kVAdemanda;
     S.aire.consumos.push({ id: "cx", tipo: "actuador", nombre: "Más", cant: 400, lmin: 0, bar: 0, uso: 0 }); G("recompute")();
     cerca(G("ELEC").kVAdemanda, demMig, 1e-9, "ya migrado no cuenta en vivo:");
-    /* 6b) En vivo con un solo cruce autorizado: sólo migra ese; no se conceden cruces nuevos; hoy los demás motores proponen más y el usuario decide. */
+    /* 6b) En vivo con un solo cruce autorizado: sólo migra ese; no se conceden cruces nuevos. */
     const parcial = JSON.parse(JSON.stringify(fixture)); parcial.elec.tomarHVAC = true;
     ["vent>elec", "aire>elec", "hidro>elec", "fuego>elec", "clean>elec"].forEach((k) => { delete parcial.perms[k]; });
     G("importarRespaldo")(JSON.stringify(parcial)); G("recompute")();
     const cedP = S.elec.cargas.filter((c) => c.origen === "cedula");
     if (!cedP.length || !cedP.every((c) => c.kWOrigen === "hvac")) throw new Error("con sólo equip>elec autorizado debía migrar únicamente la cédula HVAC: " + cedP.map((c) => c.kWOrigen).join(","));
     if (S.perms["aire>elec"]) throw new Error("la migración no debe conceder cruces que no estaban autorizados");
-    eq(G("estadoPropuesta")("cedula>elec").nivel, "desactualizado", "hoy los demás motores proponen más: el usuario decide:");
     /* 6c) tomarHVAC sin ningún cruce autorizado: no había nada en vivo, nada se acepta. */
     const nada = JSON.parse(JSON.stringify(fixture)); nada.elec.tomarHVAC = true; G("CRUCES_ELEC").forEach((k) => { delete nada.perms[k]; });
     G("importarRespaldo")(JSON.stringify(nada)); G("recompute")();
@@ -9518,6 +9506,34 @@ t("S.185 (H-305) ductos calcula sólo con los tramos capturados en su pestaña: 
     G("reemplazarEstado")(JSON.parse(JSON.stringify(S))); G("recompute")();
     eq(JSON.stringify(S.duct.segments), seg0, "los tramos aceptados se conservan:");
     eq(G("DUCT").boq.kg, kg0, "los kilos no cambian:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); S.tab = tab0; G("recompute")(); }
+});
+
+t("S.186 (H-306) el eléctrico calcula sólo con las cargas de su cuadro: ya no hay propuesta «Cargas eléctricas de los demás motores» (cedula>elec), ni cruces ni flechas de los demás motores hacia el eléctrico; las cargas ya aceptadas se conservan con sus cifras y un proyecto anterior en vivo se migra igual que antes", () => {
+  const guardado = JSON.stringify(S), tab0 = S.tab;
+  try {
+    eq(G("PROPUESTAS")["cedula>elec"], undefined, "no queda la propuesta de cargas de los demás motores:");
+    ["equip>elec", "vent>elec", "aire>elec", "hidro>elec", "fuego>elec", "clean>elec"].forEach((k) => eq(G("LINKS")[k], undefined, `no queda el cruce ${k}:`));
+    eq(G("ARISTAS").filter((a) => a.a === "elec" && a.regla === 2).length, 0, "flechas de propuesta hacia el eléctrico:");
+    S.tab = "electrico"; G("render")();
+    if (/Cargas eléctricas de los demás motores|acepta la propuesta/.test(vista())) throw new Error("el eléctrico sigue ofreciendo la propuesta de los demás motores");
+    /* Las cargas ya aceptadas (origen «cedula») se conservan: mismas cifras al abrir. Si el banco no las trae a esta altura, se
+       meten por la migración de un proyecto anterior en vivo (la única vía que queda). */
+    if (!(S.elec.cargas || []).some((c) => c.origen === "cedula")) migraCargasElec();
+    const ced = (S.elec.cargas || []).filter((c) => c.origen === "cedula").length;
+    if (!ced) throw new Error("el banco no trae cargas aceptadas: la prueba no probaría la conservación");
+    const kva0 = G("ELEC").kVAdemanda;
+    G("reemplazarEstado")(JSON.parse(JSON.stringify(S))); G("recompute")();
+    eq(S.elec.cargas.filter((c) => c.origen === "cedula").length, ced, "cargas aceptadas conservadas:");
+    eq(G("ELEC").kVAdemanda, kva0, "kVA de demanda:");
+    /* Proyecto anterior en modo en vivo (tomarHVAC con los cruces autorizados): al abrir se migra una sola vez, como antes (H-268). */
+    const viejo = JSON.parse(guardado);
+    viejo.elec.cargas = viejo.elec.cargas.filter((c) => c.origen !== "cedula"); viejo.elec.tomarHVAC = true; delete viejo.elec.h268;   /* guardado antes de H-268 */
+    viejo.perms = { ...(viejo.perms || {}) }; ["equip>elec", "vent>elec", "aire>elec", "hidro>elec", "fuego>elec", "clean>elec"].forEach((k) => { viejo.perms[k] = { ts: 1, via: "S.186" }; });
+    if (viejo.vinculos) delete viejo.vinculos["cedula>elec"];
+    G("importarRespaldo")(JSON.stringify(viejo)); G("recompute")();
+    eq(S.elec.cargas.filter((c) => c.origen === "cedula").length, ced, "el proyecto en vivo abre con las mismas cargas de los demás motores:");
+    eq(G("ELEC").kVAdemanda, kva0, "y los mismos kVA:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); S.tab = tab0; G("recompute")(); }
 });
 
