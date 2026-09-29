@@ -8355,6 +8355,35 @@ function origenMigradoSop(k, m, en, corto) {
   return corto ? antes : `${en ? "from the migration on opening, unconfirmed" : "de la migración al abrir, sin confirmar"}: ${antes}`;
 }
 
+/* H-298 (decisión del dueño, 29-sep-2026: cada motor saca su propia cotización de sus propios resultados). La cotización de
+   Soportería sale sólo de sus resultados (R) y de su captura (Gc): sus partidas de la sección G, ya cuantificadas y con su precio
+   (PU_SOP_*), y lo que dejó pendiente o «Por cotizar» (H-225, H-226, H-232, H-266). Los mismos renglones que antes armaba
+   computeQuote leyendo SOPORTE en vivo; la global sólo los junta. */
+function cotizacionSoporte(R, Gc) {
+  const aux = [], pendientes = [], porCotizar = [];
+  if (!R) return { aux, pendientes, porCotizar };
+  if ((R.manualPendientes || []).length)
+    R.manualPendientes.forEach((p) => pendientes.push({ mot: "soporte", desc: `Soportes: ${p.que}`, descEn: `Supports: ${p.queEn}`, motivo: `pendiente de ${p.falta}`, motivoEn: `${p.faltaEn} pending` }));
+  if (R.anclajePendiente)
+    /* H-266 (U5, dependencia de soporte v13): el motivo sale de lo que de verdad falta; sin la altura de la estructura (con sismo) el
+       anclaje se predimensionó con z/h = 0 de referencia. Con SDS o estructura sin capturar, el texto de H-226 no cambia. */
+    (R.anclajesPza || []).forEach((a) => {
+      const sinDatos = !(R.sdsCapturado && R.estructuraCapturada), sinH = R.alturaEstructuraCapturada === false;
+      const conEs = sinDatos && sinH ? "SDS, estructura y z/h = 0 de referencia (sin altura de la estructura)" : sinH ? "z/h = 0 de referencia (sin altura de la estructura)" : "SDS y estructura de referencia";
+      const conEn = sinDatos && sinH ? "reference SDS, structure and z/h = 0 (no structure height)" : sinH ? "a reference z/h = 0 (no structure height)" : "reference SDS and structure";
+      const faltaEs = sinDatos && sinH ? "SDS con fuente, tipo de estructura, f'c y la altura de la estructura" : sinH ? "la altura de la estructura" : "SDS con fuente, tipo de estructura y f'c";
+      const faltaEn = sinDatos && sinH ? "site SDS with source, structure type, f'c and the structure height are captured" : sinH ? "the structure height is captured" : "site SDS with source, structure type and f'c are captured";
+      porCotizar.push({ sec: "G", mot: "soporte", clave: "anclajeSop", desc: `Anclaje ${a.id} a estructura, ${a.cnt} pieza(s): predimensionado con ${conEs}; Por cotizar hasta capturar ${faltaEs}`, descEn: `${a.id} anchor to structure, ${a.cnt} piece(s): pre-sized with ${conEn}; to be quoted until ${faltaEn}`, un: "PIEZA", qty: a.cnt, motivo: sinH ? "datos del edificio sin capturar (H-226; altura de la estructura, H-266)" : "datos del edificio sin capturar (H-226)" });
+    });
+  if (R.colgadoPendiente)
+    pendientes.push({ mot: "soporte", desc: `Varilla roscada de los soportes (${R.nSoportes} soportes)`, descEn: `Threaded rod for the supports (${R.nSoportes} supports)`, motivo: "pendiente de altura de colgado (sin captura no se supone)", motivoEn: "hanging height pending (not assumed without capture)" });
+  if (R.hTrabPendiente && (R.part || []).length)
+    pendientes.push({ mot: "soporte", desc: "Renta de elevación", descEn: "Lift rental", motivo: "pendiente de altura de trabajo (sin captura no se supone, H-266)", motivoEn: "working height pending (not assumed without capture, H-266)" });
+  else if (R.mesesPendiente && (R.part || []).length)
+    pendientes.push({ mot: "soporte", desc: `Renta de elevación (${R.equipo ? R.equipo.label.toLowerCase() : "equipo"}, altura de trabajo ${n(R.hTrab, 1)} m${R.hTrabMigrada ? `, ${origenMigradoSop("alturaTrabajo", ((Gc && Gc.sinConfirmar) || {}).alturaTrabajo)}` : ""})`, descEn: `Lift rental (${R.equipo ? R.equipo.labelEn.toLowerCase() : "equipment"}, working height ${n(R.hTrab, 1)} m${R.hTrabMigrada ? `, ${origenMigradoSop("alturaTrabajo", ((Gc && Gc.sinConfirmar) || {}).alturaTrabajo, true)}` : ""})`, motivo: "pendiente de meses de renta (sin captura no se suponen)", motivoEn: "rental months pending (not assumed without capture)" });
+  if (R.total > 0) R.part.forEach((p) => aux.push({ desc: p.desc, descEn: p.descEn, qty: p.qty, unit: p.unit, total: p.total, sec: "G", un: p.un, mot: "soporte" }));
+  return { aux, pendientes, porCotizar };
+}
 function computeSoporte(Gc) {
   const avisos = [], memo = [], part = [];
   const usa = Gc.usarMotores !== false;
@@ -8701,11 +8730,13 @@ function computeSoporte(Gc) {
 
   if (hTrabMigrada || hEstructuraMigrada || basesMigradas) avisos.push({ lvl: "warn", msg: `Soportería: valores que la migración copió o supuso al abrir este proyecto (H-266), sin confirmar: ${[hTrabMigrada ? `altura de trabajo ${n(hTrab, 1)} m (${origenMigradoSop("alturaTrabajo", scSop.alturaTrabajo, false, true)})` : "", hEstructuraMigrada ? `altura de la estructura ${n(hEstructura, 1)} m (${origenMigradoSop("alturaEstructura", scSop.alturaEstructura, false, true)})` : "", basesMigradas ? `bases de equipo ${n(nEquipos, 0)} (${origenMigradoSop("basesEquipo", scSop.basesEquipo, false, true)})` : ""].filter(Boolean).join("; ")}. Se usan con la misma cifra; captura el valor de la obra para confirmarlo.` });
 
-  return { porTuberia, mDucto, mTub, nSoportes, nLong, nTrans, mArriostrable,
+  const RS = { porTuberia, mDucto, mTub, nSoportes, nLong, nTrans, mArriostrable,
     hTrab, hTrabPendiente, hEstructura, equipo, meses, mesesPendiente, nEquipos, part, total, avisos, memo, alturaColgado, colgadoCapturado, colgadoPendiente, colgadoSugerido,
     hTrabMigrada, hEstructuraMigrada, origenHTrab, origenHEst, basesMigradas, origenBases,
     manualPendientes, sdsCapturado, estructuraCapturada, alturaEstructuraCapturada, anclajeCapturado, anclajePendiente, anclajesPza: Object.entries(anclMerge).map(([id, cnt]) => ({ id, cnt })),
     sopcalc: R };   // corrida completa de SoporteCalc, por si se quiere el detalle fino
+  RS.cot = cotizacionSoporte(RS, Gc);   /* H-298: su propia cotización */
+  return RS;
 }
 
 /* rev 2.9.16 · Clave del precio de tubería hidráulica por material y diámetro (sin puntos: vive en una ruta data-path). */
@@ -8968,25 +8999,9 @@ function computeQuote() {
      solo se pasan al catálogo. La cuantificación es del motor, no de la
      cotización, para que el metraje y el importe no puedan divergir. */
   /* H-232: la renta de elevación sin meses capturados se declara pendiente en la cotización. */
-  if (typeof SOPORTE !== "undefined" && SOPORTE && (SOPORTE.manualPendientes || []).length && linkAllowed("soporte>quote"))
-    SOPORTE.manualPendientes.forEach((p) => pendientes.push({ mot: "soporte", desc: `Soportes: ${p.que}`, descEn: `Supports: ${p.queEn}`, motivo: `pendiente de ${p.falta}`, motivoEn: `${p.faltaEn} pending` }));
-  if (typeof SOPORTE !== "undefined" && SOPORTE && SOPORTE.anclajePendiente && linkAllowed("soporte>quote"))
-    /* H-266 (U5, dependencia de soporte v13): el motivo sale de lo que de verdad falta; sin la altura de la estructura (con sismo) el
-       anclaje se predimensionó con z/h = 0 de referencia. Con SDS o estructura sin capturar, el texto de H-226 no cambia. */
-    (SOPORTE.anclajesPza || []).forEach((a) => {
-      const sinDatos = !(SOPORTE.sdsCapturado && SOPORTE.estructuraCapturada), sinH = SOPORTE.alturaEstructuraCapturada === false;
-      const conEs = sinDatos && sinH ? "SDS, estructura y z/h = 0 de referencia (sin altura de la estructura)" : sinH ? "z/h = 0 de referencia (sin altura de la estructura)" : "SDS y estructura de referencia";
-      const conEn = sinDatos && sinH ? "reference SDS, structure and z/h = 0 (no structure height)" : sinH ? "a reference z/h = 0 (no structure height)" : "reference SDS and structure";
-      const faltaEs = sinDatos && sinH ? "SDS con fuente, tipo de estructura, f'c y la altura de la estructura" : sinH ? "la altura de la estructura" : "SDS con fuente, tipo de estructura y f'c";
-      const faltaEn = sinDatos && sinH ? "site SDS with source, structure type, f'c and the structure height are captured" : sinH ? "the structure height is captured" : "site SDS with source, structure type and f'c are captured";
-      porCotizar.push({ sec: "G", mot: "soporte", clave: "anclajeSop", desc: `Anclaje ${a.id} a estructura, ${a.cnt} pieza(s): predimensionado con ${conEs}; Por cotizar hasta capturar ${faltaEs}`, descEn: `${a.id} anchor to structure, ${a.cnt} piece(s): pre-sized with ${conEn}; to be quoted until ${faltaEn}`, un: "PIEZA", qty: a.cnt, motivo: sinH ? "datos del edificio sin capturar (H-226; altura de la estructura, H-266)" : "datos del edificio sin capturar (H-226)" });
-    });
-  if (typeof SOPORTE !== "undefined" && SOPORTE && SOPORTE.colgadoPendiente && linkAllowed("soporte>quote"))
-    pendientes.push({ mot: "soporte", desc: `Varilla roscada de los soportes (${SOPORTE.nSoportes} soportes)`, descEn: `Threaded rod for the supports (${SOPORTE.nSoportes} supports)`, motivo: "pendiente de altura de colgado (sin captura no se supone)", motivoEn: "hanging height pending (not assumed without capture)" });
-  if (typeof SOPORTE !== "undefined" && SOPORTE && SOPORTE.hTrabPendiente && (SOPORTE.part || []).length && linkAllowed("soporte>quote"))
-    pendientes.push({ mot: "soporte", desc: "Renta de elevación", descEn: "Lift rental", motivo: "pendiente de altura de trabajo (sin captura no se supone, H-266)", motivoEn: "working height pending (not assumed without capture, H-266)" });
-  else if (typeof SOPORTE !== "undefined" && SOPORTE && SOPORTE.mesesPendiente && (SOPORTE.part || []).length && linkAllowed("soporte>quote"))
-    pendientes.push({ mot: "soporte", desc: `Renta de elevación (${SOPORTE.equipo ? SOPORTE.equipo.label.toLowerCase() : "equipo"}, altura de trabajo ${n(SOPORTE.hTrab, 1)} m${SOPORTE.hTrabMigrada ? `, ${origenMigradoSop("alturaTrabajo", (S.soporte.sinConfirmar || {}).alturaTrabajo)}` : ""})`, descEn: `Lift rental (${SOPORTE.equipo ? SOPORTE.equipo.labelEn.toLowerCase() : "equipment"}, working height ${n(SOPORTE.hTrab, 1)} m${SOPORTE.hTrabMigrada ? `, ${origenMigradoSop("alturaTrabajo", (S.soporte.sinConfirmar || {}).alturaTrabajo, true)}` : ""})`, motivo: "pendiente de meses de renta (sin captura no se suponen)", motivoEn: "rental months pending (not assumed without capture)" });
+  /* H-298 (decisión del dueño, 29-sep-2026): los pendientes y «Por cotizar» de Soportería los arma su motor (SOPORTE.cot,
+     cotizacionSoporte); aquí sólo se juntan tal cual (copias). */
+  if (verSop && SOPORTE && SOPORTE.cot) { pendientes.push(...SOPORTE.cot.pendientes.map((x) => ({ ...x }))); porCotizar.push(...SOPORTE.cot.porCotizar.map((x) => ({ ...x }))); }
   /* H-297 (decisión del dueño, 29-sep-2026): la cotización de Obra civil la arma su motor con sus resultados (CIVIL.cot,
      cotizacionCivil); aquí sólo se juntan sus renglones tal cual (copias), sin recalcular nada. */
   if (verCiv && CIVIL && CIVIL.cot) {
@@ -8995,9 +9010,7 @@ function computeQuote() {
   if (CIVIL && CIVIL.total > 0 && !verCiv) faltan.push("la obra civil");
 
   /* ---- Sección G · soportería, arriostramiento y elevación ---- */
-  if (verSop && SOPORTE && SOPORTE.total > 0) {
-    SOPORTE.part.forEach((p) => aux.push({ desc: p.desc, descEn: p.descEn, qty: p.qty, unit: p.unit, total: p.total, sec: "G", un: p.un, mot: "soporte" }));
-  }
+  if (verSop && SOPORTE && SOPORTE.total > 0 && SOPORTE.cot) aux.push(...SOPORTE.cot.aux.map((x) => ({ ...x })));   /* H-298: renglones del motor, tal cual */
   if (SOPORTE && SOPORTE.total > 0 && !verSop) faltan.push("la soportería y el equipo de elevación");
 
   /* ---- Sección E · aire comprimido ----
