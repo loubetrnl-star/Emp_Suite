@@ -9644,6 +9644,22 @@ t("S.194 (AUD-14) eléctrico sin valores inventados: selConductor sin distancia 
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+t("S.195 (AUD-14) soportería: la tubería capturada a mano sin material no se soporta como acero (antes «acero» por omisión): queda pendiente de material, sin soportes ni importe; un proyecto nuevo nace sin material", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    const d0 = G("defaultSoporte")();
+    eq([d0.tubHidroMat, d0.tubFuegoMat, d0.tubAireMat].join(","), ",,", "un proyecto nuevo nace sin material de tubería:");
+    S.soporte = { ...G("defaultSoporte")(), usarMotores: false, alturaTrabajo: 5, alturaEstructura: 6, alturaColgadoM: 1, mesesElevacion: 0, tubHidroM: 30, tubHidroD: 50 };
+    G("recompute")();
+    const R = G("SOPORTE");
+    eq(R.mTub, 0, "sin material no se cuentan metros de tubería:");
+    if (!R.manualPendientes.some((p) => /material/.test(p.falta))) throw new Error("la tubería sin material debe quedar pendiente de material");
+    /* Con el material capturado sí se soporta. */
+    S.soporte.tubHidroMat = "acero"; G("recompute")();
+    eq(G("SOPORTE").mTub, 30, "con acero capturado cuenta los 30 m:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {
   const guardado = JSON.stringify(S);
   try {

@@ -1,3 +1,4 @@
+| 14 | 2.9.24 | AUD-14 (auditoría externa, 29-sep-2026; «nada se estima»): la tubería capturada a mano sin material ya no se soporta como acero (antes «acero» por omisión en el estado y en el cálculo): queda pendiente de material, sin soportes ni importe, con aviso; un proyecto nuevo nace sin material y la pantalla ofrece «sin capturar» |
 # CHANGELOG por motor · SuiteEmp
 
 Cada motor lleva su propia versión (`MOTOR_VER`); sólo sube cuando cambia su lógica de cálculo. Los cambios de interfaz, textos y documentos no la tocan y viven en las bitácoras de cada revisión (`Bitacora-rev-*.md`). Un proyecto sellado con una versión anterior de un motor abre «Desactualizado» sólo en esa disciplina, con el hallazgo que lo movió; al recalcular, la memoria muestra el antes y el después.
@@ -161,7 +162,7 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 | 7 | 2.9.24 | H-265 (complemento; regla 6): con «De las áreas de obra capturadas aquí» y la lista vacía el área es 0 (aviso «No hay área») y no se cotiza nada. Antes el motor usaba los totales a mano que la pantalla oculta en ese modo: área 500 m², muro 300 m² → 5 partidas por 1,690,210 MXN y el PDF decía «suma de 0 áreas de obra». Proyecto fijo: sin cambio de cifras. |
 | 8 | 2.9.24 | H-265 (complemento; «un proyecto guardado abre con las mismas cifras»): la migración a las áreas propias de civil copia también la zona sin área que tenía tabiquería capturada (perimZonas), cuyo muro (perímetro × altura) ya se cuantificaba. Antes: Nave 400 m² × 6 m + Pasillo 0 m² × 3 m con 50 ml capturados abría sin el pasillo (−150 m² de muro, −252,750 MXN). Proyecto fijo: sin cambio de cifras. |
 
-## Soportería (`soporte`) · v13
+## Soportería (`soporte`) · v14
 
 | Versión | Rev | Hallazgo / cambio de lógica |
 |---|---|---|

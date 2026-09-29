@@ -8298,7 +8298,8 @@ function defaultSoporte() {
     basesEquipo: 0,           // H-266: capturadas; con la instantánea aceptada, las de la instantánea; 0 = sin bases
     /* H-230: modo «valores propios» sin diámetros inventados: cada línea a mano pide sus medidas y su material. */
     ductoAnchoMm: null, ductoAltoMm: null,
-    tubHidroD: null, tubHidroMat: "acero", tubFuegoD: null, tubFuegoMat: "acero", tubAireD: null, tubAireMat: "acero",
+    /* AUD-14 (auditoría externa, 29-sep-2026; «nada se estima»): el material de cada tubería a mano nace sin capturar (antes «acero»). */
+    tubHidroD: null, tubHidroMat: null, tubFuegoD: null, tubFuegoMat: null, tubAireD: null, tubAireMat: null,
     rielM: 0,                 // corridas múltiples con riel tipo canal
     ductoM: 0, tubHidroM: 0, tubFuegoM: 0, tubAireM: 0,   // capturados si no se usan los motores
     /* SoporteCalc integrado (decisión del dueño, 15-sep-2026). Nivel de
@@ -8521,15 +8522,17 @@ function computeSoporte(Gc, F) {
     /* H-230: cada línea a mano lleva su diámetro y su material capturados; sin diámetro no se inventa (antes 50 / 100 / 32 mm de acero). */
     const manual = (tag, tagEn, L, d, mat, disciplina, etiqueta) => {
       if (!(num(L) > 0)) return;
+      /* AUD-14: sin material capturado no se soporta como acero (antes «acero» por omisión): pendiente de material. */
+      if (!mat) { manualPendientes.push({ que: `${tag} capturado a mano (${n(num(L), 0)} m)`, queEn: `${tagEn} entered by hand (${n(num(L), 0)} m)`, falta: num(d, 0) > 0 ? "material" : "diámetro (mm) y material", faltaEn: num(d, 0) > 0 ? "material" : "diameter (mm) and material" }); return; }
       /* H-224: la red contra incendio a mano en termoplástico no toma los claros de plomería del IPC: pendiente de NFPA 13. */
       if (disciplina === "contra_incendio" && num(d, 0) > 0 && mat !== "acero" && mat !== "cobre") { manualPendientes.push({ que: "Red contra incendio en CPVC", queEn: "CPVC fire protection piping", falta: "claro de soporte de NFPA 13 para CPVC (sin texto de la norma: no se soporta como acero ni con los claros de plomería del IPC)", faltaEn: "NFPA 13 hanger spacing for CPVC (no code text: not supported as steel nor with IPC plumbing spacing)" }); return; }
       /* H-228: el termoplástico a mano lleva subtipo (cpvc / ppr / pead); el «plastico» genérico de antes queda pendiente de subtipo. */
       if (num(d, 0) > 0) agregarTuberia([{ tag: `${tag} (capturado a mano, ${n(num(d), 0)} mm ${mat})`, L: num(L), d: num(d) }], mat === "cobre" ? "cobre" : mat === "acero" ? "acero" : "plastico", disciplina, etiqueta, mat === "plastico" ? null : mat);
       else manualPendientes.push({ que: `${tag} capturado a mano (${n(num(L), 0)} m)`, queEn: `${tagEn} entered by hand (${n(num(L), 0)} m)`, falta: "diámetro (mm) y material", faltaEn: "diameter (mm) and material" });
     };
-    manual("Hidrosanitario", "Plumbing", Gc.tubHidroM, Gc.tubHidroD, Gc.tubHidroMat || "acero", "hidrosanitario", "Hidráulica y sanitario");
-    manual("Contra incendio", "Fire protection", Gc.tubFuegoM, Gc.tubFuegoD, Gc.tubFuegoMat || "acero", "contra_incendio", "Contra incendio");
-    manual("Aire comprimido", "Compressed air", Gc.tubAireM, Gc.tubAireD, Gc.tubAireMat || "acero", "aire_comprimido", "Aire comprimido");
+    manual("Hidrosanitario", "Plumbing", Gc.tubHidroM, Gc.tubHidroD, Gc.tubHidroMat || null, "hidrosanitario", "Hidráulica y sanitario");
+    manual("Contra incendio", "Fire protection", Gc.tubFuegoM, Gc.tubFuegoD, Gc.tubFuegoMat || null, "contra_incendio", "Contra incendio");
+    manual("Aire comprimido", "Compressed air", Gc.tubAireM, Gc.tubAireD, Gc.tubAireMat || null, "aire_comprimido", "Aire comprimido");
   }
   manualPendientes.forEach((p) => avisos.push({ lvl: "warn", msg: `${p.que}: soportes pendientes de ${p.falta}. Sin ese dato no se cuenta ni se cotiza (H-230).` }));
   if (tramosSC.some((t) => t.material === "cobre")) memo.push("Claros de la tubería de cobre: mínimo de ANSI/MSS SP-58-2018 (reproducción PHD 2018) e IPC 2009 Tabla 308.5 (folleto MCP), fuentes secundarias declaradas; ratificar con el texto de la norma (decisión 4 del dueño, H-229).");
@@ -19699,7 +19702,7 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "7", clean: "3", equip: "4", duct: "4", vent: "4", quote: "24", valor: "2", kaizen: "1", elec: "10", hidro: "9", fuego: "6", aire: "5", civil: "8", soporte: "13" };
+const MOTOR_VER = { load: "7", clean: "3", equip: "4", duct: "4", vent: "4", quote: "24", valor: "2", kaizen: "1", elec: "10", hidro: "9", fuego: "6", aire: "5", civil: "8", soporte: "14" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
@@ -19754,7 +19757,8 @@ const MOTOR_CAMBIOS = {
     { ver: "8", rev: "2.9.24", que: "H-229 (decisión 4): claros de cobre al mínimo de MSS SP-58-2018 (PHD) e IPC 2009 T308.5 (MCP), secundarias declaradas: ½\"–¾\" 1.524 m, 1\"–1¼\" 1.829, 1½\"–2\" 2.438, 2½\" 2.743, 3\"–4\" 3.048 (antes 1.8 / 2.4 / 3.0 / 3.7)" },
     { ver: "9", rev: "2.9.24", que: "H-228: claros del termoplástico por subtipo, IPC 2009 T308.5 (MCP, secundaria): CPVC ≤1\" 0.9 m (dueño) y ≥1¼\" 1.219 (antes 1.2 / 1.8), PP-R ≤1\" 0.813 y ≥1¼\" 1.219; PEAD sin renglón queda pendiente de claro; cada soporte de termoplástico lleva ancla (sujeta a H-226) y 4+4 tuercas/rondanas como el despiece (antes 0)" }, { ver: "10", rev: "2.9.24", que: "H-166 (dependencia de ductos): el tramo de ducto sin sección no se soporta con 400×200 ni Ø250 supuestos: queda pendiente con su razón y fuera de los metros y la cotización de soportes" }, { ver: "11", rev: "2.9.24", que: "H-224 (parte no bloqueada): la red contra incendio se soporta con su material: acero como acero, cobre con MSS SP-58-2018; CPVC queda pendiente de la tabla NFPA 13 (sin texto), nunca como acero ni con los claros del IPC (antes toda la red como acero); también a mano y con la instantánea" },
     { ver: "12", rev: "2.9.24", que: "H-266 (decisión del dueño, 27-sep-2026): soportería es autónoma: sin instantánea aceptada cuenta sólo lo capturado a mano (se retiró el conteo en vivo de ductos, hidráulica, incendio y aire); aceptar la propuesta concede los cruces y ya no se mueve sola. Altura de trabajo y altura de la estructura (sismo) capturadas: ya no salen de la zona más alta; sin ellas, renta de elevación pendiente y aviso sísmico. Bases de equipo capturadas o de la instantánea (ya no de la cotización ni de aire). Un proyecto guardado se migra una vez al abrirlo, con las mismas cifras. Red contra incendio sin longitudes de cabezal y montante: pendiente (antes 30 + 12 m a 100 mm leídos en vivo de contra incendio, aun con la instantánea)" },
-    { ver: "13", rev: "2.9.24", que: "H-266, complementos de la revisión adversarial (27-sep-2026): con arriostramiento sísmico y sin la altura de la estructura capturada el anclaje va Por cotizar con su motivo (antes se cotizaba como calculado con z/h = 0 supuesto, el lado no conservador de ASCE 7-16 §13.3.1); sin sismo la altura no entra al anclaje. Proyecto fijo: cifras sin cambio" }],
+    { ver: "13", rev: "2.9.24", que: "H-266, complementos de la revisión adversarial (27-sep-2026): con arriostramiento sísmico y sin la altura de la estructura capturada el anclaje va Por cotizar con su motivo (antes se cotizaba como calculado con z/h = 0 supuesto, el lado no conservador de ASCE 7-16 §13.3.1); sin sismo la altura no entra al anclaje. Proyecto fijo: cifras sin cambio" },
+    { ver: "14", rev: "2.9.24", que: "AUD-14 (auditoría externa, 29-sep-2026; «nada se estima»): la tubería capturada a mano sin material ya no se soporta como acero (antes «acero» por omisión en el estado y en el cálculo): queda pendiente de material, sin soportes ni importe, con aviso; un proyecto nuevo nace sin material y la pantalla ofrece «sin capturar»" }],
 };
 const motorVer = (id) => MOTOR_VER[id] || "1";
 /* H-283 (y los que sigan): cuando sólo cambia la FORMA de la huella de un motor —qué entra a ella— sin cambiar su cálculo, no sube
@@ -23227,15 +23231,15 @@ function viewSoporte() {
       </div><div class="row">
         ${inp("Metros de tubería hidráulica", "soporte.tubHidroM", "number", "1", "sop.h", G)}
         ${inp("Hidráulica: diámetro (mm) · sin él queda pendiente", "soporte.tubHidroD", "number", "1")}
-        ${sel("Hidráulica: material", "soporte.tubHidroMat", [["acero", "Acero"], ["cobre", "Cobre"], ["cpvc", "CPVC"], ["ppr", "PP-R"], ["pead", "PEAD (sin claro en IPC 308.5: queda pendiente)"]])}
+        ${sel("Hidráulica: material", "soporte.tubHidroMat", [["", "— sin capturar (pendiente) —"], ["acero", "Acero"], ["cobre", "Cobre"], ["cpvc", "CPVC"], ["ppr", "PP-R"], ["pead", "PEAD (sin claro en IPC 308.5: queda pendiente)"]])}
       </div><div class="row">
         ${inp("Metros de red contra incendio", "soporte.tubFuegoM", "number", "1", "sop.f", G)}
         ${inp("Incendio: diámetro (mm)", "soporte.tubFuegoD", "number", "1")}
-        ${sel("Incendio: material", "soporte.tubFuegoMat", [["acero", "Acero"], ["cobre", "Cobre"], ["cpvc", "CPVC"]])}
+        ${sel("Incendio: material", "soporte.tubFuegoMat", [["", "— sin capturar (pendiente) —"], ["acero", "Acero"], ["cobre", "Cobre"], ["cpvc", "CPVC"]])}
       </div><div class="row">
         ${inp("Metros de red de aire", "soporte.tubAireM", "number", "1", "sop.a", G)}
         ${inp("Aire: diámetro (mm)", "soporte.tubAireD", "number", "1")}
-        ${sel("Aire: material", "soporte.tubAireMat", [["acero", "Acero"], ["cobre", "Cobre"]])}
+        ${sel("Aire: material", "soporte.tubAireMat", [["", "— sin capturar (pendiente) —"], ["acero", "Acero"], ["cobre", "Cobre"]])}
       </div>` : ""}
       ${sel("Arriostramiento sísmico", "soporte.sismico", [[true, "Sí, se incluye"], [false, "No, se declara como exclusión"]])}
       <div class="row">
