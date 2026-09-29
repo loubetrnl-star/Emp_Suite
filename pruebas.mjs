@@ -9590,6 +9590,20 @@ t("S.191 (AUD-03) ventilación calcula con SU tabla de tipos de espacio (ASHRAE 
   } finally { Object.assign(G("SPACES"), JSON.parse(sp0)); Object.assign(G("P"), JSON.parse(p0)); G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+t("S.192 (AUD-03) el eléctrico no lee constantes de cuartos limpios: la procedencia del kW de una carga de FFU no cita los W por módulo del catálogo de FFU (constante de cuartos limpios), sino que queda con los datos de la propia carga", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    /* Una carga de FFU migrada con 150 W por módulo (su propio dato, en el nombre y en su kW). */
+    S.elec = { ...G("defaultElec")(), trafoKVA: 300, trafoZ: 4, Ltablero: 30,
+      cargas: [{ ...G("defaultCarga")("Módulos FFU · 10 × 150 W"), id: "s192", tipo: "motor", kW: 1.5, kWRef: 1.5, V: 127, ph: 1, cant: 1, L: 20, fp: .85, origen: "cedula", ts: 1, kWOrigen: "ffu", aparato: true }] };
+    G("recompute")();
+    const memo = G("ELEC").memo.join(" ");
+    contiene(memo, "de catálogo de la casa", "el caso no aísla lo que se quiere probar: la carga debe decir su procedencia de catálogo:");
+    const w0 = G("FFU").watts;
+    if (memo.includes(`${w0} W por módulo`)) throw new Error(`la memoria del eléctrico cita los ${w0} W por módulo del catálogo de FFU de cuartos limpios`);
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {
   const guardado = JSON.stringify(S);
   try {

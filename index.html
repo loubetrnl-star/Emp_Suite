@@ -10205,7 +10205,8 @@ const KW_ORIGEN = {
   aire: ["de catálogo de compresores de la casa", "from the house compressor catalog", false],
   hidro: ["ESTIMADO por el módulo hidrosanitario (kW al eje de la bomba)", "ESTIMATED by the plumbing module (pump shaft kW)", true],
   fuego: ["ESTIMADO por el módulo contra incendio (kW al eje de la bomba)", "ESTIMATED by the fire-protection module (pump shaft kW)", true],
-  ffu: [`de catálogo de la casa (${FFU.watts} W por módulo FFU)`, `from the house catalog (${FFU.watts} W per FFU module)`, false],
+  /* AUD-03: sin leer el catálogo de FFU de cuartos limpios (los W por módulo vienen en el nombre de la carga migrada). */
+  ffu: ["de catálogo de la casa (W por módulo FFU de cuartos limpios, tomados al migrar la carga)", "from the house catalog (W per clean-room FFU module, taken when the load was migrated)", false],
   otro: ["ESTIMADO o de catálogo de otro módulo (sin identificar; no es de placa)", "ESTIMATED or catalog value from another module (unidentified; not nameplate)", true],
 };
 const kWOrigenTexto = (c, en) => (KW_ORIGEN[c.kWOrigen] || KW_ORIGEN.capturado)[en ? 1 : 0];
