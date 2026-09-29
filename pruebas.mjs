@@ -67,6 +67,15 @@ const aceptarSitioCarga = () => { G("PROPUESTAS")["proyecto>load"].aplicar(); G(
 const aceptarEquip = () => { G("recompute")(); G("aceptarZonasEquip")(G("zonasPropuestasEquip")(), Date.now()); G("registrarVinculo")("load>equip", "aceptado");
   /* H-288: y el sitio de Proyecto como sitio de diseño de Selección (copia con fecha), como lo aceptaría el usuario. */
   G("PROPUESTAS")["proyecto>equip"].aplicar(); G("registrarVinculo")("proyecto>equip", "aceptado"); G("recompute")(); };
+/* H-305: la propuesta load>duct se retiró (cada motor captura lo suyo). Las pruebas que necesitaban una red de ductos capturan a
+   mano la misma que armaba chainToDuct: principal con el suministro total, un ramal por zona y el aire exterior; sólo caudales, sin
+   longitudes ni accesorios. */
+const capturaTramos = () => { G("recompute")(); const t = G("totals")(), ds = G("defaultSegment");
+  const segs = [{ ...ds("SA-PRINCIPAL", Math.round(t.cfm * 1.699 / 3.6)), length: 0, aspect: 3, fittings: [] }];
+  G("LOADS").forEach((r, i) => segs.push({ ...ds(`SA-${(S.zones[i].name || "Z").slice(0, 8).toUpperCase()}`, Math.round(r.cfm * 1.699 / 3.6)),
+    shape: "round", method: "velocity", targetV: 5, length: 0, fittings: [] }));
+  if (t.oa > 0) segs.push({ ...ds("OA-EXTERIOR", Math.round(t.oa / 3.6)), service: "supply", shape: "round", method: "velocity", targetV: 4, length: 0, fittings: [] });
+  S.duct.segments = segs; G("recompute")(); };
 
 /* --------------------------------------------------- proyecto de prueba */
 function proyectoDePrueba() {
@@ -316,28 +325,21 @@ t("2.0.6 cada flecha se pinta con el estado de lo que declara: cada nivel de su 
   } finally { w.estadoPropuesta = orig; G("render")(); }
 });
 t("2.0.7 y el nodo HVAC se desactualiza cuando cambió el dato de origen", () => {
-  /* La propuesta de carga térmica a ductos quedó DENTRO del módulo: ya no se
-     dibuja como flecha, pero su estado no se perdió — sube al semáforo del
-     nodo, que muestra el peor de los cinco. */
-  G("propAceptar")("load>duct");
+  /* La propuesta de carga térmica a selección quedó DENTRO del módulo: no se dibuja como flecha, pero su estado no se pierde —
+     sube al semáforo del nodo, que muestra el peor de los cinco. H-305: la de ductos (load>duct) se retiró; se prueba con
+     load>equip (H-267). */
+  G("propAceptar")("load>equip");
   S.zones[0].area = Number(S.zones[0].area) + 150; G("recompute")();
-  eq(G("estadoPropuesta")("load>duct").nivel, "desactualizado", "la propuesta interna:");
-  /* H-267: la selección de equipo tomó la carga como instantánea aceptada: también queda desactualizada, dentro del mismo nodo. */
   eq(G("estadoPropuesta")("load>equip").nivel, "desactualizado", "la propuesta interna de selección:");
   eq(G("semaforoHvac")().nivel, "desactualizada", "el peor de los cinco manda en el nodo:");
   S.tab = "inicio"; G("render")();
   contiene(vista(), "sem-desactualizada");
-  G("propAceptar")("load>duct");
-  G("recompute")();
-  eq(G("semaforoHvac")().nivel, "desactualizada", "H-267: con la selección todavía desactualizada el nodo sigue desactualizado:");
   G("propAceptar")("load>equip");
   G("recompute")();
   if (G("semaforoHvac")().nivel === "desactualizada") throw new Error("al actualizar el nodo no volvió a estar al día");
   /* Se deja el proyecto como estaba para que las pruebas de las reglas
      empiecen desde cero y no desde lo que acepto esta. */
   S.zones[0].area = Number(S.zones[0].area) - 150;
-  delete S.vinculos["load>duct"];
-  S.duct.segments = [];
   aceptarEquip();   /* H-267: la selección vuelve a la carga original, como la dejó el proyecto de prueba */
 });
 t("2.0.8 el diagrama no usa ninguna librería ni recurso externo", () => {
@@ -432,27 +434,33 @@ t("3.6 no queda registro de herencia: sincronizarHerencia no copia nada y el san
 });
 
 /* ====== 4. Regla 2 · ningún resultado calculado entra solo =============== */
-t("4.1 la carga térmica no escribe caudales en ductos por su cuenta", () => {
-  const antes = JSON.stringify(S.duct.segments);
+/* H-305: la propuesta load>duct se retiró; las reglas 2 y 3 se prueban con la de selección de equipo (load>equip, H-267). */
+const zonasSelJ = () => JSON.stringify(G("zonasSel")());
+t("4.1 la carga térmica no escribe las zonas de selección por su cuenta", () => {
+  delete S.vinculos["load>equip"];   /* nadie ha decidido todavía */
+  const antes = zonasSelJ();
   G("recompute")();
-  eq(JSON.stringify(S.duct.segments), antes, "los tramos no se movieron solos:");
-  eq(G("estadoPropuesta")("load>duct").nivel, "pendiente");
+  eq(zonasSelJ(), antes, "las zonas de selección no se movieron solas:");
+  eq(G("estadoPropuesta")("load>equip").nivel, "pendiente");
 });
 t("4.2 la propuesta se ofrece con lo que propone y lo que ya hay", () => {
-  const h = G("propuestaHtml")("load>duct");
+  const h = G("propuestaHtml")("load>equip");
   contiene(h, "Propone"); contiene(h, "Ahora hay");
   contiene(h, 'data-act="prop-aceptar"'); contiene(h, 'data-act="prop-propio"');
 });
 t("4.3 al aceptar entra, y queda registrado el origen y la fecha", () => {
   const t0 = Date.now();
-  G("propAceptar")("load>duct");
-  const v = G("vinculoDe")("load>duct");
+  G("propAceptar")("load>equip");
+  const v = G("vinculoDe")("load>equip");
   eq(v.estado, "aceptado");
   contiene(v.origen, "Carga térmica");
   if (!(v.ts >= t0)) throw new Error("no guardó la fecha de aceptación");
-  eq(S.duct.segments.length, S.zones.length + 1 + (G("totals")().oa > 0 ? 1 : 0), "un tronco, un ramal por zona y el aire exterior:");
-  eq(G("estadoPropuesta")("load>duct").nivel, "aceptado");
+  eq(G("zonasSel")().filter((z) => z.origen && z.origen.motor === "load").length, S.zones.length, "una zona de selección por zona de carga:");
+  eq(G("estadoPropuesta")("load>equip").nivel, "aceptado");
 });
+/* Los tramos de ductos que antes dejaba la propuesta load>duct aceptada en 4.3 se capturan a mano (la misma red): el resto del
+   banco sigue con las mismas cifras. */
+capturaTramos();
 t("4.4 el usuario puede declarar que captura lo suyo, y también queda escrito", () => {
   /* H-262: la propuesta load>vent ya no existe; se prueba con la de la cédula eléctrica, sin dejar rastro en el estado. */
   const guardado = JSON.stringify(S);
@@ -900,34 +908,35 @@ t("S.52 (H-180) kW estimados y de catálogo con su procedencia; fp por carga edi
 });
 
 /* ====== 5. Regla 3 · si cambia el origen, el destino no se recalcula ===== */
-t("5.1 cambiar la carga térmica marca ductos como desactualizado, sin tocarlo", () => {
-  const antes = JSON.stringify(S.duct.segments);
+t("5.1 cambiar la carga térmica marca selección como desactualizada, sin tocarla", () => {
+  const antes = zonasSelJ(), tramos = JSON.stringify(S.duct.segments);
   S.zones[0].area = 600; G("recompute")();
-  eq(JSON.stringify(S.duct.segments), antes, "los tramos aceptados no se recalcularon solos:");
-  eq(G("estadoPropuesta")("load>duct").nivel, "desactualizado");
+  eq(zonasSelJ(), antes, "las zonas aceptadas no se recalcularon solas:");
+  eq(JSON.stringify(S.duct.segments), tramos, "los tramos capturados de ductos no se mueven (H-305):");
+  eq(G("estadoPropuesta")("load>equip").nivel, "desactualizado");
 });
 t("5.2 desactualizado se ve en el semáforo de la suite", () => {
-  const s = G("semaforoSuite")().find((x) => x.id === "duct");
+  const s = G("semaforoSuite")().find((x) => x.id === "equip");
   eq(s.nivel, "desactualizada");
   if (!s.faltan.length) throw new Error("no explica por qué está desactualizada");
 });
 t("5.3 el usuario decide: actualizar, conservar o capturar lo suyo", () => {
-  const h = G("propuestaHtml")("load>duct");
+  const h = G("propuestaHtml")("load>equip");
   contiene(h, 'data-act="prop-aceptar"'); contiene(h, 'data-act="prop-conservar"'); contiene(h, 'data-act="prop-propio"');
 });
 t("5.4 conservar lo aceptado deja el destino intacto y vuelve a estar vigente", () => {
-  const antes = JSON.stringify(S.duct.segments);
-  const ts = G("vinculoDe")("load>duct").ts;
-  G("propConservar")("load>duct");
-  eq(JSON.stringify(S.duct.segments), antes);
-  eq(G("estadoPropuesta")("load>duct").nivel, "aceptado");
-  eq(G("vinculoDe")("load>duct").ts, ts, "conserva la fecha original de aceptación:");
+  const antes = zonasSelJ();
+  const ts = G("vinculoDe")("load>equip").ts;
+  G("propConservar")("load>equip");
+  eq(zonasSelJ(), antes);
+  eq(G("estadoPropuesta")("load>equip").nivel, "aceptado");
+  eq(G("vinculoDe")("load>equip").ts, ts, "conserva la fecha original de aceptación:");
 });
 t("5.5 actualizar sí trae el dato nuevo, con fecha nueva", () => {
   S.zones[0].area = 400; G("recompute")();
-  eq(G("estadoPropuesta")("load>duct").nivel, "desactualizado");
-  G("propAceptar")("load>duct");
-  eq(G("estadoPropuesta")("load>duct").nivel, "aceptado");
+  eq(G("estadoPropuesta")("load>equip").nivel, "desactualizado");
+  G("propAceptar")("load>equip");
+  eq(G("estadoPropuesta")("load>equip").nivel, "aceptado");
 });
 t("5.6 la soportería congela los metros aceptados y avisa cuando cambian", () => {
   G("propAceptar")("motores>soporte");
@@ -1531,7 +1540,7 @@ t("13.7 las demás disciplinas siguen siendo nodos independientes", () => {
 });
 t("13.8 el semáforo del nodo HVAC es el PEOR de las cinco", () => {
   const área0 = Number(S.zones[0].area);
-  G("chainToDuct")(true);   /* H-262: chainToVent ya no existe (ventilación captura lo suyo) */
+  capturaTramos();   /* H-262: chainToVent ya no existe; H-305: chainToDuct tampoco (los tramos se capturan en Ductos) */
   G("recompute")();
   const RANGO = G("SEM_RANGO");
   /* La regla, comprobada contra el estado real que haya en este momento: el
@@ -3662,7 +3671,7 @@ t("22.6 2.3 la presión de ductos se declara suma de tramos (cota superior solo 
     S.duct.segments = [{ ...seg("SA-PRINCIPAL", 3200), id: "p226t", shape: "rect", method: "equal_friction", targetF: .8, length: 20, aspect: 3,
       fittings: [{ type: "elbow_90_rect", qty: 2, C: .28 }] }, ...Array.from({ length: 8 }, (_, i) => ramal(`SA-RAMAL-${i + 1}`, `p226r${i}`, 400))];
     /* 2.3-rep: "cota superior" solo vale para el recorrido crítico de los tramos
-       capturados; sin ningún tramo "return" (como la red de chainToDuct) cada
+       capturados; sin ningún tramo "return" capturado cada
        texto lo avisa, y con retorno capturado el aviso desaparece. */
     const COTA = "cota superior del recorrido crítico de los tramos capturados; no incluye tramos, rejillas ni filtros que no estén en la lista";
     const COTA_PLANO = "cota superior del recorrido critico de los tramos capturados; no incluye tramos, rejillas ni filtros que no esten en la lista";
@@ -3731,19 +3740,19 @@ t("22.6 2.3 la presión de ductos se declara suma de tramos (cota superior solo 
     if (/El tramo crítico es el que manda/.test(ojo)) throw new Error("la guía sigue afirmando que el tramo crítico manda");
     if (/\(cota superior\)/.test(ojo)) throw new Error("la guía sigue diciendo «(cota superior)» sin acotarla");
     contiene(ojo, COTA, "guía de ductos:");
-    contiene(ojo, "no trae tramos de retorno", "guía de ductos (retorno):");
+    contiene(ojo, "Si no capturas los tramos de retorno, la cifra tampoco los incluye", "guía de ductos (retorno):");
     contiene(ojo, "la suma de los tramos de suministro y retorno, porque el recorrido crítico todavía no se calcula", "guía de ductos (qué se suma y por qué):");
     contiene(ojo, "Si un tramo domina la pérdida, revisa su velocidad o sus accesorios antes de subir el equipo", "guía de ductos (criterio de la nota que se quitó de la gráfica):");
     if (/sin tramos de retorno capturados/.test(ojo)) throw new Error("la guía trae el aviso dinámico de la pantalla: ese lo pinta la métrica según haya o no retorno");
-    /* Red 2: la que arma la propia suite desde la carga (sin retorno) */
+    /* Red 2: principal, un ramal por zona y aire exterior, sin retorno (la que antes armaba chainToDuct; H-305: se captura) */
     const vinc0 = S.vinculos === undefined ? undefined : JSON.parse(JSON.stringify(S.vinculos));
     try {
-      G("chainToDuct")(true);
-      revisar("red de chainToDuct", false, true);
+      capturaTramos();
+      revisar("red capturada sin retorno", false, true);
       /* Red 3: la misma red con un retorno capturado: el aviso desaparece */
       S.duct.segments.push({ ...seg("RA-PRINCIPAL", 1770), id: "p226ra", service: "return", shape: "rect", method: "equal_friction",
         targetF: .8, length: 20, aspect: 2, fittings: [{ type: "elbow_90_rect", qty: 2, C: .28 }] });
-      revisar("red de chainToDuct con retorno", true, true);
+      revisar("red capturada con retorno", true, true);
     } finally {
       if (vinc0 === undefined) delete S.vinculos; else S.vinculos = vinc0;
     }
@@ -4670,15 +4679,15 @@ t("P.1 la pestaña Estructural cita StructCalc v0.1.2 (no v0.1.1) y no promete r
 t("P.2 «Solo esta vez» sí autoriza el cruce durante esa corrida, y no lo deja permanente", () => {
   const g = { perms: JSON.parse(JSON.stringify(S.perms)) };
   try {
-    delete S.perms["duct>load"];
+    delete S.perms["fuego>hidro"];
     let vistoDentro = null;
-    G("requestLink")("duct>load", () => { vistoDentro = G("linkAllowed")("duct>load"); });
+    G("requestLink")("fuego>hidro", () => { vistoDentro = G("linkAllowed")("fuego>hidro"); });
     const b = w.document.querySelector('[data-act="link-once"]');
     if (!b) throw new Error("no se abrió el diálogo de permiso con el botón «Solo esta vez»");
     b.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
     if (vistoDentro !== true) throw new Error("run() no vio el cruce autorizado durante «Solo esta vez»");
-    if (S.perms["duct>load"]) throw new Error("«Solo esta vez» no debe dejar el permiso guardado después");
-    if (G("linkAllowed")("duct>load")) throw new Error("el cruce debe volver a estar negado tras la operación única");
+    if (S.perms["fuego>hidro"]) throw new Error("«Solo esta vez» no debe dejar el permiso guardado después");
+    if (G("linkAllowed")("fuego>hidro")) throw new Error("el cruce debe volver a estar negado tras la operación única");
   } finally { Object.keys(S.perms).forEach((k) => delete S.perms[k]); Object.assign(S.perms, g.perms); }
 });
 t("P.3 la firma de la caché de Kaizen distingue proyectos con la misma arquitectura y distinta capacidad instalada", () => {
@@ -5806,7 +5815,7 @@ t("S.A11Y.1 ningún elemento con data-act/data-tab/data-units queda sin ser <but
      ["tramo de ducto", "segmentSheet(0)"], ["origen de los datos", "cxOrigenHtml('carga')"]].forEach(([nom, expr]) => {
       G(`openModal(${expr})`); ver("ventana " + nom, a11yModal()); G("closeModal")();
     });
-    G("PENDING_LINK = null; requestLink('load>duct', () => {})"); ver("ventana de cruce", a11yModal()); G("closeModal")();
+    G("PENDING_LINK = null; openModal(linkModal('fuego>hidro'))"); ver("ventana de cruce", a11yModal()); G("closeModal")();
     G("pedirConfirmacion({ titulo: 'x', detalle: 'y', lista: [], boton: 'ok', onOk: () => {} })"); ver("ventana de confirmación", a11yModal()); G("closeModal")();
   } finally {
     S.equip.items = JSON.parse(q0); S.cat = JSON.parse(cat0); S.qfam = qfam0; S.tab = tab0;
@@ -7438,7 +7447,7 @@ t("S.83 (H-166) ductos: un tramo sin medida posible (ninguna de la serie cumple)
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
-t("S.84 (H-167) «Generar desde carga» trae sólo los caudales: sin longitudes ni accesorios que nadie capturó (antes 20/10/15 m, tee 0.65, salida 1.0, entrada 0.03); cada tramo queda «pendiente de longitud» sin kilos, juntas, soportes ni importe, y al capturar la longitud entra", () => {
+t("S.84 (H-167) la red con sólo caudales (antes «Generar desde carga», retirado en H-305) no lleva longitudes: sin longitudes ni accesorios que nadie capturó (antes 20/10/15 m, tee 0.65, salida 1.0, entrada 0.03); cada tramo queda «pendiente de longitud» sin kilos, juntas, soportes ni importe, y al capturar la longitud entra", () => {
   const guardado = JSON.stringify(S);
   try {
     G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.84"; S.site = { key: "tijuana" }; aceptarSitioCarga();   /* H-290 */
@@ -7449,7 +7458,7 @@ t("S.84 (H-167) «Generar desde carga» trae sólo los caudales: sin longitudes 
     ];
     Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.84" }; });
     G("recompute")();
-    G("chainToDuct")(true); G("recompute")();
+    capturaTramos();   /* H-305: la red que armaba «Generar desde carga», capturada a mano (sólo caudales) */
     const segs = S.duct.segments, D = G("DUCT"), tot = G("totals")();
     eq(segs.length, 4, "principal + 2 ramales + aire exterior:");
     eq(segs[0].flow, Math.round(tot.cfm * 1.699 / 3.6), "el caudal del principal sí sale de la carga:");
@@ -7470,8 +7479,7 @@ t("S.84 (H-167) «Generar desde carga» trae sólo los caudales: sin longitudes 
     Q = G("QUOTE");
     if (!Q.aux.some((a) => a.mot === "duct" && a.un === "KG")) throw new Error("con longitud capturada hay partida de lámina");
     eq(Q.pendientes.filter((p) => p.mot === "duct" && /longitud/.test(p.motivo)).length, 3, "quedan pendientes los otros tres:");
-    /* La propuesta de cruce dice qué trae y qué no */
-    contiene(G("PROPUESTAS")["load>duct"].que, "sin longitudes ni accesorios", "texto de la propuesta load>duct:");
+    /* H-305: la propuesta load>duct se retiró (S.185). */
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
@@ -9486,6 +9494,33 @@ t("S.184 (H-304) la cotización de cada disciplina (tarjeta y PDF) sale de la co
     eq(JSON.stringify(G("cotizacionDeMotor")("fuego").partidas.map((p) => [p.desc, p.unit, p.total])), JSON.stringify(cat.map((p) => [p.desc, p.unit, p.total])), "con el permiso, lo mismo que el catálogo:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
+t("S.185 (H-305) ductos calcula sólo con los tramos capturados en su pestaña: ya no hay propuesta ni cruce carga térmica → ductos (load>duct, duct>load), ni botón para generar tramos desde la carga, ni aviso cruzado de caudal; un proyecto guardado que la aceptó conserva sus tramos y sus cifras", () => {
+  const guardado = JSON.stringify(S), tab0 = S.tab;
+  try {
+    eq(G("PROPUESTAS")["load>duct"], undefined, "no queda propuesta carga térmica → ductos:");
+    eq(G("LINKS")["load>duct"], undefined, "no queda el cruce load>duct:");
+    eq(G("LINKS")["duct>load"], undefined, "no queda el cruce duct>load:");
+    eq(G("typeof chainToDuct"), "undefined", "no queda la función que generaba los tramos:");
+    S.tab = "proyecto"; G("render")();
+    if (/data-act="chain-duct"/.test(vista())) throw new Error("Proyecto sigue ofreciendo generar los tramos de ducto desde la carga");
+    S.tab = "ductos"; G("render")();
+    if (/Caudales por tramo desde la carga térmica/.test(vista())) throw new Error("Ductos sigue mostrando la propuesta de la carga térmica");
+    /* Ningún aviso cruzado: aunque el tronco mueva la mitad de lo que pide la carga y el cruce viejo esté autorizado. */
+    S.perms["duct>load"] = { ts: 1, via: "S.185" };
+    S.duct.segments = [{ ...G("defaultSegment")("SA-PRINCIPAL", Math.round(G("totals")().cfm * 1.699 / 3.6 / 2)), length: 10, fittings: [] }];
+    G("recompute")();
+    if (G("validateAll")().rows.some((r) => /Cruce carga/.test(r.msg))) throw new Error("validateAll sigue cruzando el caudal de ductos con la carga térmica");
+    /* Proyecto guardado que había aceptado la propuesta: conserva sus tramos y sus cifras. */
+    S.vinculos = S.vinculos || {}; S.vinculos["load>duct"] = { estado: "aceptado", ts: 1, origen: "Carga térmica", firma: "x" };
+    S.perms["load>duct"] = { ts: 1, via: "S.185" };
+    G("recompute")();
+    const kg0 = G("DUCT").boq.kg, seg0 = JSON.stringify(S.duct.segments);
+    G("reemplazarEstado")(JSON.parse(JSON.stringify(S))); G("recompute")();
+    eq(JSON.stringify(S.duct.segments), seg0, "los tramos aceptados se conservan:");
+    eq(G("DUCT").boq.kg, kg0, "los kilos no cambian:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); S.tab = tab0; G("recompute")(); }
+});
+
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {
   const guardado = JSON.stringify(S);
   try {

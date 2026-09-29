@@ -4139,26 +4139,8 @@ function validateAll() {
   rows.push(...ENGINES.aire.checks(AIRE));
   rows.push(...ENGINES.civil.checks(CIVIL));
   rows.push(...ENGINES.soporte.checks(SOPORTE));
-  /* Cruce entre motores: el caudal que pide la carga contra el que mueven los
-     ductos. Es una lectura del núcleo térmico desde un motor autónomo, así que
-     exige el permiso declarado. La compuerta se había perdido en una edición
-     posterior y el aviso salía sin autorización. */
-  if (linkAllowed("duct>load") && DUCT && DUCT.segs && DUCT.segs.length && LOADS.length) {
-    const needed = LOADS.reduce((a, r) => a + r.supply, 0);
-    /* Los tramos guardan el caudal en L/s; la carga lo entrega en m³/h. */
-    const moved = DUCT.segs.filter((s) => s.service === "supply" && /PRINCIPAL|TRONCAL|MAIN/i.test(s.tag))
-      .reduce((a, s) => a + s.flow * 3.6, 0);
-    /* H-26 · Con tramos capturados y sin carga —una red que se está dibujando
-       antes de cerrar la envolvente— `needed` vale cero y la división daba
-       Infinity: el aviso salía diciendo "+Infinity %". Ahora se dice lo que de
-       verdad pasa, que es que no hay contra qué comparar todavía. */
-    if (moved > 0 && !(needed > 0)) {
-      rows.push({ lvl: "info", msg: `Cruce carga → ductos: el tronco mueve ${n(moved, 0)} m³/h y la carga térmica todavía no entrega caudal. Captura las zonas para poder comparar.` });
-    } else if (moved > 0) {
-      const gap = (moved - needed) / needed;
-      if (Math.abs(gap) > 0.15) rows.push({ lvl: "warn", msg: `Cruce carga → ductos: el tronco mueve ${n(moved, 0)} m³/h y la carga pide ${n(needed, 0)} m³/h (${gap > 0 ? "+" : ""}${n(gap * 100, 0)} %). Regenerar los tramos desde la carga.` });
-    }
-  }
+  /* H-305 (decisión del dueño, 29-sep-2026: cada motor calcula por sí solo): se retiró el cruce duct>load, que comparaba el caudal
+     del tronco de ductos con el que pedía la carga térmica. Ductos calcula sólo con los tramos capturados en su pestaña. */
   /* Balance global (decisión del dueño, 15-sep-2026): dos cierres con datos que
      ya calcula la suite, sin inventar una formula de dimensionamiento nueva —
      son avisos de coherencia, no una regla que reemplace el criterio del
@@ -4257,12 +4239,7 @@ const DOMAINS = {
 
 /* Cada cruce declarado: qué se mueve, por qué, y qué se pierde si se niega. */
 const LINKS = {
-  "load>duct": {
-    from: "load", to: "duct",
-    what: "Caudal total de suministro, caudal por zona y aire exterior, para generar los tramos.",
-    why: "Sin esto tendrías que capturar a mano el caudal de cada tramo. El motor de ductos no calcula carga: solo dimensiona el caudal que le des.",
-    cost: "Si lo niegas, el motor de ductos sigue funcionando igual, pero capturas tú el caudal de cada tramo.",
-  },
+  /* H-305 (decisión del dueño, 29-sep-2026): se retiró el cruce load>duct. Ductos captura el caudal de cada tramo en su pestaña. */
   /* H-267 (decisión del dueño, 27-sep-2026): selección de equipo dejó el núcleo térmico. Las zonas de carga le llegan sólo
      como propuesta aceptada (instantánea con fecha); aceptarla concede este cruce. Autorizarlo solo no mueve nada. */
   "load>equip": {
@@ -4407,12 +4384,7 @@ const LINKS = {
     why: "En obra industrial la red contra incendio es de las partidas más caras y casi siempre se cotiza aparte y tarde.",
     cost: "Si lo niegas, la cotización no incluye la partida de protección contra incendio.",
   },
-  "duct>load": {
-    from: "duct", to: "load",
-    what: "Caudal de los troncales, para contrastarlo contra el que pide la carga.",
-    why: "Es la verificación cruzada que detecta que los ductos quedaron dimensionados para otra corrida.",
-    cost: "Si lo niegas, cada motor se valida solo y nadie avisa si los ductos y la carga dejaron de coincidir.",
-  },
+  /* H-305: se retiró el cruce duct>load (verificación del caudal de ductos contra la carga térmica). */
   /* H-67 (15-sep-2026) metió estos cuatro cruces al sistema de permisos cuando soportería leía los motores en vivo. H-266 (decisión
      del dueño, 27-sep-2026): soportería es autónoma y los metros de otros motores entran SÓLO al aceptar la propuesta
      motores>soporte (instantánea con fecha), que concede los cuatro; ya no hay conteo en vivo ni aviso de permiso pendiente. Los
@@ -9826,8 +9798,8 @@ function calcDuct(duct) {
 }
 /* La suma de tramos (DUCT.path) solo acota el recorrido crítico de los tramos
    que están capturados: no cubre rejillas, persianas, filtros ni tramos que
-   falten, en particular el retorno. La red que arma chainToDuct no crea
-   retorno, así que el texto lo avisa cuando no hay ningún tramo "return".
+   falten, en particular el retorno: el texto lo avisa cuando no hay ningún
+   tramo "return" capturado.
    modo: "es" (con acentos), "es-plano" (sin acentos, libro XLSX) o "en". */
 function cotaDuctTexto(d, modo = "es") {
   const sinRetorno = !((d && d.segs) || []).some((s) => s.service === "return");
@@ -9838,7 +9810,7 @@ function cotaDuctTexto(d, modo = "es") {
 function defaultSegment(tag = "TR-1", flow = 0) {
   /* Arranque en ceros (decisión del dueño, 17-sep-2026): flow y length ya no
      traen 1000 CFM/12 m de ejemplo por omisión. Los llamadores que SÍ tienen
-     un caudal real (generar desde carga, detectar de archivo) lo siguen
+     un caudal real (detectar de archivo) lo siguen
      pasando explícito; un tramo agregado a mano nace en 0. */
   return { id: "s" + Math.random().toString(36).slice(2, 8), tag, service: "supply", shape: "rect", flow, method: "equal_friction", targetF: .8, targetV: 6, length: 0, lock: false, d: null, w: null, h: null, aspect: 3, hmax: 0, fittings: [{ type: "elbow_90_rect", qty: 2, C: .28 }] };
 }
@@ -11745,7 +11717,7 @@ function defaultState() { return {
       largoEspiro: 3.048, hoja: 0 },
     /* Arranque en ceros: antes traía 2 tramos de ejemplo (SA-PRINCIPAL 2500
        CFM + SA-RAMAL 800 CFM) que no eran del proyecto real. Un proyecto
-       nuevo nace sin ductos; se capturan o se generan desde la carga. */
+       nuevo nace sin ductos; se capturan en su pestaña (H-305). */
     segments: [],
     /* H-300: su cotización: precios (semilla de la casa sin fuente) y difusores capturados aquí (null = pendiente). */
     precios: { ...DUCT_PRECIO_SEED }, difusores: null,
@@ -17033,8 +17005,7 @@ function viewProyecto() {
           <tbody>${zoneRows}</tbody></table></div>
       </div></div>
       <div class="card"><h3>Flujo de trabajo integrado</h3><div class="body">
-        <p class="sub" style="margin:0 0 12px">La carga define el caudal y el caudal se ofrece a ductos como propuesta. Ventilación captura su propio local; al seleccionar el ventilador, el calor de su motor entra a la zona que elijas como misceláneos (H-262, H-263).</p>
-        <button class="btn-primary" data-act="chain-duct">Generar tramos de ducto con ${n(U.flow(t.cfm * 1.699)[0], 0)} ${U.flow(0)[1]}</button>
+        <p class="sub" style="margin:0 0 12px">Cada motor calcula con sus propios datos. Ductos captura el caudal de cada tramo en su pestaña (H-305). Ventilación captura su propio local; al seleccionar el ventilador, el calor de su motor entra a la zona que elijas como misceláneos (H-262, H-263).</p>
       </div></div>
       ${LOADS.length > 1 ? `<div class="card"><h3>Carga por zona<span class="tag">${LOADS.length} zonas</span></h3><div class="body">
         ${chartBreakdown(LOADS.map((r, i) => ({ k: S.zones[i]?.name || `Zona ${i + 1}`, v: r.grand, c: i === 0 ? CLR.or : CLR.bl })))}
@@ -18985,16 +18956,8 @@ const PROPUESTAS = {
       valor: e.rec ? (e.rec.estado === "aceptado" ? resumenRepCuartos(repCuartosLoad(), true) : "captured by the user") : "not decided",
       origen: "Clean rooms", estado: { "sin-datos": "No data at the source", pendiente: "Proposal available", aceptado: "Accepted · current", desactualizado: "Out of date · the source changed", propio: "Captured by hand", vivo: "Live (previous mode)" }[e.nivel] || e.nivel }),
   },
-  "load>duct": {
-    destino: "duct", origen: "load", permisos: ["load>duct"],
-    titulo: "Caudales por tramo desde la carga térmica",
-    que: "Un tramo principal con el suministro total, un ramal por zona con su caudal y, si lo hay, el tramo de aire exterior: sólo caudales, sin longitudes ni accesorios (se capturan en cada tramo; mientras, quedan pendientes de longitud, H-167).",
-    disponible: () => LOADS.length > 0 && totals().cfm > 0,
-    firma: () => { const t = totals(); return JSON.stringify([Math.round(t.cfm), Math.round(t.oa), LOADS.map((r, i) => [S.zones[i] ? S.zones[i].name : i, Math.round(r.cfm)])]); },
-    resumen: () => { const t = totals(); return `${LOADS.length + 1 + (t.oa > 0 ? 1 : 0)} tramo(s): principal ${n(t.cfm * 1.699, 0)} m³/h, ${LOADS.length} ramal(es) por zona${t.oa > 0 ? `, aire exterior ${n(t.oa, 0)} m³/h` : ""}`; },
-    actual: () => `${S.duct.segments.length} tramo(s) en la cédula · ${n(S.duct.segments.reduce((a, s) => a + num(s.flow) * 3.6, 0), 0)} m³/h capturados`,
-    aplicar: () => chainToDuct(true),
-  },
+  /* H-305 (decisión del dueño, 29-sep-2026: las propuestas entre motores se retiran; cada motor captura lo suyo): se retiró la
+     propuesta "load>duct" (caudales por tramo desde la carga térmica). Un proyecto guardado que la aceptó conserva sus tramos. */
   /* H-262: la propuesta "load>vent" (aire exterior de carga térmica como reposición) se retiró. Con ventilación sin
      capturar proponía cambios/h sobre un volumen de respaldo de 1 m² × 0.1 m, y el cruce contradice la decisión del
      dueño (27-sep-2026): cada disciplina con sus propios datos; la relación con carga térmica va al revés (H-263). */
@@ -20192,7 +20155,7 @@ function viewTablero() {
     ${pendHtml}
 
     <div class="grp">Aire acondicionado y ventilación</div>
-    <div class="gsub">El núcleo térmico comparte geometría y ocupación sin pedir permiso. Ductos recibe los caudales como propuesta; Ventilación captura su propio local y, al seleccionar el ventilador, entrega el calor de su motor a una zona de carga térmica.</div>
+    <div class="gsub">El núcleo térmico comparte geometría y ocupación sin pedir permiso. Ductos captura el caudal de cada tramo; Ventilación captura su propio local y, al seleccionar el ventilador, entrega el calor de su motor a una zona de carga térmica.</div>
     <div class="tablero">${grupo(["load", "clean", "equip", "vent", "duct"])}</div>
 
     <div class="grp">Instalaciones del edificio</div>
@@ -21644,8 +21607,6 @@ function viewDuct() {
       ${inp("Difusores y rejillas (piezas)", "duct.difusores", "number", "1")}
       ${"difusoresSinConfirmar" in S.duct && S.duct.difusoresSinConfirmar && S.duct.difusoresSinConfirmar.n === S.duct.difusores ? `<div class="hint" style="margin:-6px 0 10px">Sin confirmar: cantidad de la migración al abrir (antes 1 por 400 CFM de Carga térmica, ${n(S.duct.difusoresSinConfirmar.cfm, 0)} CFM).</div>` : ""}
       <button class="btn-primary" data-act="seg-add">Agregar tramo</button>
-      <div style="height:8px"></div>
-      ${propuestaHtml("load>duct")}
     </div></div>
     <div class="grid" style="gap:14px">
       <div class="card"><h3>Tramos<span class="tag">${d.segs.length}</span></h3>
@@ -23684,8 +23645,8 @@ const GUIA = {
   ventilacion: { que: "Extracción y reposición de aire en cinco modos —general, cocina, industrial, rejilla y reposición—, con selección Greenheck.",
     cuando: "Para baños, cocinas, cuartos de proceso y reposición de cascada; no para el aire acondicionado." },
   ductos: { que: "Dimensiona cada tramo por fricción constante o por velocidad —Darcy–Weisbach con Haaland—, con calibres SMACNA por clase de presión, accesorios Ductmate compatibles y cuantificación de lámina.",
-    cuando: "Cuando ya hay caudales. Se pueden generar los tramos desde la carga térmica con un botón.",
-    ojo: "El ventilador debe vencer el recorrido crítico, no la suma de todos los tramos. Por ahora la suite muestra la suma de los tramos de suministro y retorno, porque el recorrido crítico todavía no se calcula: es cota superior del recorrido crítico de los tramos capturados; no incluye tramos, rejillas ni filtros que no estén en la lista. La red que se genera desde la carga no trae tramos de retorno: si no los capturas, la cifra tampoco los incluye. La presión real del recorrido crítico se revisa a mano. Si un tramo domina la pérdida, revisa su velocidad o sus accesorios antes de subir el equipo." },
+    cuando: "Cuando ya hay caudales: el caudal de cada tramo se captura en esta pestaña (H-305).",
+    ojo: "El ventilador debe vencer el recorrido crítico, no la suma de todos los tramos. Por ahora la suite muestra la suma de los tramos de suministro y retorno, porque el recorrido crítico todavía no se calcula: es cota superior del recorrido crítico de los tramos capturados; no incluye tramos, rejillas ni filtros que no estén en la lista. Si no capturas los tramos de retorno, la cifra tampoco los incluye. La presión real del recorrido crítico se revisa a mano. Si un tramo domina la pérdida, revisa su velocidad o sus accesorios antes de subir el equipo." },
   electrico: { que: "Cuadro de cargas del proyecto con lo que capturas en esta pestaña: demanda, balanceo por fase, alimentador, protección, tierra y canalización.",
     cuando: "Cuando la cédula de equipos está cerrada, para aceptar como propuesta sus cargas con su kW, tensión y fases, junto con el ventilador, el compresor, las bombas y los FFU que ya calcularon los otros motores.",
     ojo: "Eléctrico es autónomo (H-268): calcula sólo con las cargas capturadas aquí y con las que aceptas de los demás motores como propuesta (instantánea con origen y fecha); nada entra sin aceptarse y, si el origen cambia, la propuesta avisa «desactualizada» y tú decides. El sistema, la distancia al tablero y el transformador también se capturan aquí. No es estudio de corto circuito ni coordinación de protecciones: los datos del transformador de la acometida solo sirven para estimar la corriente de falla, elegir la capacidad interruptiva y avisar si la demanda pasa del 80 % de su capacidad.",
@@ -24201,19 +24162,6 @@ document.addEventListener("click", (e) => {
     case "ec-kwplaca": { const c = S.elec.cargas[+b.dataset.i]; if (c) { delete c.kWOrigen; delete c.kWRef; } projAutosave(); render(); break; }
     case "ht-add": S.hidro.tramos.push(defaultTramoAgua(`AF-${S.hidro.tramos.length + 1}`)); projAutosave(); render(); break;
     case "ht-del": S.hidro.tramos.splice(+b.dataset.i, 1); projAutosave(); render(); break;
-    case "chain-duct": {
-      const segs = (S.duct.segments || []).length;
-      if (segs) {
-        confirmarSiHayDatos({
-          titulo: "Regenerar borra los tramos capturados",
-          detalle: "Los tramos actuales se reemplazan por unos nuevos, generados a partir del caudal de cada zona. Las longitudes, accesorios y secciones bloqueadas que hayas capturado se pierden.",
-          lista: (S.duct.segments || []).slice(0, 8).map((s) => [s.tag, `${n(s.flow * 3.6, 0)} m³/h · ${n(s.length, 0)} m`]),
-          boton: "Regenerar los tramos", etiqueta: "regenerar ductos desde la carga",
-          onOk: () => requestLink("load>duct", chainToDuct),
-        });
-      } else requestLink("load>duct", chainToDuct);
-      break;
-    }
     case "preset": {
       const z = S.zones[+b.dataset.i];
       /* Solo pregunta por lo que de verdad va a pisar: si la zona está vacía,
@@ -24538,29 +24486,7 @@ function traerSistemaACotizacion() {
   projAutosave(); render();
   toast(`${c.label} cargado: ${S.equip.items.length} partida(s)`);
 }
-function chainToDuct(silencioso) {
-  if (!linkAllowed("load>duct")) { requestLink("load>duct", chainToDuct); return; }
-  const t = totals();
-  if (t.cfm <= 0) { toast("Primero calcula al menos una zona"); return; }
-  const mainLs = t.cfm * 1.699 / 3.6;
-  /* H-167 (rev 2.9.24, duct v3; «arranque en ceros», decisión del dueño 17-sep-2026): de la carga sólo sale el CAUDAL de
-     cada tramo. Longitudes y accesorios no los capturó nadie: antes principal 20 m, ramales 10 m, aire exterior 15 m, tee
-     0.65 + salida 1.0 por ramal, entrada 0.03 y los 2 codos de defaultSegment en el principal (889 kg = 146,684 MXN en el
-     caso de la auditoría). Ahora nacen en 0 m y sin accesorios; calcSegment los marca «pendiente de longitud». */
-  const segs = [{ ...defaultSegment("SA-PRINCIPAL", Math.round(mainLs)), length: 0, aspect: 3, fittings: [] }];
-  LOADS.forEach((r, i) => {
-    segs.push({
-      ...defaultSegment(`SA-${(S.zones[i].name || "Z").slice(0, 8).toUpperCase()}`, Math.round(r.cfm * 1.699 / 3.6)),
-      shape: "round", method: "velocity", targetV: 5, length: 0, fittings: [],
-    });
-  });
-  if (t.oa > 0) segs.push({ ...defaultSegment("OA-EXTERIOR", Math.round(t.oa / 3.6)), service: "supply", shape: "round", method: "velocity", targetV: 4, length: 0, fittings: [] });
-  S.duct.segments = segs;
-  /* rev 2.7.0 · Regla 2: quede registrado que estos caudales salieron de la
-     carga termica y en que momento, sin importar por que boton se llego. */
-  registrarVinculo("load>duct", "aceptado");
-  if (!silencioso) { irATab("ductos"); toast(`${segs.length} tramos generados desde la carga térmica`); }
-}
+/* H-305: chainToDuct (caudales de la carga térmica → tramos de ducto) se retiró con la propuesta "load>duct". */
 /* H-262: chainToVent (aire exterior de carga térmica → cambios/h de ventilación) se retiró con la propuesta "load>vent". */
 
 
