@@ -18,9 +18,10 @@ H-293…H-303). Para ubicarlos en el código actual, usar `git show 6e534ba:inde
 | `elec.md` | Eléctrico |
 | `hidro.md` | Hidrosanitario |
 | `duct.md` | Ductos |
-| `hvac.md` | HVAC: Carga térmica, Cuartos limpios y Selección de equipo |
-| `vent.md` | Ventilación |
-| `fuego.md` | Contra incendio |
+
+**Sin reporte de HVAC (Carga térmica, Cuartos limpios y Selección de equipo), Ventilación ni Contra incendio:** sus tres analistas
+se interrumpieron (01:02 y 01:24 UTC del 29-sep-2026) antes de entregar; sus transcripciones no traen ningún hallazgo (sólo «Empiezo
+explorando la carpeta»). No se relanzaron, por instrucción del dueño (no lanzar más subagentes).
 
 Sin reporte todavía: Aire comprimido, Obra civil, Soportería/Estructural, Cotización, Valor y Kaizen. No se lanzaron analistas
 para ellos, por instrucción del dueño.
