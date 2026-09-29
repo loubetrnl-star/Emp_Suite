@@ -19735,7 +19735,7 @@ const ENTRADAS = {
     /* H-306: la marca «de la migración, sin confirmar» no es captura: confirmarla no cambia el sello. */
     const e = sinClaves(S.elec, ["tomarHVAC", "tomarPropuesta"]);
     if (Array.isArray(e.cargas) && e.cargas.some((c) => c && c.migrado)) e.cargas = e.cargas.map((c) => (c && c.migrado ? sinClaves(c, ["migrado"]) : c));
-    return { elec: e, perms: ePerms() };
+    return { elec: e };   /* H-309: computeElec no lee ningún permiso desde H-306 (salió cedula>elec): conceder o retirar uno no toca su sello */
   },
   soporte: () => ({ soporte: sinClaves(S.soporte, ["tomarInstantanea", "tomarBases"]) }),   /* H-266: sólo su captura (la instantánea va dentro) */
   quote: () => ({ quote: sinClaves(S.quote, ["prop"]), qfam: S.qfam, perms: ePerms(),
@@ -19822,7 +19822,7 @@ const HUELLA_FORMA = {
   hidro: { f: 4, que: "H-303: su cotización lleva su propio bloque comercial (plaza, factor, base, FASAR, referencia; mismas cifras)" },
   fuego: { f: 4, que: "H-303: su cotización lleva su propio bloque comercial (plaza, factor, base, FASAR, referencia; mismas cifras)" },
   equip: { f: 3, que: "H-303: su cotización lleva su propio bloque comercial (plaza, factor, base, FASAR, referencia; mismas cifras)" },
-  elec: { f: 2, que: "H-303: su cotización lleva su propio bloque comercial (plaza, factor, base, FASAR, referencia; mismas cifras)" },
+  elec: { f: 3, que: "H-309: la huella ya no lleva los permisos del proyecto, que el eléctrico no lee desde H-306 (mismas cifras)" },
   civil: { f: 2, que: "H-303: su cotización lleva su propio bloque comercial (plaza, factor, base, FASAR, referencia; mismas cifras)" },
   soporte: { f: 2, que: "H-303: su cotización lleva su propio bloque comercial (plaza, factor, base, FASAR, referencia; mismas cifras)" },
   quote: { f: 9, que: "H-293–H-303: los precios de rociador, ventilación, FFU, HEPA, rejilla, central de aire, lámina, difusor y equipos pasaron a su motor (misma cifra)" },

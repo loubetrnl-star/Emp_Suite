@@ -296,5 +296,7 @@
   { "id": "elec.m148", "que": "H-277: el PDF de eléctrico vuelve a imprimir 40 °C de temperatura ambiente aunque el motor calculó con otra", "logica": true, "estado": "vigente",
     "buscar": "[\"Temperatura ambiente\", `${tempAmbDe(E.tempAmb)} C · factor", "reemplazar": "[\"Temperatura ambiente\", `${num(E.tempAmb, 40)} C · factor" },
   { "id": "elec.m149", "que": "H-277: la memoria del motor y el libro vuelven a imprimir 40 °C de temperatura ambiente sin captura", "logica": true, "estado": "vigente",
-    "buscar": "temperatura ambiente de diseño ${tempAmbDe(E.tempAmb)} °C", "reemplazar": "temperatura ambiente de diseño ${num(E.tempAmb, 40)} °C" }
+    "buscar": "temperatura ambiente de diseño ${tempAmbDe(E.tempAmb)} °C", "reemplazar": "temperatura ambiente de diseño ${num(E.tempAmb, 40)} °C" },
+  { "id": "elec.m150", "que": "H-309 (sello): la huella del eléctrico vuelve a llevar los permisos del proyecto (conceder uno ajeno lo marcaría «la captura cambió»)", "logica": true, "estado": "vigente",
+    "buscar": "    return { elec: e };   /* H-309:", "reemplazar": "    return { elec: e, perms: ePerms() };   /* H-309:" }
 ]

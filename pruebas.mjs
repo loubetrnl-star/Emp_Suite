@@ -9765,6 +9765,24 @@ t("S.199 (H-306/H-307) al abrir un proyecto anterior, las cargas eléctricas que
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); S.tab = tab0; G("recompute")(); }
 });
 
+t("S.200 (H-309) el sello del eléctrico sólo depende de su captura: conceder o retirar un permiso de otro motor (fuego>quote, load>quote) no lo marca «desactualizado · la captura cambió» (desde H-306 computeElec no lee ningún permiso); cambiar su captura sí lo marca", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.200";
+    S.elec = { ...G("defaultElec")(), cargas: [{ ...G("defaultCarga")("Bomba S.200"), id: "s200", V: 220, ph: 3, cant: 1, L: 25, fp: .85, tipo: "motor", kW: 5.5 }] };
+    G("recompute")();
+    S.sellos = S.sellos || {}; S.sellos.elec = { ts: 1, huella: G("huellaMotor")("elec"), ver: G("motorVer")("elec"), hf: G("formaHuella")("elec") };
+    eq(G("selloDe")("elec").estado, "calculado", "recién sellado:");
+    const antes = JSON.stringify(G("cifrasMotor")("elec"));
+    S.perms["fuego>quote"] = { ts: 1, via: "S.200" }; S.perms["load>quote"] = { ts: 1, via: "S.200" }; G("recompute")();
+    eq(JSON.stringify(G("cifrasMotor")("elec")), antes, "el eléctrico no cambia:");
+    eq(G("selloDe")("elec").estado, "calculado", "conceder permisos de otros motores no marca el eléctrico:");
+    delete S.perms["fuego>quote"]; G("recompute")();
+    eq(G("selloDe")("elec").estado, "calculado", "ni retirarlos:");
+    S.elec.cargas[0].kW = 7.5; G("recompute")();
+    eq(G("selloDe")("elec").estado, "desactualizado", "cambiar su captura sí lo marca:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {
   const guardado = JSON.stringify(S);
   try {
