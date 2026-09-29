@@ -8,6 +8,30 @@ Aplica a cualquier agente que toque este repositorio. Las decisiones del dueño 
   `CHANGELOG-motores.md` (versión por motor), `Bitacora-rev-*.md`, `PROMPT-MAESTRO-EMP-B12.md`.
 - Textos de norma disponibles: `parches/normas-texto/` (ver su README). Lo que no está ahí, está «de memoria».
 
+## Alcance de la suite
+- Objetivo: unificar en `index.html` las tres apps que antes estaban separadas: CargaTermica/LoadCalc (motor `load`),
+  VentCalc (motor `vent`) y DuctCalc (motor `duct`). La meta es que compartan captura de proyecto, unidades, catálogos
+  y entregables, y que cada una conserve su motor, su versión en `MOTOR_VER` y su bloque de pruebas.
+- Las copias sueltas de las apps viejas (`Desktop\DuctCalc`, `Desktop\VentCalc`, `EMP BIBLIO\APP\...`, los Excel
+  `CARGA_TERMICA_*`, `Ductolador_*`) son sólo referencia de conducta. Se lee de ellas y no se editan.
+- Fuera de alcance: QMX, Safran/SSCA, cotizaciones de obra, ADMIN, VERTIV y cualquier otra carpeta fuera de este
+  directorio. Esta sesión no las lee ni las modifica.
+
+## Stack
+- App: HTML+JS en `index.html`, sin build. Banco y automatización: Node (`pruebas.mjs`, `parches/*.mjs`), con
+  dependencias fijadas a versión exacta en `package.json` (sin `^` ni `~` en lo que se agregue).
+- Cálculo de verificación, casos a mano y validación numérica: Python, con scripts reutilizables en `scripts/`
+  (nombre estable; se sobrescriben) y versiones fijadas en `scripts/requirements.txt`. Cada script imprime unidades y
+  supuestos. Los resultados de Python se contrastan con el motor JS y la diferencia se reporta, no se ajusta a mano.
+
+## Supuestos y normas
+- Cada valor calculado cita su supuesto y su fuente con cláusula o tabla (por ejemplo ASHRAE Handbook Fundamentals,
+  capítulo y tabla con año; ASHRAE 62.1, tabla 6-1 con edición; SMACNA; NOM con número y año).
+- Un supuesto sin respaldo se marca como «criterio de la casa» o «supuesto propio», nunca como norma.
+- Si dos normas se contradicen, se señala y se usa la NOM vigente, salvo que el dueño decida otra cosa y así se registre.
+- Aplica la regla 4 («Nada de memoria»): lo que no esté en `parches/normas-texto/` o en una fuente pública con URL
+  queda `BLOQUEADO`.
+
 ## Cómo se corre el banco
 ```
 node pruebas.mjs index.html
