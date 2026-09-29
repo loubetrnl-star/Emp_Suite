@@ -2,6 +2,14 @@
 
 Aplica a cualquier agente que toque este repositorio. Las decisiones del dueño mandan sobre todo lo demás.
 
+Este archivo incorpora las instrucciones globales del dueño (`~/.claude/CLAUDE.md`) para que también rijan en sesiones
+en la nube, donde ese archivo no existe. Si una instrucción general contradice una regla específica de este
+repositorio, manda la del repositorio.
+
+## Idioma
+- Responde siempre en español, aunque el código, los archivos o la documentación estén en inglés.
+- Deja identificadores, comandos y nombres de archivo tal cual.
+
 ## Qué es esto
 - Una sola aplicación en `index.html` (HTML+JS, sin build). Banco de pruebas: `pruebas.mjs` (jsdom).
 - Documentos de referencia: `AUDITORIA.md` (155 hallazgos, H-107 a H-261), `PLAN-CRITICOS.md` (plan de corrección),
@@ -17,12 +25,27 @@ Aplica a cualquier agente que toque este repositorio. Las decisiones del dueño 
 - Fuera de alcance: QMX, Safran/SSCA, cotizaciones de obra, ADMIN, VERTIV y cualquier otra carpeta fuera de este
   directorio. Esta sesión no las lee ni las modifica.
 
+## Método de trabajo
+- Para explorar el código o el problema, lanza subagentes en paralelo con el modelo claude-sonnet-5-5, uno por área o
+  hipótesis, máximo cinco por tarea.
+- Reserva el modelo principal para la consolidación.
+- Consolida los hallazgos en un análisis profundo con rigor científico e ingenieril antes de proponer cambios, e indica
+  el nivel de confianza de cada conclusión.
+- No concluyas con un solo subagente si el problema tiene más de un frente.
+
 ## Stack
 - App: HTML+JS en `index.html`, sin build. Banco y automatización: Node (`pruebas.mjs`, `parches/*.mjs`), con
   dependencias fijadas a versión exacta en `package.json` (sin `^` ni `~` en lo que se agregue).
 - Cálculo de verificación, casos a mano y validación numérica: Python, con scripts reutilizables en `scripts/`
   (nombre estable; se sobrescriben) y versiones fijadas en `scripts/requirements.txt`. Cada script imprime unidades y
   supuestos. Los resultados de Python se contrastan con el motor JS y la diferencia se reporta, no se ajusta a mano.
+- Análisis de datos y generación de documentos: también Python.
+- No estimes ni calcules de cabeza lo que se puede ejecutar. Escribe y corre el script, y reporta el resultado real, no
+  el esperado.
+- Apóyate siempre en los skills disponibles de Anthropic antes de improvisar una solución propia. Revisa primero si
+  existe un skill que cubra la tarea, en especial para Excel, Word, PowerPoint y PDF. Si ningún skill aplica, dilo y
+  sigue con script.
+- Borra los scripts de un solo uso al terminar.
 
 ## Supuestos y normas
 - Cada valor calculado cita su supuesto y su fuente con cláusula o tabla (por ejemplo ASHRAE Handbook Fundamentals,
@@ -31,6 +54,7 @@ Aplica a cualquier agente que toque este repositorio. Las decisiones del dueño 
 - Si dos normas se contradicen, se señala y se usa la NOM vigente, salvo que el dueño decida otra cosa y así se registre.
 - Aplica la regla 4 («Nada de memoria»): lo que no esté en `parches/normas-texto/` o en una fuente pública con URL
   queda `BLOQUEADO`.
+- No entregues un número sin su fuente.
 
 ## Cómo se corre el banco
 ```
@@ -68,6 +92,14 @@ Los dos deben quedar en verde antes de cada commit. Con rojo no se avanza. `prue
 - Trabajo por disciplina en paralelo: rama `crit/<motor>` en un `git worktree`; cada agente toca sólo su región del
   motor en `index.html`, su bloque `/* ===== CM.<motor> ===== */` en `pruebas.mjs` y sus archivos en
   `parches/casos-a-mano/`. La integración a `master` la hace el integrador, en serie, con el banco en verde.
+
+## Formato de salida
+- Cierra cada respuesta sustantiva con una sección titulada Siguientes pasos.
+- Incluye de dos a cuatro acciones concretas derivadas de la conversación actual, nunca genéricas.
+- Empieza cada una con un verbo en imperativo.
+- Nombra archivos, comandos o rutas específicas cuando apliquen.
+- Agrega en la misma línea una explicación breve de por qué la recomiendas, máximo una oración.
+- Omite la sección en respuestas de confirmación, respuestas de una línea o cuando no haya siguiente paso real.
 
 ## Lo que nunca
 - No cambiar `--senal`, `--p-*` ni la identidad de PDF/Excel. No agregar nombres de clientes u obras anteriores
