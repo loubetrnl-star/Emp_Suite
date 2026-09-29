@@ -6959,6 +6959,13 @@ const TUB_AIRE = {
   acero_neg:{ label: "Acero al carbón cédula 40", labelEn: "Schedule 40 carbon steel", eps: 0.045, mxnM: 520,
     nota: "Se oxida por dentro con la condensación. Solo para aire de taller sin exigencia." },
 };
+/* AUD-03 (auditoría externa, 29-sep-2026: cada motor con sus tablas y funciones, sin leer las de otro): diámetro interior del cobre
+   tipo L PROPIO de aire comprimido. Misma transcripción que usa hidrosanitario (H-84): ASTM B88 tipo L, Copper Development
+   Association, Copper Tube Handbook (2006), tabla 2b, cruzada contra una segunda fuente; mm. Antes aire leía TUB_AGUA.cobre. */
+const DI_COBRE_L_AIRE = [[13.84, "1/2\""], [19.94, "3/4\""], [26.04, "1\""], [32.13, "1 1/4\""], [38.23, "1 1/2\""], [50.42, "2\""], [62.61, "2 1/2\""], [74.80, "3\""], [99.19, "4\""]];
+/* AUD-03: factor de fricción de Darcy por Haaland (1983), copia propia de aire (antes llamaba a haaland() de ductos). Laminar
+   64/Re abajo de Re 2300; 0.05 abajo de Re 1, como la de la casa. */
+function haalandAire(Re, rr) { if (Re < 1) return .05; if (Re < 2300) return 64 / Math.max(Re, 1); const inv = -1.8 * Math.log10(Math.pow(rr / 3.7, 1.11) + 6.9 / Re); return 1 / (inv * inv); }
 /* Diámetros interiores reales, mm. Los nominales mienten y con la quinta
    potencia del diámetro en la caída, mentir 3 mm cambia el resultado 20 %. */
 const DIAM_AIRE = [[10.9, '3/8"'], [15.8, '1/2"'], [21.0, '3/4"'], [26.6, '1"'], [35.1, '1 1/4"'],
@@ -7184,11 +7191,11 @@ function computeAire(A) {
   /* ---- 6. Red de distribución ---- */
   const mat = TUB_AIRE[A.material] || TUB_AIRE.aluminio;
   /* H-218 (rev 2.9.24, aire v5): el diámetro interior es del material. Cobre tipo L: DI de ASTM B88 (los mismos de
-     TUB_AGUA.cobre); acero cédula 40: ASME B36.10 (DIAM_AIRE); aluminio calibrado e inoxidable: el DI real es del fabricante y
+     DI_COBRE_L_AIRE, su copia; AUD-03); acero cédula 40: ASME B36.10 (DIAM_AIRE); aluminio calibrado e inoxidable: el DI real es del fabricante y
      queda pendiente: se dimensiona con cédula 40 sólo como indicativo y se avisa. Antes cédula 40 para todo material (cobre de
      55 m: 1" con 26.6 mm cuando el DI real de 26.04 mm obliga a 1 1/4"). */
   const matId = TUB_AIRE[A.material] ? A.material : "aluminio";
-  const DI = matId === "cobre" ? { d: TUB_AGUA.cobre.d, fuente: "ASTM B88 tipo L (DI real por diámetro)", pendiente: false }
+  const DI = matId === "cobre" ? { d: DI_COBRE_L_AIRE, fuente: "ASTM B88 tipo L (DI real por diámetro; CDA Copper Tube Handbook 2006, tabla 2b)", pendiente: false }
     : (matId === "acero_gal" || matId === "acero_neg") ? { d: DIAM_AIRE, fuente: "cédula 40 (ASME B36.10)", pendiente: false }
     : { d: DIAM_AIRE, fuente: "cédula 40 sólo como indicativo; el DI del fabricante (el real) queda pendiente", pendiente: true };
   const rho = rhoAire(pDescarga, tAmb, pAtm);
@@ -7200,7 +7207,7 @@ function computeAire(A) {
   const evalD = (d, Qm3s, L) => {
     const A2 = Math.PI * Math.pow(d / 1000, 2) / 4, V = Qm3s / A2;
     const Re = rho * V * (d / 1000) / mu;
-    const f = haaland(Re, mat.eps / 1000 / (d / 1000));
+    const f = haalandAire(Re, mat.eps / 1000 / (d / 1000));
     const Pam = f * (1 / (d / 1000)) * (rho * V * V / 2);
     return { V, Re, Pam, dPbar: Pam * L * Leq / 100000 };
   };

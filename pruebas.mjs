@@ -9541,6 +9541,24 @@ t("S.188 (H-308) computeSoporte no lee los resultados de los otros motores (DUCT
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+t("S.189 (AUD-03) aire comprimido calcula con SUS tablas y funciones: el diámetro interior del cobre tipo L y el factor de fricción (Haaland) son copias propias; cambiar la tabla de hidrosanitario o la función de ductos no mueve aire", () => {
+  const guardado = JSON.stringify(S);
+  const tabla0 = JSON.stringify(G("TUB_AGUA").cobre.d), h0 = G("haaland");
+  try {
+    S.aire = { ...G("defaultAire")(), material: "cobre", Lprincipal: 55, Lramales: 20, consumos: [{ id: "s189", tipo: "generico", nombre: "Prueba S.189", cant: 6, lmin: 900, bar: 6, uso: .6 }] };
+    G("recompute")();
+    const cifras = () => JSON.stringify(G("AIRE").tramos.map((t) => [t.d, t.V, t.dPbar]));
+    const antes = cifras();
+    if (!G("AIRE").tramos.length) throw new Error("el caso no aísla lo que se quiere probar: la red de aire debe tener tramos");
+    /* Otra disciplina cambia su tabla y su función: aire no se mueve. */
+    G("TUB_AGUA").cobre.d = G("TUB_AGUA").cobre.d.map(([d, nom]) => [d * 1.5, nom]);
+    G("haaland = function () { return 0.5; }");
+    G("recompute")();
+    eq(cifras(), antes, "aire no se mueve con la tabla de hidrosanitario ni con la función de ductos:");
+    eq(G("AIRE").tramos.every((t) => t.d > 0), true, "sigue dimensionando con su tabla:");
+  } finally { G("TUB_AGUA").cobre.d = JSON.parse(tabla0); w.haaland = h0; G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {
   const guardado = JSON.stringify(S);
   try {
