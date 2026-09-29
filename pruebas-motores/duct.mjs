@@ -52,7 +52,7 @@ export default async function ({ t, G, S, CM }) {
   caso(4, "(ídem) sistema del proyecto fijo: 73.32 Pa del equipo, 1,360.99 kg, 58 hojas", [
     [null, () => tramos(FIJO())],
   ]);
-  caso(5, "(Darcy-Weisbach/Haaland; criterio de la casa ROUND_G y despiece) redondo bloqueado Ø500 1,000 L/s 12 m", [
+  caso(5, "(Darcy-Weisbach/Haaland; criterio de la casa ROUND_G y despiece; fase2:H-168 BLOQUEADO, SMACNA espiral) redondo bloqueado Ø500 1,000 L/s 12 m", [
     [null, () => tramos([seg("R-1", 1000, { shape: "round", lock: true, d: 500, length: 12 })])],
   ]);
   caso(6, "(UMC 2018 §510.5.1, H-165) grasa 500 L/s clase ½\": acero al carbón 16 MSG 0.060 in; inoxidable 18 MSG 0.048 in", [

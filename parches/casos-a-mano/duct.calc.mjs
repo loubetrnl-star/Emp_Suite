@@ -149,6 +149,16 @@ const resFijo = FIJO.map((c) => {
   fila("CM.duct.5.e", "espiroducto: tramos enteros de 10 pies", ent, `⌊12 / 3.048⌋ = ${t.enteras}`, "criterio de la casa (despieceSeg, index.html:9239)", "criterio de la casa", "DUCT.segs[0].despiece.enteras", t.enteras, 0);
   fila("CM.duct.5.f", "espiroducto: recorte (m)", ent, `12 − ${t.enteras} × 3.048 = ${t.recorte} m`, "criterio de la casa (despieceSeg)", "criterio de la casa", "DUCT.segs[0].despiece.recorte", t.recorte, 0.001);
   fila("CM.duct.5.g", "coples entre piezas", ent, `${t.enteras} + 1 piezas − 1 = ${t.coples}`, "criterio de la casa (despieceSeg)", "criterio de la casa", "DUCT.boq.despiece.coples", t.coples, 0);
+  /* H-168 · BLOQUEADO: requiere texto de norma (SMACNA HVAC DCS, redondo espiral; no está en parches/normas-texto).
+     Corrección propuesta: sustituir ROUND_G por la tabla SMACNA de espiral cuando el dueño pase el texto. Hoy sólo hay
+     un renglón documentado (AUDITORIA.md H-168 y parches/fase1/PROMPTS-FASE1.md §3.6, reproducción de Pacific Duct sin
+     edición): Ø500 mm (19.69 in) clase 2" → calibre 26. No se completa la tabla de memoria (regla 4). Estas filas son
+     fase2: sólo se exigen con CM_FASE2=1 y, al cerrar el hallazgo con el texto SMACNA, se recalculan y pasan a vigente. */
+  const H168 = { d: 500, pc: "2", g: 26 };
+  const th168 = GAUGE_T[H168.g] * 25.4, kg168 = t.sheet * th168 / 1000 * STEEL;
+  const F168 = "BLOQUEADO: requiere texto de norma (SMACNA HVAC DCS, redondo espiral); valor propuesto de la reproducción Pacific Duct sin edición (AUDITORIA.md H-168)";
+  fila("CM.duct.5.h", "calibre del redondo por la tabla SMACNA de espiral (propuesto)", ent, `Ø500 = 19.69 in → calibre ${H168.g} (hoy ROUND_G da ${t.g})`, F168, "secundaria", "DUCT.segs[0].gauge.gauge", H168.g, 0, "fase2:H-168");
+  fila("CM.duct.5.i", "kilos del redondo con el calibre propuesto", ent, `π·0.5 × 12 × 1.12 = ${r(t.sheet, 3)} m² × ${r(th168, 4)} mm × 7.85 = ${r(kg168, 2)} kg (hoy ${r(t.kg, 2)} kg, ×${r(t.kg / kg168, 2)})`, `${F168}; ${FK}`, "secundaria", "DUCT.segs[0].kg", r(kg168, 2), 0.05, "fase2:H-168");
 }
 /* ---- CM.duct.6: ducto de grasa 500 L/s clase ½" (H-165: UMC 2018 §510.5.1, antes tabla galvanizada + 2 = cal 22) ---- */
 {

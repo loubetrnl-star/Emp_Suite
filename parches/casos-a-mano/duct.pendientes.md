@@ -1,6 +1,6 @@
 # duct · pendientes de la Fase 1 (rev 2.9.24, 25-sep-2026)
 
-Motor de ductos (`duct`, v1). Hoja: `duct.csv` (74 filas, todas vigentes) · cálculo independiente:
+Motor de ductos (`duct`, v1). Hoja: `duct.csv` (76 filas: 74 vigentes y 2 `fase2:H-168`) · cálculo independiente:
 `duct.calc.mjs` (no carga index.html) · módulo: `pruebas-motores/duct.mjs` (10 pruebas CM.duct.0–9) · compuerta:
 `parches/mutantes/duct.json` (35 mutantes de lógica, todos vigentes y MUERTOS).
 
@@ -39,6 +39,7 @@ Motor de ductos (`duct`, v1). Hoja: `duct.csv` (74 filas, todas vigentes) · cá
 | ~~CM.duct.7.d / 7.e / 7.f~~ (vigente) | H-166 | sin caudal 25 m: 0 kg, sin partida, error | 400×200, 225 kg, partida |
 | ~~CM.duct.7.g~~ (vigente) | H-166 | TR-1 + tramo sin caudal: 604.88 kg | 604.88 + 225 |
 | ~~CM.duct.8.b–8.e~~ (vigente) | H-167 | red generada: 0 m, 0 accesorios, 0 kg, sin partida | 55 m, tee/salida/entrada, kilos y partida |
+| CM.duct.5.h / 5.i (**BLOQUEADO**) | H-168 | Ø500 clase 2": calibre 26, 91.34 kg (propuesto; reproducción Pacific Duct sin edición, secundaria) | calibre 20 (ROUND_G), 166.69 kg |
 
 ## Mutantes
 | id | Estado | Lo mata |
@@ -53,7 +54,10 @@ Motor de ductos (`duct`, v1). Hoja: `duct.csv` (74 filas, todas vigentes) · cá
 | m07 principal 20 m, m09 tee/salida por ramal, m28 junta mínima, m29 aviso de longitud, m30 cotización | MUERTOS (H-167) | S.84, CM.duct.8 |
 
 ## No cubierto (con motivo)
-- H-168 (tabla SMACNA de espiral): **BLOQUEADO**, sin texto de norma.
+- H-168 (tabla SMACNA de espiral): **BLOQUEADO**, sin texto de norma (regla 4). Queda la prueba (CM.duct.5.h/5.i, fase2) y la
+  corrección propuesta: sustituir ROUND_G por la tabla SMACNA de espiral. Sólo hay un renglón documentado (Ø500 clase 2" →
+  calibre 26); la tabla completa no se escribe de memoria. Al llegar el texto: cargar la tabla, recalcular en duct.calc.mjs,
+  filas a vigente, subir MOTOR_VER.duct y regenerar el esperado.
 - H-169 (fricción constante contra el redondo ya redondeado), H-171 (clase de presión contra la presión calculada), H-172
   (2 codos por omisión), H-173–H-176: no críticos, fuera del plan de la Fase 2.
 - Método por velocidad en rectangular y redondo por velocidad: sin caso (ninguna fila del plan lo pide).
