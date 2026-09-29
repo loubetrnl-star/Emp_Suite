@@ -9688,6 +9688,28 @@ t("S.197 (AUD-18) el colector usa la columna de ¼ in/ft de IPC 2015 Tabla 710.1
   cerca(G("pendMin704")(50), 0.25 / 12 * 100, 1e-9, "pendMin704 usa la misma conversión (¼ in/ft = 2.0833 %):");
 });
 
+t("S.198 (AUD-15/16) hidrosanitario rotula cada presión mínima con SU fuente (la regadera de emergencia y la tarja de laboratorio no están en IPC 2015 Tabla 604.3) en memoria y PDF; sin presión de la red la memoria y el PDF no declaran «no alcanza»; la nota del hidroneumático no cita NFPA 20 sin su texto", () => {
+  const guardado = JSON.stringify(S);
+  const pdf = () => [...Buffer.from(G("buildHidroPdf")()).toString("latin1").matchAll(/\(((?:[^()\\]|\\.)*)\) Tj/g)].map((m) => m[1]).join(" ").replace(/\\(.)/g, "$1");
+  try {
+    S.hidro = { ...G("defaultHidro")(), material: "cobre", alturaEdificio: 6, tramos: [{ ...G("defaultTramoAgua")("AF-1"), id: "s198", um: 20, L: 20, alt: 3 }],
+      muebles: [{ id: "lavabo", cant: 4 }, { id: "lavaojos", cant: 1 }, { id: "tarja_lab", cant: 2 }] };
+    G("recompute")();
+    const H = G("HIDRO");
+    eq(H.masExigente && H.masExigente.id, "lavaojos", "el caso no aísla lo que se quiere probar: rige la regadera de emergencia:");
+    eq(H.rigeNorma, true, "rige la mínima del mueble sobre el residual:");
+    const memo = H.memo.join(" ");
+    if (/regadera de emergencia[^.]*IPC 2015 Tabla 604\.3/i.test(memo) || /mínima de norma del mueble más exigente/.test(memo)) throw new Error("la memoria rotula la regadera de emergencia como mínima de IPC 2015 Tabla 604.3");
+    contiene(memo, "criterio de la casa", "la memoria dice la fuente de la regadera de emergencia:");
+    const p = pdf();
+    if (/minima de norma, IPC 2015 Tabla 604\.3/.test(p)) throw new Error("el PDF rotula la carga dinámica con IPC 2015 Tabla 604.3 aunque rige la regadera de emergencia");
+    /* Sin presión de la red (pendiente) ni la memoria ni el PDF dicen «no alcanza». */
+    if (/no alcanza/.test(p) || /La presión de la red no alcanza/.test(memo)) throw new Error("sin presión de la red capturada se declara «no alcanza»");
+    S.tab = "hidro"; G("render")();
+    if (/NFPA 20 exige/.test(w.document.getElementById("view").textContent)) throw new Error("la nota del hidroneumático cita NFPA 20 sin texto de norma");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {
   const guardado = JSON.stringify(S);
   try {
