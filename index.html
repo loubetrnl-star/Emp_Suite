@@ -8974,7 +8974,25 @@ const HOOD_SRC = "IMC 507.2.1 / NFPA 96 · CFM por pie lineal del lado abierto";
    persona y 0.06 CFM/ft² fijos, sin distinguir tipo de local: el mismo espacio
    daba dos caudales de aire exterior según en qué pestaña se capturara, y nada
    avisaba. Las constantes se derivan de P para que haya una sola fuente. */
-const OA_CFM_PERSON = P.OA_PERS / 1.699, OA_CFM_M2 = P.OA_M2 / 1.699;
+/* AUD-03 (auditoría externa, 29-sep-2026: cada motor con sus tablas y constantes, sin leer las de otro): tipos de espacio con Rp
+   (L/s·persona) y Ra (L/s·m²) de ASHRAE 62.1 Tabla 6.2.2.1 y las dos tasas de la Tab. 45 (30 m³/h por persona y 1.8 m³/h por m²)
+   PROPIOS de ventilación: copia de los mismos valores que usa carga térmica (SPACES y P.OA_PERS / P.OA_M2), que ventilación ya no
+   lee. La regla sigue siendo la misma en las dos pestañas (H-09). */
+const ESPACIOS_VENT = {
+  office: { label: "Oficina", Rp: 2.5, Ra: 0.3 },
+  retail: { label: "Comercio", Rp: 3.8, Ra: 0.6 },
+  classroom: { label: "Aula", Rp: 5, Ra: 0.6 },
+  restaurant: { label: "Restaurante", Rp: 3.8, Ra: 0.9 },
+  lobby: { label: "Vestíbulo", Rp: 2.5, Ra: 0.3 },
+  corridor: { label: "Pasillo", Rp: 0, Ra: 0.3 },
+  server: { label: "Site / datos", Rp: 0, Ra: 0.3 },
+  residential: { label: "Habitacional", Rp: 2.5, Ra: 0.15 },
+  cleanroom: { label: "Cuarto limpio", Rp: 2.5, Ra: 0.3 },
+  warehouse: { label: "Almacén", Rp: 2.5, Ra: 0.3 },
+  production: { label: "Producción / manufactura", Rp: 5, Ra: 0.9 },
+};
+const OA_PERS_VENT = 30, OA_M2_VENT = 1.8;   // m³/h por persona y por m² (Tab. 45), copia propia (AUD-03)
+const OA_CFM_PERSON = OA_PERS_VENT / 1.699, OA_CFM_M2 = OA_M2_VENT / 1.699;
 
 /* H-294 (decisión del dueño, 29-sep-2026: cada motor saca su propia cotización de sus propios resultados). El precio por CFM de
    ventilador o extractor instalado con arrancador es de Ventilación: copia en este motor de la semilla de la casa (antes
@@ -9009,8 +9027,8 @@ function computeVent(v) {
     const achCfm = vol * Math.max(0, v.ach) * 35.3147 / 60;
     /* H-09 · Misma regla que carga térmica: máx(62.1 por tipo de espacio,
        Tab.45 por persona, Tab.45 por área). */
-    const stKey = SPACES[v.spaceType] ? v.spaceType : "office";
-    const st = spaceOf(stKey);
+    const stKey = ESPACIOS_VENT[v.spaceType] ? v.spaceType : "office";
+    const st = ESPACIOS_VENT[stKey];   /* AUD-03: su propia tabla */
     const occN = Math.max(0, num(v.occ)), areaN = Math.max(0, num(v.area));
     const v62 = (st.Rp * occN + st.Ra * areaN) * 3.6 / 1.699;   // CFM
     const byP = occN * OA_CFM_PERSON, byA = areaN * OA_CFM_M2;
@@ -21390,7 +21408,7 @@ function viewVent() {
   if (v.mode === "general" || v.mode === "mua") {
     fields = `<div class="row">${inp("Área (m²)", "vent.area", "number", "1")}${inp("Altura (m)", "vent.height", "number", "0.1")}</div>
       <div class="row">${inp("Cambios de aire (1/h)", "vent.ach", "number", "0.5", "vent.ach", S.vent, "vent_ach")}${inp("Ocupantes", "vent.occ", "number", "1", "vent.occ", S.vent)}</div>
-      ${sel("Tipo de espacio (ASHRAE 62.1)", "vent.spaceType", Object.entries(SPACES).map(([k, sp]) => [k, sp.label]))}`;
+      ${sel("Tipo de espacio (ASHRAE 62.1)", "vent.spaceType", Object.entries(ESPACIOS_VENT).map(([k, sp]) => [k, sp.label]))}`;
   } else if (v.mode === "kitchen") {
     fields = `<div class="row">${inp("Largo de campana (m)", "vent.hoodL", "number", "0.1", "vent.hoodL", S.vent)}${inp("Ancho de campana (m)", "vent.hoodW", "number", "0.1")}</div>
       <div class="row">${sel("Tipo de campana", "vent.hoodType", [["wall", "Adosada a muro"], ["island", "Isla"], ["eyebrow", "Visera"]])}

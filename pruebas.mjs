@@ -9574,6 +9574,22 @@ t("S.190 (AUD-03) contra incendio calcula con SUS funciones: Hazen-Williams y la
     if (/\bvelAgua\(/.test(G("sizeFuego").toString()) || /\bhazen\(/.test(G("computeFuego").toString())) throw new Error("contra incendio sigue llamando a las funciones de hidrosanitario");
   } finally { w.hazen = h0; G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
+
+t("S.191 (AUD-03) ventilación calcula con SU tabla de tipos de espacio (ASHRAE 62.1 Rp y Ra) y sus tasas de aire exterior; cambiar la tabla o las constantes de carga térmica no mueve ventilación", () => {
+  const guardado = JSON.stringify(S), sp0 = JSON.stringify(G("SPACES")), p0 = JSON.stringify(G("P"));
+  try {
+    S.vent = { ...S.vent, mode: "general", spaceType: "production", area: 2000, height: 3, ach: .5, occ: 0 };
+    G("recompute")();
+    const antes = JSON.stringify([G("VENT").demand, G("VENT").m3h]);
+    if (!(G("VENT").demand > 0)) throw new Error("el caso no aísla lo que se quiere probar: debe haber caudal");
+    const SP = G("SPACES"); Object.values(SP).forEach((x) => { x.Rp = x.Rp * 3; x.Ra = x.Ra * 3; });
+    const P = G("P"); P.OA_PERS = P.OA_PERS * 3; P.OA_M2 = P.OA_M2 * 3;
+    G("recompute")();
+    eq(JSON.stringify([G("VENT").demand, G("VENT").m3h]), antes, "ventilación no se mueve con la tabla ni las constantes de carga térmica:");
+    if (/\bSPACES\b|\bspaceOf\(/.test(G("computeVent").toString())) throw new Error("computeVent sigue leyendo la tabla de carga térmica");
+  } finally { Object.assign(G("SPACES"), JSON.parse(sp0)); Object.assign(G("P"), JSON.parse(p0)); G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {
   const guardado = JSON.stringify(S);
   try {
