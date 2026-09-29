@@ -8889,37 +8889,10 @@ function computeQuote() {
      permiso. Sin ellos, una propuesta integral de instalaciones se entregaba
      cotizando solo el aire, que es como se pierde dinero en obra industrial. */
   const verElec = linkAllowed("elec>quote"), verHid = linkAllowed("hidro>quote"), verFue = linkAllowed("fuego>quote"), verAire = linkAllowed("aire>quote"), verCiv = linkAllowed("civil>quote"), verSop = linkAllowed("soporte>quote");
-  if (verElec && ELEC && ELEC.kVAdemanda > 0) {
-    /* H-181 (rev 2.9.24, quote v24; regla de precios del 22-sep-2026): la cotización eléctrica sigue al cálculo. Antes el
-       alimentador se cotizaba como UN juego a 1,350 MXN/m sin importar el calibre (400 kW = 4 × 600 kcmil en 4 tubos salía como
-       1) y el tablero de 1,600 A costaba lo mismo que uno de 250 A, con precios sin fuente; sin distancia se suponían 30 m.
-       Ahora el alimentador se cuantifica por calibre: fase y neutro = juegos × hilos del sistema × metros; una tierra por
-       canalización (NOM-001-SEDE-2012 250-122(f), p. 150); un tubo por juego (310-10(h)); el tablero por su capacidad y sus
-       circuitos dimensionados. Sin precio con fuente van «Por cotizar»; sin distancia al tablero el alimentador queda pendiente
-       de longitud (H-179); un ramal con corriente pendiente no cuenta como circuito y queda pendiente con su nombre. */
-    const a = ELEC.alim, P = Math.max(1, num(a.paralelo, 1)), Lal = num(ELEC.Lalim, 0);
-    const hilos = Number((String((S.elec && S.elec.sistema) || "3F4H-220").match(/(\d)H/) || [0, 4])[1]);
-    const matEn = (m) => m === "aluminio" ? "aluminum" : "copper";
-    const juegos = `${P} juego${P > 1 ? "s" : ""}`, juegosEn = `${P} set${P > 1 ? "s" : ""}`;
-    const motivo = "sin precio con fuente y fecha para ese calibre o capacidad";
-    const dimensionados = ELEC.calc.filter((c) => !c.sinI), sinCorriente = ELEC.calc.filter((c) => c.sinI);
-    if (Lal > 0) {
-      porCotizar.push({ sec: "C", mot: "elec", clave: "alimConductor", un: "ML", qty: hilos * P * Lal, motivo,
-        desc: `Alimentador general: conductor ${a.awg} AWG/kcmil de ${ELEC.mat}, fase y neutro, ${juegos} × ${hilos} hilos × ${n(Lal, 0)} m`,
-        descEn: `Main feeder: ${a.awg} AWG/kcmil ${matEn(ELEC.mat)} phase and neutral conductor, ${juegosEn} × ${hilos} wires × ${n(Lal, 0)} m` });
-      porCotizar.push({ sec: "C", mot: "elec", clave: "alimTierra", un: "ML", qty: P * Lal, motivo,
-        desc: `Alimentador general: conductor de puesta a tierra ${a.tierra} de ${a.tierraMat || ELEC.mat}, uno por canalización (250-122(f)) × ${n(Lal, 0)} m`,
-        descEn: `Main feeder: ${a.tierra} ${matEn(a.tierraMat || ELEC.mat)} equipment grounding conductor, one per raceway (250-122(f)) × ${n(Lal, 0)} m` });
-      porCotizar.push({ sec: "C", mot: "elec", clave: "alimTubo", un: "ML", qty: P * Lal, motivo,
-        desc: `Alimentador general: canalización ${a.tubo.d}, ${juegos} × ${n(Lal, 0)} m, con accesorios`,
-        descEn: `Main feeder: ${a.tubo.d} conduit, ${juegosEn} × ${n(Lal, 0)} m, with fittings` });
-    } else pendientes.push({ mot: "elec", desc: `Alimentador general ${a.awg} AWG/kcmil de ${ELEC.mat} (${juegos})`, descEn: `Main feeder ${a.awg} AWG/kcmil ${matEn(ELEC.mat)} (${juegosEn})`,
-      motivo: "pendiente de longitud (distancia al tablero sin capturar; no se suponen 30 m)", motivoEn: "length pending (panel distance not captured; 30 m is not assumed)" });
-    porCotizar.push({ sec: "C", mot: "elec", clave: "tableroGeneral", un: "LOTE", qty: 1, motivo,
-      desc: `Tablero general ${n(ELEC.principal, 0)} A con interruptor principal${ELEC.kAIC ? ` de ${ELEC.kAIC} kA` : ""} y ${dimensionados.length} circuito(s) derivado(s) dimensionado(s)`,
-      descEn: `Main panel ${n(ELEC.principal, 0)} A with main breaker${ELEC.kAIC ? ` rated ${ELEC.kAIC} kA` : ""} and ${dimensionados.length} sized branch circuit(s)` });
-    sinCorriente.forEach((c) => pendientes.push({ mot: "elec", desc: `Circuito derivado «${c.nombre}»`, descEn: `Branch circuit "${c.nombre}"`,
-      motivo: "corriente pendiente: ramal sin dimensionar (captura el hp de placa o el kW)", motivoEn: "current pending: branch not sized (enter the nameplate hp or the kW)" }));
+  /* H-299 (decisión del dueño, 29-sep-2026): la cotización eléctrica la arma su motor con sus resultados (ELEC.cot,
+     cotizacionElec); aquí sólo se juntan sus renglones tal cual (copias), sin recalcular nada. */
+  if (verElec && ELEC && ELEC.kVAdemanda > 0 && ELEC.cot) {
+    aux.push(...ELEC.cot.aux.map((x) => ({ ...x }))); pendientes.push(...ELEC.cot.pendientes.map((x) => ({ ...x }))); porCotizar.push(...ELEC.cot.porCotizar.map((x) => ({ ...x })));
   }
   if (verHid && HIDRO && HIDRO.umTotal > 0) {
     /* rev 2.9.16 · DECISIÓN DEL DUEÑO: precio unitario por diámetro y material, capturado por el usuario. Sin
@@ -10391,6 +10364,46 @@ function cargasOtrosMotoresElec(E) {
   }
   return filas;
 }
+/* H-299 (decisión del dueño, 29-sep-2026: cada motor saca su propia cotización de sus propios resultados). La cotización eléctrica
+   sale sólo de sus resultados (R) y de su captura (E): alimentador por calibre, tierra y canalización, tablero por capacidad y
+   circuitos dimensionados, «Por cotizar» sin precio con fuente, y lo pendiente (longitud al tablero, ramales sin corriente). Los
+   mismos renglones que antes armaba computeQuote leyendo ELEC en vivo; la global sólo los junta. */
+function cotizacionElec(R, E) {
+  const aux = [], pendientes = [], porCotizar = [];
+  if (!(R && R.kVAdemanda > 0)) return { aux, pendientes, porCotizar };
+    /* H-181 (rev 2.9.24, quote v24; regla de precios del 22-sep-2026): la cotización eléctrica sigue al cálculo. Antes el
+       alimentador se cotizaba como UN juego a 1,350 MXN/m sin importar el calibre (400 kW = 4 × 600 kcmil en 4 tubos salía como
+       1) y el tablero de 1,600 A costaba lo mismo que uno de 250 A, con precios sin fuente; sin distancia se suponían 30 m.
+       Ahora el alimentador se cuantifica por calibre: fase y neutro = juegos × hilos del sistema × metros; una tierra por
+       canalización (NOM-001-SEDE-2012 250-122(f), p. 150); un tubo por juego (310-10(h)); el tablero por su capacidad y sus
+       circuitos dimensionados. Sin precio con fuente van «Por cotizar»; sin distancia al tablero el alimentador queda pendiente
+       de longitud (H-179); un ramal con corriente pendiente no cuenta como circuito y queda pendiente con su nombre. */
+    const a = R.alim, P = Math.max(1, num(a.paralelo, 1)), Lal = num(R.Lalim, 0);
+    const hilos = Number((String((E && E.sistema) || "3F4H-220").match(/(\d)H/) || [0, 4])[1]);
+    const matEn = (m) => m === "aluminio" ? "aluminum" : "copper";
+    const juegos = `${P} juego${P > 1 ? "s" : ""}`, juegosEn = `${P} set${P > 1 ? "s" : ""}`;
+    const motivo = "sin precio con fuente y fecha para ese calibre o capacidad";
+    const dimensionados = R.calc.filter((c) => !c.sinI), sinCorriente = R.calc.filter((c) => c.sinI);
+    if (Lal > 0) {
+      porCotizar.push({ sec: "C", mot: "elec", clave: "alimConductor", un: "ML", qty: hilos * P * Lal, motivo,
+        desc: `Alimentador general: conductor ${a.awg} AWG/kcmil de ${R.mat}, fase y neutro, ${juegos} × ${hilos} hilos × ${n(Lal, 0)} m`,
+        descEn: `Main feeder: ${a.awg} AWG/kcmil ${matEn(R.mat)} phase and neutral conductor, ${juegosEn} × ${hilos} wires × ${n(Lal, 0)} m` });
+      porCotizar.push({ sec: "C", mot: "elec", clave: "alimTierra", un: "ML", qty: P * Lal, motivo,
+        desc: `Alimentador general: conductor de puesta a tierra ${a.tierra} de ${a.tierraMat || R.mat}, uno por canalización (250-122(f)) × ${n(Lal, 0)} m`,
+        descEn: `Main feeder: ${a.tierra} ${matEn(a.tierraMat || R.mat)} equipment grounding conductor, one per raceway (250-122(f)) × ${n(Lal, 0)} m` });
+      porCotizar.push({ sec: "C", mot: "elec", clave: "alimTubo", un: "ML", qty: P * Lal, motivo,
+        desc: `Alimentador general: canalización ${a.tubo.d}, ${juegos} × ${n(Lal, 0)} m, con accesorios`,
+        descEn: `Main feeder: ${a.tubo.d} conduit, ${juegosEn} × ${n(Lal, 0)} m, with fittings` });
+    } else pendientes.push({ mot: "elec", desc: `Alimentador general ${a.awg} AWG/kcmil de ${R.mat} (${juegos})`, descEn: `Main feeder ${a.awg} AWG/kcmil ${matEn(R.mat)} (${juegosEn})`,
+      motivo: "pendiente de longitud (distancia al tablero sin capturar; no se suponen 30 m)", motivoEn: "length pending (panel distance not captured; 30 m is not assumed)" });
+    porCotizar.push({ sec: "C", mot: "elec", clave: "tableroGeneral", un: "LOTE", qty: 1, motivo,
+      desc: `Tablero general ${n(R.principal, 0)} A con interruptor principal${R.kAIC ? ` de ${R.kAIC} kA` : ""} y ${dimensionados.length} circuito(s) derivado(s) dimensionado(s)`,
+      descEn: `Main panel ${n(R.principal, 0)} A with main breaker${R.kAIC ? ` rated ${R.kAIC} kA` : ""} and ${dimensionados.length} sized branch circuit(s)` });
+    sinCorriente.forEach((c) => pendientes.push({ mot: "elec", desc: `Circuito derivado «${c.nombre}»`, descEn: `Branch circuit "${c.nombre}"`,
+      motivo: "corriente pendiente: ramal sin dimensionar (captura el hp de placa o el kW)", motivoEn: "current pending: branch not sized (enter the nameplate hp or the kW)" }));
+
+  return { aux, pendientes, porCotizar };
+}
 function computeElec(E) {
   const memo = [], avisos = [];
   const sis = sistemaDe(E.sistema);
@@ -10603,10 +10616,12 @@ function computeElec(E) {
   memo.push(`Origen de las cargas (H-268): ${calc.filter((c) => c.origen === "cedula").length} aceptada(s) de otros motores como propuesta (instantánea con origen y fecha; si el origen cambia, la propuesta avisa y nada se mueve solo) y ${calc.filter((c) => c.origen !== "cedula").length} capturada(s) en esta pestaña. Ninguna entra sin aceptarse: el eléctrico calcula sólo con lo capturado y lo aceptado aquí.`);
   memo.push("Criterio de caída de tensión: el capturado para circuito derivado y el acumulado desde la acometida (3 % y 5 % por omisión). No es requisito obligatorio de la NOM-001-SEDE sino recomendación de las notas de los artículos 210-19 y 215-2; se aplica como criterio duro de la casa.");
 
-  return { calc, demTipo, fases, desbalance, kVAconectada, kVAdemanda, fdem, extraMotor,
+  const R = { calc, demTipo, fases, desbalance, kVAconectada, kVAdemanda, fdem, extraMotor,
     Itab, IdisAlim, alim, principal, IccTrafo, kAIC, sis, mat, memo, avisos,
     Lalim: alimSinL ? null : Lalim, trafoKVA: kVAtr > 0 ? kVAtr : null, trafoZ: z > 0 ? z : null, sinConf, fpAlim, fpAlimOrigen,
     kWtot: calc.reduce((a, c) => a + c.kWtot, 0) };
+  R.cot = cotizacionElec(R, E);   /* H-299: su propia cotización */
+  return R;
 }
 
 

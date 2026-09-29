@@ -9348,6 +9348,23 @@ t("S.178 (H-298) la cotización de Soportería la arma su propio motor (SOPORTE.
     eq(JSON.stringify(Q.pendientes.filter((p) => p.mot === "soporte").map((p) => p.desc)), JSON.stringify(["PENDIENTE DEL MOTOR"]), "pendientes: los del motor, sin recalcular:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
+t("S.179 (H-299) la cotización eléctrica la arma su propio motor (ELEC.cot: alimentador, tierra, canalización y tablero «Por cotizar», y lo pendiente) y la cotización global sólo junta esos renglones tal cual", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.179";
+    S.elec.cargas = [{ id: "c1", nombre: "Motor de prueba", tipo: "motor", kW: 7.5, V: 220, ph: 3, cant: 1, L: 30, fp: .85, fija: false },
+      { id: "c2", nombre: "Ramal sin corriente", tipo: "motor", kW: 0, V: 220, ph: 3, cant: 1, L: 20, fp: .85, fija: false }];
+    S.perms["elec>quote"] = { ts: 1, via: "S.179" }; G("recompute")();
+    const R = G("ELEC");
+    if (!(R.kVAdemanda > 0)) throw new Error("el caso no aísla lo que se quiere probar: debe haber demanda eléctrica");
+    const deElec = (Q) => JSON.stringify([Q.porCotizar.filter((p) => p.mot === "elec").map((p) => [p.desc, p.qty]), Q.pendientes.filter((p) => p.mot === "elec").map((p) => p.desc)]);
+    const C = R.cot || { porCotizar: [], pendientes: [] };
+    eq(deElec(G("QUOTE")), JSON.stringify([C.porCotizar.map((p) => [p.desc, p.qty]), C.pendientes.map((p) => p.desc)]), "la global junta los renglones que armó el motor:");
+    R.cot = { aux: [], pendientes: [{ mot: "elec", desc: "PENDIENTE DEL MOTOR", descEn: "ENGINE PENDING", motivo: "x", motivoEn: "x" }],
+      porCotizar: [{ sec: "C", mot: "elec", clave: "x", un: "LOTE", qty: 1, motivo: "x", desc: "RENGLÓN DEL MOTOR", descEn: "ENGINE ROW" }] };
+    eq(deElec(G("computeQuote")()), JSON.stringify([[["RENGLÓN DEL MOTOR", 1]], ["PENDIENTE DEL MOTOR"]]), "la cotización global usa la cotización del motor, sin recalcular:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {
   const guardado = JSON.stringify(S);
   try {
