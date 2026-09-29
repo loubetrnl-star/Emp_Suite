@@ -67,9 +67,15 @@ w.eval(String.raw`
   const refPrueba = (p) => ({ precio: p, moneda: "USD", iva: false, porTramo: 1, origen: "referencia", alcance: "material", fuente: "REFERENCIA DE PRUEBA del fixture de regresión (no es una fuente real)", edicion: "", pagina: "", ubicacion: "San Diego, CA (fixture)", lista: "no especificado", url: "", fecha: "2026-09-22" });
   S.hidro.hidroPU = { cobre_1_2_: 128, cobre_3_4_: refPrueba(3.1), cobre_1_: refPrueba(4.6), cobre_1_1_4_: refPrueba(6.2), cobre_1_1_2_: refPrueba(8.0), cobre_2_: refPrueba(12.9), cobre_2_1_2_: refPrueba(22.7), cobre_3_: refPrueba(30.8), cobre_4_: refPrueba(57.4) };
   S.quote.fx = 18.5; S.quote.fxFecha = "2026-09-22"; S.quote.fxFuente = "fixture de regresión";
+  /* H-302: el tipo de cambio de la tubería en USD es de Hidrosanitario (el fixture guardado es de antes y lo copia de la Cotización al
+     abrirlo: R.1 comprueba que la migración da lo mismo). */
+  S.hidro.fx = 18.5; S.hidro.fxFecha = "2026-09-22"; S.hidro.fxFuente = "fixture de regresión";
   Object.keys(LINKS).forEach((k) => { S.perms[k] = { ts: 1, via: "regresión" }; });
   S.kaizen.items = [{ id: "k1", titulo: "Ajustar horario de FFU", estado: "hacer", owner: "", ahorro: 0, nota: "" }];
   S.tab = "tablero"; recompute();
+  /* H-300: los difusores se capturan en Ductos. El fixture guardado es de antes (sin difusores) y al abrirlo la migración los toma una
+     vez de la carga (1 por 400 CFM, «sin confirmar»); el proyecto fijo en código pasa por la misma migración para dar lo mismo. */
+  S.duct.difusores = null; S.duct.tomarDifusores = true; recompute();
   S.soporte.snap = snapshotSoporte(); S.soporte.usarMotores = true; recompute();
   /* H-267: la selección de equipo es autónoma: tras calcular, el proyecto fijo acepta la propuesta de carga térmica (instantánea de
      las zonas, como soportería). Mismas cifras que cuando la leía en vivo; el fixture guardado sigue siendo de antes (sin zonas de
