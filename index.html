@@ -4347,35 +4347,9 @@ const LINKS = {
     cost: "Si lo niegas, la cotización no incluye la partida de protección contra incendio.",
   },
   /* H-305: se retiró el cruce duct>load (verificación del caudal de ductos contra la carga térmica). */
-  /* H-67 (15-sep-2026) metió estos cuatro cruces al sistema de permisos cuando soportería leía los motores en vivo. H-266 (decisión
-     del dueño, 27-sep-2026): soportería es autónoma y los metros de otros motores entran SÓLO al aceptar la propuesta
-     motores>soporte (instantánea con fecha), que concede los cuatro; ya no hay conteo en vivo ni aviso de permiso pendiente. Los
-     cruces quedan como registro de esa aceptación y sus textos dicen eso (revisión adversarial U14): autorizarlos aquí no mete
-     metros, y negarlos o revocarlos no cambia lo ya aceptado. */
-  "duct>soporte": {
-    from: "duct", to: "soporte",
-    what: "Metros, sección y calibre de ducto por tramo, para contar soportes. Entran a soportería sólo al aceptar su propuesta («Metros de ducto y tubería contados por los motores»), como instantánea con fecha.",
-    why: "Registra que se aceptó esa propuesta: aceptarla concede este cruce. Autorizarlo aquí no mete metros por sí solo; la soportería cuenta la instantánea aceptada o lo capturado a mano en su pestaña (H-266).",
-    cost: "Si lo niegas o lo revocas no cambia ninguna cifra: la soportería sigue con la instantánea aceptada (no se mueve sola) o con lo capturado a mano. Para dejar de usar la instantánea, «Capturo lo mío» en la tarjeta de la propuesta, en Soportería.",
-  },
-  "hidro>soporte": {
-    from: "hidro", to: "soporte",
-    what: "Metros, diámetro y material de tubería hidrosanitaria por tramo. Entran a soportería sólo al aceptar su propuesta («Metros de ducto y tubería contados por los motores»), como instantánea con fecha.",
-    why: "Registra que se aceptó esa propuesta, igual que duct>soporte: autorizarlo aquí no mete metros por sí solo (H-266).",
-    cost: "Si lo niegas o lo revocas no cambia ninguna cifra: sigue la instantánea aceptada o lo capturado a mano. Para dejar de usar la instantánea, «Capturo lo mío» en la tarjeta de la propuesta, en Soportería.",
-  },
-  "fuego>soporte": {
-    from: "fuego", to: "soporte",
-    what: "Metros, diámetro y material del cabezal y el montante de la red contra incendio. Entran a soportería sólo al aceptar su propuesta («Metros de ducto y tubería contados por los motores»), como instantánea con fecha.",
-    why: "Registra que se aceptó esa propuesta, igual que duct>soporte: autorizarlo aquí no mete metros por sí solo (H-266).",
-    cost: "Si lo niegas o lo revocas no cambia ninguna cifra: sigue la instantánea aceptada o lo capturado a mano. Para dejar de usar la instantánea, «Capturo lo mío» en la tarjeta de la propuesta, en Soportería.",
-  },
-  "aire>soporte": {
-    from: "aire", to: "soporte",
-    what: "Metros, diámetro y material de la red de aire comprimido por tramo. Entran a soportería sólo al aceptar su propuesta («Metros de ducto y tubería contados por los motores»), como instantánea con fecha.",
-    why: "Registra que se aceptó esa propuesta, igual que duct>soporte: autorizarlo aquí no mete metros por sí solo (H-266).",
-    cost: "Si lo niegas o lo revocas no cambia ninguna cifra: sigue la instantánea aceptada o lo capturado a mano. Para dejar de usar la instantánea, «Capturo lo mío» en la tarjeta de la propuesta, en Soportería.",
-  },
+  /* H-307 (decisión del dueño, 29-sep-2026: cada motor calcula por sí solo; las propuestas entre motores se retiran): se retiraron
+     los cruces duct>soporte, hidro>soporte, fuego>soporte y aire>soporte. Soportería cuenta lo capturado en su pestaña o la
+     instantánea que ya tenía guardada (copia propia, no se compara con los motores). */
   /* H-265: los cruces load>civil y clean>civil se retiraron: obra civil captura sus áreas y sus cuartos clasificados. */
 };
 
@@ -11972,7 +11946,8 @@ function recompute() {
        impreso. Entonces abre a mano con las bases que contaba (tomarBases, abajo): mismas cifras, propuesta «sin datos». */
     const sn = snapshotSoporte(), mSn = (xs) => (xs || []).reduce((a, x) => a + Math.max(0, num(x.L)), 0);
     const hayMetros = mSn(sn.duct) + mSn(sn.hidro) + mSn(sn.aire) + num(sn.fuego.Lram) + num(sn.fuego.Lmon) > 0;
-    const hayPropuesta = seguro(() => PROPUESTAS["motores>soporte"].disponible(), false) && REQUIERE_CAPTURA_PROP["motores>soporte"].some(capturaReal);
+    /* H-307: la propuesta se retiró; la misma condición que tenía (tramos en los motores y captura real en alguno de ellos). */
+    const hayPropuesta = (sn.duct.length + sn.hidro.length + sn.aire.length > 0 || sn.fuego.nTotal > 0) && ["duct", "hidro", "fuego", "aire"].some(capturaReal);
     /* H-266 (revisión adversarial de U8): abrir a mano sólo si tampoco hay metros capturados a mano. Los que el proyecto guardaba
        de cuando estuvo en «valores propios» no entraban al conteo en vivo; a mano se contarían (otras cifras al abrir). Con ellos
        se toma la instantánea como antes de U8: 0 m de los motores, las mismas cifras; los metros capturados se conservan y
@@ -11980,7 +11955,10 @@ function recompute() {
     const hayManual = ["ductoM", "tubHidroM", "tubFuegoM", "tubAireM"].some((k) => num(S.soporte[k], 0) > 0);
     if (hayMetros || hayPropuesta || hayManual) {
       S.soporte.snap = sn; S.soporte.usarMotores = true;
-      registrarVinculo("motores>soporte", "aceptado");
+      /* H-307: registrarVinculo ya no conoce la propuesta: el registro del origen se escribe aquí con los mismos campos. */
+      if (!S.vinculos || typeof S.vinculos !== "object") S.vinculos = {};
+      const snF = { ...sn }; delete snF.ts;
+      S.vinculos["motores>soporte"] = { estado: "aceptado", ts: Date.now(), origen: origenesSnapSoporte(sn), firma: JSON.stringify(snF), resumen: resumenSnapSoporte(sn), rev: REV };
     } else { S.soporte.usarMotores = false; S.soporte.tomarBases = true; }
   }
   if (S.soporte.tomarBases) {
@@ -18573,30 +18551,7 @@ function resumenSnapSoporte(sn, en) {
   if (en) return `${n(m(sn.duct), 0)} m of duct (${(sn.duct || []).length} runs) · ${n(m(sn.hidro), 0)} m of plumbing pipe supported as ${matSopEn} · fire protection ${redes || "without header or riser"} (${nR} sprinkler(s)) · ${n(m(sn.aire), 0)} m of compressed air network · ${num(sn.nEquip)} equipment base(s)`;
   return `${n(m(sn.duct), 0)} m de ducto (${(sn.duct || []).length} tramos) · ${n(m(sn.hidro), 0)} m de tubería hidráulica soportada como ${matSop} · incendio ${redes || "sin cabezal ni montante"} (${nR} rociador(es)) · ${n(m(sn.aire), 0)} m de red de aire · ${num(sn.nEquip)} base(s) de equipo`;
 }
-/* H-266 (U13; regla 3): qué cambió entre la instantánea aceptada y lo que hoy proponen los motores, por red. */
-function cambiosSnapSoporte(a, b) {
-  if (!a || !b) return "";
-  const m = (xs) => (xs || []).reduce((s, x) => s + Math.max(0, num(x.L)), 0), c = [];
-  const dif = (x, y) => Math.abs(num(x) - num(y)) > 1e-9;
-  const red = (et, xa, xb, uni) => {
-    if ((xa || []).length !== (xb || []).length || dif(m(xa), m(xb))) c.push(`${et} ${n(m(xa), 0)} → ${n(m(xb), 0)} m (${(xa || []).length} → ${(xb || []).length} ${uni})`);
-    else if (JSON.stringify(xa || []) !== JSON.stringify(xb || [])) c.push(`${et}: mismos metros, cambió la sección, el diámetro o el calibre de algún tramo`);
-  };
-  red("ducto", a.duct, b.duct, "tramos"); red("hidráulica", a.hidro, b.hidro, "tramos");
-  if ((a.hidroMat || "") !== (b.hidroMat || "") || (a.hidroSub || "") !== (b.hidroSub || "")) c.push(`material hidráulico ${a.hidroSub || a.hidroMat} → ${b.hidroSub || b.hidroMat}`);
-  const fa = a.fuego || {}, fb = b.fuego || {}, fc = [];
-  if (dif(fa.Lram, fb.Lram)) fc.push(`cabezal ${n(num(fa.Lram), 0)} → ${n(num(fb.Lram), 0)} m`);
-  if (dif(fa.ramD, fb.ramD)) fc.push(`Ø del cabezal ${n(num(fa.ramD), 0)} → ${n(num(fb.ramD), 0)} mm`);
-  if (dif(fa.Lmon, fb.Lmon)) fc.push(`montante ${n(num(fa.Lmon), 0)} → ${n(num(fb.Lmon), 0)} m`);
-  if (dif(fa.monD, fb.monD)) fc.push(`Ø del montante ${n(num(fa.monD), 0)} → ${n(num(fb.monD), 0)} mm`);
-  if (dif(fa.nTotal, fb.nTotal)) fc.push(`rociadores ${num(fa.nTotal)} → ${num(fb.nTotal)}`);
-  if ((fa.tub || "acero") !== (fb.tub || "acero")) fc.push(`material ${fa.tub || "acero"} → ${fb.tub || "acero"}`);
-  if (fc.length) c.push(`contra incendio: ${fc.join(", ")}`);
-  red("aire", a.aire, b.aire, "tramos");
-  if ((a.aireMat || "") !== (b.aireMat || "")) c.push(`material del aire ${a.aireMat} → ${b.aireMat}`);
-  if (dif(a.nEquip, b.nEquip)) c.push(`bases de equipo ${num(a.nEquip)} → ${num(b.nEquip)}`);
-  return c.join(" · ") || "un dato de los tramos que no mueve metros ni diámetros (etiqueta o marca de tramo)";
-}
+/* H-307: cambiosSnapSoporte (qué cambió en los motores desde la instantánea) se retiró con la propuesta motores>soporte. */
 /* H-266 (U13; regla 8): los motores que de verdad aportan metros a una instantánea (la propuesta junta cuatro). */
 function origenesSnapSoporte(sn, en) {
   const m = (xs) => (xs || []).reduce((a, x) => a + Math.max(0, num(x.L)), 0), fu = (sn && sn.fuego) || {};
@@ -18609,24 +18564,14 @@ function origenesSnapSoporte(sn, en) {
 /* Soportería con instantánea: el motor de soportería no cambia, pero se le
    presentan los tramos que el usuario ACEPTÓ, no los que hay ahora. Así un
    cambio en ductos no mueve la soportería hasta que alguien lo decida. */
-/* H-266 (U16): la propuesta motores>soporte tiene algo que ofrecer (misma condición que su tarjeta: propuesta con captura real). */
-function propSoporteDisponible() {
-  return seguro(() => PROPUESTAS["motores>soporte"].disponible(), false) && REQUIERE_CAPTURA_PROP["motores>soporte"].some(capturaReal);
-}
 function computeSoporteGobernado(G) {
   const snap = G && G.snap && typeof G.snap === "object" && G.usarMotores !== false ? G.snap : null;
   /* H-266 (decisión del dueño, 27-sep-2026): sin instantánea aceptada, soportería cuenta sólo lo capturado a mano. Los metros de
-     ductos y tuberías de los otros motores entran únicamente al aceptar su propuesta (instantánea) y, una vez cuantificados, no
+     ductos y tuberías de los otros motores entraban únicamente al aceptar su propuesta (instantánea; H-307: se retiró) y, ya cuantificados, no
      se mueven solos (regla 3). El conteo en vivo de revisiones anteriores se retiró. */
   if (!snap) {
     const Rm = computeSoporte({ ...G, usarMotores: false });
-    if (G && G.usarMotores !== false) Rm.avisos.unshift({ lvl: "warn", msg: "Soportería: los metros de ductos y tuberías de los otros motores entran sólo al aceptar su propuesta (instantánea); mientras, se cuenta lo capturado a mano (H-266)." });
-    /* H-266 (U16): sin soportes, distingue «hay metros en los motores sin aceptar» de «no hay nada». */
-    if (!(Rm.nSoportes > 0) && propSoporteDisponible()) {
-      const i = Rm.avisos.findIndex((a) => /^No hay soportes que contar/.test(a.msg));
-      const msg = "No hay soportes que contar: ductos, hidrosanitario, contra incendio o aire comprimido ya tienen metros, pero entran a soportería sólo al aceptar su propuesta (arriba, «Metros de ducto y tubería contados por los motores»: siguen sin aceptar); tampoco hay metros capturados a mano en esta pestaña (H-266).";
-      if (i >= 0) Rm.avisos[i] = { lvl: "warn", msg }; else Rm.avisos.push({ lvl: "warn", msg });
-    }
+    /* H-307: sin avisos que lean los otros motores (la propuesta de sus metros se retiró): cuenta lo capturado en esta pestaña. */
     return Rm;
   }
   const prev = [DUCT, HIDRO, FUEGO, AIRE, QUOTE, S.hidro, S.aire];
@@ -18926,36 +18871,8 @@ const PROPUESTAS = {
      dueño (27-sep-2026): cada disciplina con sus propios datos; la relación con carga térmica va al revés (H-263). */
   /* H-306: se retiró la propuesta "cedula>elec" (cargas eléctricas de los demás motores). Las cargas ya aceptadas se quedan en el
      cuadro con su origen y fecha; un proyecto anterior en modo en vivo se migra al abrir (recompute, H-268). */
-  "motores>soporte": {
-    destino: "soporte", origen: "duct", permisos: ["duct>soporte", "hidro>soporte", "fuego>soporte", "aire>soporte"],   /* H-266 */
-    titulo: "Metros de ducto y tubería contados por los motores",
-    que: "Ductos, hidrosanitario, contra incendio y aire comprimido entregan sus tramos con longitud y diámetro. Al aceptar se guarda una instantánea: si después cambian los tramos, la soportería avisa y no se mueve sola.",
-    disponible: () => { const sn = snapshotSoporte(); return sn.duct.length + sn.hidro.length + sn.aire.length > 0 || sn.fuego.nTotal > 0; },
-    firma: () => { const sn = snapshotSoporte(); delete sn.ts; return JSON.stringify(sn); },
-    resumen: () => resumenSnapSoporte(snapshotSoporte()),
-    actual: () => S.soporte.snap && S.soporte.usarMotores !== false ? `instantánea aceptada · ${resumenSnapSoporte(S.soporte.snap)}`
-      : S.soporte.usarMotores === true ? "pendiente de aceptar: mientras, cuenta lo capturado a mano (H-266)"
-      : `capturado a mano · ${n(num(S.soporte.ductoM), 0)} m ducto · ${n(num(S.soporte.tubHidroM), 0)} m hidráulica · ${n(num(S.soporte.tubFuegoM), 0)} m incendio · ${n(num(S.soporte.tubAireM), 0)} m aire`,
-    enVivo: () => false,   /* H-266: ya no existe el conteo en vivo */
-    aplicar: () => { S.soporte.snap = snapshotSoporte(); S.soporte.usarMotores = true; },
-    propio: () => { S.soporte.usarMotores = false; delete S.soporte.snap; },
-    /* H-266 (revisión adversarial U13; reglas 3 y 8): el origen son los motores que aportan (antes «Ductos y calibres» fijo); lo
-       aceptado se describe desde la instantánea (la que de verdad cuenta, también tras «Conservar lo aceptado»); desactualizada,
-       dice qué cambió por red; y la fila del trazado llega al libro de la propuesta con su espejo en inglés (regla 7). */
-    origenTxt: (aceptada, en) => origenesSnapSoporte(aceptada && S.soporte.snap ? S.soporte.snap : snapshotSoporte(), en),
-    /* H-266 (U15): lo ya cuantificado que «Capturo lo mío» deja de contar (se pregunta antes). */
-    propioPierde: () => {
-      if (!(S.soporte.snap && typeof S.soporte.snap === "object" && S.soporte.usarMotores !== false)) return [];
-      const rec = vinculoDe("motores>soporte"), R = SOPORTE;
-      return [[`Instantánea aceptada${rec && rec.estado === "aceptado" && rec.ts ? ` el ${fechaCorta(rec.ts)}` : ""}${rec && rec.conservado ? " (conservada)" : ""}`, `${n(R ? num(R.mDucto) + num(R.mTub) : 0, 0)} m · ${R ? R.nSoportes : 0} soportes`]];
-    },
-    resumenAceptado: () => (S.soporte.snap && typeof S.soporte.snap === "object" ? resumenSnapSoporte(S.soporte.snap) : null),
-    cambios: () => (S.soporte.snap && typeof S.soporte.snap === "object" ? cambiosSnapSoporte(S.soporte.snap, snapshotSoporte()) : ""),
-    en: (e) => ({ destino: "Supports and lifting", campo: "Duct and pipe lengths counted by the systems",
-      valor: e.rec ? (e.rec.estado === "aceptado" ? (S.soporte.snap && typeof S.soporte.snap === "object" ? resumenSnapSoporte(S.soporte.snap, true) : "accepted") : "captured by the user") : "not decided",
-      origen: origenPropTxt("motores>soporte", !!(e.rec && e.rec.estado === "aceptado"), true),
-      estado: { "sin-datos": "No data at the source", pendiente: "Proposal available", aceptado: "Accepted · current", desactualizado: "Out of date · the source changed", propio: "Captured by hand", vivo: "Live (previous mode)" }[e.nivel] || e.nivel }),
-  },
+  /* H-307: se retiró la propuesta "motores>soporte" (metros de ducto y tubería contados por los motores). La instantánea ya
+     aceptada se queda en S.soporte.snap como copia propia de soportería: mismas cifras, no se compara con los motores. */
   /* H-267 (decisión del dueño, 27-sep-2026): selección de equipo autónoma. Carga térmica ARMA la propuesta con lo que calculó;
      al aceptarla se escribe la instantánea (zonas de selección con origen y fecha) y ya no se mueve sola. */
   /* H-290 (D1, decisión del dueño 28-sep-2026): el sitio de Proyecto entra a Carga térmica sólo como copia aceptada, con origen y
@@ -19079,7 +18996,7 @@ function registrarVinculo(id, estado = "aceptado") {
    aceptado       se aceptó y el origen no ha cambiado desde entonces
    desactualizado se aceptó y el origen cambió: el usuario decide
    propio         el usuario capturó lo suyo (se avisa si el origen cambió, sin tocar nada) */
-const REQUIERE_CAPTURA_PROP = { "motores>soporte": ["duct", "hidro", "fuego", "aire"], "load>equip": ["load"] };   /* H-267 */
+const REQUIERE_CAPTURA_PROP = { "load>equip": ["load"] };   /* H-267 */
 function estadoPropuesta(id) { return memo("prop:" + id, () => estadoPropuestaCalc(id)); }
 function estadoPropuestaCalc(id) {
   const P = PROPUESTAS[id]; if (!P) return { nivel: "sin-datos" };
@@ -19628,9 +19545,9 @@ const MOTOR_ACC = {
     falta: () => (capturaReal("civil") && CIVIL && CIVIL.part && CIVIL.part.length ? "" : "Falta la geometría: área y altura") },
   /* H-266 (revisión adversarial U16): capturar en Ductos o en las tuberías ya no alimenta a soportería: se acepta su propuesta o se
      capturan los metros aquí. Si los motores ya tienen metros sin aceptar, se dice. */
-  soporte: { donde: "Soportería: acepta la propuesta de los motores (arriba) o captura los metros a mano", archivo: "Soporteria", memoria: () => buildSoportePdf(), cot: "soporte",
+  soporte: { donde: "Soportería: captura los metros a mano en su pestaña (H-307)", archivo: "Soporteria", memoria: () => buildSoportePdf(), cot: "soporte",
     falta: () => (capturaReal("soporte") && SOPORTE.part && SOPORTE.part.length ? ""
-      : (!S.soporte.snap && propSoporteDisponible() ? "Faltan metros que soportar: los motores ya tienen metros sin aceptar" : "Faltan metros de ducto o tubería que soportar")) },
+      : "Faltan metros de ducto o tubería que soportar") },
   estr: { externo: "Estructural corre como archivo aparte (StructCalc v0.1.2): esta suite no lo calcula ni simula su resultado" },
 };
 /* Del identificador de pantalla al motor. El comparativo de zonas es una vista
@@ -20235,10 +20152,7 @@ const ARISTAS = [
 
   /* H-306: se retiraron las flechas de propuesta hacia el eléctrico (cedula>elec). */
 
-  { de: "hvac", a: "soporte", regla: 2, prop: "motores>soporte", que: "Metros de ducto y peso a colgar" },
-  { de: "hidro", a: "soporte", regla: 2, prop: "motores>soporte", lane: 718, que: "Metros y diámetro de tubería hidráulica" },
-  { de: "fuego", a: "soporte", regla: 2, prop: "motores>soporte", lane: 726, que: "Red de rociadores a soportar" },
-  { de: "aire",  a: "soporte", regla: 2, prop: "motores>soporte", lane: 734, que: "Red de aire comprimido a soportar" },
+  /* H-307: se retiraron las flechas de propuesta hacia soportería (motores>soporte). */
 
   { de: "quote",  a: "valor",  regla: 0, lane: 964, que: "La consolidación dispara la ingeniería de valor" },
   { de: "valor",  a: "kaizen", regla: 0, lane: 964, que: "Cada decisión sobre una medida se registra en Kaizen" },
@@ -23217,11 +23131,29 @@ function viewCivil() {
     ${tarjetaCosto("civil", "Obra civil")}`;
 }
 
+/* H-307 (decisión del dueño, 29-sep-2026): la propuesta motores>soporte se retiró. Un proyecto que ya tenía la instantánea aceptada
+   la conserva como copia propia de soportería (mismas cifras; no se compara con los motores) y puede dejarla para capturar a mano:
+   se pregunta antes con lo que deja de contar y se puede deshacer (como «Capturo lo mío», H-266 U15). */
+function instantaneaSopHtml(G) {
+  const rec = vinculoDe("motores>soporte"), ts = rec && rec.estado === "aceptado" && rec.ts ? rec.ts : G.snap.ts;
+  return `<div class="prop aceptado"><div class="ptop"><span class="pdotp"></span><div><b>Instantánea de metros guardada</b><div class="sub">${esc(origenesSnapSoporte(G.snap))} → Soportería · ${ts ? fechaCorta(ts) : "sin fecha registrada"}</div></div></div>
+    <div class="pbody"><div class="prow"><span class="pk">Cuenta</span><span>${esc(resumenSnapSoporte(G.snap))}</span></div>
+    <div class="sub" style="margin-top:6px">Es copia propia de soportería: ya no se actualiza ni se compara con los otros motores (H-307). Para contar otros metros, captúralos a mano.</div></div>
+    <div class="row" style="margin-top:10px"><button class="btn-ghost" data-act="sop-propio">Capturar a mano (deja la instantánea)</button></div></div>`;
+}
+function sopPropioConfirmado() {
+  const R = SOPORTE, rec = vinculoDe("motores>soporte");
+  const lista = S.soporte.snap && typeof S.soporte.snap === "object" && S.soporte.usarMotores !== false
+    ? [[`Instantánea guardada${rec && rec.estado === "aceptado" && rec.ts ? ` el ${fechaCorta(rec.ts)}` : ""}`, `${n(R ? num(R.mDucto) + num(R.mTub) : 0, 0)} m · ${R ? R.nSoportes : 0} soportes`]] : [];
+  confirmarSiHayDatos({ titulo: "Capturar a mano", etiqueta: "capturar a mano en soportería", boton: "Sí, capturo a mano", lista,
+    detalle: "Soportería deja de contar la instantánea guardada y cuenta sólo los metros capturados a mano en su pestaña.",
+    onOk: () => { S.soporte.usarMotores = false; delete S.soporte.snap; projAutosave(); render(); toast("Soportería cuenta lo capturado a mano"); } });
+}
 function viewSoporte() {
   const G = S.soporte, R = SOPORTE;
   return `<div class="grid two">
     <div class="card"><h3>Criterios<span class="tag">MSS SP-58 · SMACNA · NFPA 13</span></h3><div class="body">
-      ${propuestaHtml("motores>soporte")}
+      ${G.usarMotores !== false && G.snap ? instantaneaSopHtml(G) : ""}
       ${!(G.usarMotores !== false && G.snap) ? `<div class="row">
         ${inp("Metros de ducto", "soporte.ductoM", "number", "1", "sop.d", G)}
         ${inp("Ducto: ancho (mm) · sin medidas queda pendiente", "soporte.ductoAnchoMm", "number", "10")}
@@ -23331,9 +23263,8 @@ function buildSoportePdf() {
   pdfHeading(d, "Origen de los metros");
   if (snapSop) {
     const recS = vinculoDe("motores>soporte"), tsS = recS && recS.estado === "aceptado" && recS.ts ? recS.ts : snapSop.ts;
-    const cam = estadoPropuesta("motores>soporte").nivel === "desactualizado" ? seguro(() => cambiosSnapSoporte(snapSop, snapshotSoporte()), "") : "";
-    pdfParagraph(d, `Tramos de la instantánea aceptada el ${tsS ? fechaCorta(tsS) : "(sin fecha registrada)"} (${origenPropTxt("motores>soporte", true)}): ${resumenSnapSoporte(snapSop)}. No se mueven solos: si el origen cambia, la propuesta sale desactualizada y el usuario decide (regla 3).${cam ? ` OJO: el origen cambió desde la aceptación: ${cam}.` : ""}`);
-  } else pdfParagraph(d, `Metros capturados a mano en la pestaña de soportería: ${n(num(S.soporte.ductoM), 0)} m de ducto, ${n(num(S.soporte.tubHidroM), 0)} m de hidráulica, ${n(num(S.soporte.tubFuegoM), 0)} m de contra incendio y ${n(num(S.soporte.tubAireM), 0)} m de aire. Los metros de los otros motores entran sólo al aceptar su propuesta (H-266).`);
+    pdfParagraph(d, `Tramos de la instantánea aceptada el ${tsS ? fechaCorta(tsS) : "(sin fecha registrada)"} (${origenesSnapSoporte(snapSop)}): ${resumenSnapSoporte(snapSop)}. Es copia propia de soportería: no se mueve ni se compara con los otros motores (H-307).`);
+  } else pdfParagraph(d, `Metros capturados a mano en la pestaña de soportería: ${n(num(S.soporte.ductoM), 0)} m de ducto, ${n(num(S.soporte.tubHidroM), 0)} m de hidráulica, ${n(num(S.soporte.tubFuegoM), 0)} m de contra incendio y ${n(num(S.soporte.tubAireM), 0)} m de aire. Los metros de los otros motores ya no entran a soportería (H-307).`);
   if (R.porTuberia.length) {
     pdfHeading(d, "Conteo por tramo");
     pdfTable(d, ["Servicio", "Tramo", "Diam mm", "Espac m", "Long m", "Soportes"],
@@ -23567,7 +23498,7 @@ const GUIA = {
     ojo: "Obra civil es autónoma: no toma las zonas de Carga térmica ni los Cuartos limpios, y no se mueve si éstos cambian (H-265). Cada área de obra se captura aquí con su área, su altura y su perímetro de tabiquería (los muros de carga térmica son envolvente, no tabiquería); cada cuarto clasificado, con su área, su altura y su perímetro. Sin perímetro capturado se estima con un rectángulo de proporción 3:2 a la altura capturada y la partida queda marcada como estimada; sin altura, su muro queda en 0 y se avisa. Con los totales capturados a mano cuentan esos totales y los cuartos clasificados." },
   soporte: { que: "Los soportes contados uno por uno de los metros de ducto y tubería que capturas aquí o que aceptas de los otros motores como instantánea, más el arriostramiento sísmico y el equipo de elevación.",
     cuando: "Al cerrar el alcance. Es la sección G y es la que siempre se cotiza por lote y se paga por pieza.",
-    ojo: "El arriostramiento sísmico no es opcional en Baja California, zona sísmica: NFPA 13 cap. 18 lo exige para tubería de rociadores. Soportería es autónoma (H-266): los metros de los otros motores entran sólo al aceptar su propuesta y, ya cuantificados, no se mueven solos; la altura de trabajo, la de la estructura y las bases de equipo se capturan aquí." },
+    ojo: "El arriostramiento sísmico no es opcional en Baja California, zona sísmica: NFPA 13 cap. 18 lo exige para tubería de rociadores. Soportería es autónoma (H-266, H-307): cuenta los metros capturados en esta pestaña (o la instantánea que un proyecto anterior ya tenía guardada, que no se mueve); la altura de trabajo, la de la estructura y las bases de equipo se capturan aquí." },
   proyecto: { que: "Los datos que encabezan todos los documentos, el sitio de diseño y los permisos entre motores.",
     cuando: "Al empezar un proyecto, y cada vez que cambie el cliente, la ubicación o el ingeniero responsable.",
     ojo: "El sitio define el clima de diseño: si lo dejas en Tijuana y la obra es en Mexicali, todo el cálculo sale con el clima equivocado." },
@@ -24245,6 +24176,7 @@ document.addEventListener("click", (e) => {
     case "q-xlsx-espejo": emitirPropuestaEspejo(); break;
     case "q-pdf-espejo": emitirPropuestaPdfEspejo(); break;
     case "prop-propio": propPropioConfirmado(b.dataset.id); break;   /* H-266 (U15): pregunta si deja algo ya cuantificado; se deshace */
+    case "sop-propio": sopPropioConfirmado(); break;   /* H-307 */
     case "prop-conservar": histSnap("conservar lo aceptado"); propConservar(b.dataset.id); break;   /* H-266 (U15): se puede deshacer */
     case "vent-seleccionar": {
       histSnap("seleccionar ventilador");

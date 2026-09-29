@@ -55,7 +55,8 @@ function t(nombre, fn) {
 const eq = (a, b, msg) => { if (!(a === b)) throw new Error(`${msg || ""} esperado ${JSON.stringify(b)}, obtenido ${JSON.stringify(a)}`); };
 const cerca = (a, b, tol, msg) => { if (!(Math.abs(a - b) <= tol)) throw new Error(`${msg || ""} esperado ~${b}, obtenido ${a}`); };
 const contiene = (s, x, msg) => { if (String(s).indexOf(x) < 0) throw new Error(`${msg || ""} no contiene "${x}"`); };
-/* H-266: soportería cuenta los metros de los otros motores sólo con la instantánea aceptada (propuesta motores>soporte). Las
+/* H-266: soportería cuenta los metros de los otros motores sólo con la instantánea aceptada (propuesta motores>soporte; H-307: la
+   propuesta se retiró y la instantánea que un proyecto ya tenía es copia propia de soportería; el banco la guarda así). Las
    pruebas que arman motores y miran la soportería la aceptan después de calcular, como lo haría el usuario. */
 const aceptarSoporte = () => { G("recompute")(); S.soporte.snap = G("snapshotSoporte")(); S.soporte.usarMotores = true; G("recompute")(); };
 /* H-267: la selección de equipo calcula sólo con sus zonas de selección (capturadas en su pestaña o aceptadas de carga térmica como
@@ -312,14 +313,16 @@ t("2.0.5 las flechas son las herencias declaradas, no adorno", () => {
     if (!ar.que) throw new Error(`la arista ${ar.de}→${ar.a} no dice qué hereda`);
   });
   if (A.some((ar) => ar.regla === 1)) throw new Error("H-264/H-265: quedó una flecha de herencia (regla 1); ninguna disciplina hereda");
-  if (!A.some((ar) => ar.regla === 2)) throw new Error("ninguna arista de regla 2");
+  /* H-305, H-306, H-307: las propuestas entre motores se retiraron: ya no queda ninguna flecha de propuesta (regla 2) en el diagrama. */
+  if (A.some((ar) => ar.regla === 2)) throw new Error("quedó una flecha de propuesta entre motores: " + A.filter((ar) => ar.regla === 2).map((ar) => ar.de + "→" + ar.a).join(", "));
 });
 t("2.0.6 cada flecha se pinta con el estado de lo que declara: cada nivel de su propuesta da su color (H-264, H-265: ya no hay herencias; U4 de la revisión: la prueba vuelve a exigir el color de cada nivel)", () => {
   S.tab = "inicio"; G("render")();
   if (G("ARISTAS").some((x) => x.regla === 1)) throw new Error("quedó una flecha de herencia");
-  /* H-306: las flechas de propuesta hacia el eléctrico se retiraron; se prueba con la de soportería. */
-  const ar = G("ARISTAS").find((x) => x.de === "hvac" && x.a === "soporte" && x.regla === 2);
-  if (!ar) throw new Error("no existe la flecha de propuesta de HVAC a soportería");
+  /* H-305–H-307: ya no hay flechas de propuesta entre motores. La maquinaria que las pinta se prueba con una flecha de prueba que
+     declara la propuesta que queda (load>equip) y se retira al terminar. */
+  const ar = { de: "hvac", a: "soporte", regla: 2, prop: "load>equip", lane: 740, que: "flecha de prueba 2.0.6" };
+  G("ARISTAS").push(ar);
   const orig = w.estadoPropuesta;
   const esperado = { aceptado: "vigente", vigente: "vigente", desactualizado: "desactualizada", propio: "propia", pendiente: "pendiente", vivo: "pendiente", "sin-datos": "inerte" };
   try {
@@ -328,7 +331,7 @@ t("2.0.6 cada flecha se pinta con el estado de lo que declara: cada nivel de su 
       eq(G("estadoArista")(ar), e, `propuesta «${nivel}»:`);
       G("render")(); contiene(vista(), "dar-" + e, `la vista pinta «${e}» con la propuesta «${nivel}»:`);
     }
-  } finally { w.estadoPropuesta = orig; G("render")(); }
+  } finally { w.estadoPropuesta = orig; const A = G("ARISTAS"); A.splice(A.indexOf(ar), 1); G("render")(); }
 });
 t("2.0.7 y el nodo HVAC se desactualiza cuando cambió el dato de origen", () => {
   /* La propuesta de carga térmica a selección quedó DENTRO del módulo: no se dibuja como flecha, pero su estado no se pierde —
@@ -936,16 +939,17 @@ t("5.5 actualizar sí trae el dato nuevo, con fecha nueva", () => {
   G("propAceptar")("load>equip");
   eq(G("estadoPropuesta")("load>equip").nivel, "aceptado");
 });
-t("5.6 la soportería congela los metros aceptados y avisa cuando cambian", () => {
-  G("propAceptar")("motores>soporte");
+t("5.6 la soportería congela los metros de su instantánea guardada (H-307: copia propia; ya no hay propuesta ni «desactualizada»)", () => {
+  aceptarSoporte();
   const n0 = G("SOPORTE").nSoportes;
   const seg = S.duct.segments[0];
   seg.length = (Number(seg.length) || 20) * 4;
   G("recompute")();
   eq(G("SOPORTE").nSoportes, n0, "la soportería no se movió sola:");
-  eq(G("estadoPropuesta")("motores>soporte").nivel, "desactualizado");
-  G("propAceptar")("motores>soporte");
-  if (!(G("SOPORTE").nSoportes > n0)) throw new Error("al actualizar no tomó los metros nuevos");
+  eq(G("PROPUESTAS")["motores>soporte"], undefined, "H-307: no hay propuesta que se desactualice:");
+  /* El banco guarda la instantánea de la red nueva (la que antes tomaba «actualizar») para que el resto siga con las mismas cifras. */
+  aceptarSoporte();
+  if (!(G("SOPORTE").nSoportes > n0)) throw new Error("la instantánea nueva no tomó los metros nuevos");
 });
 
 /* ============================ 6. Memoria integral ======================= */
@@ -1521,7 +1525,7 @@ t("13.6 las flechas que salían de las cinco ahora salen del nodo HVAC", () => {
   eq(de("hvac", "fuego"), 0, "hacia contra incendio (H-264: ya no hereda; es autónomo):");
   eq(de("hvac", "civil"), 0, "hacia obra civil (H-265: ya no hereda; es autónoma):");
   eq(de("hvac", "elec"), 0, "hacia eléctrico (H-306: el eléctrico ya no recibe propuesta de cargas de los demás motores):");
-  eq(de("hvac", "soporte"), 1, "hacia soportería:");
+  eq(de("hvac", "soporte"), 0, "hacia soportería (H-307: soportería ya no recibe propuesta de metros de los motores):");
   eq(de("proyecto", "hvac"), 1, "y el proyecto sigue alimentándolo:");
   /* Las que corrían entre las cinco desaparecen: son tránsito interno. */
   ["load", "clean", "equip", "vent", "duct"].forEach((id) => {
@@ -3841,8 +3845,7 @@ t("22.8 2.5 la soportería hidráulica lee hidro.material: cobre y termoplástic
     Object.entries(esperado).forEach(([material, x]) => {
       preparar(material);
       if (hidroDe()) throw new Error(`${material}: H-266: sin aceptar la instantánea la soportería no toma la hidráulica de los motores`);
-      G("propAceptar")("motores>soporte");
-      G("recompute")();
+      aceptarSoporte();
       eq(S.soporte.snap.hidroMat, x.fam, `${material} instantánea hidroMat:`);
       const h = hidroDe();
       eq(h.fam, x.fam, `${material} familia gobernada:`);
@@ -3852,16 +3855,12 @@ t("22.8 2.5 la soportería hidráulica lee hidro.material: cobre y termoplástic
       /* El PDF imprime el claro con un decimal (2.438 → «2.4»). */
       eq(JSON.stringify(filasPdf()), JSON.stringify(x.pdf || x.e.map((e, i) => [String(Math.round(e * 10) / 10), String(x.n[i])])), `${material} PDF conteo por tramo:`);
     });
-    /* El gobernador congela el material aceptado y avisa si cambia. */
+    /* El gobernador congela el material de la instantánea (H-307: copia propia; no se compara con hidrosanitario). */
     preparar("cobre");
-    G("propAceptar")("motores>soporte");
+    aceptarSoporte();
     S.hidro.material = "cpvc";
     G("recompute")();
-    eq(hidroDe().fam, "cobre", "tras cambiar a cpvc sin actualizar sigue lo aceptado:");
-    eq(G("estadoPropuesta")("motores>soporte").nivel, "desactualizado", "cambio de material marca la propuesta:");
-    G("propAceptar")("motores>soporte");
-    G("recompute")();
-    eq(hidroDe().fam, "plastico", "al actualizar toma el termoplástico:");
+    eq(hidroDe().fam, "cobre", "tras cambiar a cpvc sigue el material de la instantánea:");
   } finally {
     S.hidro = hidro0; S.soporte = sop0;
     S.vinculos = vinc0;
@@ -4990,15 +4989,13 @@ t("Q.6 H-57 la estratificación por altura solo multiplica la ganancia de ilumin
   } finally { S.zones = zones0; S.zi = zi0; G("recompute")(); }
 });
 
-t("Q.7 H-67/H-266: la soportería ya no cuenta con permisos sueltos: sin la instantánea no toma metros de los motores; aceptarla concede duct/hidro/fuego/aire>soporte y lo aceptado no baja al retirar un permiso (H-265: obra civil ya no depende de load>civil)", () => {
+t("Q.7 H-67/H-266: la soportería ya no cuenta con permisos sueltos: sin la instantánea no toma metros de los motores; con la instantánea guardada (H-307: copia propia) retirar un permiso no baja lo cuantificado (H-265: obra civil ya no depende de load>civil)", () => {
   const g = { perms: JSON.parse(JSON.stringify(S.perms)), soporte: JSON.parse(JSON.stringify(S.soporte)) };
   try {
     Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "prueba Q.7 (todo autorizado)" }; });
     S.soporte.usarMotores = false; delete S.soporte.snap; S.soporte.ductoM = 0; G("recompute")();
     eq(G("SOPORTE").mDucto, 0, "H-266: con todos los permisos pero sin instantánea no se cuentan los ductos de los motores:");
-    ["duct>soporte", "hidro>soporte", "fuego>soporte", "aire>soporte"].forEach((k) => { delete S.perms[k]; });
-    G("propAceptar")("motores>soporte");
-    ["duct>soporte", "hidro>soporte", "fuego>soporte", "aire>soporte"].forEach((k) => { if (!S.perms[k]) throw new Error("aceptar la instantánea debe conceder " + k); });
+    aceptarSoporte();   /* H-307 */
     const mDuctoAceptado = G("SOPORTE").mDucto, areaCivil = G("CIVIL").area;
     delete S.perms["duct>soporte"]; G("recompute")();
     eq(G("SOPORTE").mDucto, mDuctoAceptado, "lo aceptado no baja al retirar un permiso (H-67, nunca a cero):");
@@ -5018,8 +5015,7 @@ t("Q.8 H-77/H-45/H-46 la instantánea de soportería guarda dimensiones, calibre
     G("recompute")();
     const segReal = G("DUCT").segs[0];
     if (segReal.w === 400 && segReal.h === 200) throw new Error("el caso no aísla lo que se prueba: el ducto real ya coincide con el respaldo genérico, súbele el flujo");
-    G("propAceptar")("motores>soporte");
-    G("recompute")();
+    aceptarSoporte();   /* H-307 */
     const snap = S.soporte.snap.duct[0];
     eq(snap.w, segReal.w, "instantánea guarda el ancho real del ducto, no 400:");
     eq(snap.h, segReal.h, "instantánea guarda el alto real del ducto, no 200:");
@@ -5030,7 +5026,6 @@ t("Q.8 H-77/H-45/H-46 la instantánea de soportería guarda dimensiones, calibre
        marca desactualizada, no se recalcula sola. */
     S.duct.segments[0].flow = 20000;
     G("recompute")();
-    eq(G("estadoPropuesta")("motores>soporte").nivel, "desactualizado", "cambiar el flujo del ducto en vivo marca la instantánea desactualizada (regla 3):");
     eq(S.soporte.snap.duct[0].w, snap.w, "la instantánea aceptada NO se movió sola tras el cambio:");
   } finally { S.duct.segments = segs0; S.soporte = sop0; S.vinculos = vinc0; G("recompute")(); }
 });
@@ -5045,7 +5040,7 @@ t("Q.8b H-46 en modo instantánea la red contra incendio soporta metros reales, 
     G("recompute")();
     const F = G("FUEGO");
     if (!(F.nTotal > 0)) throw new Error("el caso de prueba necesita rociadores para tener red contra incendio");
-    G("propAceptar")("motores>soporte");
+    aceptarSoporte();
     G("recompute")();
     if (!(S.soporte.snap.fuego.Lram > 0 || S.soporte.snap.fuego.Lmon > 0))
       throw new Error("la instantánea de incendio se guardó sin longitudes: volvería a dar 0 soportes en modo instantánea");
@@ -6008,10 +6003,11 @@ t("S.24 propuestas entre disciplinas: un proyecto vacío no ofrece «Propuestas 
   try {
     G("reemplazarEstado")(G("defaultState")()); S.meta.name = "Vacío S.24";
     Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.24" }; }); G("recompute")();
-    ["motores>soporte"].forEach((id) => {   /* H-306: cedula>elec se retiró */ const e = G("estadoPropuesta")(id); if (e.nivel === "pendiente" || e.nivel === "vivo") throw new Error(`${id}: propuesta «${e.nivel}» en proyecto vacío`); });
-    /* Con captura en el origen sí se ofrece. */
-    S.fuego.area = 300; G("recompute")();
-    if (G("estadoPropuesta")("motores>soporte").nivel === "sin-datos") throw new Error("con contra incendio capturado la propuesta de soportería debía estar disponible");
+    /* Las de Proyecto (sitio) no se arman con captura de otro motor: el sitio del proyecto es su dato propio. */
+    Object.keys(G("PROPUESTAS")).filter((id) => !/^proyecto>/.test(id)).forEach((id) => { const e = G("estadoPropuesta")(id); if (e.nivel === "pendiente" || e.nivel === "vivo") throw new Error(`${id}: propuesta «${e.nivel}» en proyecto vacío`); });
+    /* Con captura en el origen sí se ofrece (H-305–H-307: las que quedan son del núcleo HVAC y de Proyecto; se prueba con load>equip). */
+    aceptarSitioCarga(); S.zones = [{ ...G("defaultZone")("Nave S.24"), area: 200, height: 4, occ: 10, lights: 2000, equip: 2000 }]; G("recompute")();
+    if (G("estadoPropuesta")("load>equip").nivel === "sin-datos") throw new Error("con carga térmica capturada la propuesta de selección debía estar disponible");
     /* Sin cruces autorizados, el motivo de una cotización vacía es la autorización y no la falta de captura. */
     G("reemplazarEstado")(G("defaultState")()); S.meta.name = "Vacío S.24"; S.perms = {}; G("recompute")();
     if (!(G("cruceCotSinAutorizar")() > 0)) throw new Error("con S.perms vacío deben faltar cruces por autorizar");
@@ -7090,7 +7086,7 @@ t("S.72 (H-231) al aceptar la instantánea motores>soporte las bases de equipo s
     eq(G("SOPORTE").nEquipos, 3, "en vivo: 2 equipos cotizados + 1 compresor:");
     const bases = () => (G("SOPORTE").part || []).filter((p) => /[Bb]ase/.test(p.desc)).reduce((a, p) => a + p.qty, 0);
     const enVivo = bases();
-    G("propAceptar")("motores>soporte"); G("recompute")();
+    aceptarSoporte(); G("recompute")();
     if (!S.soporte.snap) throw new Error("no quedó instantánea aceptada");
     eq(S.soporte.snap.nEquip, 3, "la instantánea guardó 3:");
     eq(G("SOPORTE").nEquipos, 3, "gobernado: las bases siguen siendo 3 (antes 2: se perdía el compresor):");
@@ -7223,7 +7219,7 @@ t("S.77 (H-228) termoplástico por subtipo, IPC 2009 T308.5 (MCP, secundaria): C
     eq(pcAncla(), 0, "con SDS + fuente + estructura el anclaje se cotiza:");
     if (!R.memo.some((m) => /IPC 2009/.test(m) && /termopl/i.test(m) && /secundaria/.test(m))) throw new Error("la memoria no declara la fuente (secundaria) del claro del termoplástico");
     /* Con la instantánea motores>soporte aceptada el subtipo viaja con ella (la familia sola no alcanza). */
-    G("propAceptar")("motores>soporte"); G("recompute")();
+    aceptarSoporte(); G("recompute")();
     eq(JSON.stringify(hidroDe().det.map((d) => d.e)), JSON.stringify([1.219, 1.219]), "modo gobernado: CPVC sigue a 4 ft:");
     /* H-226 también gobierna las anclas del termoplástico: sin SDS con fuente van «Por cotizar» (H-266: con la instantánea aceptada). */
     S.soporte.sismoSDS = null; S.soporte.sismoFuente = ""; G("recompute")();
@@ -7854,10 +7850,8 @@ t("S.107 (H-264) el sello de contra incendio sólo depende de su captura: acepta
     S.sellos = S.sellos || {}; S.sellos.fuego = { ts: 1, huella: G("huellaMotor")("fuego"), ver: G("motorVer")("fuego") };
     eq(G("selloDe")("fuego").estado, "calculado", "recién sellado:");
     const antes = JSON.stringify([G("FUEGO").memo, G("FUEGO").hpBomba, G("FUEGO").nTotal]);
-    /* Aceptar la propuesta de soportería (lo que hace propAceptar, sin autoguardar ni pintar). */
-    const P = G("PROPUESTAS")["motores>soporte"];
-    (P.permisos || []).forEach((k) => { S.perms[k] = { ts: 1, via: "S.107" }; }); G("recompute")(); P.aplicar(); G("registrarVinculo")("motores>soporte", "aceptado"); G("recompute")();
-    if (!S.perms["fuego>soporte"]) throw new Error("el caso no aísla lo que se quiere probar: aceptar debe conceder fuego>soporte");
+    /* Soportería guarda su instantánea (H-307: la propuesta se retiró; es copia propia de soportería). */
+    S.perms["fuego>soporte"] = { ts: 1, via: "S.107" }; aceptarSoporte();
     eq(JSON.stringify([G("FUEGO").memo, G("FUEGO").hpBomba, G("FUEGO").nTotal]), antes, "contra incendio no cambia:");
     eq(G("selloDe")("fuego").estado, "calculado", "aceptar la propuesta de soportería no marca contra incendio:");
     S.perms["fuego>quote"] = { ts: 1, via: "S.107" }; delete S.perms["fuego>soporte"]; G("recompute")();
@@ -8037,15 +8031,12 @@ t("S.102 (H-266) soportería es autónoma: sin la instantánea aceptada no cuent
     /* «Usar los motores» sin instantánea (un estado de revisiones anteriores o capturado directo) tampoco cuenta en vivo. */
     S.soporte.usarMotores = true; G("recompute")(); SP = G("SOPORTE");
     eq(SP.mDucto, 0, "con «usar los motores» pero sin instantánea tampoco se cuenta en vivo:");
-    if (!SP.avisos.some((a) => /entran sólo al aceptar su propuesta/.test(a.msg))) throw new Error("debe avisar que los metros de los motores entran sólo al aceptar la propuesta");
-    /* Aceptar la propuesta: instantánea; concede los cruces; ya cuantificado no se mueve solo. */
-    Object.keys(G("LINKS")).filter((k) => /soporte$/.test(k)).forEach((k) => { delete S.perms[k]; });
-    G("propAceptar")("motores>soporte"); SP = G("SOPORTE");
+    if (SP.avisos.some((a) => /aceptar su propuesta/.test(a.msg))) throw new Error("H-307: ningún aviso manda a aceptar la propuesta retirada");
+    /* Con instantánea guardada (H-307: copia propia): ya cuantificado no se mueve solo. */
+    aceptarSoporte(); SP = G("SOPORTE");
     const m1 = SP.mDucto; if (!(m1 >= 20)) throw new Error("con la instantánea aceptada deben contarse los 20 m de ducto: " + m1);
-    ["duct>soporte", "hidro>soporte", "fuego>soporte", "aire>soporte"].forEach((k) => { if (!S.perms[k]) throw new Error("aceptar la propuesta debe conceder " + k); });
     S.duct.segments[0].length = 50; G("recompute")();
     eq(G("SOPORTE").mDucto, m1, "ya cuantificado no se mueve solo:");
-    eq(G("estadoPropuesta")("motores>soporte").nivel, "desactualizado", "la propuesta avisa que el origen cambió:");
     /* Alturas y bases capturadas: mandan y las zonas no las mueven. */
     Object.assign(S.soporte, { alturaTrabajo: 7.2, alturaEstructura: 6, basesEquipo: 2, mesesElevacion: 2 }); G("recompute")();
     eq(G("SOPORTE").hTrab, 7.2, "altura de trabajo capturada:"); eq(G("SOPORTE").nEquipos, 2, "bases capturadas:");
@@ -8161,9 +8152,6 @@ t("S.132 (H-266) un proyecto anterior que contaba en vivo sin nada que soportar 
     eq(S.vinculos["motores>soporte"], undefined, "sin nada que proponer no queda registrada una aceptación:");
     eq(S.soporte.snap, undefined, "ni una instantánea vacía:");
     eq(S.soporte.usarMotores, false, "abre a mano:");
-    eq(G("estadoPropuesta")("motores>soporte").nivel, "sin-datos", "la propuesta sigue «sin datos», no «Desactualizada»:");
-    const fila = G("trazaHerencia")().find((f) => f.campo === G("PROPUESTAS")["motores>soporte"].titulo);
-    if (!fila || /Desactualizada/.test(fila.estado)) throw new Error("el trazado de origen no debe imprimir «Desactualizada»: " + JSON.stringify(fila));
     eq(G("SOPORTE").nEquipos, 2, "mismas cifras: las 2 bases que contaba:"); eq(S.soporte.basesEquipo, 2, "capturadas una vez:");
     /* Con metros capturados a mano guardados de cuando estuvo en «valores propios» (30 m de ducto 400×300 y 20 m de hidráulica
        Ø50 de acero), que el conteo en vivo no contaba: abrir a mano los contaría (22 soportes, 41,454 MXN: otras cifras). Toma la
@@ -8253,116 +8241,85 @@ t("S.133 (H-266) lo que la migración de soportería copia o supone al abrir un 
 });
 
 /* ===== S.134 (H-266) la propuesta de soportería muestra lo que propone y de dónde sale ===== */
-t("S.134 (H-266) la propuesta motores>soporte muestra los metros y Ø de la red contra incendio (cabezal y montante, no sólo rociadores) y el origen por motor (no «Ductos y calibres» para todo) en la tarjeta, en el vínculo y en el trazado (ES/EN); desactualizada dice qué cambió; la cédula dice que los tramos son de la instantánea aceptada y su fecha, o que son capturados a mano (revisión adversarial U13; reglas 3 y 8)", () => {
+t("S.134 (H-266, H-307) la instantánea guardada de soportería muestra los metros y Ø de la red contra incendio (cabezal y montante, no sólo rociadores) y el origen por motor (no «Ductos y calibres» para todo) en su tarjeta y en la cédula; es copia propia: si contra incendio cambia, no se mueve ni se compara; capturado a mano, la cédula lo dice", () => {
   const guardado = JSON.stringify(S);
   const tarjeta = () => { S.tab = "soporte"; G("render")(); const c = w.document.querySelector(".prop"); return c ? c.textContent.replace(/\s+/g, " ") : ""; };
   const pdf = () => [...Buffer.from(G("buildSoportePdf")()).toString("latin1").matchAll(/\(((?:[^()\\]|\\.)*)\) Tj/g)].map((m) => m[1]).join(" ");
   try {
     G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.134";
-    Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.134" }; });
     S.duct.segments = [];
     S.fuego = { ...G("defaultFuego")(), area: 600, altura: 6, Lramal: 30, Lmontante: 12 };
     S.soporte = { ...G("defaultSoporte")(), alturaColgadoM: 0.5, alturaTrabajo: 5, mesesElevacion: 1, alturaEstructura: 6 };
     G("recompute")();
-    const F = G("FUEGO"), P = G("PROPUESTAS")["motores>soporte"], fuegoLab = G("DOMAINS").fuego.label;
+    const F = G("FUEGO"), fuegoLab = G("DOMAINS").fuego.label;
     if (!(F.Lram === 30 && F.Lmon === 12 && F.nTotal > 0)) throw new Error("el caso no aísla lo que se quiere probar: cabezal 30 m y montante 12 m");
-    eq(G("estadoPropuesta")("motores>soporte").nivel, "pendiente", "hay propuesta:");
-    const res = P.resumen();
-    if (!/cabezal 30 m/.test(res) || !/montante 12 m/.test(res)) throw new Error("la propuesta debe mostrar los metros de la red contra incendio: " + res);
+    aceptarSoporte();   /* proyecto con la instantánea guardada */
     let c = tarjeta();
+    if (!/cabezal 30 m/.test(c) || !/montante 12 m/.test(c)) throw new Error("la tarjeta debe mostrar los metros de la red contra incendio: " + c.slice(0, 300));
     if (!c.includes(`${fuegoLab} → `) || c.includes("Ductos y calibres →")) throw new Error("la tarjeta debe nombrar el motor de origen verdadero: " + c.slice(0, 160));
-    /* Aceptada: el vínculo y el trazado dicen el origen verdadero y lo aceptado, en español y en inglés (libro de la propuesta). */
-    G("propAceptar")("motores>soporte"); G("recompute")();
-    eq(S.vinculos["motores>soporte"].origen, fuegoLab, "el vínculo guarda el origen verdadero:");
-    let fila = G("trazaHerencia")().find((f) => f.campo === P.titulo);
-    eq(fila.origen, fuegoLab, "trazado, origen:");
-    if (!/cabezal 30 m/.test(fila.valor)) throw new Error("trazado, valor: " + fila.valor);
-    if (!fila.en || !/Fire protection/.test(fila.en.origen) || !/header 30 m/.test(fila.en.valor)) throw new Error("trazado, espejo EN: " + JSON.stringify(fila.en));
-    /* La cédula dice de dónde salen los tramos. */
-    const hoy = G("fechaCorta")(S.vinculos["motores>soporte"].ts);
-    if (!pdf().includes("instantánea aceptada el " + hoy)) throw new Error("la cédula debe decir que los tramos son de la instantánea aceptada y su fecha");
-    /* El cabezal pasa a 80 m: desactualizada, y la tarjeta dice qué cambió (antes «Se aceptó» y «Hoy propone» salían idénticos). */
+    /* La cédula dice de dónde salen los tramos: la instantánea con su fecha y sus motores de origen. */
+    const hoy = G("fechaCorta")(S.soporte.snap.ts);
+    const p1 = pdf();
+    if (!p1.includes("instantánea aceptada el " + hoy) || !p1.includes(fuegoLab)) throw new Error("la cédula debe decir que los tramos son de la instantánea, su fecha y su origen");
+    /* El cabezal pasa a 80 m: la instantánea es copia propia; ni se mueve ni se compara (H-307). */
     S.fuego.Lramal = 80; G("recompute")();
-    eq(G("estadoPropuesta")("motores>soporte").nivel, "desactualizado", "el origen cambió:");
     c = tarjeta();
-    const se = (c.match(/Se aceptó(.*?)Hoy propone/) || [])[1] || "", hoyP = (c.match(/Hoy propone(.*?)(Qué cambió|El origen cambió)/) || [])[1] || "";
-    if (!se || se.replace(/ · \d.*$/, "").trim() === hoyP.trim()) throw new Error("«Se aceptó» y «Hoy propone» no deben ser iguales: " + c.slice(0, 400));
-    if (!/Qué cambió.*cabezal 30 → 80 m/.test(c)) throw new Error("la tarjeta debe decir qué cambió: " + c.slice(0, 600));
+    if (!/cabezal 30 m/.test(c) || /Desactualizada|Hoy propone|Qué cambió/.test(c)) throw new Error("la instantánea no se mueve ni se compara con contra incendio: " + c.slice(0, 300));
+    eq(G("SOPORTE").mTub, 42, "sigue contando cabezal 30 + montante 12:");
     /* Capturado a mano: la cédula lo dice. */
-    G("propPropio")("motores>soporte"); S.soporte.tubFuegoM = 20; S.soporte.tubFuegoD = 50; G("recompute")();
+    S.soporte.usarMotores = false; delete S.soporte.snap; S.soporte.tubFuegoM = 20; S.soporte.tubFuegoD = 50; G("recompute")();
     if (!pdf().includes("capturados a mano")) throw new Error("la cédula debe decir que los metros son capturados a mano");
   } finally { w.eval("clearTimeout(autoT)"); G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
 /* ===== S.135 (H-266) textos de soportería que describían el conteo en vivo retirado ===== */
-t("S.135 (H-266) los textos de soportería describen lo que hoy hace: los permisos duct/hidro/fuego/aire → soportería son el registro de la propuesta aceptada (autorizarlos no mete metros; negarlos o revocarlos no cambia lo aceptado) y ya no prometen soportes «que se siguen contando, pendientes de autorizar»; la pestaña no manda a capturar en Ductos y calibres y, sin soportes, distingue «hay metros en los motores sin aceptar» de «no hay nada» (revisión adversarial U14 y U16)", () => {
+t("S.135 (H-266, H-307) los textos de soportería describen lo que hoy hace: sin instantánea cuenta sólo lo capturado en su pestaña; la barra de acciones y los avisos no mandan a aceptar metros de los otros motores ni dicen que hay metros «sin aceptar» (la propuesta se retiró) ni que no hay ductos calculados", () => {
   const guardado = JSON.stringify(S);
-  const CRUCES = ["duct>soporte", "hidro>soporte", "fuego>soporte", "aire>soporte"];
   try {
-    /* U14: el texto del permiso (pantalla de permisos, ventana y aviso al negar) ya no describe la conducta que H-266 quitó. */
-    CRUCES.forEach((k) => {
-      const Lk = G("LINKS")[k], txt = `${Lk.what} ${Lk.why} ${Lk.cost}`, modal = G("linkModal")(k);
-      if (/se siguen contando|pendiente[s]? de autorizar|nunca se bajan a cero/.test(txt) || /se siguen contando/.test(modal)) throw new Error(`${k}: describe el conteo en vivo retirado: ${Lk.cost}`);
-      if (!/propuesta/.test(txt) || !/instantánea/.test(txt) || !/Capturo lo mío/.test(Lk.cost)) throw new Error(`${k}: debe decir que los metros entran al aceptar la propuesta (instantánea) y cómo volver a lo capturado: ${txt}`);
-    });
-    /* La conducta que el texto describe: autorizar no mete metros; lo aceptado no baja al revocar (Q.7). */
+    /* H-307: los cruces duct/hidro/fuego/aire → soportería se retiraron (S.187). La conducta: los metros de Ductos no entran. */
     G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.135";
     S.duct.segments = [{ ...G("defaultSegment")("TR-1", 3000), length: 20 }, { ...G("defaultSegment")("TR-2", 2000), length: 15 }];
-    CRUCES.forEach((k) => { S.perms[k] = { ts: 1, via: "S.135" }; }); G("recompute")();
-    eq(G("SOPORTE").mDucto, 0, "autorizar los cruces no mete metros:");
-    /* U16: sin soportes, con 35 m en Ductos sin aceptar: la pestaña no manda a capturar en Ductos y calibres y el aviso no dice
-       que no hay ductos calculados. */
+    G("recompute")();
+    eq(G("SOPORTE").mDucto, 0, "los metros de Ductos no entran a soportería:");
     const razon = G("accEstado")("soporte").calc.razon || "";
-    if (/Ductos y calibres o las tuberías/.test(razon) || !/acepta la propuesta/.test(razon)) throw new Error("la barra de acciones debe mandar a aceptar la propuesta o capturar aquí: " + razon);
-    if (!/sin aceptar/.test(razon)) throw new Error("la barra debe decir que hay metros en los motores sin aceptar: " + razon);
+    if (/Ductos y calibres o las tuberías|acepta la propuesta|sin aceptar/.test(razon)) throw new Error("la barra de acciones no debe mandar a aceptar metros de los otros motores: " + razon);
     let av = G("SOPORTE").avisos.map((a) => a.msg).join(" | ");
     if (/no hay ductos ni tubería calculados en los motores/.test(av)) throw new Error("el aviso dice que no hay ductos aunque los hay: " + av);
-    if (!/sin aceptar|al aceptar su propuesta/.test(av)) throw new Error("el aviso debe decir que hay metros en los motores sin aceptar: " + av);
-    /* Sin nada en los motores ni capturado: lo dice tal cual. */
+    if (/sin aceptar|al aceptar su propuesta/.test(av)) throw new Error("ningún aviso lee los otros motores para mandar a aceptar: " + av);
+    if (!/No hay soportes que contar/.test(av)) throw new Error("sin nada capturado, «no hay nada»: " + av);
+    /* Sin nada en los motores ni capturado: lo mismo. */
     S.duct.segments = []; G("recompute")();
     av = G("SOPORTE").avisos.map((a) => a.msg).join(" | ");
     if (!/No hay soportes que contar/.test(av) || /sin aceptar/.test(av)) throw new Error("sin nada, «no hay nada»: " + av);
-    if (/sin aceptar/.test(G("accEstado")("soporte").calc.razon || "")) throw new Error("sin nada en los motores la barra no habla de metros sin aceptar");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
 /* ===== S.136 (H-266) «Capturo lo mío» no borra sin preguntar lo ya cuantificado, y Deshacer lo recupera ===== */
-t("S.136 (H-266) «Capturo lo mío» con una instantánea de soportería ya cuantificada pregunta antes de dejarla (dice qué se deja de contar) y Deshacer la recupera tal como estaba, también la que se conservó; «Conservar lo aceptado» también se puede deshacer (revisión adversarial U15; decisión del dueño: lo cuantificado no se mueve solo)", () => {
+t("S.136 (H-266, H-307) «Capturar a mano» con una instantánea de soportería ya cuantificada pregunta antes de dejarla (dice qué se deja de contar) y Deshacer la recupera tal como estaba (revisión adversarial U15; decisión del dueño: lo cuantificado no se mueve solo)", () => {
   const guardado = JSON.stringify(S);
   const act = (a, id) => { const b = w.document.createElement("button"); b.dataset.act = a; if (id) b.dataset.id = id; w.document.body.appendChild(b); b.dispatchEvent(new w.MouseEvent("click", { bubbles: true })); b.remove(); };
   const modal = () => w.document.getElementById("modal");
-  const ID = "motores>soporte";
   try {
     G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.136"; G("histReiniciar")();
-    Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.136" }; });
     S.duct.segments = [];
     S.fuego = { ...G("defaultFuego")(), area: 600, altura: 6, Lramal: 30, Lmontante: 12 };
     S.soporte = { ...G("defaultSoporte")(), alturaColgadoM: 0.5, alturaTrabajo: 5, mesesElevacion: 1, alturaEstructura: 6 };
     G("recompute")(); G("histSnap")("inicio S.136");
-    act("prop-aceptar", ID); G("recompute")();
-    eq(G("SOPORTE").mTub, 42, "aceptada con cabezal 30 + montante 12:");
-    /* Contra incendio cambia; el usuario conserva lo aceptado (42 m). */
+    aceptarSoporte();   /* proyecto con la instantánea guardada */
+    eq(G("SOPORTE").mTub, 42, "instantánea con cabezal 30 + montante 12:");
+    /* Contra incendio cambia; la instantánea sigue (copia propia). */
     S.fuego.Lramal = 80; G("recompute")();
-    eq(G("estadoPropuesta")(ID).nivel, "desactualizado", "el origen cambió:");
-    act("prop-conservar", ID); G("recompute")();
-    eq(G("estadoPropuesta")(ID).nivel, "aceptado", "conservada:"); eq(G("SOPORTE").mTub, 42, "sigue con lo conservado:");
-    /* «Capturo lo mío»: pregunta antes de dejar lo ya cuantificado (antes borraba la instantánea al instante). */
-    act("prop-propio", ID);
-    if (!S.soporte.snap) throw new Error("«Capturo lo mío» borró la instantánea ya cuantificada sin preguntar");
-    if (modal().hidden || !/instantánea aceptada/i.test(modal().textContent) || !/42 m/.test(modal().textContent)) throw new Error("debe preguntar y decir qué se deja de contar: " + (modal().hidden ? "(sin ventana)" : modal().textContent.replace(/\s+/g, " ").slice(0, 300)));
+    eq(G("SOPORTE").mTub, 42, "sigue con lo cuantificado:");
+    /* «Capturar a mano»: pregunta antes de dejar lo ya cuantificado. */
+    act("sop-propio");
+    if (!S.soporte.snap) throw new Error("«Capturar a mano» borró la instantánea ya cuantificada sin preguntar");
+    if (modal().hidden || !/instantánea guardada/i.test(modal().textContent) || !/42 m/.test(modal().textContent)) throw new Error("debe preguntar y decir qué se deja de contar: " + (modal().hidden ? "(sin ventana)" : modal().textContent.replace(/\s+/g, " ").slice(0, 300)));
     act("confirmar-si");
     eq(S.soporte.snap, undefined, "confirmado, deja la instantánea:"); eq(G("SOPORTE").mTub, 0, "y cuenta lo capturado a mano:");
-    /* Deshacer la recupera tal como estaba: la conservada de 42 m, no la de antes de aceptar. */
+    /* Deshacer la recupera tal como estaba. */
     G("deshacer")(); G("recompute")();
     if (!S.soporte.snap) throw new Error("Deshacer no recuperó la instantánea");
-    eq(G("SOPORTE").mTub, 42, "Deshacer devuelve lo conservado:");
-    eq(G("estadoPropuesta")(ID).nivel, "aceptado", "y su estado:");
-    /* «Conservar lo aceptado» también se puede deshacer: vuelve a «desactualizada». */
-    S.fuego.Lramal = 60; G("recompute")();
-    act("prop-conservar", ID); G("recompute")();
-    eq(G("estadoPropuesta")(ID).nivel, "aceptado", "conservada otra vez:");
-    G("deshacer")(); G("recompute")();
-    eq(G("estadoPropuesta")(ID).nivel, "desactualizado", "Deshacer deshace «Conservar lo aceptado»:");
+    eq(G("SOPORTE").mTub, 42, "Deshacer devuelve lo cuantificado:");
   } finally { G("closeModal")(); w.eval("clearTimeout(autoT)"); G("reemplazarEstado")(JSON.parse(guardado)); G("histReiniciar")(); G("recompute")(); }
 });
 
@@ -9534,6 +9491,33 @@ t("S.186 (H-306) el eléctrico calcula sólo con las cargas de su cuadro: ya no 
     G("importarRespaldo")(JSON.stringify(viejo)); G("recompute")();
     eq(S.elec.cargas.filter((c) => c.origen === "cedula").length, ced, "el proyecto en vivo abre con las mismas cargas de los demás motores:");
     eq(G("ELEC").kVAdemanda, kva0, "y los mismos kVA:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); S.tab = tab0; G("recompute")(); }
+});
+
+t("S.187 (H-307) soportería calcula sólo con lo suyo: ya no hay propuesta «Metros de ducto y tubería contados por los motores» (motores>soporte), ni cruces ni flechas hacia soportería, ni avisos que lean los otros motores; la instantánea ya guardada es copia propia (mismas cifras, no se compara con los motores) y se puede dejar para capturar a mano", () => {
+  const guardado = JSON.stringify(S), tab0 = S.tab;
+  try {
+    eq(G("PROPUESTAS")["motores>soporte"], undefined, "no queda la propuesta de metros de los motores:");
+    ["duct>soporte", "hidro>soporte", "fuego>soporte", "aire>soporte"].forEach((k) => eq(G("LINKS")[k], undefined, `no queda el cruce ${k}:`));
+    eq(G("ARISTAS").filter((a) => a.a === "soporte" && a.regla === 2).length, 0, "flechas de propuesta hacia soportería:");
+    /* Sin instantánea: cuenta sólo lo capturado; ningún aviso manda a aceptar metros de los otros motores. */
+    S.soporte.usarMotores = false; delete S.soporte.snap; G("recompute")();
+    if (G("SOPORTE").avisos.some((a) => /aceptar su propuesta/.test(a.msg))) throw new Error("un aviso de soportería sigue leyendo los otros motores para mandar a aceptar su propuesta");
+    S.tab = "soporte"; G("render")();
+    if (/Metros de ducto y tubería contados por los motores/.test(vista())) throw new Error("soportería sigue ofreciendo la propuesta de los motores");
+    /* Proyecto con instantánea guardada: es copia propia; no se mueve ni se compara con los motores. */
+    if (!(S.duct.segments || []).length) throw new Error("el banco no trae tramos de ducto: la prueba no probaría la instantánea");
+    S.soporte.snap = G("snapshotSoporte")(); S.soporte.usarMotores = true; G("recompute")();
+    const n0 = G("SOPORTE").nSoportes, L0 = S.duct.segments[0].length;
+    S.duct.segments[0].length = Number(L0) + 50; G("recompute")();
+    eq(G("SOPORTE").nSoportes, n0, "la instantánea no se mueve con ductos:");
+    G("render")();
+    const b = w.document.querySelector('[data-act="sop-propio"]');
+    if (!b) throw new Error("con instantánea guardada no hay cómo dejarla para capturar a mano");
+    if (/desactualizada/i.test(w.document.getElementById("view").textContent)) throw new Error("la instantánea se sigue comparando con los motores");
+    b.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+    const ok = w.document.querySelector('[data-act="confirmar-si"]'); if (ok) ok.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+    eq(S.soporte.usarMotores, false, "capturar a mano deja la instantánea:"); eq(S.soporte.snap, undefined, "sin instantánea:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); S.tab = tab0; G("recompute")(); }
 });
 

@@ -116,7 +116,8 @@ export default async function ({ t, eq, cerca, G, S, CM, REG_PROY }) {
       paso(() => {
         S.soporte.mesesElevacion = 3; G("recompute")();
         eq(G("SOPORTE").nEquipos, 3, "en vivo: 2 equipos cotizados + 1 compresor:");
-        G("propAceptar")("motores>soporte"); G("recompute")();
+        /* H-307: la propuesta motores>soporte se retiró; el proyecto guarda la instantánea (copia propia de soportería). */
+        S.soporte.snap = G("snapshotSoporte")(); S.soporte.usarMotores = true; G("recompute")();
         if (!S.soporte.snap) throw new Error("el caso no aísla lo que se quiere probar: no quedó instantánea aceptada");
         comprobar("CM.soporte.11d");
       });
