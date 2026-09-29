@@ -9559,6 +9559,21 @@ t("S.189 (AUD-03) aire comprimido calcula con SUS tablas y funciones: el diámet
   } finally { G("TUB_AGUA").cobre.d = JSON.parse(tabla0); w.haaland = h0; G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+t("S.190 (AUD-03) contra incendio calcula con SUS funciones: Hazen-Williams y la velocidad del agua son copias propias; cambiar las de hidrosanitario no mueve contra incendio", () => {
+  const guardado = JSON.stringify(S), h0 = G("hazen");
+  try {
+    S.fuego = { ...G("defaultFuego")(), riesgo: "ord2", area: 800, altura: 7, Lramal: 35, Lmontante: 12, presFuente: 30 };
+    G("recompute")();
+    const cifras = () => JSON.stringify([G("FUEGO").hfRam, G("FUEGO").hfMon, G("FUEGO").ram && G("FUEGO").ram.d, G("FUEGO").mon && G("FUEGO").mon.d, G("FUEGO").hpBomba]);
+    const antes = cifras();
+    if (!(G("FUEGO").hfRam > 0)) throw new Error("el caso no aísla lo que se quiere probar: debe haber fricción en el cabezal");
+    G("hazen = function () { return 1; }");
+    G("recompute")();
+    eq(cifras(), antes, "contra incendio no se mueve con la función de Hazen-Williams de hidrosanitario:");
+    /* velAgua es const (no se puede sustituir): se exige que el dimensionado de contra incendio no la llame. */
+    if (/\bvelAgua\(/.test(G("sizeFuego").toString()) || /\bhazen\(/.test(G("computeFuego").toString())) throw new Error("contra incendio sigue llamando a las funciones de hidrosanitario");
+  } finally { w.hazen = h0; G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {
   const guardado = JSON.stringify(S);
   try {

@@ -11128,14 +11128,22 @@ const DIAM_FUEGO = [
    en la apertura de la válvula. */
 const V_MAX_FUEGO = 6.1;
 
+/* AUD-03 (auditoría externa, 29-sep-2026: cada motor con sus funciones, sin llamar a las de otro): Hazen-Williams SI y velocidad
+   del agua PROPIAS de contra incendio (antes llamaba a hazen() y velAgua() de hidrosanitario). Mismas fórmulas:
+   hf/L = 10.67 · Q^1.852 / (C^1.852 · D^4.87), Q en m³/s y D en m; V = Q / (π·D²/4). */
+function hazenFuego(Q_ls, D_mm, C) {
+  const Q = Math.max(1e-9, num(Q_ls) / 1000), D = Math.max(.001, num(D_mm) / 1000);
+  return 10.67 * Math.pow(Q, 1.852) / (Math.pow(Math.max(1, C), 1.852) * Math.pow(D, 4.87));
+}
+const velFuego = (Q_ls, D_mm) => (num(Q_ls) / 1000) / (Math.PI * Math.pow(num(D_mm) / 1000, 2) / 4);
 function sizeFuego(Q_lpm, material) {
   const C = (TUB_FUEGO[material] || TUB_FUEGO.acero_neg).C;
   const Q_ls = num(Q_lpm) / 60;
   for (const [d, nom] of DIAM_FUEGO) {
-    if (velAgua(Q_ls, d) <= V_MAX_FUEGO) return { d, nom, C, V: velAgua(Q_ls, d) };
+    if (velFuego(Q_ls, d) <= V_MAX_FUEGO) return { d, nom, C, V: velFuego(Q_ls, d) };
   }
   const [d, nom] = DIAM_FUEGO[DIAM_FUEGO.length - 1];
-  return { d, nom, C, V: velAgua(Q_ls, d) };
+  return { d, nom, C, V: velFuego(Q_ls, d) };
 }
 
 /* H-293 (decisión del dueño, 29-sep-2026: cada motor saca su propia cotización de sus propios resultados). El precio del rociador
@@ -11254,8 +11262,8 @@ function computeFuego(F) {
   /* 30 % de longitud equivalente por válvulas, tes y codos: en una red de
      rociadores con válvula de control y detector de flujo es conservador y es
      lo que se usa en prediseño. */
-  const hfRam = hazen(qRociadores / 60, ram.d, ram.C) * Lram * 1.3;
-  const hfMon = hazen(qTotal / 60, mon.d, mon.C) * Lmon * 1.3;
+  const hfRam = hazenFuego(qRociadores / 60, ram.d, ram.C) * Lram * 1.3;
+  const hfMon = hazenFuego(qTotal / 60, mon.d, mon.C) * Lmon * 1.3;
   /* H-205 (fuego v3, regla del dueño): la estática va al rociador más alto (no a la media ponderada, que escondía el rack);
      +1 m de la casa. H-264: la altura es la capturada en esta pestaña (no se hereda). H-210: sin ella no hay estática. */
   const estatica = hAlt > 0 ? hAlt + 1 : 0;
