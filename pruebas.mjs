@@ -8915,6 +8915,36 @@ const REG_PROY = fs.readFileSync(REG_DIR + "regresion-motores.emp.json", "utf8")
 const REG_ESP = JSON.parse(fs.readFileSync(REG_DIR + "regresion-motores.esperado.json", "utf8"));
 const REG_PROY2 = fs.readFileSync(REG_DIR + "regresion-motores-2.emp.json", "utf8");   /* AUD-12 */
 const REG_ESP2 = JSON.parse(fs.readFileSync(REG_DIR + "regresion-motores-2.esperado.json", "utf8"));
+/* AUD-12 · tolerancia flotante: comparación de cifras de R.1 y R.4 contra su esperado. El esperado del proyecto 2 se generó en
+   otra máquina y la pérdida hf de un tramo de hidro difiere en el último bit (1.2097917164475953 contra …958); quote y valor lo
+   arrastran. Criterio de la casa: dos números son iguales si |a − b| ≤ 1e-9 · max(|a|, |b|) (sin tolerancia absoluta: cero contra
+   no cero sí es cambio). Textos, nulos, llaves y renglones se comparan exactos. R.3 no la usa: compara dos corridas en la misma
+   máquina. */
+const TOL_CIFRAS = 1e-9;
+const cifrasIguales = (a, b) => {
+  if (typeof a === "number" && typeof b === "number") return a === b || Math.abs(a - b) <= TOL_CIFRAS * Math.max(Math.abs(a), Math.abs(b));
+  if (Array.isArray(a) || Array.isArray(b)) return Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((x, i) => cifrasIguales(x, b[i]));
+  if (a && b && typeof a === "object" && typeof b === "object") {
+    const ka = Object.keys(a), kb = Object.keys(b);
+    return ka.length === kb.length && ka.every((k) => Object.prototype.hasOwnProperty.call(b, k) && cifrasIguales(a[k], b[k]));
+  }
+  return a === b;
+};
+/* Las dos pasan antes por JSON, como el esperado guardado: llaves indefinidas fuera, NaN e Infinity como null. */
+const comoJSON = (x) => (x === undefined ? undefined : JSON.parse(JSON.stringify(x)));
+const mismasCifras = (a, b) => cifrasIguales(comoJSON(a), comoJSON(b));
+t("S.201 (AUD-12) R.1 y R.4 comparan cifras con tolerancia relativa 1e-9: la última cifra de coma flotante que cambia de una máquina a otra no truena; un cambio de 1e-6, de texto, de nulo a cero o de forma sí", () => {
+  eq(mismasCifras({ tramos: [["T-2", 0.5, 1.2097917164475953]] }, { tramos: [["T-2", 0.5, 1.2097917164475958]] }), true, "hidro hf del proyecto 2 (1.2097917164475953 contra …958, 4e-16 relativo):");
+  eq(mismasCifras({ total: 561693.5918104438 }, { total: 561693.5918104439 }), true, "valor total del proyecto 2 (2e-16 relativo):");
+  eq(mismasCifras({ q: 1 }, { q: 1.000001 }), false, "1e-6 relativo sí es cambio:");
+  eq(mismasCifras({ q: 1 }, { q: 1 + 2e-9 }), false, "2e-9 relativo sí es cambio:");
+  eq(mismasCifras({ q: 0 }, { q: 1e-300 }), false, "cero contra no cero sí es cambio:");
+  eq(mismasCifras({ q: null }, { q: 0 }), false, "nulo (pendiente) contra cero sí es cambio:");
+  eq(mismasCifras([["a", 1]], [["b", 1]]), false, "texto distinto sí es cambio:");
+  eq(mismasCifras({ x: 1 }, { x: 1, y: 2 }), false, "llave de más sí es cambio:");
+  eq(mismasCifras([1, 2], [1, 2, 3]), false, "renglón de más sí es cambio:");
+  eq(mismasCifras({ x: [1, "2"] }, { x: [1, 2] }), false, "texto contra número sí es cambio:");
+});
 t("S.126 (H-274) selección de equipo no tiene ningún vínculo con ductos, en ninguna dirección (decisión del dueño, 28-sep-2026): con todos los permisos, alargar el troncal no mueve la presión ni la huella de selección; no hay cruce, propuesta ni flecha entre los dos y la pantalla no habla de ductos", () => {
   const guardado = JSON.stringify(S);
   try {
@@ -9791,9 +9821,8 @@ t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esper
     Object.keys(MV).forEach((id) => {
       const e = REG_ESP.motores[id];
       if (!e) { fallas.push(`${id}: sin esperado (corre node parches/regresion-motores/genera.mjs)`); return; }
-      const ahora = JSON.stringify(G("cifrasMotor")(id)), esp = JSON.stringify(e.cifras);
       if (e.ver !== MV[id]) fallas.push(`${id}: MOTOR_VER subió a v${MV[id]} y el esperado es de v${e.ver}: regenera el esperado de ese motor (genera.mjs) en el mismo commit que sube la versión`);
-      else if (ahora !== esp) fallas.push(`${id}: las cifras cambiaron con la MISMA versión v${MV[id]}: cambió la lógica del motor sin subir MOTOR_VER (o el fixture). Sube la versión con su hallazgo en MOTOR_CAMBIOS y regenera el esperado`);
+      else if (!mismasCifras(G("cifrasMotor")(id), e.cifras)) fallas.push(`${id}: las cifras cambiaron con la MISMA versión v${MV[id]}: cambió la lógica del motor sin subir MOTOR_VER (o el fixture). Sube la versión con su hallazgo en MOTOR_CAMBIOS y regenera el esperado`);
     });
     if (fallas.length) throw new Error(fallas.join("\n   "));
     eq(Object.keys(REG_ESP.motores).length, Object.keys(MV).length, "todos los motores tienen esperado:");
@@ -9834,7 +9863,7 @@ t("R.4 (AUD-12) segundo proyecto fijo capturado disciplina por disciplina: ejerc
     const compara = (nom, id, e, ahora) => {
       if (!e) { fallas.push(`${nom}: sin esperado (corre node parches/regresion-motores/genera.mjs)`); return; }
       if (e.ver !== MV[id]) fallas.push(`${nom}: MOTOR_VER subió a v${MV[id]} y el esperado es de v${e.ver}: regenera el esperado (genera.mjs) en el mismo commit`);
-      else if (JSON.stringify(ahora) !== JSON.stringify(e.cifras)) fallas.push(`${nom}: las cifras cambiaron con la MISMA versión v${MV[id]}: sube MOTOR_VER con su hallazgo y regenera el esperado`);
+      else if (!mismasCifras(ahora, e.cifras)) fallas.push(`${nom}: las cifras cambiaron con la MISMA versión v${MV[id]}: sube MOTOR_VER con su hallazgo y regenera el esperado`);
     };
     Object.keys(MV).forEach((id) => compara(id, id, REG_ESP2.motores[id], G("cifrasMotor")(id)));
     S.soporte.usarMotores = false; G("recompute")();
