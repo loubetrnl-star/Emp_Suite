@@ -503,24 +503,21 @@ t("4.6 migrada de un proyecto anterior en vivo (H-306: ya no hay propuesta que a
 });
 /* H-177 (rev 2.9.24): el equipo con motocompresor se rige por el art. 440 con sus datos de placa; aceptar la cédula
    descartaba MCA y MOP y el cuadro protegía al 250 % de la Tabla 430-52, por arriba del MOP. */
-t("S.45 (H-177) aceptada la cédula, cada equipo con motocompresor conserva su MCA y su MOP; el conductor cubre la MCA y la protección no pasa del MOP (NOM-001-SEDE-2012 440-4(b), 440-22(a) y (c), 440-35, p. 445-450)", () => {
+t("S.45 (H-177, AUD-14) migrada la cédula, cada equipo con motocompresor conserva su MCA y su MOP ESTIMADAS como referencia; al no ser de placa no fijan el conductor ni la protección (AUD-14, nada se estima): el conductor cubre el 125 % de su corriente y la memoria y el aviso lo dicen", () => {
   const prop = G("propuestaElecFilas")().filter((c) => Number(c.mop) > 0);
   if (!prop.length) throw new Error("la cédula del banco no trae equipos con MOP: la prueba no probaría nada");
   const ced = (S.elec.cargas || []).filter((c) => c.origen === "cedula" && Number(c.mop) > 0);
-  eq(ced.length, prop.length, "cargas aceptadas que conservan el MOP:");
+  eq(ced.length, prop.length, "cargas migradas que conservan el MOP:");
   ced.forEach((c, i) => { eq(c.mca, prop[i].mca, `${c.nombre}, MCA:`); eq(c.mop, prop[i].mop, `${c.nombre}, MOP:`); });
-  const filas = G("ELEC").calc.filter((c) => Number(c.mop) > 0);
-  eq(filas.length, prop.length, "filas del cuadro con MOP:");
+  const filas = G("ELEC").calc.filter((c) => c.placaRef);
+  eq(filas.length, prop.length, "filas del cuadro con MCA/MOP estimados de referencia:");
   filas.forEach((c) => {
-    if (!(c.cond.ocpd <= c.mop)) throw new Error(`${c.nombre}: protección ${c.cond.ocpd} A arriba del MOP ${c.mop} A`);
-    if (!(c.cond.ampCorr >= c.mca)) throw new Error(`${c.nombre}: ampacidad corregida ${c.cond.ampCorr} A abajo de la MCA ${c.mca} A`);
-    /* La MCA y el MOP de la cédula los estimó la suite (elecOf): se marcan y no bajan el conductor del 125 % de la corriente. */
-    eq(c.mcaEst && c.mopEst, true, `${c.nombre}, MCA y MOP marcados como estimados:`);
-    if (!(c.cond.ampCorr >= 1.25 * c.I - 1e-9)) throw new Error(`${c.nombre}: con MCA estimada el conductor (${c.cond.ampCorr} A) quedó abajo del 125 % de ${c.I} A`);
+    eq(c.art440, false, `${c.nombre}: la MCA/MOP estimada no activa el art. 440:`);
+    if (!(c.cond.ampCorr >= 1.25 * c.I - 1e-9)) throw new Error(`${c.nombre}: el conductor (${c.cond.ampCorr} A) quedó abajo del 125 % de ${c.I} A`);
   });
   const memoria = G("ELEC").memo.join(" ");
-  contiene(memoria, "ESTIMADA", "la memoria marca la MCA estimada:"); contiene(memoria, "ESTIMADO", "la memoria marca el MOP estimado:");
-  if (!G("ELEC").avisos.some((a) => /estimad/i.test(a.msg) && /placa/.test(a.msg))) throw new Error("sin aviso de MCA/MOP estimados");
+  contiene(memoria, "MCA/MOP ESTIMADOS", "la memoria dice que son estimados y de referencia:");
+  if (!G("ELEC").avisos.some((a) => /estimad/i.test(a.msg) && /no fija/.test(a.msg) && /placa/.test(a.msg))) throw new Error("sin aviso de MCA/MOP estimados que no fijan la protección");
 });
 /* H-177: datos de placa incompletos o incongruentes, placa capturada por el usuario y equipo sin kW. */
 t("S.46 (H-177) art. 440 con placa: sólo el MOP → aviso y se protege como motor general; MCA de placa manda sola; MOP 10 A → fusible de 10 A, nunca 15; sin kW no fija el principal", () => {
@@ -6337,7 +6334,7 @@ t("S.36 (rev 2.9.20, decisión del dueño) versión por motor en el sello: sólo
      H-194: hidro v5 = presión mínima por mueble de la Tabla 604.3 del IPC 2015 y CDT con máx(residual, mínima); H-195: v6 = equipo de emergencia fuera de Hunter; H-197: v7 = sin pisos sin norma (días, ΔT, pendiente 704.1); H-198: v8 = CPVC sólo hasta 2" CTS, fuera de catálogo y PEAD sin SDR como error.
      H-263: carga v6 = calor del motor del ventilador seleccionado en Ventilación como misceláneos de la zona elegida; H-262: ventilación v4 = ya no hereda de carga térmica;
      H-268: eléctrico v9 = autónomo (las cargas de otros motores sólo como propuesta aceptada). */
-  eq(MV.elec, "9", "eléctrico v9 (H-268):"); eq(MV.hidro, "9", "hidro v9 (AUD-14):"); eq(MV.load, "7", "carga v7 (H-290):"); eq(MV.duct, "4", "ductos v4 (H-165):"); eq(MV.equip, "4", "selección v4 (H-288):"); eq(MV.kaizen, "1", "Kaizen sin cambio de lógica: v1:");
+  eq(MV.elec, "10", "eléctrico v10 (AUD-14):"); eq(MV.hidro, "9", "hidro v9 (AUD-14):"); eq(MV.load, "7", "carga v7 (H-290):"); eq(MV.duct, "4", "ductos v4 (H-165):"); eq(MV.equip, "4", "selección v4 (H-288):"); eq(MV.kaizen, "1", "Kaizen sin cambio de lógica: v1:");
   Object.keys(MV).forEach((id) => { const c = G("MOTOR_CAMBIOS")[id] || []; if (MV[id] !== "1" && !c.some((x) => x.ver === MV[id])) throw new Error(`${id}: la versión ${MV[id]} no tiene hallazgo registrado`); });
   const s0 = JSON.stringify(S.sellos || {});
   try {
@@ -9624,6 +9621,26 @@ t("S.193 (AUD-14) hidrosanitario sin presión de la red ni altura del edificio c
     /* Con los dos datos capturados, calcula como antes. */
     S.hidro.presRed = 25; S.hidro.alturaEdificio = 6; G("recompute")();
     if (!(G("HIDRO").cdt > 6 && G("HIDRO").presDisp !== null)) throw new Error("con presión y altura capturadas debe calcular");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+t("S.194 (AUD-14) eléctrico sin valores inventados: selConductor sin distancia ni fp no supone 20 m ni fp 0.9 (la caída queda pendiente); una MCA/MOP ESTIMADA por la suite (0.85·FLA × 125 % / 175 %) no fija el conductor ni la protección: se imprime como referencia y el equipo se dimensiona sin placa hasta capturarla", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    const c = G("selConductor")({ I: 50, V: 220, ph: 3 });
+    eq(c.L, null, "sin distancia no se suponen 20 m:"); eq(c.dv, null, "la caída queda pendiente:");
+    const dm = (x) => ({ ...G("defaultCarga")(x.nombre), V: 220, ph: 3, cant: 1, L: 20, fp: .85, ...x });
+    S.elec = { ...G("defaultElec")(), trafoKVA: 300, trafoZ: 4, Ltablero: 30,
+      cargas: [dm({ nombre: "Condensadora 10 TR", id: "s194", tipo: "motor", kW: 12, modelo: "38AUD-012", mca: 30, mop: 45, placaEstimada: true })] };
+    G("recompute")();
+    const r = G("ELEC").calc[0];
+    eq(r.art440, false, "MCA/MOP estimados no activan el art. 440:");
+    if (r.cond.ocpd <= 45 && r.cond.ocpd < G("selConductor")({ I: r.I, V: 220, ph: 3, L: 20, fp: .85, motor: true }).ocpd) throw new Error("la protección no debe salir del MOP estimado");
+    if (!G("ELEC").avisos.some((a) => /estimad/i.test(a.msg) && /no fija/i.test(a.msg))) throw new Error("falta el aviso de que la MCA/MOP estimada no fija la protección");
+    /* Con MCA y MOP de placa sí rige el art. 440. */
+    S.elec.cargas[0].placaEstimada = false; G("recompute")();
+    eq(G("ELEC").calc[0].art440, true, "con placa rige el art. 440:");
+    if (!(G("ELEC").calc[0].cond.ocpd <= 45)) throw new Error("con MOP de placa la protección no pasa de él");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 

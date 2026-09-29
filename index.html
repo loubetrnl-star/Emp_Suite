@@ -10032,9 +10032,12 @@ function selConductor(o) {
   const V = Math.max(100, num(o.V, 220));
   const ph = num(o.ph, 3) === 1 ? 1 : 3;
   /* H-179: sin longitud la caída no se evalúa: el calibre sale sólo por ampacidad (mínimo) y la caída queda null. */
-  const sinL = o.sinL === true;
-  const L = sinL ? 0 : Math.max(0, num(o.L, 20));
-  const fp = Math.min(1, Math.max(.5, num(o.fp, .9)));
+  /* AUD-14 (auditoría externa, 29-sep-2026; «nada se estima»): sin distancia o sin fp no se suponen 20 m ni fp 0.9: la caída de
+     tensión queda pendiente y el calibre sale sólo por ampacidad. */
+  const fpCap = numONulo(o.fp);
+  const sinL = o.sinL === true || !(num(o.L, 0) > 0) || fpCap == null;
+  const L = sinL ? 0 : num(o.L);
+  const fp = fpCap == null ? 1 : Math.min(1, Math.max(.5, fpCap));
   const mat = o.material === "aluminio" ? "aluminio" : "cobre";
   const ais = aislamientoDe(o.aislamiento), AREAS = AISLAMIENTOS[ais].areas;
   const ft = fTemp(o.tempAmb), fg = fGrupo(o.nCond);
@@ -10415,7 +10418,13 @@ function computeElec(E) {
        El equipo con motocompresor de la cédula (con modelo) no es motor de uso general (440-6(a)): sin MCA y MOP sigue con
        kW/(√3·V·fp) y el aviso de H-177. Sin corriente de tabla ni kW con qué estimarla, la corriente queda pendiente. */
     const mcaC = tipo === "motor" ? num(c.mca, 0) : 0, mopC = tipo === "motor" ? num(c.mop, 0) : 0;
-    const general = tipo === "motor" && !(mcaC > 0 && mopC > 0) && !c.aparato && !c.modelo;
+    /* AUD-14 (auditoría externa, 29-sep-2026; «nada se estima»): una MCA o un MOP que ESTIMÓ la suite (elecOf: 0.85·FLA × 125 % y
+       175 %) no es de placa: no fija el conductor ni la protección. Se imprime como referencia y el equipo se dimensiona como sin
+       placa hasta capturarla (antes la MOP estimada fijaba la protección). */
+    const est = placaEstDe(c);
+    const mcaPl = est.mca ? 0 : mcaC, mopPl = est.mop ? 0 : mopC;
+    const placaRef = (est.mca && mcaC > 0) || (est.mop && mopC > 0) ? { mca: est.mca && mcaC > 0 ? mcaC : null, mop: est.mop && mopC > 0 ? mopC : null } : null;
+    const general = tipo === "motor" && !(mcaC > 0 && mopC > 0) && !c.aparato && !c.modelo;   /* con MCA/MOP (aun estimadas) es equipo con motocompresor, no motor de uso general */
     const tab = general ? corrienteMotorTabla(c.hp, kW, V, ph, c.hpRef) : null;
     const Ikw = ph === 3 ? kW * 1000 / (Math.sqrt(3) * V * fp) : kW * 1000 / (V * fp);
     const I = tab && tab.I != null ? tab.I : Ikw;
@@ -10424,12 +10433,11 @@ function computeElec(E) {
     /* H-177 (rev 2.9.24) · Equipo con motocompresor hermético: con MCA y MOP de placa rige el art. 440. El conductor se
        dimensiona con la MCA (440-4(b) p. 445, 440-35 p. 450; la MCA ya trae el 125 % de 440-32) y la protección no pasa
        del MOP (440-22). Con uno solo de los dos datos no se aplica: aviso y queda como motor. */
-    const mca = mcaC, mop = mopC;
+    const mca = mcaPl, mop = mopPl;
     const art440 = mca > 0 && mop > 0;
     /* Una MCA que estimó la suite (no de placa) no puede bajar el conductor del 125 % de la corriente con que la propia suite
        calcula la carga (210-19(a), 430-22): sólo la MCA de placa manda sola. */
-    const est = placaEstDe(c);
-    const Idis440 = art440 ? (est.mca ? Math.max(mca, I * 1.25) : mca) : undefined;
+    const Idis440 = art440 ? mca : undefined;
     /* H-179: sin longitud capturada (vacía o 0) la caída queda «pendiente de longitud»: el conductor sale sólo por
        ampacidad y la caída no se supone (antes 25 m) ni se imprime como 0.00 %. */
     const Lc = num(c.L, 0), sinL = !(Lc > 0);
@@ -10439,7 +10447,7 @@ function computeElec(E) {
     /* Distancia que un proyecto viejo guardó sin que nadie la capturara (sanearEstado, H-179): se conserva, marcada. */
     const Lsin = !sinL && c.Lsupuesta != null && num(c.L) === num(c.Lsupuesta);
     return { ...c, tipo, label: meta.label, V, ph, fp, cant, kW, kVA, kWtot: kW * cant, kVAtot: kVA * cant, I, cond, sinL, Lsin, L: sinL ? null : Lc, motorTabla: tab, sinI, kWsin, fpOrigen, fpFuera, fpCap, kWOrigen, kWEst: KW_ORIGEN[kWOrigen][2],
-      art440, mca: art440 ? mca : c.mca, mop: art440 ? mop : c.mop, mcaEst: art440 && est.mca, mopEst: art440 && est.mop };
+      art440, mca: art440 ? mca : c.mca, mop: art440 ? mop : c.mop, mcaEst: false, mopEst: false, placaRef };
   });
 
   /* Demanda por tipo (art. 220) */
@@ -10539,8 +10547,8 @@ function computeElec(E) {
       avisos.push({ lvl: "warn", msg: `${c.nombre}: la protección (${c.cond.ocpd} A, lo más que permite el MOP de ${n(c.mop, 0)} A con los valores de 240-6(a)) queda debajo de la MCA (${n(c.mca, 1)} A). Revisar la placa: puede no sostener el arranque (440-22(a)).` });
     if (c.art440 && !(c.kW > 0))
       avisos.push({ lvl: "err", msg: `${c.nombre}: equipo con MCA y MOP pero sin kW: su ramal se dimensiona, pero no entra a la demanda ni al alimentador general. Captura la potencia del equipo.` });
-    if (c.art440 && (c.mcaEst || c.mopEst))
-      avisos.push({ lvl: "warn", msg: `${c.nombre}: ${c.mcaEst && c.mopEst ? "MCA y MOP estimados" : c.mcaEst ? "MCA estimada" : "MOP estimado"} por la suite desde el kW de catálogo, no de placa. Captura los datos de placa antes de firmar el cuadro (art. 440).` });
+    if (c.placaRef)
+      avisos.push({ lvl: "warn", msg: `${c.nombre}: ${c.placaRef.mca && c.placaRef.mop ? `MCA ${n(c.placaRef.mca, 1)} A y MOP ${n(c.placaRef.mop, 0)} A estimados` : c.placaRef.mca ? `MCA ${n(c.placaRef.mca, 1)} A estimada` : `MOP ${n(c.placaRef.mop, 0)} A estimado`} por la suite desde el kW de catálogo, no de placa: no fija el conductor ni la protección (nada se estima), que salen como equipo sin placa hasta capturarla (art. 440-4(b), 440-22).` });
     if (c.motorTabla && c.motorTabla.I == null)
       avisos.push({ lvl: "err", msg: `${c.nombre}: ${c.motorTabla.motivo}; ${c.sinI ? "sin kW capturado no hay con qué estimar su corriente: queda PENDIENTE y su ramal no está dimensionado" : `su corriente se ESTIMÓ con ${formulaKw(c.ph)} (${n(c.I, 1)} A), que no es la de la norma (430-6(a)(1))`}. ${num(c.hp, 0) > 0 ? "Revisa el hp y la tensión nominal del motor: la tabla no cubre esa combinación." : "Captura el hp de placa y la tensión nominal del motor."}` });
     if (c.motorTabla && c.motorTabla.I === 0)
@@ -10581,6 +10589,8 @@ function computeElec(E) {
   const conTabla = calc.filter((c) => c.motorTabla && c.motorTabla.I > 0);
   if (conTabla.length) memo.push(`Motores de uso general (430-6(a)(1)): corriente de la tabla, no de kW/fp; su kVA sale de ella (1.732·V·I en trifásico, V·I en monofásico): ${conTabla.map((c) => `${c.nombre}${c.cant > 1 ? ` (${c.cant} ×)` : ""}: ${origenMotorTexto(c, false)} → ${n(c.motorTabla.I, 1)} A a ${c.motorTabla.col} V (Tabla ${c.motorTabla.tabla})${notaRefTexto(c, false)}`).join("; ")}.`);
   const con440 = calc.filter((c) => c.art440);
+  const conRef = calc.filter((c) => c.placaRef);
+  if (conRef.length) memo.push(`MCA/MOP ESTIMADOS por la suite (referencia, no de placa; AUD-14: no fijan conductor ni protección, el equipo se dimensiona sin placa hasta capturarla): ${conRef.map((c) => `${c.nombre}${c.placaRef.mca ? ` MCA ${n(c.placaRef.mca, 1)} A` : ""}${c.placaRef.mop ? ` MOP ${n(c.placaRef.mop, 0)} A` : ""}`).join("; ")}.`);
   if (con440.length) memo.push(`Equipo con motocompresor (art. 440): ${con440.map((c) => `${c.nombre} MCA ${n(c.mca, 1)} A${c.mcaEst ? " ESTIMADA" : " de placa"} / MOP ${n(c.mop, 0)} A${c.mopEst ? " ESTIMADO" : " de placa"} → protección ${c.cond.ocpd} A${c.cond.fusible ? " (fusible)" : ""}`).join("; ")}. El conductor cubre la MCA de placa (440-4(b), 440-35); una MCA ESTIMADA no lo baja del 125 % de la corriente calculada (210-19(a)). La protección no pasa del MOP (440-4(b), 440-22(b) y (c)); no se usa la Tabla 430-52.${con440.some((c) => c.mcaEst || c.mopEst) ? " Los valores ESTIMADOS los calculó la suite desde el kW de catálogo (RLA = 0.85·FLA, MCA = 125 % de la RLA, MOP = 175 % de la RLA al normalizado superior; criterio de la casa, no de placa): sustituirlos por los de placa antes de firmar." : ""}`);
   if (alim.paralelo > 1) {
     memo.push(`El alimentador va en ${alim.paralelo} conductores por fase, en canalizaciones separadas. El art. 310-10(h) lo permite a partir de 1/0 y exige que todos sean del mismo calibre, material, longitud y tipo de terminal: si uno queda más largo, se lleva menos corriente y los demás se sobrecargan.`);
@@ -19689,7 +19699,7 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "7", clean: "3", equip: "4", duct: "4", vent: "4", quote: "24", valor: "2", kaizen: "1", elec: "9", hidro: "9", fuego: "6", aire: "5", civil: "8", soporte: "13" };
+const MOTOR_VER = { load: "7", clean: "3", equip: "4", duct: "4", vent: "4", quote: "24", valor: "2", kaizen: "1", elec: "10", hidro: "9", fuego: "6", aire: "5", civil: "8", soporte: "13" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
@@ -19714,7 +19724,8 @@ const MOTOR_CAMBIOS = {
     { ver: "6", rev: "2.9.24", que: "H-177: equipo con motocompresor hermético con MCA y MOP por el art. 440: conductor por la MCA de placa (440-4(b), 440-35; una MCA estimada por la suite no lo baja del 125 %) y protección igual al MOP o al valor inmediato inferior de 240-6(a) completo (16, 32, 63 A; abajo de 15 A sólo fusibles de 1, 3, 6, 10 A), sin el 250 % de la Tabla 430-52 (40VMA-240: 150 → 90 A; 40MBC-24: 25 → 15 A). Aceptar la cédula conserva MCA y MOP (marcados estimados); una carga sin kW no fija el principal" },
     { ver: "7", rev: "2.9.24", que: "H-179: nada se supone. Sin distancia al tablero, sin transformador (kVA y Z de placa) o sin longitud de una carga, la caída del alimentador, la corriente de falla con su capacidad interruptiva y la caída del ramal quedan «pendiente» con aviso (antes 30 m, 150 kVA / Z 4 % y 25 m supuestos; 0 m daba 0.00 %). Las cargas de otros motores ya no traen distancia automática (Ltablero + 10 a 30 m). Sin longitud el calibre se declara mínimo por ampacidad. El 80 % del transformador se revisa con sólo el kVA. Proyectos guardados antes conservan sus valores, marcados «sin confirmar». La memoria, el PDF y el libro dan la L de cada carga. Cubre H-189" },
     { ver: "8", rev: "2.9.24", que: "H-178: la corriente de un motor de uso general sale de la Tabla 430-250 (trifásico) o 430-248 (monofásico, con su columna de 127 V) de la NOM-001-SEDE-2012 (430-6(a)(1)), no de kW/(1.732·V·fp): hp de placa (campo nuevo) o, sin él, el renglón inmediato superior al kW por la columna kW de la propia tabla (decisión del dueño 2; 15 kW → 25 hp → 68 A, antes 46.31 A → 4 AWG/125 A, ahora 3 AWG/175 A). Su kVA en la demanda sale de esa corriente. El hp de catálogo o estimado por otro motor (compresor, bombas) no es de placa: sólo puede subir el renglón. Los FFU entran como aparato (Exc. 2). Fuera de la tabla, corriente ESTIMADA con aviso, o PENDIENTE sin kW. Los proyectos que aceptaron la cédula antes salen con la propuesta «Desactualizada»" },
-    { ver: "9", rev: "2.9.24", que: "H-268 (decisión del dueño, 27-sep-2026): el eléctrico es autónomo: calcula sólo con las cargas de su pestaña (capturadas y aceptadas de otros motores como propuesta, instantánea con origen y fecha). Se retiró el modo EN VIVO (tomarHVAC con permisos) que metía al calcular el equipo de la cédula HVAC, el ventilador, el compresor, las bombas y los FFU; aceptar la propuesta concede los cruces y, ya aceptada, no se mueve sola (si el origen cambia sale «desactualizada»). Un proyecto guardado en vivo se migra una vez al abrir (acepta la propuesta con los cruces que tenía) con las mismas cifras. Cambia de dónde salen las entradas del motor, no una fórmula: la huella del sello es sólo S.elec y permisos" }],
+    { ver: "9", rev: "2.9.24", que: "H-268 (decisión del dueño, 27-sep-2026): el eléctrico es autónomo: calcula sólo con las cargas de su pestaña (capturadas y aceptadas de otros motores como propuesta, instantánea con origen y fecha). Se retiró el modo EN VIVO (tomarHVAC con permisos) que metía al calcular el equipo de la cédula HVAC, el ventilador, el compresor, las bombas y los FFU; aceptar la propuesta concede los cruces y, ya aceptada, no se mueve sola (si el origen cambia sale «desactualizada»). Un proyecto guardado en vivo se migra una vez al abrir (acepta la propuesta con los cruces que tenía) con las mismas cifras. Cambia de dónde salen las entradas del motor, no una fórmula: la huella del sello es sólo S.elec y permisos" },
+    { ver: "10", rev: "2.9.24", que: "AUD-14 (auditoría externa, 29-sep-2026; «nada se estima»): una MCA o un MOP ESTIMADOS por la suite (elecOf: 0.85·FLA × 125 % y 175 %) ya no fijan el conductor ni la protección del equipo con motocompresor: se imprimen como referencia con aviso y el equipo se dimensiona sin placa (por su kW) hasta capturarla (antes la MOP estimada fijaba la protección); el conductor sin distancia o sin fp ya no supone 20 m ni fp 0.9 (caída pendiente)" }],
   hidro: [{ ver: "2", rev: "2.9.16", que: "tramo sin longitud ya no supone 10 m" }, { ver: "3", rev: "2.9.18", que: "curva de Hunter de IPC apéndice E Table E103.3(3)" }, { ver: "4", rev: "2.9.19", que: "renglones de 2500 a 5000 UM de la misma tabla" },
     { ver: "5", rev: "2.9.24", que: "H-194: presión mínima en la salida de cada mueble por la Tabla 604.3 del IPC 2015 (WC con fluxómetro 35 psi = 24.6 m, antes 10.5 m sin fuente; mingitorio 25, WC de tanque 20, regadera 20 por §424.3, lavabo/fregadero/lavadero/bebedero/manguera 8 psi); la carga dinámica de la bomba lleva máx(residual capturado, mínima de norma del mueble más exigente), antes sólo el residual fijo de 15 m" },
     { ver: "6", rev: "2.9.24", que: "H-195: regadera de emergencia (20 gpm = 75.7 L/min) y lavaojos fijo (0.4 gal/min = 1.5 L/min, mueble nuevo) fuera de Hunter con gasto fijo sumado al del sistema, antes 6 unidades mueble cada uno; volumen para 15 min; el tramo declara el gasto de emergencia que conduce (L/min) con aviso si ninguno lo lleva. Fuente secundaria: ANSI Z358.1-1990 citada por OSHA (cartas del 18-abr-2002 y 22-nov-1993); ratificar con Z358.1-2014" },

@@ -231,9 +231,12 @@ fila("CM.elec.4.l", ORD.indexOf(tierraMat(100, "aluminio")), `aluminio 100 A: «
   const e7 = sel440({ I: 7000 / (220 * 0.9), V: 220, ph: 1, L: 10, fp: 0.9, mca: 31, mop: 32 });
   fila("CM.elec.5.m", e7.ocpd, "MOP 32 → 32 (240-6(a))");
   const I8 = 15200 / (Math.sqrt(3) * 220 * 0.85);
-  const e8 = sel440({ I: I8, V: 220, ph: 3, L: 45, fp: 0.85, mca: 49.8, mop: 70, est: true });
-  fila("CM.elec.5.n", e8.idx, `max(49.8, 1.25·${r(I8, 2)}) → ${e8.awg} AWG`);
-  fila("CM.elec.5.o", e8.ocpd, "MOP est. 70 → 70");
+  /* AUD-14 (auditoría externa, 29-sep-2026; «nada se estima»): la MCA y la MOP ESTIMADAS por la suite no fijan conductor ni
+     protección: el equipo se dimensiona como sin placa (motor por su corriente: 125 % en el conductor, 430-22; protección por la
+     Tabla 430-52 con 240-6(a)), hasta capturar la placa. */
+  const e8 = sel({ I: I8, V: 220, ph: 3, L: 45, fp: 0.85, motor: true });
+  fila("CM.elec.5.n", e8.idx, `sin placa: 1.25·${r(I8, 2)} = ${r(1.25 * I8, 2)} → ${e8.awg} AWG`);
+  fila("CM.elec.5.o", e8.ocpd, `sin placa: protección de motor ${e8.ocpd} A (la MOP estimada 70 A no la fija)`);
 }
 
 /* ===================== CM.elec.6 · aislamiento y canalización, I 100 A, 220 V 3F, L 25, fp 0.9, 40 °C ===================== */
