@@ -1,0 +1,114 @@
+[
+ {
+  "id": "equip.m1",
+  "que": "H-267: la selección vuelve a leer la carga térmica EN VIVO (LOADS) en vez de sus zonas de selección",
+  "logica": true,
+  "buscar": "  const Z = zonasCalcSel();",
+  "reemplazar": "  const Z = LOADS.map((r, i) => ({ ...r, name: (S.zones[i] && S.zones[i].name) || `Zona ${i + 1}` }));",
+  "estado": "vigente"
+ },
+ {
+  "id": "equip.m2",
+  "que": "H-267: la migración de un proyecto anterior no acepta la instantánea (abre sin zonas de selección)",
+  "logica": true,
+  "buscar": "    if (zs.some((z) => num(z.tons) > 0)) { aceptarZonasEquip(zs, Date.now()); registrarVinculo(\"load>equip\", \"aceptado\"); }",
+  "reemplazar": "    if (false && zs.length) { aceptarZonasEquip(zs, Date.now()); registrarVinculo(\"load>equip\", \"aceptado\"); }",
+  "estado": "vigente"
+ },
+ {
+  "id": "equip.m3",
+  "que": "H-267: editar la TR u hora pico de una zona con perfil conserva el perfil de la carga (simultaneidad calculada con un perfil que ya no corresponde)",
+  "logica": true,
+  "buscar": "  if ((campo === \"tons\" || campo === \"hour\") && Array.isArray(z.profile)) z.profile = null;",
+  "reemplazar": "  if (false && Array.isArray(z.profile)) z.profile = null;",
+  "estado": "vigente"
+ },
+ {
+  "id": "equip.m4",
+  "que": "H-267: la huella de selección vuelve a anidar la de carga térmica (un cambio de carga sin aceptar diría «la captura cambió»)",
+  "logica": true,
+  "buscar": "  equip: () => ({ zonas: zonasSel().map((z) => sinClaves(z, [\"id\", \"origen\", \"editada\"])), bldDiv: S.equip.div ?? null,",
+  "reemplazar": "  equip: () => ({ load: ENTRADAS.load(), zonas: zonasSel().map((z) => sinClaves(z, [\"id\", \"origen\", \"editada\"])), bldDiv: S.equip.div ?? null,",
+  "estado": "vigente"
+ },
+ {
+  "id": "equip.m5",
+  "que": "H-274: la selección vuelve a tomar la presión estática de la red de ductos en vivo (DUCT.path con 15 % de margen) en vez de la capturada en su pestaña",
+  "logica": true,
+  "buscar": "  const esp = espCapturada();\r\n  const espNota",
+  "reemplazar": "  const esp = espCapturada() || (DUCT && DUCT.path > 0 ? DUCT.path * 1.15 / 249.089 : 0);\r\n  const espNota",
+  "estado": "vigente"
+ },
+ {
+  "id": "equip.m6",
+  "que": "H-274: la huella de selección vuelve a anidar la de ductos (alargar un tramo diría «la captura cambió»)",
+  "logica": true,
+  "buscar": "sel: eSel(), esp: espCapturada() }),",
+  "reemplazar": "sel: eSel(), esp: espCapturada(), duct: ENTRADAS.duct() }),",
+  "estado": "vigente"
+ },
+ {
+  "id": "equip.m7",
+  "que": "H-274: sin captura se supone una presión (0.5 in.wg) en vez de dejarla pendiente",
+  "logica": true,
+  "buscar": "return e != null && e > 0 ? e : 0; }",
+  "reemplazar": "return e != null && e > 0 ? e : 0.5; }",
+  "estado": "vigente"
+ },
+ {
+  "id": "equip.m8",
+  "que": "H-274: la memoria de selección vuelve a imprimir la preselección por zona leída en vivo de Carga térmica",
+  "logica": false,
+  "buscar": "  pdfHeading(d, \"8. Presion estatica externa\");",
+  "reemplazar": "  pdfHeading(d, \"8. Presion estatica externa\"); pdfHeading(d, \"8b. Preseleccion por zona (motor de carga termica)\");",
+  "estado": "vigente"
+ },
+ {
+  "id": "equip.m9",
+  "que": "H-288: Selección vuelve a corregir la capacidad con el sitio de Proyecto en vivo (SITE) en vez de su sitio propio",
+  "logica": true,
+  "buscar": "const capSel = (e) => { if (!e) return 0; const f = capFactorEn(e, sitioSel());",
+  "reemplazar": "const capSel = (e) => { if (!e) return 0; const f = capFactorEn(e, SITE);",
+  "estado": "vigente"
+ },
+ {
+  "id": "equip.m10",
+  "que": "H-288: sin sitio de Selección se sigue seleccionando (capacidad en sitio supuesta) en vez de quedar pendiente",
+  "logica": true,
+  "buscar": "  const sinSitio = !sitioSel();\r\n  if (!Z.length || sinSitio) {",
+  "reemplazar": "  const sinSitio = false;\r\n  if (!Z.length || sinSitio) {",
+  "estado": "vigente"
+ },
+ {
+  "id": "equip.m11",
+  "que": "H-288: un proyecto guardado ya no toma al abrir la copia del sitio de Proyecto (abre sin sitio: cambia cifras)",
+  "logica": true,
+  "buscar": "  s.equip.tomarSitio = !equipPrevio || !(\"sitio\" in equipPrevio) || equipPrevio.tomarSitio === true ? true : null;",
+  "reemplazar": "  s.equip.tomarSitio = null;",
+  "estado": "vigente"
+ },
+ {
+  "id": "equip.m12",
+  "que": "H-288: la huella de Selección vuelve a llevar el sitio de Proyecto (cambiarlo diría «la captura cambió»)",
+  "logica": true,
+  "buscar": "sitio: sitioSelHuella(), sysForce: S.sysForce,",
+  "reemplazar": "sitio: sitioSelHuella(), site: S.site, sysForce: S.sysForce,",
+  "estado": "vigente"
+ },
+ {
+  "id": "equip.m13",
+  "que": "H-289: el objetivo de planta vuelve a ignorar la diversidad capturada en Selección",
+  "logica": true,
+  "buscar": "  const userDiv = divSel();   /* H-289: capturada en Selección */",
+  "reemplazar": "  const userDiv = 1;",
+  "estado": "vigente"
+ },
+ {
+  "id": "equip.m14",
+  "que": "H-289: un proyecto guardado pierde su diversidad del edificio al abrir (cambia el objetivo de planta)",
+  "logica": true,
+  "buscar": "  if (!equipPrevio || !(\"div\" in equipPrevio)) s.equip.div = d && \"bldDiv\" in d ? numONulo(d.bldDiv) : null;",
+  "reemplazar": "  if (!equipPrevio || !(\"div\" in equipPrevio)) s.equip.div = null;",
+  "estado": "vigente"
+ }
+]

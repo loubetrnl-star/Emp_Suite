@@ -32,7 +32,7 @@ export default async function ({ t, G, S, CM }) {
     } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
   });
   /* Fixture del motor (mismo que parches/regresion-motores): cobre tipo L, dos tramos de agua fría, 13 muebles. */
-  const fixture = () => ({ ...G("defaultHidro")(), material: "cobre",
+  const fixture = () => ({ ...G("defaultHidro")(), material: "cobre", presRed: 0, alturaEdificio: 0,   /* AUD-14: la hoja los declara capturados en 0 (defaultHidro ya nace sin captura) */
     tramos: [{ ...G("defaultTramoAgua")("AF-GENERAL"), um: 72, L: 25, alt: 3 }, { ...G("defaultTramoAgua")("AF-RAMAL BAÑOS"), um: 20, L: 18, alt: 0 }],
     muebles: [{ id: "wc_flux", cant: 4 }, { id: "ming_flux", cant: 2 }, { id: "lavabo", cant: 4 }, { id: "fregadero", cant: 1 }, { id: "manguera", cant: 2 }] });
   const autorizarCotizacion = () => { S.perms["hidro>quote"] = { ts: 1, via: "CM.hidro" }; };

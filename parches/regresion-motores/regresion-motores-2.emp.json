@@ -1,0 +1,881 @@
+{
+ "v": 2,
+ "units": "SI",
+ "tab": "tablero",
+ "meta": {
+  "name": "Regresión por motor · proyecto 2",
+  "client": "EMP interno",
+  "location": "Mexicali",
+  "engineer": "Banco de pruebas",
+  "date": "2026-09-29"
+ },
+ "zones": [
+  {
+   "name": "Nave de proceso",
+   "area": 900,
+   "height": 9,
+   "walls": {
+    "N": 60,
+    "S": 60,
+    "E": 45,
+    "W": 45,
+    "NE": 0,
+    "SE": 0,
+    "SW": 0,
+    "NW": 0
+   },
+   "wallMat": "light_block_20",
+   "roof": 900,
+   "roofMat": "roof_concrete_insul",
+   "glass": {
+    "N": 0,
+    "S": 8,
+    "E": 0,
+    "W": 6,
+    "NE": 0,
+    "SE": 0,
+    "SW": 0,
+    "NW": 0
+   },
+   "glassMat": "glass_dgu",
+   "occ": 40,
+   "lights": 10800,
+   "equip": 30000,
+   "ach": 0.4,
+   "oaFraction": 0,
+   "oaFixed": 0,
+   "iso": "iso8",
+   "achClean": 0,
+   "ffuHeat": 0,
+   "fanPa": 0,
+   "fanEta": 0,
+   "rhMin": 40,
+   "rhMax": 60,
+   "runHours": 16,
+   "spaceType": "office",
+   "lightType": "led",
+   "plenum": false,
+   "swing": 0,
+   "serpentin": "auto",
+   "adpMargen": 2,
+   "presion": "positiva",
+   "hrControl": "no",
+   "miscVent": null,
+   "origenOA": null,
+   "id": "z2a"
+  },
+  {
+   "name": "Cocina de planta",
+   "area": 150,
+   "height": 4,
+   "walls": {
+    "N": 15,
+    "S": 15,
+    "E": 12,
+    "W": 12,
+    "NE": 0,
+    "SE": 0,
+    "SW": 0,
+    "NW": 0
+   },
+   "wallMat": "light_block_20",
+   "roof": 150,
+   "roofMat": "roof_concrete_insul",
+   "glass": {
+    "N": 0,
+    "NE": 0,
+    "E": 0,
+    "SE": 0,
+    "S": 0,
+    "SW": 0,
+    "W": 0,
+    "NW": 0
+   },
+   "glassMat": "glass_dgu",
+   "occ": 12,
+   "lights": 1800,
+   "equip": 9000,
+   "ach": 0.4,
+   "oaFraction": 0,
+   "oaFixed": 0,
+   "iso": "iso8",
+   "achClean": 0,
+   "ffuHeat": 0,
+   "fanPa": 0,
+   "fanEta": 0,
+   "rhMin": 40,
+   "rhMax": 60,
+   "runHours": 16,
+   "spaceType": "office",
+   "lightType": "led",
+   "plenum": false,
+   "swing": 0,
+   "serpentin": "auto",
+   "adpMargen": 2,
+   "presion": "positiva",
+   "hrControl": "no",
+   "miscVent": null,
+   "origenOA": null,
+   "id": "z2b"
+  }
+ ],
+ "zi": 0,
+ "forceTech": null,
+ "peakScan": true,
+ "perms": {
+  "load>equip": {
+   "ts": 1,
+   "via": "regresión 2"
+  },
+  "equip>quote": {
+   "ts": 1,
+   "via": "regresión 2"
+  },
+  "load>quote": {
+   "ts": 1,
+   "via": "regresión 2"
+  },
+  "load>kaizen": {
+   "ts": 1,
+   "via": "regresión 2"
+  },
+  "duct>kaizen": {
+   "ts": 1,
+   "via": "regresión 2"
+  },
+  "quote>kaizen": {
+   "ts": 1,
+   "via": "regresión 2"
+  },
+  "vent>quote": {
+   "ts": 1,
+   "via": "regresión 2"
+  },
+  "clean>quote": {
+   "ts": 1,
+   "via": "regresión 2"
+  },
+  "fuego>hidro": {
+   "ts": 1,
+   "via": "regresión 2"
+  },
+  "elec>quote": {
+   "ts": 1,
+   "via": "regresión 2"
+  },
+  "hidro>quote": {
+   "ts": 1,
+   "via": "regresión 2"
+  },
+  "civil>quote": {
+   "ts": 1,
+   "via": "regresión 2"
+  },
+  "soporte>quote": {
+   "ts": 1,
+   "via": "regresión 2"
+  },
+  "aire>quote": {
+   "ts": 1,
+   "via": "regresión 2"
+  },
+  "aire>kaizen": {
+   "ts": 1,
+   "via": "regresión 2"
+  },
+  "fuego>quote": {
+   "ts": 1,
+   "via": "regresión 2"
+  }
+ },
+ "sitioCarga": {
+  "key": "mexicali",
+  "origen": "capturado en Carga térmica",
+  "ts": 1790683200000
+ },
+ "tomarSitioCarga": null,
+ "formato": 2,
+ "sellos": {},
+ "her": {},
+ "vinculos": {},
+ "advOpen": false,
+ "guia": true,
+ "kaizen": {
+  "items": [],
+  "ve": {},
+  "desv": []
+ },
+ "site": {
+  "key": "mexicali"
+ },
+ "vent": {
+  "name": "Extracción general",
+  "mode": "general",
+  "spaceType": "office",
+  "area": 1500,
+  "height": 8,
+  "ach": 10,
+  "occ": 40,
+  "hoodL": 0,
+  "hoodW": 0,
+  "hoodType": "wall",
+  "duty": "medium",
+  "processCFM": 0,
+  "freeArea": 0,
+  "faceVel": 400,
+  "louverW": 0,
+  "louverH": 0,
+  "ductLoss": 0.5,
+  "filterLoss": 0.25,
+  "seleccion": null,
+  "precioCFM": 145,
+  "comercial": {
+   "plaza": "tijuana",
+   "plazaFactor": 0,
+   "basePrecio": "casa",
+   "fasar": 1.45,
+   "refBase": ""
+  }
+ },
+ "duct": {
+  "meta": {
+   "material": "galvanized",
+   "pc": "2",
+   "eps": 0.09,
+   "rho": 1.2,
+   "mu": 0.000018,
+   "largoEspiro": 3.048,
+   "hoja": 0
+  },
+  "segments": [
+   {
+    "id": "d2a",
+    "tag": "SA-NAVE",
+    "service": "supply",
+    "shape": "rect",
+    "flow": 9000,
+    "method": "equal_friction",
+    "targetF": 0.8,
+    "targetV": 6,
+    "length": 30,
+    "lock": false,
+    "d": null,
+    "w": null,
+    "h": null,
+    "aspect": 3,
+    "hmax": 0,
+    "fittings": [
+     {
+      "type": "elbow_90_rect",
+      "qty": 2,
+      "C": 0.28
+     }
+    ]
+   },
+   {
+    "id": "d2b",
+    "tag": "SA-RAMAL",
+    "service": "supply",
+    "shape": "round",
+    "flow": 2500,
+    "method": "velocity",
+    "targetF": 0.8,
+    "targetV": 6,
+    "length": 14,
+    "lock": false,
+    "d": null,
+    "w": null,
+    "h": null,
+    "aspect": 3,
+    "hmax": 0,
+    "fittings": [
+     {
+      "type": "elbow_90_round",
+      "qty": 1,
+      "C": 0.22
+     }
+    ]
+   },
+   {
+    "id": "d2c",
+    "tag": "RA-NAVE",
+    "service": "return",
+    "shape": "rect",
+    "flow": 7000,
+    "method": "equal_friction",
+    "targetF": 0.8,
+    "targetV": 6,
+    "length": 20,
+    "lock": false,
+    "d": null,
+    "w": null,
+    "h": null,
+    "aspect": 3,
+    "hmax": 0,
+    "fittings": [
+     {
+      "type": "elbow_90_rect",
+      "qty": 2,
+      "C": 0.28
+     }
+    ]
+   },
+   {
+    "id": "d2d",
+    "tag": "GR-COCINA",
+    "service": "kitchen_grease",
+    "shape": "round",
+    "flow": 1800,
+    "method": "velocity",
+    "targetF": 0.8,
+    "targetV": 9,
+    "length": 12,
+    "lock": false,
+    "d": null,
+    "w": null,
+    "h": null,
+    "aspect": 3,
+    "hmax": 0,
+    "fittings": []
+   }
+  ],
+  "precios": {
+   "kg": 165,
+   "difusor": 6850
+  },
+  "difusores": 24,
+  "comercial": {
+   "plaza": "tijuana",
+   "plazaFactor": 0,
+   "basePrecio": "casa",
+   "fasar": 1.45,
+   "refBase": ""
+  }
+ },
+ "cat": {
+  "q": "",
+  "src": "carrier",
+  "tech": "all",
+  "vista": "arbol",
+  "abierto": {}
+ },
+ "sysForce": null,
+ "equip": {
+  "zonas": [
+   {
+    "id": "e1",
+    "name": "Nave de proceso",
+    "tons": 95,
+    "cfm": 38000,
+    "oa": 6000,
+    "area": 900,
+    "grand": 334000,
+    "grandS": 280000,
+    "grandL": 54000,
+    "hour": 16,
+    "profile": null,
+    "adpLevel": null,
+    "roomS": null,
+    "origen": null,
+    "editada": false
+   },
+   {
+    "id": "e2",
+    "name": "Cocina de planta",
+    "tons": 22,
+    "cfm": 8000,
+    "oa": 3000,
+    "area": 150,
+    "grand": 77000,
+    "grandS": 58000,
+    "grandL": 19000,
+    "hour": 14,
+    "profile": null,
+    "adpLevel": null,
+    "roomS": null,
+    "origen": null,
+    "editada": false
+   }
+  ],
+  "tomarDeCarga": null,
+  "espCaptura": 0.8,
+  "sitio": {
+   "key": "seleccion",
+   "label": "capturado en Selección",
+   "db": 44,
+   "wb": 24.8,
+   "alt": 5,
+   "origen": "capturado en Selección",
+   "ts": 1790683200000
+  },
+  "tomarSitio": null,
+  "div": 0.85,
+  "items": [
+   {
+    "id": "ahu-39M-05",
+    "fam": "ahu",
+    "qty": 3,
+    "unit": null
+   }
+  ],
+  "precios": {
+   "price": {
+    "chiller": 34500,
+    "ahu": 70100,
+    "vrf_out": 45000,
+    "vrf_in": 26000,
+    "rtu": 41000,
+    "split_duct": 52800,
+    "mini": 31000,
+    "fcu": 21000,
+    "ptac": 24000
+   },
+   "scaleExp": 0.85,
+   "priceFactor": 1,
+   "instPct": 0.35,
+   "pipeTR": 9500,
+   "controls": 68500
+  }
+ },
+ "sel": {
+  "sistema": null,
+  "motivo": "",
+  "ts": null,
+  "recAlElegir": null,
+  "modelos": {}
+ },
+ "quote": {
+  "currency": "MXN",
+  "fx": 18.5,
+  "fxFecha": "2026-09-22",
+  "fxFuente": "fixture de regresión 2",
+  "importacion": {
+   "monto": 0,
+   "moneda": "MXN",
+   "fuente": "",
+   "fecha": ""
+  },
+  "plaza": "tijuana",
+  "basePrecio": "casa",
+  "fasar": 1.45,
+  "refBase": "",
+  "finPct": 1.5,
+  "indirectPct": 18,
+  "profitPct": 12,
+  "modo": "privada",
+  "plazaFactor": 0,
+  "alimM": 1350,
+  "freight": 0.025,
+  "bond": 0.015,
+  "financing": 0,
+  "indirect": 0.18,
+  "utility": 0.12,
+  "contingencia": 0.15,
+  "iva": 0.16,
+  "tarifaKWh": 2.85,
+  "horasAno": 3500,
+  "prop": {
+   "no": "EMP-2026-001",
+   "rev": "A",
+   "cliente": "",
+   "atencion": "",
+   "puesto": "",
+   "sitio": "",
+   "vigencia": 30,
+   "firma": "Ing. Rodrigo Nuñez Loubet",
+   "razon": "EMP Instalaciones, S. de R.L. de C.V.",
+   "grupo": "Grupo LESTRAL / Electromecánica del Pacífico",
+   "hitos": [
+    [
+     "Anticipo — firma de contrato / orden de compra",
+     0.3,
+     "Firma de aceptación + factura + garantía de anticipo"
+    ],
+    [
+     "Estimación 1 — equipo en sitio y montaje",
+     0.18,
+     "Avance certificado por supervisión + factura"
+    ],
+    [
+     "Estimación 2 — distribución instalada",
+     0.24,
+     "Avance certificado + informe fotográfico"
+    ],
+    [
+     "Estimación 3 — MEP instalado y probado",
+     0.18,
+     "Pruebas satisfactorias + reporte"
+    ],
+    [
+     "Finiquito — entrega y certificación",
+     0.1,
+     "Acta de entrega-recepción + dossier"
+    ]
+   ]
+  }
+ },
+ "qfam": "chiller",
+ "clean": {
+  "rooms": [
+   {
+    "name": "Contención 1",
+    "iso": "iso8",
+    "level": "med",
+    "achSet": 0,
+    "area": 60,
+    "height": 3,
+    "dp": -3,
+    "crackLen": 6,
+    "oaFrac": 0.1,
+    "occ": 3,
+    "procW": 15,
+    "zonaId": null
+   }
+  ],
+  "ci": 0
+ },
+ "elec": {
+  "sistema": "3F4H-440",
+  "material": "aluminio",
+  "aislamiento": "thw-ls",
+  "tempAmb": 40,
+  "nCond": 3,
+  "dvRamal": 3,
+  "dvTotal": 5,
+  "trafoKVA": null,
+  "trafoZ": null,
+  "Ltablero": null,
+  "h179": true,
+  "h178": true,
+  "sinConfirmar": {},
+  "fpObjetivo": null,
+  "h180": true,
+  "cargas": [
+   {
+    "id": "e2a",
+    "nombre": "Chiller de proceso",
+    "tipo": "motor",
+    "kW": 110,
+    "V": 440,
+    "ph": 3,
+    "cant": 1,
+    "L": 55,
+    "fp": 0.88,
+    "fija": false,
+    "mca": 210,
+    "mop": 300
+   },
+   {
+    "id": "e2b",
+    "nombre": "Hornos de curado",
+    "tipo": "proceso",
+    "kW": 160,
+    "V": 440,
+    "ph": 3,
+    "cant": 1,
+    "L": 40,
+    "fp": 0.95,
+    "fija": false
+   },
+   {
+    "id": "e2c",
+    "nombre": "Compresor de tornillo",
+    "tipo": "motor",
+    "kW": 75,
+    "V": 440,
+    "ph": 3,
+    "cant": 1,
+    "L": null,
+    "fp": 0.86,
+    "fija": false
+   },
+   {
+    "id": "e2d",
+    "nombre": "Alumbrado de nave",
+    "tipo": "alumbrado",
+    "kW": 12,
+    "V": 254,
+    "ph": 1,
+    "cant": 1,
+    "L": 70,
+    "fp": 0.95,
+    "fija": false
+   }
+  ],
+  "tomarHVAC": false,
+  "h268": true
+ },
+ "hidro": {
+  "uso": "publico",
+  "material": "cpvc",
+  "muebles": [
+   {
+    "id": "wc_flux",
+    "cant": 8
+   },
+   {
+    "id": "lavabo",
+    "cant": 8
+   },
+   {
+    "id": "tarja_lab",
+    "cant": 3
+   },
+   {
+    "id": "lavaojos",
+    "cant": 2
+   },
+   {
+    "id": "fregadero",
+    "cant": 2
+   }
+  ],
+  "presRed": 18,
+  "tramos": [
+   {
+    "id": "h2a",
+    "tag": "AF-GENERAL",
+    "servicio": "fria",
+    "um": 420,
+    "L": 45,
+    "alt": 4,
+    "tipoUM": "auto"
+   },
+   {
+    "id": "h2b",
+    "tag": "AF-LAB",
+    "servicio": "fria",
+    "um": 18,
+    "L": 20,
+    "alt": 0,
+    "tipoUM": "auto"
+   }
+  ],
+  "pendiente": 2,
+  "calentador": "paso",
+  "tempEntrada": 18,
+  "tempSalida": 45,
+  "dot": "industria",
+  "habitantes": 0,
+  "diasReserva": 1,
+  "alturaEdificio": 8,
+  "presResidual": 15,
+  "hidroPU": {},
+  "hidroPUlog": [],
+  "fx": 18.5,
+  "fxFecha": "2026-09-22",
+  "fxFuente": "fixture de regresión 2"
+ },
+ "fuego": {
+  "riesgo": "ord2",
+  "area": 1050,
+  "altura": 9,
+  "rociador": "k80",
+  "material": "acero_neg",
+  "areaDiseno": 0,
+  "Lramal": 40,
+  "Lmontante": 15,
+  "presFuente": 25,
+  "fuente": "cisterna",
+  "tomarArea": false,
+  "precioRociador": 2850
+ },
+ "cx": {
+  "lotes": [],
+  "archivos": [],
+  "referencias": []
+ },
+ "linaje": null,
+ "pid": null,
+ "zoneSeq": 1,
+ "aire": {
+  "clase": "2.4.2",
+  "presionUso": 6,
+  "fugas": 0.1,
+  "reserva": 0.2,
+  "simultaneidad": 0,
+  "material": "cobre",
+  "Lprincipal": 80,
+  "Lramales": 40,
+  "arranquesHora": 15,
+  "dPtanque": 1,
+  "tempEntrada": 35,
+  "horas": 3500,
+  "tarifaKWh": 2.85,
+  "redundancia": "ninguna",
+  "consumos": [
+   {
+    "id": "a2a",
+    "tipo": "generico",
+    "nombre": "Soplado de moldes",
+    "cant": 12,
+    "lmin": 1500,
+    "bar": 6,
+    "uso": 0.8
+   },
+   {
+    "id": "a2b",
+    "tipo": "generico",
+    "nombre": "Herramienta neumática",
+    "cant": 20,
+    "lmin": 400,
+    "bar": 6,
+    "uso": 0.5
+   }
+  ],
+  "precios": {
+   "compresorMXN": 0,
+   "tanqueL": 195,
+   "secadorM3min": 0,
+   "filtroAire": 38500,
+   "aireM": 0,
+   "puntoUso": 4850
+  }
+ },
+ "civil": {
+  "usarZonas": true,
+  "areaManual": 0,
+  "alturaManual": 0,
+  "murosManual": 0,
+  "muro": "panel_mgo",
+  "plafon": "panel_mgo",
+  "piso": "epoxi_esd",
+  "muroNoLimpio": "tablaroca",
+  "pisoNoLimpio": "pulido",
+  "demoler": false,
+  "demolMuroM2": 0,
+  "demolPlafonM2": 0,
+  "demolPisoM2": 0,
+  "firmeM2": 200,
+  "azulejoM2": 0,
+  "pinturaM2": 300,
+  "puertasLimpias": 1,
+  "puertasSimples": 4,
+  "visores": 0,
+  "passbox": 0,
+  "mediaCanaDoble": true,
+  "areas": [
+   {
+    "id": "c2a",
+    "nombre": "Nave de proceso",
+    "area": 900,
+    "altura": 9,
+    "perimetro": 120
+   },
+   {
+    "id": "c2b",
+    "nombre": "Cocina de planta",
+    "area": 150,
+    "altura": 4,
+    "perimetro": 50
+   }
+  ],
+  "cuartos": [
+   {
+    "id": "c2k",
+    "nombre": "Contención 1",
+    "area": 60,
+    "altura": 3,
+    "perimetro": 32
+   }
+  ]
+ },
+ "soporte": {
+  "usarMotores": true,
+  "sismico": true,
+  "alturaTrabajo": 8,
+  "alturaEstructura": 9,
+  "mesesElevacion": 2,
+  "basesEquipo": 4,
+  "ductoAnchoMm": 800,
+  "ductoAltoMm": 500,
+  "tubHidroD": 50,
+  "tubHidroMat": "cpvc",
+  "tubFuegoD": 100,
+  "tubFuegoMat": "acero",
+  "tubAireD": 40,
+  "tubAireMat": "cobre",
+  "rielM": 40,
+  "ductoM": 80,
+  "tubHidroM": 60,
+  "tubFuegoM": 55,
+  "tubAireM": 120,
+  "sismoSDS": null,
+  "sismoFuente": "",
+  "estructuraTipo": null,
+  "estructuraFc": null,
+  "alturaColgadoM": 1.2,
+  "snap": {
+   "duct": [
+    {
+     "L": 30,
+     "shape": "rect",
+     "d": 250,
+     "w": 1200,
+     "h": 900,
+     "gauge": 20
+    },
+    {
+     "L": 14,
+     "shape": "round",
+     "d": 800,
+     "w": 400,
+     "h": 200,
+     "gauge": 18
+    },
+    {
+     "L": 20,
+     "shape": "rect",
+     "d": 250,
+     "w": 1200,
+     "h": 700,
+     "gauge": 20
+    },
+    {
+     "L": 12,
+     "shape": "round",
+     "d": 500,
+     "w": 400,
+     "h": 200,
+     "gauge": 16
+    }
+   ],
+   "hidro": [
+    {
+     "tag": "AF-GENERAL",
+     "L": 45,
+     "d": 43.59
+    },
+    {
+     "tag": "AF-LAB",
+     "L": 20,
+     "d": 43.59
+    }
+   ],
+   "hidroMat": "plastico",
+   "hidroSub": "cpvc",
+   "fuego": {
+    "nTotal": 87,
+    "Lram": 40,
+    "ramD": 77.9,
+    "Lmon": 15,
+    "monD": 102.3
+   },
+   "aire": [
+    {
+     "etiqueta": "Troncal principal (anillo)",
+     "L": 80,
+     "d": 99.19
+    },
+    {
+     "etiqueta": "Ramales y bajadas a punto de uso",
+     "L": 40,
+     "d": 50.42
+    }
+   ],
+   "aireMat": "cobre",
+   "nEquip": 6,
+   "ts": 1790683200000
+  }
+ }
+}

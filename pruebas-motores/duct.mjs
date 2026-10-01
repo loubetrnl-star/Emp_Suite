@@ -6,7 +6,7 @@
    - R.1 (golden por motor, parches/regresion-motores/regresion-motores.esperado.json) consagra path 73.32 Pa del proyecto
      fijo, de los cuales 48.9 Pa son los 2 codos C 0.28 que defaultSegment pone en cada tramo sin que nadie los capture
      (H-172, no crítico).
-   - pruebas.mjs:1473 (13.8) y 3652 (22.6) usan chainToDuct: hoy la red trae 20/10/15 m y tee/salida/entrada que nadie
+   - (H-305: chainToDuct se retiró; 13.8 y 22.6 capturan la misma red) pruebas.mjs:1473 (13.8) y 3652 (22.6) usaban chainToDuct: hoy la red trae 20/10/15 m y tee/salida/entrada que nadie
      capturó (H-167); las pruebas sólo miran textos y el semáforo, no esos números.
    - pruebas.mjs:5946 S.27 afirma «1 tramo(s) sin caudal» en el semáforo, pero ese tramo sigue con 400×200 y kilos en la
      cédula y en la cotización (H-166); la prueba mide el texto, no la partida.
@@ -68,10 +68,10 @@ export default async function ({ t, G, S, CM }) {
     [["d", "e", "f"], () => { permisos(); tramos([seg("SQ-1", 0, { length: 25 })]); }],
     [["g"], () => tramos([seg("TR-1", 6000, { length: 18 }), seg("SQ-1", 0, { length: 25 })])],
   ]);
-  caso(8, "(arranque en ceros; H-167) generar desde la carga no pone longitudes ni accesorios", [
+  caso(8, "(arranque en ceros; H-167) la red con sólo caudales (antes «Generar desde carga», retirado en H-305) no lleva longitudes ni accesorios", [
     [null, () => {
       const s = G("S");
-      s.site = { key: "tijuana" };
+      s.site = { key: "tijuana" }; s.sitioCarga = { key: "tijuana", origen: "capturado en Carga térmica" };   /* H-290 */
       const dz = G("defaultZone");
       s.zones = [
         { ...dz("Producción"), area: 400, height: 6, occ: 30, lights: 8000, equip: 12000, walls: { N: 40, S: 40, E: 30, W: 30, NE: 0, SE: 0, SW: 0, NW: 0 }, roof: 400 },
@@ -79,7 +79,11 @@ export default async function ({ t, G, S, CM }) {
       ];
       permisos();
       G("recompute")();
-      G("chainToDuct")(true);
+      /* H-305: «Generar desde carga» se retiró; se capturan a mano los mismos tramos que armaba (sólo caudales). */
+      const t = G("totals")(), ds = G("defaultSegment");
+      s.duct.segments = [{ ...ds("SA-PRINCIPAL", Math.round(t.cfm * 1.699 / 3.6)), length: 0, aspect: 3, fittings: [] },
+        ...G("LOADS").map((r, i) => ({ ...ds(`SA-${s.zones[i].name.slice(0, 8).toUpperCase()}`, Math.round(r.cfm * 1.699 / 3.6)), shape: "round", method: "velocity", targetV: 5, length: 0, fittings: [] })),
+        ...(t.oa > 0 ? [{ ...ds("OA-EXTERIOR", Math.round(t.oa / 3.6)), service: "supply", shape: "round", method: "velocity", targetV: 4, length: 0, fittings: [] }] : [])];
     }],
   ]);
 

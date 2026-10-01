@@ -1,0 +1,239 @@
+# Resultado de continuacion/mapa-cruces.mjs sobre index.html
+
+## A. Escaneo estático (sin comentarios ni cadenas; transitivo, profundidad 4)
+
+### load (computeLoad, loadOf, peakLoad)
+- sin lecturas de otros motores
+
+### clean (computeCleanAll, computeClean)
+- sin lecturas de otros motores
+
+### equip (buildSystem, cotizacionEquip)
+- sin lecturas de otros motores
+
+### duct (calcDuct)
+- sin lecturas de otros motores
+
+### vent (computeVent)
+- sin lecturas de otros motores
+
+### elec (computeElec)
+- sin lecturas de otros motores
+
+### hidro (computeHidro)
+- sin lecturas de otros motores
+
+### fuego (computeFuego)
+- sin lecturas de otros motores
+
+### aire (computeAire)
+- [Proyecto] computeAire:7087 lee SITE_PROY (de proyecto)
+
+### civil (computeCivil)
+- sin lecturas de otros motores
+
+### soporte (computeSoporte, computeSoporteGobernado)
+- sin lecturas de otros motores
+
+### quote (computeQuote)
+- [CRUCE] computeQuote:8832 lee SYS (de equip)
+- [CRUCE] computeQuote:8838 lee DUCT (de duct)
+- [CRUCE] computeQuote:8861 lee VENT (de vent)
+- [CRUCE] computeQuote:8862 lee VENT (de vent)
+- [CRUCE] computeQuote:8863 lee VENT (de vent)
+- [CRUCE] computeQuote:8866 lee CLEAN (de clean)
+- [CRUCE] computeQuote:8867 lee CLEAN (de clean)
+- [CRUCE] computeQuote:8868 lee CLEAN (de clean)
+- [CRUCE] computeQuote:8875 lee ELEC (de elec)
+- [CRUCE] computeQuote:8876 lee ELEC (de elec)
+- [CRUCE] computeQuote:8880 lee HIDRO (de hidro)
+- [CRUCE] computeQuote:8881 lee HIDRO (de hidro)
+- [CRUCE] computeQuote:8882 lee HIDRO (de hidro)
+- [CRUCE] computeQuote:8886 lee FUEGO (de fuego)
+- [CRUCE] computeQuote:8888 lee FUEGO (de fuego)
+- [CRUCE] computeQuote:8897 lee SOPORTE (de soporte)
+- [CRUCE] computeQuote:8900 lee CIVIL (de civil)
+- [CRUCE] computeQuote:8901 lee CIVIL (de civil)
+- [CRUCE] computeQuote:8903 lee CIVIL (de civil)
+- [CRUCE] computeQuote:8906 lee SOPORTE (de soporte)
+- [CRUCE] computeQuote:8907 lee SOPORTE (de soporte)
+- [CRUCE] computeQuote:8917 lee AIRE (de aire)
+- [CRUCE] computeQuote:8918 lee AIRE (de aire)
+- [CRUCE] computeQuote:8920 lee AIRE (de aire)
+- [CRUCE] computeQuote:8921 lee ELEC (de elec)
+- [CRUCE] computeQuote:8922 lee HIDRO (de hidro)
+- [CRUCE] computeQuote:8923 lee FUEGO (de fuego)
+- [CRUCE] computeQuote:8938 lee SYS (de equip)
+- [CRUCE] computeQuote:8938 lee DUCT (de duct)
+- [CRUCE] computeQuote:8938 lee VENT (de vent)
+- [CRUCE] computeQuote:8938 lee CLEAN (de clean)
+- [CRUCE] computeQuote:8938 lee ELEC (de elec)
+- [CRUCE] computeQuote:8938 lee HIDRO (de hidro)
+- [CRUCE] computeQuote:8938 lee FUEGO (de fuego)
+- [CRUCE] computeQuote:8938 lee AIRE (de aire)
+- [CRUCE] computeQuote:8938 lee CIVIL (de civil)
+- [CRUCE] computeQuote:8938 lee SOPORTE (de soporte)
+- [CRUCE] totals:12085 lee LOADS (de load) · vía computeQuote > totals
+- [CRUCE] totals:12088 lee SITE (de load) · vía computeQuote > totals
+- [CRUCE (compartido)] linkAllowed:4370 lee S.perms (de compartido) · vía computeQuote > linkAllowed
+
+### kaizen (computeKaizen, kaizenLazy)
+- [CRUCE] computeKaizen:17820 lee S.quote (de quote)
+- [CRUCE] computeKaizen:17823 lee QUOTE (de quote)
+- [CRUCE] computeKaizen:17826 lee SYS (de equip)
+- [CRUCE] computeKaizen:17843 lee SYS (de equip)
+- [CRUCE] computeKaizen:17844 lee SYS (de equip)
+- [CRUCE] computeKaizen:17845 lee SYS (de equip)
+- [CRUCE] computeKaizen:17849 lee SYS (de equip)
+- [CRUCE] computeKaizen:17851 lee SYS (de equip)
+- [CRUCE] computeKaizen:17858 lee SYS (de equip)
+- [CRUCE] computeKaizen:17859 lee SYS (de equip)
+- [CRUCE] computeKaizen:17860 lee SYS (de equip)
+- [CRUCE] computeKaizen:17862 lee SYS (de equip)
+- [CRUCE] computeKaizen:17867 lee S.zones (de load)
+- [CRUCE] computeKaizen:17868 lee LOADS (de load)
+- [CRUCE] computeKaizen:17946 lee LOADS (de load)
+- [CRUCE] computeKaizen:17946 lee S.zones (de load)
+- [revisar] computeKaizen:17964 lee VALID (de valid)
+- [CRUCE] computeKaizen:17974 lee SYS (de equip)
+- [CRUCE] computeKaizen:17975 lee SYS (de equip)
+- [CRUCE] computeKaizen:17975 lee S.zones (de load)
+- [CRUCE] computeKaizen:17978 lee SYS (de equip)
+- [CRUCE] computeKaizen:17978 lee S.zones (de load)
+- [CRUCE] computeKaizen:17987 lee SYS (de equip)
+- [CRUCE] computeKaizen:17988 lee SYS (de equip)
+- [CRUCE] computeKaizen:17990 lee SYS (de equip)
+- [CRUCE] computeKaizen:17992 lee SYS (de equip)
+- [CRUCE] computeKaizen:17999 lee DUCT (de duct)
+- [CRUCE] computeKaizen:18001 lee DUCT (de duct)
+- [CRUCE] computeKaizen:18004 lee DUCT (de duct)
+- [CRUCE] computeKaizen:18014 lee DUCT (de duct)
+- [CRUCE] computeKaizen:18035 lee ELEC (de elec)
+- [CRUCE] computeKaizen:18036 lee ELEC (de elec)
+- [CRUCE] computeKaizen:18037 lee ELEC (de elec)
+- [CRUCE] computeKaizen:18041 lee ELEC (de elec)
+- [CRUCE] computeKaizen:18043 lee ELEC (de elec)
+- [CRUCE] computeKaizen:18044 lee ELEC (de elec)
+- [CRUCE] computeKaizen:18046 lee S.elec (de elec)
+- [CRUCE] computeKaizen:18047 lee ELEC (de elec)
+- [CRUCE] computeKaizen:18048 lee ELEC (de elec)
+- [CRUCE] computeKaizen:18065 lee ELEC (de elec)
+- [CRUCE] computeKaizen:18065 lee S.elec (de elec)
+- [CRUCE] computeKaizen:18066 lee QUOTE (de quote)
+- [CRUCE] computeKaizen:18074 lee HIDRO (de hidro)
+- [CRUCE] computeKaizen:18075 lee HIDRO (de hidro)
+- [CRUCE] computeKaizen:18087 lee FUEGO (de fuego)
+- [CRUCE] computeKaizen:18088 lee FUEGO (de fuego)
+- [CRUCE] computeKaizen:18093 lee FUEGO (de fuego)
+- [revisar] kaizenLazy:17776 lee S.tab (de otro)
+- [CRUCE] kaizenLazy:17777 lee S.zones (de load)
+- [CRUCE (compartido)] kaizenLazy:17777 lee S.perms (de compartido)
+- [CRUCE] kaizenLazy:17778 lee S.elec (de elec)
+- [CRUCE] kaizenLazy:17778 lee S.hidro (de hidro)
+- [CRUCE] kaizenLazy:17778 lee S.fuego (de fuego)
+- [CRUCE] kaizenLazy:17779 lee QUOTE (de quote)
+- [CRUCE] kaizenLazy:17779 lee S.duct (de duct)
+- [CRUCE] kaizenLazy:17787 lee SYS (de equip)
+- [CRUCE] kaizenLazy:17787 lee S.sitioCarga (de load)
+- [CRUCE] kaizenLazy:17791 lee S.equip (de equip)
+- [CRUCE (compartido)] linkAllowed:4370 lee S.perms (de compartido) · vía computeKaizen > linkAllowed
+- [CRUCE] simZone:17770 lee S.peakScan (de load) · vía computeKaizen > simZone
+- [CRUCE] simZone:17770 lee S.forceTech (de load) · vía computeKaizen > simZone
+- [CRUCE] esc:12108 lee S.quote (de quote) · vía computeKaizen > esc
+- [CRUCE] esc:12112 lee S.hidro (de hidro) · vía computeKaizen > esc
+- [CRUCE] esc:12120 lee S.soporte (de soporte) · vía computeKaizen > esc
+- [CRUCE] esc:12121 lee S.soporte (de soporte) · vía computeKaizen > esc
+- [CRUCE] esc:12123 lee S.elec (de elec) · vía computeKaizen > esc
+- [CRUCE] esc:12124 lee S.elec (de elec) · vía computeKaizen > esc
+- [CRUCE] esc:12125 lee S.elec (de elec) · vía computeKaizen > esc
+- [CRUCE] divSel:18754 lee S.equip (de equip) · vía computeKaizen > divSel
+- [CRUCE] computeLoad:3461 lee SITE (de load) · vía computeKaizen > simZone > computeLoad
+- [CRUCE] computeLoad:3464 lee SITE (de load) · vía computeKaizen > simZone > computeLoad
+- [CRUCE] computeLoad:3563 lee SITE (de load) · vía computeKaizen > simZone > computeLoad
+- [CRUCE] computeLoad:3569 lee SITE (de load) · vía computeKaizen > simZone > computeLoad
+- [CRUCE] computeLoad:3584 lee SITE (de load) · vía computeKaizen > simZone > computeLoad
+- [CRUCE] computeLoad:3605 lee SITE (de load) · vía computeKaizen > simZone > computeLoad
+- [CRUCE] computeLoad:3613 lee SITE (de load) · vía computeKaizen > simZone > computeLoad
+- [CRUCE] hidroPUPoner:8797 lee S.hidro (de hidro) · vía computeKaizen > esc > hidroPUPoner
+- [CRUCE] hidroPUPoner:8798 lee S.hidro (de hidro) · vía computeKaizen > esc > hidroPUPoner
+- [CRUCE] hidroPUPoner:8800 lee S.hidro (de hidro) · vía computeKaizen > esc > hidroPUPoner
+- [CRUCE] hidroPUPoner:8803 lee S.hidro (de hidro) · vía computeKaizen > esc > hidroPUPoner
+- [CRUCE] hidroPUPoner:8804 lee S.hidro (de hidro) · vía computeKaizen > esc > hidroPUPoner
+- [CRUCE] marcarSitioCargaPropio:18748 lee S.sitioCarga (de load) · vía computeKaizen > esc > marcarSitioCargaPropio
+- [CRUCE] marcarSitioCargaPropio:18749 lee S.sitioCarga (de load) · vía computeKaizen > esc > marcarSitioCargaPropio
+- [CRUCE] psychro:3256 lee SITE (de load) · vía computeKaizen > simZone > computeLoad > psychro
+- [CRUCE] psychro:3259 lee SITE (de load) · vía computeKaizen > simZone > computeLoad > psychro
+- [CRUCE] dbAtHour:3343 lee SITE (de load) · vía computeKaizen > simZone > computeLoad > dbAtHour
+- [CRUCE] dailyRangeOf:3342 lee SITE (de load) · vía computeKaizen > simZone > computeLoad > dailyRangeOf
+- [CRUCE] corrDETsitio:3386 lee SITE (de load) · vía computeKaizen > simZone > computeLoad > corrDETsitio
+- [CRUCE] airS:3421 lee SITE (de load) · vía computeKaizen > simZone > computeLoad > airS
+- [CRUCE] airL:3422 lee SITE (de load) · vía computeKaizen > simZone > computeLoad > airL
+- [CRUCE] solveADP:3173 lee SITE (de load) · vía computeKaizen > simZone > computeLoad > solveADP
+- [CRUCE] hidroPUEntrada:8762 lee S.hidro (de hidro) · vía computeKaizen > esc > hidroPUPoner > hidroPUEntrada
+- [CRUCE (compartido)] vinculoDe:19092 lee S.vinculos (de compartido) · vía computeKaizen > esc > confirmarVincMig > vinculoDe
+- [CRUCE] shadeAt:3388 lee SITE (de load) · vía computeKaizen > simZone > computeLoad > detWall > shadeAt
+- [CRUCE] capWarn:3797 lee SITE (de load) · vía computeKaizen > simZone > computeLoad > pickEquipment > capWarn
+- [CRUCE] capFactor:3795 lee SITE (de load) · vía computeKaizen > simZone > computeLoad > pickEquipment > capFactor
+- [CRUCE] capNote:3798 lee SITE (de load) · vía computeKaizen > simZone > computeLoad > pickEquipment > capNote
+
+### valor (computeIngValor, valorLazy)
+- [CRUCE] computeIngValor:20596 lee S.quote (de quote)
+- [CRUCE] computeIngValor:20598 lee QUOTE (de quote)
+- [CRUCE] computeIngValor:20630 lee SYS (de equip)
+- [CRUCE] computeIngValor:20631 lee SYS (de equip)
+- [CRUCE] computeIngValor:20633 lee SYS (de equip)
+- [CRUCE] computeIngValor:20638 lee SYS (de equip)
+- [CRUCE] computeIngValor:20645 lee SYS (de equip)
+- [CRUCE] computeIngValor:20655 lee SYS (de equip)
+- [CRUCE] computeIngValor:20656 lee SYS (de equip)
+- [Proyecto] computeIngValor:20662 lee SITE_PROY (de proyecto)
+- [Proyecto] computeIngValor:20666 lee SITE_PROY (de proyecto)
+- [Proyecto] computeIngValor:20684 lee SITE_PROY (de proyecto)
+- [CRUCE] computeIngValor:20703 lee KAIZEN (de kaizen)
+- [CRUCE] computeIngValor:20704 lee KAIZEN (de kaizen)
+- [CRUCE] valorLazy:20833 lee SYS (de equip)
+- [revisar] valorLazy:20833 lee S.tab (de otro)
+- [CRUCE] valorLazy:20834 lee QUOTE (de quote)
+- [CRUCE] valorLazy:20834 lee KAIZEN (de kaizen)
+- [CRUCE (compartido)] valorLazy:20835 lee S.vinculos (de compartido)
+- [CRUCE (compartido)] valorLazy:20835 lee S.her (de compartido)
+- [CRUCE] valorLazy:20836 lee S.sysForce (de equip)
+- [Proyecto] valorLazy:20836 lee S.site (de proyecto)
+- [CRUCE] valorLazy:20836 lee S.quote (de quote)
+- [CRUCE] valorLazy:20838 lee S.equip (de equip)
+- [CRUCE (compartido)] linkAllowed:4370 lee S.perms (de compartido) · vía computeIngValor > linkAllowed
+- [CRUCE] desviacionesVivas:20556 lee SYS (de equip) · vía computeIngValor > desviacionesVivas
+- [CRUCE] desviacionesVivas:20557 lee SYS (de equip) · vía computeIngValor > desviacionesVivas
+- [CRUCE] desviacionesVivas:20558 lee SYS (de equip) · vía computeIngValor > desviacionesVivas
+- [CRUCE (compartido)] herDe:18504 lee S.her (de compartido) · vía computeIngValor > desviacionesVivas > herDe
+- [CRUCE (compartido)] herDe:18505 lee S.her (de compartido) · vía computeIngValor > desviacionesVivas > herDe
+- [CRUCE (compartido)] herDe:18506 lee S.her (de compartido) · vía computeIngValor > desviacionesVivas > herDe
+- [CRUCE (compartido)] vinculoDe:19092 lee S.vinculos (de compartido) · vía computeIngValor > desviacionesVivas > estadoPropuesta > estadoPropuestaCalc > vinculoDe
+
+## B. Prueba dinámica (vaciar la captura de otro motor, o conceder un permiso ajeno, y recalcular)
+
+### regresion-motores.emp.json
+- huella no determinista entre dos aperturas (sólo se comparan sus cifras): soporte
+- [Proyecto] aire: cambian huella (sello) al proyecto: vaciar S.site
+
+### regresion-motores-2.emp.json
+- [Proyecto] aire: cambian huella (sello) al proyecto: vaciar S.site
+
+## C. ENTRADAS (huella de cada motor): anidamientos
+
+- líneas 19715–19747 de index.html
+- load: no anida ENTRADAS de otro motor
+- clean: no anida ENTRADAS de otro motor
+- equip: no anida ENTRADAS de otro motor
+- duct: no anida ENTRADAS de otro motor
+- vent: no anida ENTRADAS de otro motor
+- elec: no anida ENTRADAS de otro motor
+- hidro: no anida ENTRADAS de otro motor
+- fuego: no anida ENTRADAS de otro motor
+- aire: no anida ENTRADAS de otro motor
+- civil: no anida ENTRADAS de otro motor
+- soporte: no anida ENTRADAS de otro motor
+- quote: anida [k]
+- kaizen: anida load, duct, equip, quote, elec, hidro, fuego
+- valor: anida equip, quote
+

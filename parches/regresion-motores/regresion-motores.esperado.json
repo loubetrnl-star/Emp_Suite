@@ -1,9 +1,9 @@
 {
- "generadoCon": "2.9.23",
- "fecha": "2026-09-25",
+ "generadoCon": "2.9.24",
+ "fecha": "2026-09-29",
  "motores": {
   "load": {
-   "ver": "5",
+   "ver": "7",
    "cifras": {
     "grand": 54206.663439891585,
     "tons": 15.41275616715712,
@@ -63,7 +63,7 @@
    }
   },
   "equip": {
-   "ver": "1",
+   "ver": "4",
    "cifras": {
     "chosen": "vrf",
     "plantTarget": 16.898915307329595,
@@ -101,7 +101,7 @@
    }
   },
   "vent": {
-   "ver": "3",
+   "ver": "4",
    "cifras": {
     "m3h": 19781.892946410004,
     "demand": 11643.25659,
@@ -292,7 +292,7 @@
       77000
      ],
      [
-      "Red de aire comprimido en aluminio calibrado tipo push-fit: troncal 1 1/4\" y ramales 1/2\", instalada y probada (diámetros indicativos: DI del fabricante pendiente)",
+      "Red de aire comprimido en aluminio calibrado tipo push-fit: diámetros pendientes (DI del fabricante), instalada y probada",
       60,
       70260
      ],
@@ -311,7 +311,7 @@
    }
   },
   "valor": {
-   "ver": "1",
+   "ver": "2",
    "cifras": {
     "total": 112807.95117428822,
     "props": [
@@ -376,7 +376,7 @@
    }
   },
   "elec": {
-   "ver": "8",
+   "ver": "10",
    "cifras": {
     "kVAdemanda": 42.389350101538,
     "principal": 175,
@@ -396,11 +396,23 @@
       100,
       "1 1/4\""
      ]
-    ]
+    ],
+    "tierra": [
+     "6",
+     "6",
+     "8"
+    ],
+    "dv": [
+     1.1293455108301371,
+     1.2801910071716245,
+     2.6031495119835566
+    ],
+    "Icc": 19682.395540555422,
+    "kAIC": 22
    }
   },
   "hidro": {
-   "ver": "8",
+   "ver": "10",
    "cifras": {
     "Qtotal": 3.699609328,
     "cdt": 29.5622337556048,
@@ -421,7 +433,7 @@
    }
   },
   "fuego": {
-   "ver": "3",
+   "ver": "6",
    "cifras": {
     "qTotal": 2302.5379999999996,
     "nTotal": 58,
@@ -432,7 +444,7 @@
    }
   },
   "aire": {
-   "ver": "5",
+   "ver": "6",
    "cifras": {
     "fad": 2019.6,
     "unidades": 1,
@@ -443,7 +455,7 @@
    }
   },
   "civil": {
-   "ver": "5",
+   "ver": "8",
    "cifras": {
     "total": 4196691.170051999,
     "part": [
@@ -516,7 +528,7 @@
    }
   },
   "soporte": {
-   "ver": "11",
+   "ver": "14",
    "cifras": {
     "n": 88,
     "total": 336216,

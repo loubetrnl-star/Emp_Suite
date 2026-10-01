@@ -1,0 +1,154 @@
+From aa188393ced9fc83a310218d2619eee0c8c58d7a Mon Sep 17 00:00:00 2001
+From: EMP Suite <suite@emdelpacifico.local>
+Date: Mon, 28 Sep 2026 22:08:35 +0000
+Subject: [PATCH 3/3] =?UTF-8?q?H-278=20=C2=B7=20quote=20=C2=B7=20complemen?=
+ =?UTF-8?q?to:=20el=20libro=20de=20la=20propuesta=20(PDF=20y=20Excel,=20ES?=
+ =?UTF-8?q?/EN)=20dice=20de=20d=C3=B3nde=20salen=20los=20datos=20de=20otra?=
+ =?UTF-8?q?s=20disciplinas:=20cada=20copia=20aceptada=20con=20origen,=20fe?=
+ =?UTF-8?q?cha=20y=20si=20qued=C3=B3=20desactualizada?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Regla 8 (los entregables dicen de dónde sale cada valor) y regla 7 (espejo ES/EN), sobre la decisión del dueño del 28-sep-2026:
+lo de otras disciplinas entra a la cotización sólo como copia aceptada. Norma: no aplica.
+
+Antes → después: el libro de la propuesta (PDF y Excel) cotizaba con las copias aceptadas sin decirlo; si una disciplina cambió
+después de aceptar, el libro no lo advertía. Ahora el PDF (después de los indicadores) y el Excel (RESUMEN_EJECUTIVO, «DATOS DE OTRAS
+DISCIPLINAS (COPIAS ACEPTADAS)») listan cada propuesta hacia la cotización: resumen de la copia, origen, fecha y «desactualizada: el
+origen cambió, sigue lo aceptado»; las no aceptadas dicen que no entran y las partidas de equipo capturadas a mano lo dicen. Es la
+misma tabla del PDF de cotización (§6), ahora en español o en inglés (filasEntradasCotLang). No mueve cifras (quote sigue en v25).
+
+Prueba: S.142 ampliada (en a380a97 falla: la propuesta no lista las copias aceptadas). Mutantes quote.m33 y quote.m34 (el libro
+deja de listarlas, Excel y PDF).
+Bancos: node pruebas.mjs index.html 537/537; con --base respaldo-rev-2.9.8/… 543/543.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01VqGDLbvsYVpR5UZKnMQ2jZ
+---
+ CHANGELOG-motores.md        |  2 +-
+ index.html                  | 31 +++++++++++++++++++++++--------
+ parches/mutantes/quote.json |  6 +++++-
+ pruebas.mjs                 | 12 ++++++++++--
+ 4 files changed, 39 insertions(+), 12 deletions(-)
+
+diff --git a/CHANGELOG-motores.md b/CHANGELOG-motores.md
+index 497211f..a60bf78 100644
+--- a/CHANGELOG-motores.md
++++ b/CHANGELOG-motores.md
+@@ -67,7 +67,7 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
+ | 22 | 2.9.24 | H-167 (dependencia de ductos): cada tramo de ducto sin longitud capturada queda pendiente de longitud (ES/EN) en la cotización; no lleva lámina. Proyecto fijo: cifras sin cambio |
+ | 23 | 2.9.24 | H-165 (dependencia de ductos): los kilos del ducto de grasa ya no entran a la partida de «lámina galvanizada»; salen «Por cotizar» (sección B) como ducto soldado de acero al carbón 16 MSG o inoxidable 18 MSG con su cita UMC 2018 §510.5 (ES/EN). Proyecto fijo: cifras sin cambio |
+ | 24 | 2.9.24 | H-181 (regla de precios del 22-sep-2026): la cotización eléctrica sigue al cálculo. Alimentador por calibre: fase y neutro = juegos en paralelo × hilos del sistema (3F4H 4, 3F3H 3, 1F3H 3) × metros; tierra = una por canalización (NOM-001-SEDE-2012 250-122(f), p. 150) × metros; tubo = uno por juego × metros. Tablero por capacidad (A del principal, kA si hay transformador) y circuitos dimensionados. Sin precio con fuente y fecha para calibre o capacidad: «Por cotizar» (sección C). Sin distancia al tablero: alimentador pendiente de longitud (antes 30 m supuestos); ramal con corriente pendiente: fuera del conteo y pendiente con su nombre. Antes: 1 juego a 1,350 MXN/m (400 kW = 4 × 600 kcmil cotizado como 1) y tablero 68,000 + 4,200 por circuito sin importar la capacidad; `QUOTE_SEED.tablero/circuito` retirados (`alimM` queda sólo para el estimado de Kaizen, dependencia registrada). Proyecto fijo: el importe eléctrico sale de los directos y pasa a «Por cotizar» |
+-| 25 | 2.9.24 | H-278 (decisión del dueño, 28-sep-2026): la cotización es autónoma. Calcula sólo con su captura (precios, plaza, partidas de equipo, difusores) y con la COPIA ACEPTADA de cada disciplina: una propuesta por origen (`duct>quote` nueva, también en LINKS; `load>quote`, `vent>quote`, `clean>quote`, `elec>quote`, `hidro>quote`, `fuego>quote`, `civil>quote`, `soporte>quote`, `aire>quote`), guardada en `S.quote.entradas` con origen, fecha y firma. Las partidas de equipo del sistema integrado son la propuesta `equip>quote`: «Traer el sistema integrado» es su aceptar (partidas con origen y fecha; si la selección cambia, sale desactualizada y no se mueven) y «Seleccionar» agrega la partida con origen y fecha. Ya no lee en vivo DUCT, carga térmica, VENT, CLEAN, ELEC, HIDRO, FUEGO, CIVIL, SOPORTE ni AIRE, ni `S.duct.meta.material`, `S.elec.sistema` o `S.fuego.fuente`: sin copia aceptada esa partida no entra y se declara (pantalla y PDF: «falta aceptar la propuesta»); si el origen cambia, la propuesta sale desactualizada y la cotización no se mueve. D4 (decisión del dueño): los difusores y rejillas se capturan en Cotización; sin captura, pendiente de cantidad (antes 1 por 400 CFM de carga térmica). Sin la copia de Carga térmica, los indicadores por TR y por m² y la carga de la pantalla, del PDF de cotización y del libro de la propuesta (PDF y Excel, ES/EN) dicen «pendiente» (antes la carga en vivo, «$ 0 / TR» y, en la carta del libro, la hora pico de Selección de equipo). La huella (`ENTRADAS.quote`) es sólo su captura. Un proyecto anterior abre con las mismas cifras: la migración toma una vez la copia de cada cruce que tenía autorizado y la de ductos (entraba sin permiso), con origen «(migración H-278)», y copia los difusores a la captura «sin confirmar»; una referencia interna no guarda las copias (traen etiquetas libres) y las vuelve a tomar al abrirse de su ingeniería genérica. Proyecto fijo: directo 11,289,059.63, subtotal 17,064,542.54 y total 19,794,869.34 sin cambio; sólo cambia el texto de la partida de difusores. Pruebas S.139–S.142 |
++| 25 | 2.9.24 | H-278 (decisión del dueño, 28-sep-2026): la cotización es autónoma. Calcula sólo con su captura (precios, plaza, partidas de equipo, difusores) y con la COPIA ACEPTADA de cada disciplina: una propuesta por origen (`duct>quote` nueva, también en LINKS; `load>quote`, `vent>quote`, `clean>quote`, `elec>quote`, `hidro>quote`, `fuego>quote`, `civil>quote`, `soporte>quote`, `aire>quote`), guardada en `S.quote.entradas` con origen, fecha y firma. Las partidas de equipo del sistema integrado son la propuesta `equip>quote`: «Traer el sistema integrado» es su aceptar (partidas con origen y fecha; si la selección cambia, sale desactualizada y no se mueven) y «Seleccionar» agrega la partida con origen y fecha. Ya no lee en vivo DUCT, carga térmica, VENT, CLEAN, ELEC, HIDRO, FUEGO, CIVIL, SOPORTE ni AIRE, ni `S.duct.meta.material`, `S.elec.sistema` o `S.fuego.fuente`: sin copia aceptada esa partida no entra y se declara (pantalla y PDF: «falta aceptar la propuesta»); si el origen cambia, la propuesta sale desactualizada y la cotización no se mueve. D4 (decisión del dueño): los difusores y rejillas se capturan en Cotización; sin captura, pendiente de cantidad (antes 1 por 400 CFM de carga térmica). Sin la copia de Carga térmica, los indicadores por TR y por m² y la carga de la pantalla, del PDF de cotización y del libro de la propuesta (PDF y Excel, ES/EN) dicen «pendiente» (antes la carga en vivo, «$ 0 / TR» y, en la carta del libro, la hora pico de Selección de equipo); el libro de la propuesta lista además cada copia aceptada con origen, fecha y estado. La huella (`ENTRADAS.quote`) es sólo su captura. Un proyecto anterior abre con las mismas cifras: la migración toma una vez la copia de cada cruce que tenía autorizado y la de ductos (entraba sin permiso), con origen «(migración H-278)», y copia los difusores a la captura «sin confirmar»; una referencia interna no guarda las copias (traen etiquetas libres) y las vuelve a tomar al abrirse de su ingeniería genérica. Proyecto fijo: directo 11,289,059.63, subtotal 17,064,542.54 y total 19,794,869.34 sin cambio; sólo cambia el texto de la partida de difusores. Pruebas S.139–S.142 |
+ | 14 | 2.9.24 | dependencia de soporte v6 (H-226): el anclaje va Por cotizar mientras no haya SDS con fuente, estructura y f'c |
+ | 13 | 2.9.24 | dependencia de soporte v5 (H-225): sin altura de colgado la varilla sale pendiente, no cotizada |
+ | 12 | 2.9.24 | dependencia de vent v2 (H-154): la partida de ventilación nombra el modelo que cubre de verdad, o ninguno |
+diff --git a/index.html b/index.html
+index 85c2f27..0c847ed 100644
+--- a/index.html
++++ b/index.html
+@@ -1634,17 +1634,24 @@ function buildCotizacionPdf() {
+   pdfTrazabilidad(d, ["quote", "equip"]);
+   return d.end();
+ }
+-/* H-278: una fila por disciplina con algo que proponer o con copia aceptada: qué se aceptó, de dónde, cuándo y su estado. */
+-function filasEntradasCot() {
++/* H-278: una fila por disciplina con algo que proponer o con copia aceptada: qué se aceptó, de dónde, cuándo y su estado (regla 8).
++   En español o en inglés: la usan el PDF de cotización y el libro de la propuesta (PDF y Excel, espejo EN, regla 7). */
++function filasEntradasCotLang(lang) {
++  const en = lang === "en", L = (es, ing) => (en ? ing : es);
+   const f = ["equip>quote", ...CRUCES_COT].map((id) => {
+-    const r = entradaCotReg(id), e = estadoPropuesta(id);
+-    if (!r && e.nivel === "sin-datos") return null;
+-    if (id === "equip>quote" && !r) return [PROPUESTAS[id].titulo, `${(S.quote.items || []).length} partida(s) de equipo capturadas en Cotizacion (sin copia del sistema integrado)`];
+-    return [PROPUESTAS[id].titulo, r ? `${RESUMEN_COT[id](r.datos)} · ${r.origen} · ${fechaCorta(r.ts)}${e.nivel === "desactualizado" ? " · desactualizada: el origen cambio, sigue lo aceptado" : ""}`
+-      : e.nivel === "propio" ? "fuera de la cotizacion por decision del usuario" : "sin aceptar: no entra a esta cotizacion"];
++    const r = entradaCotReg(id), e = estadoPropuesta(id), P = PROPUESTAS[id];
++    if (!P || (!r && e.nivel === "sin-datos")) return null;
++    const titulo = en ? (id === "equip>quote" ? "Equipment items of the integrated system" : PROP_COT_DEF[id].tituloEn) : P.titulo;
++    if (id === "equip>quote" && !r) return [titulo, L(`${(S.quote.items || []).length} partida(s) de equipo capturadas en Cotizacion (sin copia del sistema integrado)`,
++      `${(S.quote.items || []).length} equipment item(s) entered in the Quotation (no copy of the integrated system)`)];
++    if (!r) return [titulo, e.nivel === "propio" ? L("fuera de la cotizacion por decision del usuario", "left out of the quotation by the user") : L("sin aceptar: no entra a esta cotizacion", "not accepted: not included in this quotation")];
++    const origen = en ? `${id === "equip>quote" ? "Equipment selection" : PROP_COT_DEF[id].en}${/migraci/.test(r.origen || "") ? " (H-278 migration)" : ""}` : r.origen;
++    const fecha = en ? new Date(r.ts).toISOString().slice(0, 10) : fechaCorta(r.ts);
++    return [titulo, `${RESUMEN_COT[id](r.datos, en)} · ${origen} · ${fecha}${e.nivel === "desactualizado" ? L(" · desactualizada: el origen cambio, sigue lo aceptado", " · out of date: the source changed, the accepted copy stays") : ""}`];
+   }).filter(Boolean);
+-  return f.length ? f : [["Otras disciplinas", "ninguna propuesta hacia la cotizacion"]];
++  return f.length ? f : [[L("Otras disciplinas", "Other disciplines"), L("ninguna propuesta hacia la cotizacion", "no proposal towards the quotation")]];
+ }
++function filasEntradasCot() { return filasEntradasCotLang("es"); }
+ 
+ function buildLimpioSuitePdf() {
+   const A = CLEAN, d = PdfDoc("Cuartos limpios del proyecto");
+@@ -5404,6 +5411,10 @@ function buildPropuestaXlsx(opt) {
+   rf.push([xT(L("Superficie acondicionada", "Conditioned floor area"), XS.TD), xT("m2", XS.TD), loArea > 0 ? xN(+loArea.toFixed(1), XS.NUM) : pendX(), xT(loOrigen, XS.TD)]);
+   rf.push([xT(L("Precio por tonelada de refrigeracion", "Price per ton of refrigeration"), XS.TD), xT(`${mon}/TR`, XS.TD), loTons > 0 ? xF(`C${rTot}/C${rTR}`, XS.MXN) : pendX(), xV(XS.TD)]);
+   rf.push([xT(L("Precio por metro cuadrado", "Price per square meter"), XS.TD), xT(`${mon}/m2`, XS.TD), loArea > 0 ? xF(`C${rTot}/C${rM2}`, XS.MXN) : pendX(), xV(XS.TD)]);
++  /* H-278 · regla 8: de dónde salen los datos de otras disciplinas que usa esta cotización (copias aceptadas, fecha y estado). */
++  rf.push([]);
++  rf.push([xT(L("DATOS DE OTRAS DISCIPLINAS (COPIAS ACEPTADAS)", "DATA FROM OTHER DISCIPLINES (ACCEPTED COPIES)"), XS.SEC), xV(XS.SEC), xV(XS.SEC), xV(XS.SEC)]);
++  filasEntradasCotLang(lang).forEach(([a, b]) => rf.push([xT(a, XS.TD), xT(b, XS.TD), xV(XS.TD), xV(XS.TD)]));
+   rf.push([]);
+   rf.push([xT(L("Este resumen no lleva numeros pegados: cada importe es una formula que apunta a la hoja de cotizacion de construccion. Cambiar una cantidad alla no mueve el importe: para recotizar, cambiela en la suite y vuelva a exportar el libro.",
+     "This summary contains no hard-coded numbers: every amount is a formula pointing at the construction quote tab. Changing a quantity there does not move the amount: to requote, change it in the suite and re-export the workbook."), XS.NOTA)]);
+@@ -6841,6 +6852,10 @@ function buildPropuestaPdf(opt) {
+     `Benchmarks: ${$(Q.tot / tonsP)} per ton of refrigeration and ${areaP > 0 ? $(Q.tot / areaP) + " per square metre" : "no floor area captured"}. Project load ${n(tonsP, 2)} TR over ${n(areaP, 0)} m2 (accepted copy from Thermal load, ${new Date(LOp.ts).toISOString().slice(0, 10)}).`));
+   else pdfParagraph(d, L("Indicadores por tonelada y por metro cuadrado: pendientes (sin la propuesta de Carga termica aceptada en Cotizacion; no se calculan con la carga en vivo).",
+     "Per-ton and per-square-metre benchmarks: pending (the Thermal load proposal has not been accepted in the Quotation; they are not computed from the live load)."));
++  /* H-278 · regla 8: de dónde salen los datos de otras disciplinas que usa esta cotización (copias aceptadas, fecha y estado). */
++  pdfParagraph(d, L("Datos de otras disciplinas en esta cotizacion (copias aceptadas con origen y fecha; no se mueven solas):",
++    "Data from other disciplines in this quotation (accepted copies with source and date; they do not change by themselves):"));
++  pdfRows(d, filasEntradasCotLang(lang));
+ 
+   let secN = 2;
+   cat.secciones.forEach((sc) => {
+diff --git a/parches/mutantes/quote.json b/parches/mutantes/quote.json
+index 605192b..8915bd3 100644
+--- a/parches/mutantes/quote.json
++++ b/parches/mutantes/quote.json
+@@ -62,5 +62,9 @@
+   { "id": "quote.m31", "que": "«Seleccionar» en Selección vuelve a agregar la partida a la cotización sin origen ni fecha", "logica": true, "estado": "vigente",
+     "buscar": "      if (e) { S.quote.items.push({ id, fam: famId, qty: 1, unit: null, copiaDe: { motor: \"equip\", via: \"Seleccionar\", ts: Date.now() } }); }", "reemplazar": "      if (e) { S.quote.items.push({ id, fam: famId, qty: 1, unit: null }); }" },
+   { "id": "quote.m32", "que": "el botón «Traer el sistema integrado» de la cotización vacía vuelve a leer las toneladas del sistema en vivo", "logica": true, "estado": "vigente",
+-    "buscar": "\n        <button class=\"btn-primary\" data-act=\"q-fromsys\">Traer el sistema integrado</button>", "reemplazar": "\n        <button class=\"btn-primary\" data-act=\"q-fromsys\">Traer el sistema integrado (${n(SYS ? SYS.blockTons : 0, 1)} TR)</button>" }
++    "buscar": "\n        <button class=\"btn-primary\" data-act=\"q-fromsys\">Traer el sistema integrado</button>", "reemplazar": "\n        <button class=\"btn-primary\" data-act=\"q-fromsys\">Traer el sistema integrado (${n(SYS ? SYS.blockTons : 0, 1)} TR)</button>" },
++  { "id": "quote.m33", "que": "el libro de la propuesta (Excel) ya no dice de dónde salen los datos de otras disciplinas (copias aceptadas, fecha y estado)", "logica": false, "estado": "vigente",
++    "buscar": "  filasEntradasCotLang(lang).forEach(([a, b]) => rf.push([xT(a, XS.TD), xT(b, XS.TD), xV(XS.TD), xV(XS.TD)]));", "reemplazar": "  void lang;" },
++  { "id": "quote.m34", "que": "el libro de la propuesta (PDF) ya no lista las copias aceptadas de otras disciplinas con su fecha y su estado", "logica": false, "estado": "vigente",
++    "buscar": "  pdfRows(d, filasEntradasCotLang(lang));", "reemplazar": "  void lang;" }
+ ]
+diff --git a/pruebas.mjs b/pruebas.mjs
+index 32fbf91..d7c14e0 100644
+--- a/pruebas.mjs
++++ b/pruebas.mjs
+@@ -7710,7 +7710,7 @@ t("S.141 (H-278) un proyecto anterior abre con la misma cotización: la migraci
+     }
+   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+ });
+-t("S.142 (H-278) la huella y los entregables de la cotización sólo dicen lo que ella usa: ni otra disciplina ni un permiso mueven su huella; la pantalla, el PDF de cotización y el libro de la propuesta (PDF y Excel, ES/EN) toman toneladas, área y caudal de la copia aceptada de Carga térmica (con origen y fecha) o dicen «pendiente» (antes la carga en vivo, «$ 0 / TR» y la hora pico de Selección); la cotización por disciplina y la tarjeta de costo piden aceptar la propuesta", () => {
++t("S.142 (H-278) la huella y los entregables de la cotización sólo dicen lo que ella usa: ni otra disciplina ni un permiso mueven su huella; la pantalla, el PDF de cotización y el libro de la propuesta (PDF y Excel, ES/EN) toman toneladas, área y caudal de la copia aceptada de Carga térmica (con origen y fecha) o dicen «pendiente» (antes la carga en vivo, «$ 0 / TR» y la hora pico de Selección), y el libro lista cada copia aceptada con origen, fecha y estado; la cotización por disciplina y la tarjeta de costo piden aceptar la propuesta", () => {
+   const guardado = JSON.stringify(S);
+   const R = () => G("recompute")(), Q = () => G("QUOTE");
+   const pdfTxt = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");
+@@ -7753,7 +7753,15 @@ t("S.142 (H-278) la huella y los entregables de la cotización sólo dicen lo qu
+     contiene(pp1, `Carga del proyecto ${G("n")(eL.datos.tons, 2)} TR`, "la propuesta usa las toneladas aceptadas:"); contiene(pp1, "copia aceptada de Carga termica", "y dice de dónde salen:");
+     const xl1 = Buffer.from(G("buildPropuestaXlsx")({ lang: "es", mon: "MXN" })).toString("utf8");
+     contiene(xl1, `una carga termica de ${G("n")(eL.datos.tons, 1)} TR (copia aceptada de Carga termica`, "la carta del libro usa la copia aceptada:");
+-    contiene(Buffer.from(G("buildPropuestaXlsx")({ lang: "en", mon: "USD" })).toString("utf8"), "accepted copy from Thermal load", "espejo EN del libro:");
++    const xe1 = Buffer.from(G("buildPropuestaXlsx")({ lang: "en", mon: "USD" })).toString("utf8");
++    contiene(xe1, "accepted copy from Thermal load", "espejo EN del libro:");
++    /* El libro de la propuesta (PDF y Excel, ES/EN) dice de dónde salen los datos de otras disciplinas que usa la cotización: cada
++       copia aceptada con su origen, su fecha y si quedó desactualizada (regla 8). */
++    contiene(pp1, "Datos de otras disciplinas en esta cotizacion", "la propuesta lista las copias aceptadas:");
++    contiene(pp1, "desactualizada: el origen cambio", "y dice cuál quedó desactualizada:");
++    contiene(xl1, "DATOS DE OTRAS DISCIPLINAS (COPIAS ACEPTADAS)", "el libro también:");
++    contiene(xe1, "DATA FROM OTHER DISCIPLINES (ACCEPTED COPIES)", "espejo EN del libro:"); contiene(xe1, "out of date: the source changed", "espejo EN del estado:");
++    contiene(pdfTxt(G("buildPropuestaPdf")({ lang: "en", mon: "USD" })), "Data from other disciplines in this quotation", "espejo EN de la propuesta:");
+     cerca(Q().projTons, eL.datos.tons, 1e-9, "el indicador por TR usa las toneladas aceptadas:");
+     S.tab = "cotizacion"; G("render")();
+     const v = w.document.getElementById("view").textContent;
+-- 
+2.43.0
+

@@ -25,7 +25,7 @@
      ≥ 0.048 in (No. 18 MSG), soldadura externa continua; si la tabla de la casa pide un calibre más pesado, rige la tabla (H-165).
    · Política de la casa «nada se estima» / «arranque en ceros» (decisión del dueño, 17-sep-2026): un tramo sin medida
      posible, sin caudal o con medida bloqueada sin capturar no lleva sección, kilos ni importe (H-166); generar desde la
-     carga no pone longitudes ni accesorios que nadie capturó (H-167). */
+     carga no ponía longitudes ni accesorios que nadie capturó (H-167; la función se retiró en H-305). */
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -188,11 +188,11 @@ const resFijo = FIJO.map((c) => {
   fila("CM.duct.7.f", "tramo sin caudal: el tramo queda con error visible", "rectangular 0 L/s, 25 m", "1 error en el tramo", FN, "criterio de la casa", "DUCT.segs[0].error ? 1 : 0", 1, 0, "vigente");
   fila("CM.duct.7.g", "junto a un tramo sin caudal, el tramo sano conserva sus kilos", "TR-1 del proyecto fijo + tramo sin caudal de 25 m", `sólo TR-1: ${r(resFijo[0].kg, 2)} kg`, FK, "criterio de la casa", "DUCT.boq.kg", r(resFijo[0].kg, 2), 0.05, "vigente");
 }
-/* ---- CM.duct.8: H-167 generar desde la carga (fase2) ---- */
+/* ---- CM.duct.8: H-167 red con sólo caudales (antes «Generar desde carga», retirado en H-305) ---- */
 {
   const FN = "política de la casa «arranque en ceros» / «nada se estima» (decisión del dueño 17-sep-2026); H-167";
-  const ent = "dos zonas con carga calculada y aire exterior; «Generar desde carga»";
-  fila("CM.duct.8.a", "tramos generados (principal + 1 por zona + aire exterior)", ent, "1 + 2 + 1 = 4", "criterio de la casa (chainToDuct)", "criterio de la casa", "S.duct.segments.length", 4, 0);
+  const ent = "dos zonas con carga calculada y aire exterior; tramos capturados sólo con caudal (la red que armaba «Generar desde carga», retirado en H-305)";
+  fila("CM.duct.8.a", "tramos capturados (principal + 1 por zona + aire exterior)", ent, "1 + 2 + 1 = 4", "criterio de la casa (la red que armaba chainToDuct)", "criterio de la casa", "S.duct.segments.length", 4, 0);
   fila("CM.duct.8.b", "suma de longitudes generadas (m)", ent, "nadie las capturó → 0 m, pendiente de longitud (hoy 20 + 10 + 10 + 15 = 55 m)", FN, "criterio de la casa", "S.duct.segments.reduce((a, s) => a + s.length, 0)", 0, 0, "vigente");
   fila("CM.duct.8.c", "accesorios generados", ent, "nadie los capturó → 0 (hoy tee 0.65 + salida 1.0 por zona y entrada 0.03)", FN, "criterio de la casa", "S.duct.segments.reduce((a, s) => a + (s.fittings || []).length, 0)", 0, 0, "vigente");
   fila("CM.duct.8.d", "kilos de la red generada", ent, "sin longitud → 0 kg", FN, "criterio de la casa", "DUCT.boq.kg", 0, 0, "vigente");

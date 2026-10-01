@@ -1,0 +1,40 @@
+{
+  "norma": "SMACNA HVAC Duct Construction Standards, Metal and Flexible, 2nd Ed. 1995, Addendum No. 1 (1997)",
+  "tabla": "3-3",
+  "titulo": "TABLE 3-3 ALUMINUM ROUND DUCT GAGE SCHEDULE",
+  "pagina": "3.7",
+  "fuente": "normas/smacna.duct.1995.pdf, página 143 del archivo (impresa 3.7), SHA-256 074d19f86c65d819d9a2e97c9e954af81c79dfac157572593c70ce352f97a5b5; cotejada con normas/smacna.duct.1995.html, SHA-256 0bab514ac5fa5e50d623c650f4153218c094fda8e797657d3e316c9bccc0db68 (ver normas/FUENTE.md)",
+  "transcripcion": "Del PDF escaneado (la página no trae texto), renderizada a 144 y 288 ppp; cotejada renglón por renglón con la tabla del HTML de la misma URL.",
+  "unidades": { "diametro": "in", "presion": "in w.g.", "espesor": "in (la tabla imprime espesores decimales de lámina de aluminio, no números de calibre)" },
+  "encabezado_diametro": "Duct Diameter in Inches",
+  "columnas": [
+    { "id": "p2_spiral", "encabezado": "Maximum 2\" w.g. Static Positive / Spiral Seam Gage", "clase_presion_inwg": 2, "signo": "+", "costura": "spiral", "limite": "maximum" },
+    { "id": "p2_long", "encabezado": "Maximum 2\" w.g. Static Positive / Longitudinal Seam Gage", "clase_presion_inwg": 2, "signo": "+", "costura": "longitudinal", "limite": "maximum" },
+    { "id": "n2_spiral", "encabezado": "Maximum 2\" w.g. Static Negative / Spiral Seam Gage", "clase_presion_inwg": 2, "signo": "-", "costura": "spiral", "limite": "maximum" },
+    { "id": "n2_long", "encabezado": "Maximum 2\" w.g. Static Negative / Longitudinal Seam Gage", "clase_presion_inwg": 2, "signo": "-", "costura": "longitudinal", "limite": "maximum" }
+  ],
+  "renglones": [
+    { "diametro_texto": "3 thru 8", "diametro_min_in": 3, "diametro_max_in": 8, "diametro_min_mm": null, "diametro_max_mm": null, "calibres": null, "espesores_in": { "p2_spiral": 0.025, "p2_long": 0.032, "n2_spiral": 0.025, "n2_long": 0.040 }, "texto_celdas": { "p2_spiral": ".025\"", "p2_long": ".032\"", "n2_spiral": ".025\"", "n2_long": ".040\"" }, "nota": null },
+    { "diametro_texto": "9 thru 14", "diametro_min_in": 9, "diametro_max_in": 14, "diametro_min_mm": null, "diametro_max_mm": null, "calibres": null, "espesores_in": { "p2_spiral": 0.025, "p2_long": 0.032, "n2_spiral": 0.032, "n2_long": 0.040 }, "texto_celdas": { "p2_spiral": ".025\"", "p2_long": ".032\"", "n2_spiral": ".032\"", "n2_long": ".040\"" }, "nota": null },
+    { "diametro_texto": "15 thru 26", "diametro_min_in": 15, "diametro_max_in": 26, "diametro_min_mm": null, "diametro_max_mm": null, "calibres": null, "espesores_in": { "p2_spiral": 0.032, "p2_long": 0.040, "n2_spiral": 0.040, "n2_long": 0.050 }, "texto_celdas": { "p2_spiral": ".032\"", "p2_long": ".040\"", "n2_spiral": ".040\"", "n2_long": ".050\"" }, "nota": null },
+    { "diametro_texto": "27 thru 36", "diametro_min_in": 27, "diametro_max_in": 36, "diametro_min_mm": null, "diametro_max_mm": null, "calibres": null, "espesores_in": { "p2_spiral": 0.040, "p2_long": 0.050, "n2_spiral": 0.050, "n2_long": 0.063 }, "texto_celdas": { "p2_spiral": ".040\"", "p2_long": ".050\"", "n2_spiral": ".050\"", "n2_long": ".063\"" }, "nota": null },
+    { "diametro_texto": "37 thru 50", "diametro_min_in": 37, "diametro_max_in": 50, "diametro_min_mm": null, "diametro_max_mm": null, "calibres": null, "espesores_in": { "p2_spiral": 0.050, "p2_long": 0.063, "n2_spiral": 0.063, "n2_long": 0.071 }, "texto_celdas": { "p2_spiral": ".050\"", "p2_long": ".063\"", "n2_spiral": ".063\"", "n2_long": ".071" }, "nota": "n2_long impreso «.071» sin el signo de pulgada." },
+    { "diametro_texto": "51 thru 60", "diametro_min_in": 51, "diametro_max_in": 60, "diametro_min_mm": null, "diametro_max_mm": null, "calibres": null, "espesores_in": { "p2_spiral": 0.063, "p2_long": 0.071, "n2_spiral": null, "n2_long": 0.090 }, "texto_celdas": { "p2_spiral": ".063\"", "p2_long": ".071\"", "n2_spiral": "N.A.", "n2_long": ".090" }, "nota": "n2_spiral «N.A.» (not readily available or not assigned). n2_long impreso «.090» sin el signo de pulgada." },
+    { "diametro_texto": "61 thru 84", "diametro_min_in": 61, "diametro_max_in": 84, "diametro_min_mm": null, "diametro_max_mm": null, "calibres": null, "espesores_in": { "p2_spiral": null, "p2_long": 0.090, "n2_spiral": null, "n2_long": null }, "texto_celdas": { "p2_spiral": "N.A.", "p2_long": ".090\"", "n2_spiral": "N.A.", "n2_long": "N.A." }, "nota": "p2_spiral, n2_spiral y n2_long «N.A.» (not readily available or not assigned)." }
+  ],
+  "notas": [
+    "NOTES:",
+    "Construction of aluminum duct and fittings shall otherwise correspond in the same relationship as for steel duct.",
+    "Sheet material shall be alloy 3003-H14 unless otherwise specified. Aluminum fasteners shall be used. Structural members (if used) shall be alloy 6061-T6 or galvanized steel as related in table 1-16 on page 1-65 (for rectangular duct). Hangers in contact with the duct shall be galvanized steel or aluminum.",
+    "N.A. means not readily available or not assigned."
+  ],
+  "observaciones": [
+    "Aunque el título dice «GAGE SCHEDULE», las celdas son ESPESORES en pulgadas (.025\" … .090\"), no números de calibre: van en «espesores_in» (número) y «texto_celdas» (literal); «calibres» = null. No se convierte nada.",
+    "«N.A.» se registra null en espesores_in y literal en texto_celdas: no es ilegible, es la marca del original («not readily available or not assigned»).",
+    "Sólo hay columnas para un máximo de 2\" w.g., positiva y negativa. Para aluminio a 4\" o 10\" w.g. esta tabla no da valor.",
+    "El HTML escribe «as a related in table 1-16»; la imagen dice «as related in table 1-16». Se transcribe la imagen. Los 28 valores del HTML coinciden con la imagen.",
+    "El HTML escribe la comilla del encabezado negativo como ″ (U+2033); la imagen imprime «\"». Sin efecto en valores.",
+    "La tabla no trae milímetros: diametro_*_mm = null.",
+    "El Addendum No. 1 (nov 1997) no menciona esta tabla (búsqueda de texto en su sección del HTML)."
+  ]
+}

@@ -55,10 +55,38 @@ function t(nombre, fn) {
 const eq = (a, b, msg) => { if (!(a === b)) throw new Error(`${msg || ""} esperado ${JSON.stringify(b)}, obtenido ${JSON.stringify(a)}`); };
 const cerca = (a, b, tol, msg) => { if (!(Math.abs(a - b) <= tol)) throw new Error(`${msg || ""} esperado ~${b}, obtenido ${a}`); };
 const contiene = (s, x, msg) => { if (String(s).indexOf(x) < 0) throw new Error(`${msg || ""} no contiene "${x}"`); };
+/* H-266: soportería cuenta los metros de los otros motores sólo con la instantánea aceptada (propuesta motores>soporte; H-307: la
+   propuesta se retiró y la instantánea que un proyecto ya tenía es copia propia de soportería; el banco la guarda así). Las
+   pruebas que arman motores y miran la soportería la aceptan después de calcular, como lo haría el usuario. */
+const aceptarSoporte = () => { G("recompute")(); S.soporte.snap = G("snapshotSoporte")(); S.soporte.usarMotores = true; G("recompute")(); };
+/* H-267: la selección de equipo calcula sólo con sus zonas de selección (capturadas en su pestaña o aceptadas de carga térmica como
+   instantánea). Las pruebas que arman zonas y miran el sistema integrado aceptan la propuesta load>equip después de calcular, como
+   lo haría el usuario (sin autoguardar ni pintar: lo mismo que hace aceptar, con su vínculo y su fecha). */
+/* H-290: Carga térmica calcula con SU sitio (copia aceptada de Proyecto o captura propia). Las pruebas que arman un proyecto nuevo
+   aceptan el sitio de Proyecto como lo haría el usuario (con su vínculo y su fecha). */
+const aceptarSitioCarga = () => { G("PROPUESTAS")["proyecto>load"].aplicar(); G("registrarVinculo")("proyecto>load", "aceptado"); G("recompute")(); };
+const aceptarEquip = () => { G("recompute")(); G("aceptarZonasEquip")(G("zonasPropuestasEquip")(), Date.now()); G("registrarVinculo")("load>equip", "aceptado");
+  /* H-288: y el sitio de Proyecto como sitio de diseño de Selección (copia con fecha), como lo aceptaría el usuario. */
+  G("PROPUESTAS")["proyecto>equip"].aplicar(); G("registrarVinculo")("proyecto>equip", "aceptado"); G("recompute")(); };
+/* H-305: la propuesta load>duct se retiró (cada motor captura lo suyo). Las pruebas que necesitaban una red de ductos capturan a
+   mano la misma que armaba chainToDuct: principal con el suministro total, un ramal por zona y el aire exterior; sólo caudales, sin
+   longitudes ni accesorios. */
+const capturaTramos = () => { G("recompute")(); const t = G("totals")(), ds = G("defaultSegment");
+  const segs = [{ ...ds("SA-PRINCIPAL", Math.round(t.cfm * 1.699 / 3.6)), length: 0, aspect: 3, fittings: [] }];
+  G("LOADS").forEach((r, i) => segs.push({ ...ds(`SA-${(S.zones[i].name || "Z").slice(0, 8).toUpperCase()}`, Math.round(r.cfm * 1.699 / 3.6)),
+    shape: "round", method: "velocity", targetV: 5, length: 0, fittings: [] }));
+  if (t.oa > 0) segs.push({ ...ds("OA-EXTERIOR", Math.round(t.oa / 3.6)), service: "supply", shape: "round", method: "velocity", targetV: 4, length: 0, fittings: [] });
+  S.duct.segments = segs; G("recompute")(); };
+/* H-306: la propuesta cedula>elec se retiró (el eléctrico calcula sólo con las cargas de su cuadro). Las pruebas que necesitan en
+   el cuadro las cargas de los demás motores las meten por la única vía que queda: la migración al abrir un proyecto anterior en
+   modo en vivo (la marca tomarPropuesta que deja sanearEstado con los cruces que tenía autorizados, H-268), que las acepta una vez
+   como instantánea con origen y fecha, con las mismas cifras que daba aceptar la propuesta. */
+const migraCargasElec = (cruces) => { G("recompute")(); S.elec.tomarPropuesta = [...(cruces || G("CRUCES_ELEC"))]; G("recompute")(); };
 
 /* --------------------------------------------------- proyecto de prueba */
 function proyectoDePrueba() {
   S.meta.name = "Banco de pruebas 2.7.0";
+  aceptarSitioCarga();   /* H-290 */
   S.meta.client = "EMP interno";
   /* Arranque en ceros: defaultZone() ya no trae muros/vidrio/luces/equipo
      de ejemplo; el proyecto de prueba compartido por todo el banco arma los
@@ -74,9 +102,22 @@ function proyectoDePrueba() {
       lights: 400, equip: 500, ach: .4 },
   ];
   S.zi = 0;
+  /* H-262: ventilación ya no hereda de carga térmica; el proyecto de prueba le captura sus propios datos, los mismos que antes
+     heredaba (área 500 m², altura media 5.4 m, 40 ocupantes), para que las cifras del resto del banco no cambien. */
+  Object.assign(S.vent, { area: 500, height: 5.4, occ: 40 });
+  /* H-264: contra incendio tampoco hereda; captura lo que antes heredaba (500 m², altura máxima 6 m). */
+  Object.assign(S.fuego, { area: 500, altura: 6 });
+  /* H-265: obra civil tampoco toma las zonas: captura las mismas áreas de obra que antes leía de ellas. */
+  S.civil.areas = S.zones.map((z, i) => ({ id: "a" + (i + 1), nombre: z.name, area: z.area, altura: z.height, perimetro: 0 }));
   /* H-250: el banco emite espejos EN-USD; sin tipo de cambio fechado ya no se emiten, así que el proyecto de prueba lo captura. */
   S.quote.fx = 18.5; S.quote.fxFecha = "2026-09-22"; S.quote.fxFuente = "banco de pruebas";
   G("recompute")();
+  /* H-300: los difusores ya no salen de los CFM de Carga térmica: se capturan en Ductos. El proyecto de prueba captura los mismos que
+     antes daba la carga (1 por 400 CFM), para que las cifras del resto del banco no cambien. */
+  S.duct.difusores = Math.ceil(G("totals")().cfm / 400); G("recompute")();
+  /* H-267: la selección de equipo ya no lee la carga en vivo; el proyecto de prueba acepta la propuesta de carga térmica, como el
+     usuario, para que el sistema integrado (y todo lo que se alimenta de él) tenga las mismas cifras que antes. */
+  aceptarEquip();
 }
 proyectoDePrueba();
 /* rev 2.9.12 · La marca ya no se fija como literal en las pruebas: se lee
@@ -271,38 +312,44 @@ t("2.0.5 las flechas son las herencias declaradas, no adorno", () => {
     if (ar.regla === 1 && ar.path !== "civil.zonas" && !G("HEREDA")[ar.path]) throw new Error(`la arista ${ar.de}→${ar.a} dice heredar ${ar.path} y no está declarado`);
     if (!ar.que) throw new Error(`la arista ${ar.de}→${ar.a} no dice qué hereda`);
   });
-  if (!A.some((ar) => ar.regla === 1)) throw new Error("ninguna arista de regla 1");
-  if (!A.some((ar) => ar.regla === 2)) throw new Error("ninguna arista de regla 2");
+  if (A.some((ar) => ar.regla === 1)) throw new Error("H-264/H-265: quedó una flecha de herencia (regla 1); ninguna disciplina hereda");
+  /* H-305, H-306, H-307: las propuestas entre motores se retiraron: ya no queda ninguna flecha de propuesta (regla 2) en el diagrama. */
+  if (A.some((ar) => ar.regla === 2)) throw new Error("quedó una flecha de propuesta entre motores: " + A.filter((ar) => ar.regla === 2).map((ar) => ar.de + "→" + ar.a).join(", "));
 });
-t("2.0.6 la flecha se pinta vigente cuando el dato heredado está al día", () => {
-  /* rev 2.9.2 · La herencia que se mira aquí es una que CRUZA hacia fuera del
-     módulo: HVAC → contra incendio hereda el área a proteger. Las que corrían
-     entre las cinco pantallas del aire ya no son flechas del plano. */
+t("2.0.6 cada flecha se pinta con el estado de lo que declara: cada nivel de su propuesta da su color (H-264, H-265: ya no hay herencias; U4 de la revisión: la prueba vuelve a exigir el color de cada nivel)", () => {
   S.tab = "inicio"; G("render")();
-  const ar = G("ARISTAS").find((x) => x.de === "hvac" && x.a === "fuego");
-  if (!ar) throw new Error("no existe la flecha de HVAC a contra incendio");
-  eq(G("estadoArista")(ar), "vigente");
-  contiene(vista(), "dar-vigente");
+  if (G("ARISTAS").some((x) => x.regla === 1)) throw new Error("quedó una flecha de herencia");
+  /* H-305–H-307: ya no hay flechas de propuesta entre motores. La maquinaria que las pinta se prueba con una flecha de prueba que
+     declara la propuesta que queda (load>equip) y se retira al terminar. */
+  const ar = { de: "hvac", a: "soporte", regla: 2, prop: "load>equip", lane: 740, que: "flecha de prueba 2.0.6" };
+  G("ARISTAS").push(ar);
+  const orig = w.estadoPropuesta;
+  const esperado = { aceptado: "vigente", vigente: "vigente", desactualizado: "desactualizada", propio: "propia", pendiente: "pendiente", vivo: "pendiente", "sin-datos": "inerte" };
+  try {
+    for (const [nivel, e] of Object.entries(esperado)) {
+      w.estadoPropuesta = (id) => (id === ar.prop ? { nivel } : orig(id));
+      eq(G("estadoArista")(ar), e, `propuesta «${nivel}»:`);
+      G("render")(); contiene(vista(), "dar-" + e, `la vista pinta «${e}» con la propuesta «${nivel}»:`);
+    }
+  } finally { w.estadoPropuesta = orig; const A = G("ARISTAS"); A.splice(A.indexOf(ar), 1); G("render")(); }
 });
 t("2.0.7 y el nodo HVAC se desactualiza cuando cambió el dato de origen", () => {
-  /* La propuesta de carga térmica a ductos quedó DENTRO del módulo: ya no se
-     dibuja como flecha, pero su estado no se perdió — sube al semáforo del
-     nodo, que muestra el peor de los cinco. */
-  G("propAceptar")("load>duct");
+  /* La propuesta de carga térmica a selección quedó DENTRO del módulo: no se dibuja como flecha, pero su estado no se pierde —
+     sube al semáforo del nodo, que muestra el peor de los cinco. H-305: la de ductos (load>duct) se retiró; se prueba con
+     load>equip (H-267). */
+  G("propAceptar")("load>equip");
   S.zones[0].area = Number(S.zones[0].area) + 150; G("recompute")();
-  eq(G("estadoPropuesta")("load>duct").nivel, "desactualizado", "la propuesta interna:");
+  eq(G("estadoPropuesta")("load>equip").nivel, "desactualizado", "la propuesta interna de selección:");
   eq(G("semaforoHvac")().nivel, "desactualizada", "el peor de los cinco manda en el nodo:");
   S.tab = "inicio"; G("render")();
   contiene(vista(), "sem-desactualizada");
-  G("propAceptar")("load>duct");
+  G("propAceptar")("load>equip");
   G("recompute")();
   if (G("semaforoHvac")().nivel === "desactualizada") throw new Error("al actualizar el nodo no volvió a estar al día");
   /* Se deja el proyecto como estaba para que las pruebas de las reglas
      empiecen desde cero y no desde lo que acepto esta. */
   S.zones[0].area = Number(S.zones[0].area) - 150;
-  delete S.vinculos["load>duct"];
-  S.duct.segments = [];
-  G("recompute")();
+  aceptarEquip();   /* H-267: la selección vuelve a la carga original, como la dejó el proyecto de prueba */
 });
 t("2.0.8 el diagrama no usa ninguna librería ni recurso externo", () => {
   const v = vista();
@@ -315,7 +362,9 @@ t("2.0.8 el diagrama no usa ninguna librería ni recurso externo", () => {
 t("2.0.9 el tablero conserva íntegro lo que no cabe en la portada", () => {
   S.tab = "tablero"; G("render")();
   const v = vista();
-  ["Tablero del proyecto", "Geometría y ocupación heredadas", "Con datos", "Desactualizadas"].forEach((x) => contiene(v, x));
+  ["Tablero del proyecto", "Con datos", "Desactualizadas"].forEach((x) => contiene(v, x));
+  /* H-262 a H-266: ninguna disciplina hereda: la tarjeta de geometría heredada ya no tiene qué mostrar y no se pinta. */
+  if (v.includes("Geometría y ocupación heredadas")) throw new Error("el tablero sigue pintando la tarjeta de herencia sin herencias");
   if ((v.match(/class="tfila/g) || []).length < G("DISCIPLINAS").length) throw new Error("faltan disciplinas en el tablero");
 });
 
@@ -362,99 +411,113 @@ t("3.1 la geometría del proyecto se suma de las zonas, no se recalcula", () => 
   cerca(g.altura, 2700 / 500, 0.01, "altura media ponderada:");
   cerca(g.area * g.altura, g.volumen, 1, "área × altura debe dar el volumen:");
 });
-t("3.2 ventilación y contra incendio heredan área, altura y ocupación", () => {
+t("3.2 ninguna disciplina hereda: ventilación (H-262) y contra incendio (H-264) calculan con lo capturado en su pestaña", () => {
   G("recompute")();
-  eq(S.vent.area, 500); eq(S.fuego.area, 500); eq(S.vent.occ, 40);
-  cerca(S.vent.height, 5.4, 0.01); eq(S.fuego.altura, 6, "H-205: contra incendio hereda la altura máxima (rociador más alto), no la media 5.4:");
+  eq(Object.keys(G("HEREDA")).length, 0, "HEREDA queda vacío:");
+  eq(S.fuego.area, 500, "contra incendio: el área capturada:"); eq(S.fuego.altura, 6, "contra incendio: la altura capturada:");
+  eq(S.vent.area, 500, "ventilación: el área capturada:");
 });
-t("3.3 si cambia la geometría, el destino la sigue sin intervención", () => {
+t("3.3 si cambia la geometría de las zonas, ningún destino se mueve (H-262, H-264)", () => {
+  S.zones[1].area = 300; S.zones[1].height = 8; G("recompute")();
+  eq(S.fuego.area, 500, "H-264: contra incendio se queda con lo capturado:"); eq(S.fuego.altura, 6, "H-264: la altura tampoco sigue a la zona más alta:");
+  eq(S.vent.area, 500, "H-262: ventilación se queda con lo capturado:");
+  S.zones[1].area = 100; S.zones[1].height = 3; G("recompute")();
+});
+t("3.4 la pantalla ya no anuncia herencia: un campo que no está en HEREDA no pinta aviso (H-264)", () => {
+  eq(G("herenciaHtml")("fuego.area"), "", "fuego.area:"); eq(G("herenciaHtml")("vent.area"), "", "vent.area:");
+});
+t("3.5 lo capturado manda: cambiarlo mueve el cálculo y las zonas no lo pisan (H-264)", () => {
+  G("setPath")("fuego.area", 250); G("recompute")();
+  eq(S.fuego.area, 250, "respeta lo capturado:");
   S.zones[1].area = 300; G("recompute")();
-  eq(S.vent.area, 700); eq(S.fuego.area, 700);
-  S.zones[1].area = 100; G("recompute")();
-  eq(S.vent.area, 500);
+  eq(S.fuego.area, 250, "el cambio de zonas no lo pisa:");
+  S.zones[1].area = 100; G("setPath")("fuego.area", 500); G("recompute")();
+  eq(S.fuego.area, 500);
 });
-t("3.4 la herencia se declara en pantalla con su origen y su fecha", () => {
-  const h = G("herenciaHtml")("vent.area");
-  contiene(h, "heredada"); contiene(h, "Carga térmica");
-  if (!/\d{4}/.test(h)) throw new Error("no imprime la fecha desde cuándo vale ese número");
-});
-t("3.5 el usuario puede capturar el suyo y entonces deja de seguir al origen", () => {
-  G("setPath")("vent.area", 250); G("marcarPropio")("vent.area");
-  G("recompute")();
-  eq(S.vent.area, 250, "respeta lo capturado:");
-  S.zones[1].area = 300; G("recompute")();
-  eq(S.vent.area, 250, "el cambio de origen no lo pisa:");
-  eq(S.fuego.area, 700, "los demás campos siguen heredando:");
-  contiene(G("herenciaHtml")("vent.area"), "capturada a mano");
-  S.zones[1].area = 100; G("recompute")();
-});
-t("3.6 se puede volver a heredar sin perder el rastro", () => {
-  const r = G("herDe")("vent.area");
-  r.modo = "heredado"; G("recompute")();
-  eq(S.vent.area, 500);
+t("3.6 no queda registro de herencia: sincronizarHerencia no copia nada y el saneado retira los registros viejos (H-264)", () => {
+  const her0 = JSON.stringify(S.her || {});
+  G("sincronizarHerencia")();
+  eq(JSON.stringify(S.her || {}), her0, "sincronizarHerencia no escribe:");
+  const s = G("sanearEstado")(JSON.parse(JSON.stringify({ ...S, her: { "fuego.area": { modo: "heredado", ts: 1, valor: 500 }, "vent.area": { modo: "propio", ts: 1, valor: 500 } } })));
+  eq(Object.keys(s.her).length, 0, "registros viejos retirados:");
 });
 
 /* ====== 4. Regla 2 · ningún resultado calculado entra solo =============== */
-t("4.1 la carga térmica no escribe caudales en ductos por su cuenta", () => {
-  const antes = JSON.stringify(S.duct.segments);
+/* H-305: la propuesta load>duct se retiró; las reglas 2 y 3 se prueban con la de selección de equipo (load>equip, H-267). */
+const zonasSelJ = () => JSON.stringify(G("zonasSel")());
+t("4.1 la carga térmica no escribe las zonas de selección por su cuenta", () => {
+  delete S.vinculos["load>equip"];   /* nadie ha decidido todavía */
+  const antes = zonasSelJ();
   G("recompute")();
-  eq(JSON.stringify(S.duct.segments), antes, "los tramos no se movieron solos:");
-  eq(G("estadoPropuesta")("load>duct").nivel, "pendiente");
+  eq(zonasSelJ(), antes, "las zonas de selección no se movieron solas:");
+  eq(G("estadoPropuesta")("load>equip").nivel, "pendiente");
 });
 t("4.2 la propuesta se ofrece con lo que propone y lo que ya hay", () => {
-  const h = G("propuestaHtml")("load>duct");
+  const h = G("propuestaHtml")("load>equip");
   contiene(h, "Propone"); contiene(h, "Ahora hay");
   contiene(h, 'data-act="prop-aceptar"'); contiene(h, 'data-act="prop-propio"');
 });
 t("4.3 al aceptar entra, y queda registrado el origen y la fecha", () => {
   const t0 = Date.now();
-  G("propAceptar")("load>duct");
-  const v = G("vinculoDe")("load>duct");
+  G("propAceptar")("load>equip");
+  const v = G("vinculoDe")("load>equip");
   eq(v.estado, "aceptado");
   contiene(v.origen, "Carga térmica");
   if (!(v.ts >= t0)) throw new Error("no guardó la fecha de aceptación");
-  eq(S.duct.segments.length, S.zones.length + 1 + (G("totals")().oa > 0 ? 1 : 0), "un tronco, un ramal por zona y el aire exterior:");
-  eq(G("estadoPropuesta")("load>duct").nivel, "aceptado");
+  eq(G("zonasSel")().filter((z) => z.origen && z.origen.motor === "load").length, S.zones.length, "una zona de selección por zona de carga:");
+  eq(G("estadoPropuesta")("load>equip").nivel, "aceptado");
 });
+/* Los tramos de ductos que antes dejaba la propuesta load>duct aceptada en 4.3 se capturan a mano (la misma red): el resto del
+   banco sigue con las mismas cifras. */
+capturaTramos();
 t("4.4 el usuario puede declarar que captura lo suyo, y también queda escrito", () => {
-  G("propPropio")("load>vent");
-  const v = G("vinculoDe")("load>vent");
-  eq(v.estado, "propio");
-  eq(G("estadoPropuesta")("load>vent").nivel, "propio");
+  /* H-262: la propuesta load>vent ya no existe; H-306: la de la cédula eléctrica tampoco. Se prueba con la de selección de equipo
+     (load>equip), sin dejar rastro en el estado. */
+  const guardado = JSON.stringify(S);
+  try {
+    G("propPropio")("load>equip");
+    const v = G("vinculoDe")("load>equip");
+    eq(v.estado, "propio");
+    eq(G("estadoPropuesta")("load>equip").nivel, "propio");
+    eq(G("PROPUESTAS")["load>vent"], undefined, "H-262: no queda propuesta carga térmica → ventilación:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
-t("4.5 la cédula de equipos no entra al cuadro de cargas sin aceptarla", () => {
+t("4.5 (H-268) la cédula de equipos no entra al cuadro de cargas sin aceptarla: ni con los cruces autorizados ni con el tomarHVAC de revisiones anteriores (se retiró el modo en vivo)", () => {
   eq(S.elec.tomarHVAC, false, "el modo automático viene apagado:");
   const auto = (G("ELEC").calc || []).filter((c) => c.auto);
   eq(auto.length, 0, "cargas que entraron solas:");
-  eq(G("estadoPropuesta")("cedula>elec").nivel, "pendiente");
+  eq(G("PROPUESTAS")["cedula>elec"], undefined, "H-306: la propuesta de cargas de los demás motores se retiró:");
+  /* H-268: el modo en vivo se retiró: con los cruces autorizados y tomarHVAC tampoco entra nada sin aceptar la propuesta. */
+  const perms0 = JSON.parse(JSON.stringify(S.perms)), n0 = G("ELEC").calc.length;
+  try {
+    G("CRUCES_ELEC").forEach((k) => { S.perms[k] = { ts: 1, via: "prueba 4.5" }; }); S.elec.tomarHVAC = true; G("recompute")();
+    eq(G("ELEC").calc.length, n0, "con tomarHVAC y los cruces autorizados nada entra sin aceptar la propuesta:");
+  } finally { S.elec.tomarHVAC = false; Object.keys(S.perms).forEach((k) => delete S.perms[k]); Object.assign(S.perms, perms0); G("recompute")(); }
 });
-t("4.6 aceptada, cada carga queda como carga propia del cuadro con su origen", () => {
-  G("propAceptar")("cedula>elec");
+t("4.6 migrada de un proyecto anterior en vivo (H-306: ya no hay propuesta que aceptar), cada carga queda como carga propia del cuadro con su origen", () => {
+  migraCargasElec();
   const ced = (S.elec.cargas || []).filter((c) => c.origen === "cedula");
   if (!ced.length) throw new Error("no entró ninguna carga de la cédula");
   ced.forEach((c) => { if (!c.ts) throw new Error("carga sin fecha de origen"); });
-  eq(G("estadoPropuesta")("cedula>elec").nivel, "aceptado");
+  eq((G("vinculoDe")("cedula>elec") || {}).estado, "migrado", "queda registrado su origen, de la migración y sin confirmar (H-306, auditoría externa):");
 });
 /* H-177 (rev 2.9.24): el equipo con motocompresor se rige por el art. 440 con sus datos de placa; aceptar la cédula
    descartaba MCA y MOP y el cuadro protegía al 250 % de la Tabla 430-52, por arriba del MOP. */
-t("S.45 (H-177) aceptada la cédula, cada equipo con motocompresor conserva su MCA y su MOP; el conductor cubre la MCA y la protección no pasa del MOP (NOM-001-SEDE-2012 440-4(b), 440-22(a) y (c), 440-35, p. 445-450)", () => {
+t("S.45 (H-177, AUD-14) migrada la cédula, cada equipo con motocompresor conserva su MCA y su MOP ESTIMADAS como referencia; al no ser de placa no fijan el conductor ni la protección (AUD-14, nada se estima): el conductor cubre el 125 % de su corriente y la memoria y el aviso lo dicen", () => {
   const prop = G("propuestaElecFilas")().filter((c) => Number(c.mop) > 0);
   if (!prop.length) throw new Error("la cédula del banco no trae equipos con MOP: la prueba no probaría nada");
   const ced = (S.elec.cargas || []).filter((c) => c.origen === "cedula" && Number(c.mop) > 0);
-  eq(ced.length, prop.length, "cargas aceptadas que conservan el MOP:");
+  eq(ced.length, prop.length, "cargas migradas que conservan el MOP:");
   ced.forEach((c, i) => { eq(c.mca, prop[i].mca, `${c.nombre}, MCA:`); eq(c.mop, prop[i].mop, `${c.nombre}, MOP:`); });
-  const filas = G("ELEC").calc.filter((c) => Number(c.mop) > 0);
-  eq(filas.length, prop.length, "filas del cuadro con MOP:");
+  const filas = G("ELEC").calc.filter((c) => c.placaRef);
+  eq(filas.length, prop.length, "filas del cuadro con MCA/MOP estimados de referencia:");
   filas.forEach((c) => {
-    if (!(c.cond.ocpd <= c.mop)) throw new Error(`${c.nombre}: protección ${c.cond.ocpd} A arriba del MOP ${c.mop} A`);
-    if (!(c.cond.ampCorr >= c.mca)) throw new Error(`${c.nombre}: ampacidad corregida ${c.cond.ampCorr} A abajo de la MCA ${c.mca} A`);
-    /* La MCA y el MOP de la cédula los estimó la suite (elecOf): se marcan y no bajan el conductor del 125 % de la corriente. */
-    eq(c.mcaEst && c.mopEst, true, `${c.nombre}, MCA y MOP marcados como estimados:`);
-    if (!(c.cond.ampCorr >= 1.25 * c.I - 1e-9)) throw new Error(`${c.nombre}: con MCA estimada el conductor (${c.cond.ampCorr} A) quedó abajo del 125 % de ${c.I} A`);
+    eq(c.art440, false, `${c.nombre}: la MCA/MOP estimada no activa el art. 440:`);
+    if (!(c.cond.ampCorr >= 1.25 * c.I - 1e-9)) throw new Error(`${c.nombre}: el conductor (${c.cond.ampCorr} A) quedó abajo del 125 % de ${c.I} A`);
   });
   const memoria = G("ELEC").memo.join(" ");
-  contiene(memoria, "ESTIMADA", "la memoria marca la MCA estimada:"); contiene(memoria, "ESTIMADO", "la memoria marca el MOP estimado:");
-  if (!G("ELEC").avisos.some((a) => /estimad/i.test(a.msg) && /placa/.test(a.msg))) throw new Error("sin aviso de MCA/MOP estimados");
+  contiene(memoria, "MCA/MOP ESTIMADOS", "la memoria dice que son estimados y de referencia:");
+  if (!G("ELEC").avisos.some((a) => /estimad/i.test(a.msg) && /no fija/.test(a.msg) && /placa/.test(a.msg))) throw new Error("sin aviso de MCA/MOP estimados que no fijan la protección");
 });
 /* H-177: datos de placa incompletos o incongruentes, placa capturada por el usuario y equipo sin kW. */
 t("S.46 (H-177) art. 440 con placa: sólo el MOP → aviso y se protege como motor general; MCA de placa manda sola; MOP 10 A → fusible de 10 A, nunca 15; sin kW no fija el principal", () => {
@@ -568,20 +631,23 @@ t("S.47 (H-179, H-189) sin captura no hay distancia al tablero, transformador ni
     if (/Caída del alimentadorpendiente|Falla estimadapendiente/.test(h2)) throw new Error("pantalla con captura completa sigue en pendiente");
   } finally { S.elec = JSON.parse(guardado); S.tab = tab0; G("recompute")(); }
 });
-t("S.48 (H-179) las seis cargas que entran de otros motores (cédula HVAC, extracción, compresor de aire, bomba de agua, bomba contra incendio, FFU) no traen distancia supuesta: sin L quedan pendientes de longitud", () => {
-  const R = G(`(() => { const sv = { AIRE, HIDRO, CLEAN };
+t("S.48 (H-179, H-268) las seis cargas que proponen otros motores (cédula HVAC, extracción, compresor de aire, bomba de agua, bomba contra incendio, FFU) no traen distancia supuesta: sin L quedan pendientes de longitud", () => {
+  const R = G(`(() => { const sv = { AIRE, HIDRO, FUEGO, CLEAN };
     try {
       AIRE = { ...(AIRE || {}), principal: { ...((AIRE && AIRE.principal) || {}), tipo: "tornillo", hp: 10, kW: 7.46 }, nUnidades: 1 };
       HIDRO = { ...(HIDRO || {}), kWbomba: 1.87, hpBomba: 2.5 };
+      FUEGO = { ...(FUEGO || {}), kWbomba: 3.8, hpBomba: 10 };   /* H-210: el proyecto del banco no captura cabezal ni montante; la bomba va en sombra, como en S.50 */
       CLEAN = { ...(CLEAN || {}), sum: { ...((CLEAN && CLEAN.sum) || {}), ffu: 12 } };
-      return conPermisoTemporal(CRUCES_ELEC, () => computeElec({ ...defaultElec(), tomarHVAC: true, cargas: [] }));
-    } finally { AIRE = sv.AIRE; HIDRO = sv.HIDRO; CLEAN = sv.CLEAN; } })()`);
+      /* H-268: computeElec ya no lee otros motores; la propuesta se arma con cargasOtrosMotoresElec y corre en sombra. */
+      const E0 = defaultElec(); return computeElec({ ...E0, cargas: cargasOtrosMotoresElec(E0) });
+    } finally { AIRE = sv.AIRE; HIDRO = sv.HIDRO; FUEGO = sv.FUEGO; CLEAN = sv.CLEAN; } })()`);
   const ids = R.calc.map((c) => c.id);
   ["vent-1", "aire-1", "hidro-1", "fuego-1", "ffu-1"].forEach((id) => { if (!ids.includes(id)) throw new Error(`falta la carga ${id}: la prueba no probaría esa rama (hay ${ids.join(", ")})`); });
   if (!ids.some((id) => id.startsWith("hvac-"))) throw new Error("falta la cédula HVAC");
   R.calc.forEach((c) => { eq(c.L, null, `${c.id}, L:`); eq(c.cond.dv, null, `${c.id}, caída:`); });
   const a = R.avisos.find((x) => x.lvl === "err" && /sin longitud capturada/.test(x.msg));
-  if (!a || !/acepta la propuesta «Cargas eléctricas de los demás motores»/.test(a.msg)) throw new Error("el aviso de las cargas en vivo debe decir cómo capturar su distancia");
+  if (!a || !/captúrala en «Editar cargas capturadas»/.test(a.msg)) throw new Error("el aviso de las cargas de otros motores debe decir cómo capturar su distancia");
+  if (/acepta la propuesta/.test(a.msg)) throw new Error("H-306: el aviso sigue mandando a aceptar una propuesta que ya no existe");
   G("recompute")();
   const f = G("propuestaElecFilas")();
   f.forEach((c) => { if (c.L != null && c.L !== 0) throw new Error(`${c.nombre}: la propuesta la entrega con L = ${c.L} m que nadie capturó`); });
@@ -625,7 +691,8 @@ t("S.50 (H-178) cargas de otros motores: el hp de catálogo o estimado no es de 
       HIDRO = { ...(HIDRO || {}), kWbomba: 2.3, hpBomba: 2.5 };
       FUEGO = { ...(FUEGO || {}), kWbomba: 3.8, hpBomba: 10 };
       CLEAN = { ...(CLEAN || {}), sum: { ...((CLEAN && CLEAN.sum) || {}), ffu: 12 } };
-      return conPermisoTemporal(CRUCES_ELEC, () => computeElec({ ...defaultElec(), tomarHVAC: true, cargas: [] }));
+      /* H-268: computeElec ya no lee otros motores; la propuesta se arma con cargasOtrosMotoresElec y corre en sombra. */
+      const E0 = defaultElec(); return computeElec({ ...E0, cargas: cargasOtrosMotoresElec(E0) });
     } finally { AIRE = sv.AIRE; HIDRO = sv.HIDRO; FUEGO = sv.FUEGO; CLEAN = sv.CLEAN; } })()`);
   const f = (id) => { const c = R.calc.find((x) => x.id === id); if (!c) throw new Error(`falta la carga ${id}`); return c; };
   const aire = f("aire-1");
@@ -681,44 +748,41 @@ t("S.50 (H-178) cargas de otros motores: el hp de catálogo o estimado no es de 
     contiene(me, "General-purpose motors (430-6(a)(1))", "libro EN, nota de motores:"); contiene(me, "PENDING", "libro EN, corriente pendiente:");
     contiene(me, "10 hp nameplate", "libro EN, origen del hp:");
   } finally { S.elec = JSON.parse(guardado); G("recompute")(); }
-  G("recompute")();
-  const bomba = G("propuestaElecFilas")().find((c) => /Bomba contra incendio/.test(c.nombre));
-  if (!bomba) throw new Error("la propuesta del banco no trae la bomba contra incendio");
-  eq(bomba.hpRef, G("FUEGO").hpBomba, "la propuesta entrega el hp de la bomba como referencia:"); eq(bomba.hpRefOrigen, "fuego", "con su origen:");
-  eq(bomba.hp, undefined, "y no como hp de placa:");
+  const fuego0 = JSON.stringify(S.fuego);
+  try {
+    S.fuego.Lramal = 30; S.fuego.Lmontante = 12;   /* H-210: sin cabezal ni montante capturados la bomba queda pendiente y no se propone */
+    G("recompute")();
+    const bomba = G("propuestaElecFilas")().find((c) => /Bomba contra incendio/.test(c.nombre));
+    if (!bomba) throw new Error("la propuesta del banco no trae la bomba contra incendio");
+    eq(bomba.hpRef, G("FUEGO").hpBomba, "la propuesta entrega el hp de la bomba como referencia:"); eq(bomba.hpRefOrigen, "fuego", "con su origen:");
+    eq(bomba.hp, undefined, "y no como hp de placa:");
+  } finally { S.fuego = JSON.parse(fuego0); G("recompute")(); }
 });
 /* H-178: un proyecto que aceptó la cédula con elec v7 guardó las cargas sin hp de referencia ni marca de aparato. */
-t("S.51 (H-178) proyecto que aceptó la cédula antes de la rev 2.9.24: los FFU abren como aparato, la propuesta sale «Desactualizada» y al volver a aceptarla trae el hp de referencia sin perder la distancia capturada", () => {
+t("S.51 (H-178, H-306) proyecto que aceptó la cédula antes de la rev 2.9.24: los FFU abren como aparato y cada carga conserva la distancia capturada (H-306: la propuesta se retiró; ya no hay «volver a aceptar»)", () => {
   const guardado = JSON.stringify(S);
   try {
     G("reemplazarEstado")(JSON.parse(fs.readFileSync("parches/regresion-motores/regresion-motores.emp.json", "utf8"))); G("recompute")();
-    G("propAceptar")("cedula>elec"); G("recompute")();
+    migraCargasElec();
     /* Así lo guardaba elec v7: sin hpRef, hpRefOrigen ni aparato en las cargas de la cédula, sin la marca h178 y con la firma de
        cinco campos. La distancia de 23 m la capturó el usuario. */
     const viejo = JSON.parse(JSON.stringify(S));
     delete viejo.elec.h178;
     viejo.elec.cargas.forEach((c) => { if (c.origen === "cedula") { delete c.hpRef; delete c.hpRefOrigen; delete c.aparato; c.L = 23; } });
-    viejo.vinculos["cedula>elec"].firma = JSON.stringify(G("propuestaElecFilas")().map((c) => [c.nombre, +Number(c.kW).toFixed(2), c.cant, c.V, c.ph]));
     G("reemplazarEstado")(viejo); G("recompute")();
-    eq(G("estadoPropuesta")("cedula>elec").nivel, "desactualizado", "la propuesta aceptada sin hp de referencia ni aparato sale desactualizada:");
     const ffu = G("ELEC").calc.find((c) => /^Módulos FFU/.test(c.nombre));
     if (!ffu) throw new Error("el proyecto de regresión no trae FFU");
     eq(ffu.aparato, true, "el FFU abre como aparato (430-6(a)(1) Exc. 2):");
     cerca(ffu.I, ffu.kW * 1000 / (ffu.V * ffu.fp), 1e-9, "y su corriente es W/(V·fp), no la de un motor de la Tabla 430-248:");
-    G("propAceptar")("cedula>elec"); G("recompute")();
-    eq(G("estadoPropuesta")("cedula>elec").nivel, "aceptado", "vuelta a aceptar:");
     const ced = S.elec.cargas.filter((c) => c.origen === "cedula");
-    const comp = ced.find((c) => /^Compresor/.test(c.nombre));
-    eq(comp.hpRef, G("AIRE").principal.hp, "el compresor trae su hp de catálogo como referencia:"); eq(comp.hpRefOrigen, "catalogo", "origen:");
-    eq(ced.find((c) => /^Módulos FFU/.test(c.nombre)).aparato, true, "el FFU vuelve como aparato:");
-    eq(ced.every((c) => c.L === 23), true, "volver a aceptar conserva la distancia capturada en cada carga:");
+    eq(ced.every((c) => c.L === 23), true, "cada carga conserva la distancia capturada:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 /* H-180 (rev 2.9.24): trazabilidad de lo que no es dato. El kW que no es de placa (familia de equipo, caudal × presión, bombas
    estimadas, catálogo de la casa) sale con su procedencia; el fp de cada carga se captura y se imprime con su origen (capturado o
    criterio de la casa por tipo); el fp del alimentador (antes 0.95 oculto) se ve, se captura y se imprime. No mueve números. */
 const fpOrigenTxt = (c) => G("fpOrigenTexto")(c, false);
-t("S.52 (H-180) kW estimados y de catálogo con su procedencia; fp por carga editable e impreso con su origen (vacío = el de la casa; fuera de 0.5–1 no se usa); fp del alimentador visible, editable e impreso; filas en vivo; proyecto viejo (aun renombrado) sin mover números", () => {
+t("S.52 (H-180) kW estimados y de catálogo con su procedencia; fp por carga editable e impreso con su origen (vacío = el de la casa; fuera de 0.5–1 no se usa); fp del alimentador visible, editable e impreso; filas propuestas por otros motores (H-268); proyecto viejo (aun renombrado) sin mover números", () => {
   const guardado = JSON.stringify(S), tab0 = S.tab;
   try {
     const dm = (nombre, x) => ({ ...G("defaultCarga")(nombre), V: 220, ph: 3, cant: 1, L: 20, ...x });
@@ -760,16 +824,17 @@ t("S.52 (H-180) kW estimados y de catálogo con su procedencia; fp por carga edi
     eq(R.fpAlim, 0.9, "la caída del alimentador usa el fp capturado:"); eq(R.fpAlimOrigen, "capturado", "y lo declara:");
     pdf = txtPdfE(G("buildElecPdf")()); if (!/alimentador 0\.90? \(capturado\)/.test(pdf)) throw new Error("el PDF no imprime el fp del alimentador capturado");
     contiene(libro(), "Captured, for the feeder voltage drop", "libro EN, fp del alimentador capturado:");
-    /* Filas en vivo (tomarHVAC, modo anterior): procedencia por fila, fp de la casa. */
+    /* Filas que proponen los otros motores (H-268: corrida en sombra de la propuesta; el modo en vivo se retiró): procedencia por
+       fila, fp de la casa. */
     G("reemplazarEstado")(JSON.parse(fs.readFileSync("parches/regresion-motores/regresion-motores.emp.json", "utf8"))); G("recompute")();
-    const RV = G(`conPermisoTemporal(CRUCES_ELEC, () => computeElec({ ...S.elec, tomarHVAC: true, cargas: [] }))`);
+    const RV = G(`computeElec({ ...S.elec, cargas: cargasOtrosMotoresElec(S.elec) })`);
     const esperado = { hvac: "hvac", vent: "vent", aire: "aire", hidro: "hidro", fuego: "fuego", ffu: "ffu" };
     const vivas = RV.calc.filter((c) => c.auto);
-    if (vivas.length < 6) throw new Error(`el proyecto de regresión trae ${vivas.length} filas en vivo`);
+    if (vivas.length < 6) throw new Error(`el proyecto de regresión propone ${vivas.length} filas`);
     vivas.forEach((c) => { eq(c.kWOrigen, esperado[c.id.split("-")[0]], `${c.id}, procedencia del kW:`); eq(c.fpOrigen, "casa", `${c.id}, fp:`); });
     vivas.forEach((c) => eq(c.kWEst, ["hvac", "vent", "hidro", "fuego"].includes(c.id.split("-")[0]), c.id + ", estimado (equipo HVAC, extractor y bombas):"));
     /* La cédula aceptada: kW de familia estimado, compresor y FFU de catálogo de la casa. */
-    G("propAceptar")("cedula>elec"); G("recompute")();
+    migraCargasElec();   /* H-306 */
     R = G("ELEC"); memo = R.memo.join(" ");
     const cf = (re) => { const c = R.calc.find((x) => x.origen === "cedula" && re.test(x.nombre)); if (!c) throw new Error(`la cédula no trae ${re}`); return c; };
     const hv = R.calc.find((x) => x.origen === "cedula" && x.modelo);
@@ -804,10 +869,8 @@ t("S.52 (H-180) kW estimados y de catálogo con su procedencia; fp por carga edi
     eq(hv2.fp, 0.9, "y el fp capturado se usa aunque la cédula traiga el suyo:");
     cerca(hv2.I, (kW0 + 1) * 1000 / ((hv2.ph === 3 ? Math.sqrt(3) : 1) * hv2.V * 0.9), 1e-6, "la corriente sale del kW y el fp capturados:");
     S.elec.cargas[i].kW = kW0; G("recompute")();
-    /* Volver a aceptar la cédula conserva el fp capturado en la carga del mismo nombre. */
+    /* H-306: ya no hay «volver a aceptar la cédula» (la propuesta se retiró). */
     const nom = S.elec.cargas[i].nombre;
-    G("propAceptar")("cedula>elec"); G("recompute")();
-    eq(S.elec.cargas.find((c) => c.origen === "cedula" && c.nombre === nom).fp, 0.9, "volver a aceptar conserva el fp capturado:");
     S.elec.cargas.find((c) => c.origen === "cedula" && c.nombre === nom).fp = null; G("recompute")();
     /* Proyecto guardado antes de H-180 (fp de la cédula como dato, sin procedencia del kW, fp del alimentador 0.95), con cargas
        renombradas y una anonimizada (sin origen ni modelo, como la deja etiquetasGenericas): abren con procedencia, mismos números. */
@@ -843,45 +906,47 @@ t("S.52 (H-180) kW estimados y de catálogo con su procedencia; fp por carga edi
 });
 
 /* ====== 5. Regla 3 · si cambia el origen, el destino no se recalcula ===== */
-t("5.1 cambiar la carga térmica marca ductos como desactualizado, sin tocarlo", () => {
-  const antes = JSON.stringify(S.duct.segments);
+t("5.1 cambiar la carga térmica marca selección como desactualizada, sin tocarla", () => {
+  const antes = zonasSelJ(), tramos = JSON.stringify(S.duct.segments);
   S.zones[0].area = 600; G("recompute")();
-  eq(JSON.stringify(S.duct.segments), antes, "los tramos aceptados no se recalcularon solos:");
-  eq(G("estadoPropuesta")("load>duct").nivel, "desactualizado");
+  eq(zonasSelJ(), antes, "las zonas aceptadas no se recalcularon solas:");
+  eq(JSON.stringify(S.duct.segments), tramos, "los tramos capturados de ductos no se mueven (H-305):");
+  eq(G("estadoPropuesta")("load>equip").nivel, "desactualizado");
 });
 t("5.2 desactualizado se ve en el semáforo de la suite", () => {
-  const s = G("semaforoSuite")().find((x) => x.id === "duct");
+  const s = G("semaforoSuite")().find((x) => x.id === "equip");
   eq(s.nivel, "desactualizada");
   if (!s.faltan.length) throw new Error("no explica por qué está desactualizada");
 });
 t("5.3 el usuario decide: actualizar, conservar o capturar lo suyo", () => {
-  const h = G("propuestaHtml")("load>duct");
+  const h = G("propuestaHtml")("load>equip");
   contiene(h, 'data-act="prop-aceptar"'); contiene(h, 'data-act="prop-conservar"'); contiene(h, 'data-act="prop-propio"');
 });
 t("5.4 conservar lo aceptado deja el destino intacto y vuelve a estar vigente", () => {
-  const antes = JSON.stringify(S.duct.segments);
-  const ts = G("vinculoDe")("load>duct").ts;
-  G("propConservar")("load>duct");
-  eq(JSON.stringify(S.duct.segments), antes);
-  eq(G("estadoPropuesta")("load>duct").nivel, "aceptado");
-  eq(G("vinculoDe")("load>duct").ts, ts, "conserva la fecha original de aceptación:");
+  const antes = zonasSelJ();
+  const ts = G("vinculoDe")("load>equip").ts;
+  G("propConservar")("load>equip");
+  eq(zonasSelJ(), antes);
+  eq(G("estadoPropuesta")("load>equip").nivel, "aceptado");
+  eq(G("vinculoDe")("load>equip").ts, ts, "conserva la fecha original de aceptación:");
 });
 t("5.5 actualizar sí trae el dato nuevo, con fecha nueva", () => {
   S.zones[0].area = 400; G("recompute")();
-  eq(G("estadoPropuesta")("load>duct").nivel, "desactualizado");
-  G("propAceptar")("load>duct");
-  eq(G("estadoPropuesta")("load>duct").nivel, "aceptado");
+  eq(G("estadoPropuesta")("load>equip").nivel, "desactualizado");
+  G("propAceptar")("load>equip");
+  eq(G("estadoPropuesta")("load>equip").nivel, "aceptado");
 });
-t("5.6 la soportería congela los metros aceptados y avisa cuando cambian", () => {
-  G("propAceptar")("motores>soporte");
+t("5.6 la soportería congela los metros de su instantánea guardada (H-307: copia propia; ya no hay propuesta ni «desactualizada»)", () => {
+  aceptarSoporte();
   const n0 = G("SOPORTE").nSoportes;
   const seg = S.duct.segments[0];
   seg.length = (Number(seg.length) || 20) * 4;
   G("recompute")();
   eq(G("SOPORTE").nSoportes, n0, "la soportería no se movió sola:");
-  eq(G("estadoPropuesta")("motores>soporte").nivel, "desactualizado");
-  G("propAceptar")("motores>soporte");
-  if (!(G("SOPORTE").nSoportes > n0)) throw new Error("al actualizar no tomó los metros nuevos");
+  eq(G("PROPUESTAS")["motores>soporte"], undefined, "H-307: no hay propuesta que se desactualice:");
+  /* El banco guarda la instantánea de la red nueva (la que antes tomaba «actualizar») para que el resto siga con las mismas cifras. */
+  aceptarSoporte();
+  if (!(G("SOPORTE").nSoportes > n0)) throw new Error("la instantánea nueva no tomó los metros nuevos");
 });
 
 /* ============================ 6. Memoria integral ======================= */
@@ -913,7 +978,9 @@ t("6.4 imprime el trazado de origen de cada valor heredado", () => {
   contiene(txt, "Trazado de origen");
   contiene(txt, "regla 1"); contiene(txt, "regla 2");
   const tr = G("trazaHerencia")();
-  if (!tr.some((r) => r.regla === 1 && r.estado.indexOf("heredado") === 0)) throw new Error("no declara ningún valor heredado");
+  /* H-262 a H-266: ninguna disciplina hereda; el trazado lo declara (regla 1) y lista las propuestas (regla 2). */
+  if (tr.some((r) => r.regla === 1)) throw new Error("quedó un valor heredado en el trazado: " + tr.filter((r) => r.regla === 1).map((r) => r.campo).join(", "));
+  contiene(txt, "ninguna disciplina hereda", "la memoria dice que ya nadie hereda:");
   if (!tr.some((r) => r.regla === 2)) throw new Error("no declara las propuestas aceptadas");
   tr.forEach((r) => { if (!r.origen || !r.fecha) throw new Error("fila del trazado sin origen o sin fecha: " + r.campo); });
 });
@@ -981,7 +1048,7 @@ if (baseFile) {
   const zonas = JSON.parse(JSON.stringify(S.zones));
   t("8.1 misma carga térmica, mismo resultado que la revisión anterior", () => {
     Gb("S").zones = JSON.parse(JSON.stringify(zonas));
-    Gb("S").site = JSON.parse(JSON.stringify(S.site));
+    Gb("S").site = JSON.parse(JSON.stringify(S.sitioCarga || S.site));   /* H-290: la carga nueva calcula con el sitio de Carga */
     Gb("recompute")();
     G("recompute")();
     /* rev 2.9.24 (H-120): si el motor de carga subió de versión respecto a la base, el cambio está permitido y declarado
@@ -1034,7 +1101,11 @@ if (baseFile) {
     S.quote.contingencia = 0;
     try {
     Gb("S").hidro = JSON.parse(JSON.stringify(S.hidro));
-    Gb("S").quote = JSON.parse(JSON.stringify(S.quote));
+    /* H-293–H-301: la base guarda en la cotización los precios y las partidas que ahora son de cada motor: se le dan en su forma de antes. */
+    const PE = G("preciosEquip")(S.equip);
+    Gb("S").quote = { ...JSON.parse(JSON.stringify(S.quote)), items: JSON.parse(JSON.stringify(S.equip.items)), price: PE.price, scaleExp: PE.scaleExp, priceFactor: PE.priceFactor,
+      instPct: PE.instPct, pipeTR: PE.pipeTR, controls: PE.controls, rociador: S.fuego.precioRociador, fanCFM: S.vent.precioCFM, ...S.clean.precios, ...S.aire.precios,
+      ductKg: S.duct.precios.kg, diffuser: S.duct.precios.difusor };
     Gb("S").perms = JSON.parse(JSON.stringify(S.perms));
     Gb("recompute")(); G("recompute")();
     cerca(G("HIDRO").Qtotal, Gb("HIDRO").Qtotal, 0.001, "gasto probable:");
@@ -1049,14 +1120,14 @@ t("9.1 un proyecto viejo abre sin cambiar ni un número capturado", () => {
     meta: { name: "Proyecto rev 2.5", client: "x", location: "Tijuana", engineer: "", date: "2026-01-01" },
     zones: [{ ...G("defaultZone")("Nave"), area: 800, height: 8, occ: 25 }],
     vent: { ...G("defaultState")().vent, area: 120, height: 4, occ: 8 },
-    fuego: { ...G("defaultState")().fuego, area: 800, tomarArea: true },
+    fuego: { ...G("defaultState")().fuego, area: 800, tomarArea: true },   /* H-264: tomarArea ya no se usa */
     civil: { ...G("defaultState")().civil, usarZonas: "false" },
     soporte: { ...G("defaultState")().soporte, sismico: "false" },
   };
   const s = G("sanearEstado")(JSON.parse(JSON.stringify(viejo)));
   eq(s.vent.area, 120, "el área de ventilación capturada a mano se respeta:");
-  eq(s.her["vent.area"].modo, "propio");
-  eq(s.her["fuego.area"].modo, "heredado", "la que sí coincidía sigue heredando:");
+  eq(s.her["vent.area"], undefined, "H-262: ventilación ya no lleva registro de herencia:");
+  eq(s.her["fuego.area"], undefined, "H-264: contra incendio ya no lleva registro de herencia:"); eq(s.fuego.area, 800, "H-264: el área de contra incendio guardada se respeta:");
   eq(s.civil.usarZonas, false, "el menú de sí/no guardado como texto se corrige:");
   eq(s.soporte.sismico, false);
 });
@@ -1222,9 +1293,9 @@ t("11.7 el libro sigue siendo un documento vivo: formulas, no numeros pegados", 
     contiene(x, `<f>${hoja}!C${r}</f>`, "la portada apunta a la fila del total:");
   });
 });
-t("11.8 cada hoja trae el trazado de origen de los valores heredados", () => {
-  contiene(LES.txt, "TRAZADO DE ORIGEN DE LOS VALORES HEREDADOS");
-  contiene(LEN.txt, "TRACEABILITY OF INHERITED VALUES");
+t("11.8 cada hoja trae el trazado de origen de los valores aceptados de otra disciplina (H-264, H-265: ninguna hereda; S.144)", () => {
+  contiene(LES.txt, "TRAZADO DE ORIGEN: VALORES ACEPTADOS DE OTRA DISCIPLINA");
+  contiene(LEN.txt, "TRACEABILITY: VALUES ACCEPTED FROM ANOTHER DISCIPLINE");
   const tr = G("trazaHerencia")();
   if (!tr.length) throw new Error("no hay trazado que imprimir");
   contiene(LES.txt, tr[0].campo, "primer dato heredado:");
@@ -1448,10 +1519,10 @@ t("13.5 en el diagrama los cinco nodos son uno solo", () => {
 t("13.6 las flechas que salían de las cinco ahora salen del nodo HVAC", () => {
   const A = G("ARISTAS");
   const de = (a, b) => A.filter((x) => x.de === a && x.a === b).length;
-  eq(de("hvac", "fuego"), 1, "hacia contra incendio:");
-  eq(de("hvac", "civil"), 2, "hacia obra civil (área/altura y envolvente clasificada):");
-  eq(de("hvac", "elec"), 3, "hacia eléctrico (cédula de equipos, ventilador y FFU de cuartos limpios):");
-  eq(de("hvac", "soporte"), 1, "hacia soportería:");
+  eq(de("hvac", "fuego"), 0, "hacia contra incendio (H-264: ya no hereda; es autónomo):");
+  eq(de("hvac", "civil"), 0, "hacia obra civil (H-265: ya no hereda; es autónoma):");
+  eq(de("hvac", "elec"), 0, "hacia eléctrico (H-306: el eléctrico ya no recibe propuesta de cargas de los demás motores):");
+  eq(de("hvac", "soporte"), 0, "hacia soportería (H-307: soportería ya no recibe propuesta de metros de los motores):");
   eq(de("proyecto", "hvac"), 1, "y el proyecto sigue alimentándolo:");
   /* Las que corrían entre las cinco desaparecen: son tránsito interno. */
   ["load", "clean", "equip", "vent", "duct"].forEach((id) => {
@@ -1459,8 +1530,6 @@ t("13.6 las flechas que salían de las cinco ahora salen del nodo HVAC", () => {
   });
   /* Cada una conserva su significado, no se fusionaron en una sola. */
   A.filter((x) => x.de === "hvac").forEach((x) => { if (!x.que) throw new Error("una flecha del módulo perdió su texto"); });
-  const civiles = A.filter((x) => x.de === "hvac" && x.a === "civil").map((x) => x.que);
-  if (civiles[0] === civiles[1]) throw new Error("las dos flechas a obra civil dicen lo mismo");
 });
 t("13.7 las demás disciplinas siguen siendo nodos independientes", () => {
   const N = G("NODOS").map((nd) => nd.id);
@@ -1470,7 +1539,7 @@ t("13.7 las demás disciplinas siguen siendo nodos independientes", () => {
 });
 t("13.8 el semáforo del nodo HVAC es el PEOR de las cinco", () => {
   const área0 = Number(S.zones[0].area);
-  G("chainToDuct")(true); G("chainToVent")(true);
+  capturaTramos();   /* H-262: chainToVent ya no existe; H-305: chainToDuct tampoco (los tramos se capturan en Ductos) */
   G("recompute")();
   const RANGO = G("SEM_RANGO");
   /* La regla, comprobada contra el estado real que haya en este momento: el
@@ -1809,7 +1878,7 @@ t("16.7 la misma área repartida en las ocho da una carga solar coherente con la
     par(0, "SECTION") + par(2, "ENTITIES") +
     lw("A-MURO", [[0, 0], [12000, 0], [12000, 8000], [0, 8000]]) +
     lw("A-MURO", [[12000, 0], [20000, 0], [20000, 8000], [12000, 8000]]) +
-    par(0, "TEXT") + par(8, "A-TEXTO") + par(10, 6000) + par(20, 4000) + par(40, 250) + par(1, "OFICINA ABIERTA 96 m2") +
+    par(0, "TEXT") + par(8, "A-TEXTO") + par(10, 6000) + par(20, 4000) + par(40, 250) + par(1, "OFICINA ABIERTA 96 m2 h=2.80 m") +   /* H-272c: la altura viene rotulada; sin rótulo ya no se supone */
     par(0, "TEXT") + par(8, "A-TEXTO") + par(10, 16000) + par(20, 4000) + par(40, 250) + par(1, "CUARTO LIMPIO ISO 8 64 m2 h=3.20 m") +
     par(0, "LINE") + par(8, "M-DUCTO-SA") + par(10, 0) + par(20, 0) + par(11, 30000) + par(21, 0) +
     par(0, "ENDSEC") + par(0, "EOF");
@@ -1890,13 +1959,13 @@ t("16.7 la misma área repartida en las ocho da una carga solar coherente con la
     eq(G("CX_LOTE").propuestas[1].marcado, false, "la marca no se registró:");
   });
   t("17.6 crear proyecto nuevo abre una instancia limpia e independiente", () => {
-    S.quote.items = [{ fam: "prueba", qty: 3 }];
+    S.equip.items = [{ fam: "prueba", qty: 3 }];   /* H-301: las partidas de equipo son de Selección */
     S.kaizen.items = [{ id: "k-prueba" }];
     w.document.querySelector('#modal [data-act="cx-nuevo"]').dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
     if (S.pid === pidViejo) throw new Error("el proyecto nuevo reutilizó el id del anterior");
     eq(S.zones.length, 1, "entró solo la zona marcada:");
     cerca(S.zones[0].area, 96, .01, "área de la oficina:");
-    eq(S.quote.items.length, 0, "la cotización del proyecto anterior viajó al nuevo:");
+    eq(S.equip.items.length, 0, "las partidas de equipo del proyecto anterior viajaron al nuevo:");
     eq(S.kaizen.items.length, 0, "el Kaizen del proyecto anterior viajó al nuevo:");
     eq(S.meta.client, "", "el cliente del proyecto anterior viajó al nuevo:");
     eq(S.cx.lotes.length, 1, "registro de origen:");
@@ -1912,10 +1981,12 @@ t("16.7 la misma área repartida en las ocho da una carga solar coherente con la
     if (!lista.find((p) => p.id === S.pid)) throw new Error("el proyecto nuevo no quedó guardado como proyecto independiente");
     eq(viejo.data.cx ? viejo.data.cx.lotes.length : 0, 0, "el registro de carga se escribió en el proyecto equivocado:");
   });
-  t("17.8 la zona nacida del plano calcula: muros exteriores a la altura real, el muro compartido en cero y sin vidrio inventado", () => {
+  t("17.8 la zona nacida del plano calcula con lo que el plano trae: muros exteriores a la altura ROTULADA, el muro compartido en cero, y sin vidrio, ocupantes, luces ni equipo inventados (H-272c)", () => {
     const z = S.zones[0];
-    cerca(z.walls.N, 12 * 2.8, .2, "muro norte = ancho × altura:");
-    cerca(z.walls.W, 8 * 2.8, .2, "muro poniente = fondo × altura:");
+    cerca(z.height, 2.8, 1e-9, "altura rotulada en el plano:");
+    cerca(z.walls.N, 12 * 2.8, .2, "muro norte = ancho × altura rotulada:");
+    cerca(z.walls.W, 8 * 2.8, .2, "muro poniente = fondo × altura rotulada:");
+    eq(z.occ, 0, "ocupantes no rotulados no se suponen (antes 10 por escala de una oficina de 120 m²):"); eq(z.lights, 0, "luces (antes 960 W supuestos):"); eq(z.equip, 0, "equipo (antes 1152 W supuestos):");
     /* La oficina comparte su cara oriente con el cuarto limpio del mismo plano. */
     eq(z.walls.E, 0, "muro oriente compartido con otro cuarto:");
     eq(["N", "NE", "E", "SE", "S", "SW", "W", "NW"].reduce((a, o) => a + z.glass[o], 0), 0, "vidrio:");
@@ -1934,7 +2005,7 @@ t("16.7 la misma área repartida en las ocho da una carga solar coherente con la
     contiene(de("Área a proteger").texto, "Area total: 1,250 m2");
     G("cxAplicar")(lote, "abierto");
     eq(S.fuego.area, 1250, "fuego.area:"); eq(S.fuego.altura, 6.5); eq(S.fuego.riesgo, "ord2");
-    eq(G("herDe")("fuego.area").modo, "propio", "el área cargada debe dejar de heredarse:");
+    /* H-264: ya no hay herencia que pueda pisar el dato cargado (antes: herDe("fuego.area") pasaba a «propio»). */
     G("recompute")(); G("render")();
     eq(S.fuego.area, 1250, "la herencia pisó el dato cargado:");
   });
@@ -2049,10 +2120,13 @@ t("16.7 la misma área repartida en las ocho da una carga solar coherente con la
     const a = await cx("cxProcesarArchivos")([archivo("descriptiva.txt", "Superficie del predio: 18,500 m2\nArea construida de la nave: 3,200 m2\n")], "fuego");
     const ap = a.propuestas.find((p) => p.destino === "fuego.area");
     eq(ap.valor, 3200, "área a proteger:"); eq(ap.marcado, true, "marcada:");
+    /* H-272a: obra civil ya no recibe un total a mano (civil.areaManual): cada espacio nombrado en la memoria se ofrece como
+       renglón propio de «Áreas de obra» (civil.areas), sin marcar porque no viene de un plano ni de una tabla. */
     const b = await cx("cxProcesarArchivos")([archivo("tabla.txt", "Oficinas 120 m2\nAlmacen 340 m2\n")], "civil");
-    const ops = b.propuestas.filter((p) => p.destino === "civil.areaManual");
-    eq(ops.length, 2, "opciones:");
+    const ops = b.propuestas.filter((p) => p.destino === "civil.areas");
+    eq(ops.length, 2, "renglones ofrecidos: " + b.propuestas.map((p) => p.destino + " " + p.etiqueta).join(" | "));
     if (ops.some((p) => p.marcado)) throw new Error("un área sin palabra clave salió marcada");
+    if (b.propuestas.some((p) => /^civil\.(areaManual|alturaManual|murosManual)$/.test(p.destino))) throw new Error("la carga ya no debe escribir los totales a mano de obra civil (H-265/H-272a)");
   });
   await tA("17.20 el CSV eléctrico lee tensión y fases con su unidad, y lo que no entiende va sin marcar", async () => {
     const csv = "circuito,descripcion,Potencia (kW),Tension,Fases\nC-1,Extractor de bano,0.375,127 V,1F\nC-2,Minisplit,2.4,220 V,2F\nC-3,Horno,5.5,220,\n";
@@ -2075,18 +2149,20 @@ t("16.7 la misma área repartida en las ocho da una carga solar coherente con la
     const b = await cx("cxProcesarArchivos")([archivo("aire2.csv", "equipo,caudal,cantidad\nSecador,300,1\n")], "aire");
     eq(b.propuestas.find((x) => x.grupo === "consumo").marcado, false, "sin unidad:");
   });
-  await tA("17.22 las capas se clasifican por palabra completa y leer un plano no apaga los motores de soportería", async () => {
+  await tA("17.22 las capas se clasifican por palabra completa y leer un plano alimenta la captura propia de soportería sin tocar usarMotores (H-266/H-272d)", async () => {
     const lin = (c, L) => par(0, "LINE") + par(8, c) + par(10, 0) + par(20, 0) + par(11, L) + par(21, 0);
     const d = dxfDe(lin("E-ALIMENTADOR-PRINCIPAL", 120000) + lin("A-FASCIA", 40000) + lin("HVAC-EQUIPOS", 65000) + lin("IH-AGUA-FRIA-PRINCIPAL", 80000));
     const l = await cx("cxProcesarArchivos")([archivo("instalaciones.dxf", d)], "soporte");
     const largos = l.propuestas.filter((p) => /medido en plano/.test(p.etiqueta));
     eq(largos.length, 1, "longitudes propuestas: " + largos.map((p) => p.etiqueta + " " + p.valor).join(" | "));
     contiene(largos[0].etiqueta, "hidrosanitaria"); eq(largos[0].valor, 80);
-    const motores = l.propuestas.find((p) => p.destino === "soporte.usarMotores");
-    if (!motores || motores.marcado) throw new Error("apagar los motores debe ser una casilla aparte y sin marcar");
-    S.soporte.usarMotores = true;
+    /* H-272d: ya no hay casilla «apagar el conteo por motores» (el conteo en vivo se retiró en H-266); leer un plano no toca usarMotores. */
+    if (l.propuestas.some((p) => p.destino === "soporte.usarMotores")) throw new Error("la carga no debe ofrecer apagar/prender el conteo por motores (retirado en H-266)");
+    if (l.propuestas.some((p) => p.destino === "soporte.alturaTrabajo")) throw new Error("la altura de trabajo no se propone desde el plano: no es la altura libre y no se estima (H-266)");
+    const antes = S.soporte.usarMotores;
     G("cxAplicar")(l, "abierto");
-    eq(S.soporte.usarMotores, true, "aplicar una longitud apagó los motores:");
+    eq(S.soporte.usarMotores, antes, "aplicar una longitud cambió usarMotores:");
+    if (!(S.soporte.snap && S.soporte.usarMotores !== false)) eq(S.soporte.tubHidroM, 80, "los metros medidos entran a la captura propia de soportería:");
   });
   await tA("17.23 crear proyecto nuevo desde archivos guarda antes lo capturado sin nombre", async () => {
     G("closeModal")();
@@ -2178,6 +2254,10 @@ t("16.7 la misma área repartida en las ocho da una carga solar coherente con la
     b.remove();
   };
   const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
+  /* Banco (27-sep-2026): lo asíncrono se espera por su condición, no con un reloj fijo. El FileReader de jsdom encadena tres
+     setImmediate; si el proceso se detiene más de 80 ms entre saltos (GC, varios bancos a la vez), el reloj de la prueba ganaba:
+     18.10 veía el proyecto viejo y la importación tardía caía dentro de la espera de 18.16. Sondea cada 5 ms, tope ~10 s. */
+  const esperarA = async (cond, veces = 2000) => { for (let i = 0; i < veces && !cond(); i++) await esperar(5); };
   const tA = async (nombre, fn) => {
     try { const r = await fn(); if (r === false) { fail++; fallos.push([nombre, "devolvió falso"]); } else ok++; }
     catch (e) { fail++; fallos.push([nombre, e.message]); }
@@ -2200,6 +2280,7 @@ t("16.7 la misma área repartida en las ocho da una carga solar coherente con la
   S.aire.consumos = [{ id: "u1", tipo: "actuador", nombre: "Linea CLIENTE-HISTORICO", cant: 12, lmin: 0, bar: 0, uso: 0 }];
   S.aire.presionUso = 7.7;
   S.civil.areaManual = 999;
+  S.civil.areas = [{ id: "a1", nombre: "Nave histórica", area: 999, altura: 4, perimetro: 0 }];   /* H-272a: la captura propia de civil (ingeniería, sin identidad) tampoco viaja al proyecto en blanco */
   S.soporte.snap = { resumen: "foto aceptada de OBRA-HISTORICA-A", ts: 1 };
   S.llaveSuelta = "OBRA-HISTORICA-A";
   if (!S.quote.prop) S.quote.prop = G("defaultPropuesta")();
@@ -2217,6 +2298,7 @@ t("16.7 la misma área repartida en las ocho da una carga solar coherente con la
     eq(S.llaveSuelta, undefined, "llave del proyecto anterior:");
     if (S.soporte && S.soporte.snap) throw new Error("viajó la foto aceptada de soportería");
     if (num(S.civil.areaManual) === 999) throw new Error("viajó la obra civil");
+    if ((S.civil.areas || []).some((a) => num(a.area) === 999)) throw new Error("viajó la obra civil (áreas de obra capturadas)");
     if (S.aire.presionUso === 7.7) throw new Error("viajó el aire comprimido");
     sinViejo(JSON.stringify(S), "estado del proyecto en blanco");
     sinViejo(Buffer.from(G("buildPropuestaXlsx")({ lang: "es", mon: "MXN" })).toString("utf8"), "libro del proyecto en blanco");
@@ -2263,7 +2345,8 @@ t("16.7 la misma área repartida en las ocho da una carga solar coherente con la
       walls: { N: 28, NE: 0, E: 18, SE: 0, S: 28, SW: 0, W: 18, NW: 0 },
       glass: { N: 4, NE: 0, E: 6, SE: 0, S: 12, SW: 0, W: 8, NW: 0 },
       lights: 1200, equip: 1440, ach: .4 }];
-    G("recompute")();
+    aceptarSitioCarga();   /* H-290: el proyecto nuevo acepta el sitio de Proyecto */
+    S.duct.difusores = 3;   /* H-300: los difusores se capturan en Ductos (los que antes daba la zona) */
     G("projSave")(true);
     const idB = S.pid, linB = S.linaje;
     act("proj-rev", idB);
@@ -2311,7 +2394,7 @@ t("16.7 la misma área repartida en las ocho da una carga solar coherente con la
     const inp = w.document.getElementById("file-input");
     const f = new w.File([JSON.stringify({ v: 1, meta: { name: "Respaldo importado" }, zones: [{ ...G("defaultZone")("Z"), area: 55 }] })], "respaldo.emp.json");
     inp.onchange({ target: { files: [f] } });
-    await esperar(80);
+    await esperarA(() => S.meta.name === "Respaldo importado");
     eq(S.meta.name, "Respaldo importado");
     if (idAbierto && S.pid === idAbierto) throw new Error("el respaldo heredó el id del proyecto abierto y lo iba a sobrescribir");
     eq(S.otraLlave, undefined, "llave del proyecto abierto:");
@@ -2449,7 +2532,7 @@ t("16.7 la misma área repartida en las ocho da una carga solar coherente con la
       G("reemplazarEstado")(JSON.parse(JSON.stringify(G("INIT"))));
       S.pid = null; S.linaje = null; G("histReiniciar")();
       act("proj-rev", "prelleno01");
-      await esperar(30);
+      await esperarA(() => /Revisión B creada/.test(avisoTxt()) && /Se retiró del historial/.test(avisoTxt()));
       if (!registro("prelleno01")) throw new Error("se retiró la revisión de origen");
       eq(S.quote.prop.comparaCon, "prelleno01", "comparativo:");
       G("recompute")();
@@ -2494,10 +2577,10 @@ t("16.7 la misma área repartida en las ocho da una carga solar coherente con la
     act("proj-new");
     S.meta.name = "OBRA-HISTORICA-Q"; S.meta.client = "CLIENTE-HISTORICO SA";
     const fam = Object.keys(G("PRICE_SEED"))[0];
-    S.quote.price[fam] = 777777; S.quote.fasar = 1.99; S.quote.indirect = 0.21; S.quote.modo = "licitacion";
+    S.equip.precios.price[fam] = 777777;   /* H-301: los precios de equipo son de Selección */ S.quote.fasar = 1.99; S.quote.indirect = 0.21; S.quote.modo = "licitacion";
     S.quote.refBase = "Folio OBRA-HISTORICA 2026";
     const e = G("CARRIER")[0];
-    S.quote.items = [{ id: e.id, fam: (G("famOfModel")(e) || {}).id || null, qty: 3, unit: 12345 }, { id: "OBRA-HISTORICA-EQ", fam: "x", qty: 2, unit: null }];
+    S.equip.items = [{ id: e.id, fam: (G("famOfModel")(e) || {}).id || null, qty: 3, unit: 12345 }, { id: "OBRA-HISTORICA-EQ", fam: "x", qty: 2, unit: null }];
     S.quote.prop.cliente = "CLIENTE-HISTORICO SA"; S.quote.prop.atencion = "Ing. OBRA-HISTORICA";
     G("projSave")(true);
     const idQ = S.pid;
@@ -2509,12 +2592,12 @@ t("16.7 la misma área repartida en las ocho da una carga solar coherente con la
     const r = registro(idQ);
     eq(r.referencia, true, "marca de referencia:");
     sinViejo(JSON.stringify(r), "registro de la referencia");
-    eq(r.data.quote.price[fam], 777777, "precio capturado:");
+    eq(r.data.equip.precios.price[fam], 777777, "precio capturado (en Selección, H-301):");
     eq(r.data.quote.fasar, 1.99, "FASAR:");
     eq(r.data.quote.indirect, 0.21, "indirectos:");
     eq(r.data.quote.modo, "licitacion", "modalidad:");
-    eq(r.data.quote.items.length, 1, "partidas del catálogo:");
-    eq(r.data.quote.items[0].id, e.id); eq(r.data.quote.items[0].qty, 3, "cantidad:"); eq(r.data.quote.items[0].unit, 12345, "precio unitario:");
+    eq(r.data.equip.items.length, 1, "partidas del catálogo (en Selección, H-301):");
+    eq(r.data.equip.items[0].id, e.id); eq(r.data.equip.items[0].qty, 3, "cantidad:"); eq(r.data.equip.items[0].unit, 12345, "precio unitario:");
     eq(r.data.quote.refBase, "", "folio de la base:");
   });
 
@@ -2527,7 +2610,7 @@ t("16.7 la misma área repartida en las ocho da una carga solar coherente con la
     const respaldo = { v: 1, ...JSON.parse(JSON.stringify(ref.data)), pid: ref.id, linaje: ref.id,
       meta: { ...ref.data.meta, name: "RESPALDO-IDENTIDAD", client: "CLIENTE-RESTAURADO" } };
     inp.onchange({ target: { files: [new w.File([JSON.stringify(respaldo)], "restaurar.emp.json")] } });
-    await esperar(80);
+    await esperarA(() => S.meta.name === "RESPALDO-IDENTIDAD");
     eq(S.meta.name, "RESPALDO-IDENTIDAD", "se abrió el respaldo:");
     if (S.pid === ref.id) throw new Error("el respaldo tomó el id de la referencia");
     contiene(avisoTxt(), "nuevo e independiente", "aviso:");
@@ -2545,8 +2628,9 @@ t("16.7 la misma área repartida en las ocho da una carga solar coherente con la
     const render0 = G("render");
     w.render = () => { throw new Error("pantalla rota"); };
     try {
+      w.document.getElementById("toast").textContent = "";   /* el aviso que se espera es el de ESTA importación */
       inp.onchange({ target: { files: [new w.File([JSON.stringify({ meta: { name: "RESPALDO-ROTO" }, zones: [{ area: 5 }] })], "roto.emp.json")] } });
-      await esperar(80);
+      await esperarA(() => avisoTxt().indexOf("Archivo no válido") >= 0);
     } finally { w.render = render0; }
     eq(S.meta.name, nombre, "el estado quedó reemplazado:");
     eq(S.pid, pid, "id:");
@@ -2662,7 +2746,8 @@ t("16.7 la misma área repartida en las ocho da una carga solar coherente con la
       walls: { N: 28, NE: 0, E: 18, SE: 0, S: 28, SW: 0, W: 18, NW: 0 },
       glass: { N: 4, NE: 0, E: 6, SE: 0, S: 12, SW: 0, W: 8, NW: 0 },
       lights: 1200, equip: 1440, ach: .4 }];
-    G("recompute")();
+    aceptarSitioCarga();   /* H-290: el proyecto nuevo acepta el sitio de Proyecto */
+    S.duct.difusores = 3;   /* H-300: los difusores se capturan en Ductos (los que antes daba la zona) */
     G("projSave")(true);
     const base = registro(S.pid);
     const crea = (id, comparaCon, ts) => {
@@ -2801,7 +2886,8 @@ t("16.7 la misma área repartida en las ocho da una carga solar coherente con la
     const F = filasT();
     eq(F.length, 6, "archivos en la tabla: " + resumen().join(" ; "));
     const de = (n2) => F.find((f) => f.nombre === n2);
-    eq(de("planta.dxf").motor, "civil", "planta en /arquitectonico/ va a obra civil por la carpeta:");
+    /* H-272d: la planta arquitectónica es un levantamiento: alimenta la captura propia de varias disciplinas (civil entre ellas). */
+    eq(de("planta.dxf").motor, "levantamiento", "planta en /arquitectonico/ es un levantamiento por la carpeta:");
     eq(de("cuadro de cargas.csv").motor, "electrico", "cuadro de cargas al eléctrico:");
     eq(de("memoria sci.pdf").motor, "fuego", "memoria SCI por su contenido:");
     eq(de("fachada.png").motor, "referencia", "la foto queda de referencia:"); eq(de("fachada.png").estado, "listo");
@@ -2810,6 +2896,12 @@ t("16.7 la misma área repartida en las ocho da una carga solar coherente con la
     eq(de("escaneo.pdf").estado, "error", "el PDF sin texto es un error claro:"); contiene(de("escaneo.pdf").detalle, "escaneo");
     if (/stack|TypeError|undefined/i.test(de("escaneo.pdf").detalle)) throw new Error("el mensaje de error trae basura técnica");
     ["cuadro de cargas.csv", "memoria sci.pdf", "planta.dxf"].forEach((n2) => { if (de(n2).estado !== "listo" || !(de(n2).propuestas > 0)) throw new Error(`${n2}: ${de(n2).estado} · ${de(n2).detalle}`); });
+    /* H-272a: la planta alimenta la captura propia de obra civil (renglones de «Áreas de obra»), no un total a mano. */
+    const lotePlanta = G("CXZ_LOTES")[de("planta.dxf").id];
+    const propsCivil = lotePlanta ? (lotePlanta.compuesto ? ((lotePlanta.porTab.civil || {}).lote || { propuestas: [] }).propuestas : lotePlanta.propuestas) : [];
+    if (!propsCivil.some((p) => p.destino === "civil.areas")) throw new Error("la planta en /arquitectonico/ debe proponer renglones de «Áreas de obra» (civil.areas): " + (lotePlanta ? JSON.stringify(lotePlanta.tabs || lotePlanta.propuestas.map((p) => p.destino)) : "sin lote"));
+    if (!(S.civil.areas || []).some((a) => /OFICINA/i.test(a.nombre))) throw new Error("el levantamiento debe alimentar la captura propia de obra civil");
+    if (S.civil.usarZonas === false || Number(S.civil.areaManual) > 0) throw new Error("cargar la planta no debe pasar obra civil a totales a mano");
     F.forEach((f) => contiene(f.ruta, "proyecto-ejecutivo.zip/", `ruta con el zip de origen (${f.nombre}):`));
     eq(w.__errs.length, 0, "errores de ventana:");
   });
@@ -3567,7 +3659,8 @@ t("22.5 2.2 la carga dinámica hidráulica no cuenta dos veces la altura (edific
 
 t("22.6 2.3 la presión de ductos se declara suma de tramos (cota superior solo de los tramos capturados, con aviso si no hay retorno) y ningún texto afirma que manda el recorrido crítico", () => {
   /* Sin topología de red el número sigue siendo la suma (pasa a la capa de motores);
-     lo que se fija aquí es que pantalla, guía, selección, memoria y libro lo digan. */
+     lo que se fija aquí es que pantalla, guía, memoria y libro lo digan. Selección ya no la lee (H-274, decisión del dueño
+     28-sep-2026): su presión estática externa se captura en su pestaña, así que aquí se revisa que la red no la mueva. */
   const ducto0 = JSON.parse(JSON.stringify(S.duct)), tab0 = S.tab, perms0 = JSON.parse(JSON.stringify(S.perms));
   try {
     Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "prueba 22.6" }; });
@@ -3577,7 +3670,7 @@ t("22.6 2.3 la presión de ductos se declara suma de tramos (cota superior solo 
     S.duct.segments = [{ ...seg("SA-PRINCIPAL", 3200), id: "p226t", shape: "rect", method: "equal_friction", targetF: .8, length: 20, aspect: 3,
       fittings: [{ type: "elbow_90_rect", qty: 2, C: .28 }] }, ...Array.from({ length: 8 }, (_, i) => ramal(`SA-RAMAL-${i + 1}`, `p226r${i}`, 400))];
     /* 2.3-rep: "cota superior" solo vale para el recorrido crítico de los tramos
-       capturados; sin ningún tramo "return" (como la red de chainToDuct) cada
+       capturados; sin ningún tramo "return" capturado cada
        texto lo avisa, y con retorno capturado el aviso desaparece. */
     const COTA = "cota superior del recorrido crítico de los tramos capturados; no incluye tramos, rejillas ni filtros que no estén en la lista";
     const COTA_PLANO = "cota superior del recorrido critico de los tramos capturados; no incluye tramos, rejillas ni filtros que no esten en la lista";
@@ -3591,7 +3684,7 @@ t("22.6 2.3 la presión de ductos se declara suma de tramos (cota superior solo 
       const sin = hayRetorno ? "" : SIN, sinEn = hayRetorno ? "" : SIN_EN;
       const falta = (txt, frase, donde) => { if (txt.includes(frase)) throw new Error(`${red} · ${donde} dice «${frase}» y la red sí trae retorno`); };
       cerca(D.path, D.segs.filter((s) => ["supply", "return"].includes(s.service)).reduce((a, s) => a + s.total, 0), 1e-9, `${red} · DUCT.path sigue siendo la suma de tramos en esta capa:`);
-      cerca(G("requisitoFam")("split_duct").esp, D.path * 1.15 / 249.089, 1e-9, `${red} · esp de selección con la suma:`);
+      eq(G("requisitoFam")("split_duct").esp, 0, `${red} · selección no toma la presión de la red de ductos (H-274):`);
       /* Pantalla de ductos */
       S.tab = "ductos"; G("render")();
       /* Solo lo que se ve: fuera el código de los <script>, que también trae las frases. */
@@ -3606,12 +3699,16 @@ t("22.6 2.3 la presión de ductos se declara suma de tramos (cota superior solo 
       contiene(pant, `la suite muestra la suma de los tramos de suministro y retorno, porque el recorrido crítico todavía no se calcula: es ${COTA}.`, `${red} · guía de ductos en la pantalla:`);
       contiene(pant, `+15 % de margen · suma de los tramos de suministro y retorno (extracción y grasa van en sus propios ventiladores), cota superior solo de los tramos capturados${hayRetorno ? "" : " · sin tramos de retorno capturados"}`, `${red} · sub de Presión del ventilador:`);
       if (hayRetorno) falta(pant, "sin tramos de retorno capturados", "la pantalla");
-      /* Marca de selección (se fuerza una presión alta para que haya castigo) */
+      /* Marca de selección (se fuerza una presión alta para que haya castigo): dice que la presión es la capturada en
+         Selección y no habla de ductos (H-274). */
       if (conMarca) {
         const sel = G("selPorFamilia")("split_duct", { ...G("requisitoFam")("split_duct"), esp: 5 });
         const marcas = sel.cands.flatMap((c) => c.marcas || []).filter((x) => /in\.wg/.test(x));
         if (!marcas.length) throw new Error(`${red} · el caso no castiga por presión: no se puede revisar la marca`);
-        marcas.forEach((x) => contiene(x, `in.wg (suma de tramos; ${COTA}${sin}) y la familia entrega`, `${red} · marca de selección:`));
+        marcas.forEach((x) => {
+          contiene(x, `la presión estática externa capturada es ${G("n")(5, 2)} in.wg y la familia entrega`, `${red} · marca de selección:`);
+          if (/suma de tramos|el ducto pide|red de ductos/.test(x)) throw new Error(`${red} · la marca de selección sigue hablando de ductos: ${x}`);
+        });
       }
       /* Memoria PDF */
       const txt = Buffer.from(G("buildMemoriaPdf")()).toString("latin1");
@@ -3632,29 +3729,29 @@ t("22.6 2.3 la presión de ductos se declara suma de tramos (cota superior solo 
     };
     /* Red 1: troncal + 8 ramales de suministro, capturada a mano */
     const D = revisar("red de suministro", false, false);
+    /* H-274: la red de ductos, por grande que sea, no le pone presión ni marca a la selección. */
     const sel = G("selPorFamilia")("split_duct", G("requisitoFam")("split_duct"));
-    const marcas = sel.cands.flatMap((c) => c.marcas || []).filter((x) => /in\.wg/.test(x));
-    if (!marcas.length) throw new Error("el caso no castiga por presión: no se puede revisar la marca");
-    marcas.forEach((x) => contiene(x, `in.wg (suma de tramos; ${COTA}${SIN}) y la familia entrega`, "marca de selección:"));
+    const conDucto = sel.cands.flatMap((c) => c.marcas || []).filter((x) => /in\.wg|suma de tramos|el ducto pide|red de ductos/.test(x));
+    if (conDucto.length) throw new Error(`la selección sigue marcando por la presión de ductos (H-274): ${conDucto[0]}`);
     if (!(D.path > 0)) throw new Error("red de suministro sin presión");
     /* Guía del módulo (texto fijo: debe acotar y avisar del retorno) */
     const ojo = G("GUIA").ductos.ojo;
     if (/El tramo crítico es el que manda/.test(ojo)) throw new Error("la guía sigue afirmando que el tramo crítico manda");
     if (/\(cota superior\)/.test(ojo)) throw new Error("la guía sigue diciendo «(cota superior)» sin acotarla");
     contiene(ojo, COTA, "guía de ductos:");
-    contiene(ojo, "no trae tramos de retorno", "guía de ductos (retorno):");
+    contiene(ojo, "Si no capturas los tramos de retorno, la cifra tampoco los incluye", "guía de ductos (retorno):");
     contiene(ojo, "la suma de los tramos de suministro y retorno, porque el recorrido crítico todavía no se calcula", "guía de ductos (qué se suma y por qué):");
     contiene(ojo, "Si un tramo domina la pérdida, revisa su velocidad o sus accesorios antes de subir el equipo", "guía de ductos (criterio de la nota que se quitó de la gráfica):");
     if (/sin tramos de retorno capturados/.test(ojo)) throw new Error("la guía trae el aviso dinámico de la pantalla: ese lo pinta la métrica según haya o no retorno");
-    /* Red 2: la que arma la propia suite desde la carga (sin retorno) */
+    /* Red 2: principal, un ramal por zona y aire exterior, sin retorno (la que antes armaba chainToDuct; H-305: se captura) */
     const vinc0 = S.vinculos === undefined ? undefined : JSON.parse(JSON.stringify(S.vinculos));
     try {
-      G("chainToDuct")(true);
-      revisar("red de chainToDuct", false, true);
+      capturaTramos();
+      revisar("red capturada sin retorno", false, true);
       /* Red 3: la misma red con un retorno capturado: el aviso desaparece */
       S.duct.segments.push({ ...seg("RA-PRINCIPAL", 1770), id: "p226ra", service: "return", shape: "rect", method: "equal_friction",
         targetF: .8, length: 20, aspect: 2, fittings: [{ type: "elbow_90_rect", qty: 2, C: .28 }] });
-      revisar("red de chainToDuct con retorno", true, true);
+      revisar("red capturada con retorno", true, true);
     } finally {
       if (vinc0 === undefined) delete S.vinculos; else S.vinculos = vinc0;
     }
@@ -3744,9 +3841,8 @@ t("22.8 2.5 la soportería hidráulica lee hidro.material: cobre y termoplástic
     };
     Object.entries(esperado).forEach(([material, x]) => {
       preparar(material);
-      eq(hidroDe().fam, x.fam, `${material} familia en vivo:`);
-      G("propAceptar")("motores>soporte");
-      G("recompute")();
+      if (hidroDe()) throw new Error(`${material}: H-266: sin aceptar la instantánea la soportería no toma la hidráulica de los motores`);
+      aceptarSoporte();
       eq(S.soporte.snap.hidroMat, x.fam, `${material} instantánea hidroMat:`);
       const h = hidroDe();
       eq(h.fam, x.fam, `${material} familia gobernada:`);
@@ -3756,16 +3852,12 @@ t("22.8 2.5 la soportería hidráulica lee hidro.material: cobre y termoplástic
       /* El PDF imprime el claro con un decimal (2.438 → «2.4»). */
       eq(JSON.stringify(filasPdf()), JSON.stringify(x.pdf || x.e.map((e, i) => [String(Math.round(e * 10) / 10), String(x.n[i])])), `${material} PDF conteo por tramo:`);
     });
-    /* El gobernador congela el material aceptado y avisa si cambia. */
+    /* El gobernador congela el material de la instantánea (H-307: copia propia; no se compara con hidrosanitario). */
     preparar("cobre");
-    G("propAceptar")("motores>soporte");
+    aceptarSoporte();
     S.hidro.material = "cpvc";
     G("recompute")();
-    eq(hidroDe().fam, "cobre", "tras cambiar a cpvc sin actualizar sigue lo aceptado:");
-    eq(G("estadoPropuesta")("motores>soporte").nivel, "desactualizado", "cambio de material marca la propuesta:");
-    G("propAceptar")("motores>soporte");
-    G("recompute")();
-    eq(hidroDe().fam, "plastico", "al actualizar toma el termoplástico:");
+    eq(hidroDe().fam, "cobre", "tras cambiar a cpvc sigue el material de la instantánea:");
   } finally {
     S.hidro = hidro0; S.soporte = sop0;
     S.vinculos = vinc0;
@@ -3817,7 +3909,7 @@ t("22.9 3.1 CUMPLIMIENTO_URS lee la clase ISO del cuarto y la cascada sale NO EV
 
 t("22.10 3.2 las bases de diseño de la memoria HVAC imprimen el exterior del sitio (SITE), no 35/24 fijos", () => {
   proyectoDePrueba();
-  const site0 = JSON.parse(JSON.stringify(S.site ?? null));
+  const site0 = JSON.parse(JSON.stringify(S.sitioCarga ?? null));   /* H-290: la carga calcula con el sitio de Carga térmica */
   const RX = /Exterior[^°]*?(-?\d+(?:\.\d+)?) °C de bulbo seco y (-?\d+(?:\.\d+)?) °C de bulbo húmedo/g;
   const texto = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ").replace(/\s+/g, " ");
   try {
@@ -3826,7 +3918,7 @@ t("22.10 3.2 las bases de diseño de la memoria HVAC imprimen el exterior del si
       { nombre: "Personalizado", site: { key: "custom", db: 42, wb: 26, alt: 1200, range: 14 }, esperado: "42/26" },
       { nombre: "Tijuana", site: { key: "tijuana" }, esperado: "32.8/17.5" }, /* rev 2.9.18 · ASHRAE 2021 (antes 35/24) */
     ].forEach((c) => {
-      S.site = JSON.parse(JSON.stringify(c.site));
+      S.sitioCarga = JSON.parse(JSON.stringify(c.site));
       G("recompute")();
       const SITE = G("SITE");
       eq(`${SITE.db}/${SITE.wb}`, c.esperado, `${c.nombre} exterior del motor:`);
@@ -3838,22 +3930,22 @@ t("22.10 3.2 las bases de diseño de la memoria HVAC imprimen el exterior del si
       }
     });
   } finally {
-    if (site0 === null) delete S.site; else S.site = site0;
+    S.sitioCarga = site0;
     G("recompute")();
   }
 });
 
 t("22.11 3.3 (rev 2.9.16, decisión del dueño) la red hidráulica se cotiza por diámetro y material con el precio capturado; sin longitud queda «pendiente de longitud» y sin precio «pendiente de precio unitario»: nada se supone", () => {
-  const hidro0 = JSON.parse(JSON.stringify(S.hidro)), perms0 = JSON.parse(JSON.stringify(S.perms ?? null)), pu0 = JSON.parse(JSON.stringify(S.quote.hidroPU || {}));
+  const hidro0 = JSON.parse(JSON.stringify(S.hidro)), perms0 = JSON.parse(JSON.stringify(S.perms ?? null)), pu0 = JSON.parse(JSON.stringify(S.hidro.hidroPU || {}));
   const pdfTxt = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");
   const renglones = () => (G("QUOTE").aux || []).filter((a) => a.mot === "hidro" && a.un === "ML");
   /* H-196: la cisterna sin dotación queda «pendiente de volumen» aparte; aquí sólo se mira la red. */
-  const pend = () => (G("QUOTE").pendientes || []).filter((p) => p.mot === "hidro" && !/volumen/.test(p.motivo));
+  const pend = () => (G("QUOTE").pendientes || []).filter((p) => p.mot === "hidro" && !/volumen/.test(p.motivo) && p.desc !== "Equipo de bombeo");   /* AUD-14: la bomba pendiente no es de la red */
   const tramo = (tag, um, L) => ({ ...G("defaultTramoAgua")(tag), um, L, alt: 3 });
   const muebles = [{ id: "wc_flux", cant: 4 }, { id: "ming_flux", cant: 2 }, { id: "lavabo", cant: 4 }, { id: "fregadero", cant: 1 }, { id: "manguera", cant: 2 }];
   try {
     S.perms = { ...(S.perms || {}), "hidro>quote": { ts: 1, via: "banco" } };
-    S.quote.hidroPU = {};
+    S.hidro.hidroPU = {};
     /* Sin tramos: nada de metros inventados. */
     S.hidro = { ...G("defaultHidro")(), tramos: [], muebles }; G("recompute")();
     if (!(G("HIDRO").umTotal > 0)) throw new Error("el caso no trae unidades mueble");
@@ -3873,7 +3965,7 @@ t("22.11 3.3 (rev 2.9.16, decisión del dueño) la red hidráulica se cotiza por
     contiene(txt, "PARTIDAS PENDIENTES, NO COTIZADAS", "PDF de cotización:");
     contiene(pdfTxt(G("buildPropuestaPdf")({ lang: "en", mon: "USD" })), "Pending items, not priced", "propuesta en inglés:");
     /* Con precio por diámetro: un renglón por diámetro, metros de los tramos capturados, importe = precio × metros. */
-    noms.forEach((nom, i) => { S.quote.hidroPU[G("claveHidroPU")(H.mat, nom)] = 500 + 100 * i; });
+    noms.forEach((nom, i) => { S.hidro.hidroPU[G("claveHidroPU")(H.mat, nom)] = 500 + 100 * i; });
     G("recompute")();
     const R = renglones();
     eq(R.length, noms.length, "renglones por diámetro:");
@@ -3881,12 +3973,12 @@ t("22.11 3.3 (rev 2.9.16, decisión del dueño) la red hidráulica se cotiza por
     cerca(R.reduce((a, r) => a + r.qty, 0), 43, 1e-9, "metros cotizados (25 + 18):");
     R.forEach((r) => { cerca(r.total, r.qty * r.unit, 1e-9, "importe:"); contiene(r.desc, "de los tramos calculados", "descripción:"); if (/supuesto/.test(r.desc)) throw new Error("un renglón dice supuesto"); });
     /* Un precio basura del respaldo se descarta al abrir. */
-    const sucio = JSON.parse(JSON.stringify(S)); sucio.quote.hidroPU = { "cobre_1_": -5, "x.y": 9, cobre_3_4_: "abc" };
-    const san = G("sanearEstado")(sucio).quote.hidroPU; /* rev 2.9.23: la basura se descarta y entran sólo las referencias de mercado */
+    const sucio = JSON.parse(JSON.stringify(S)); sucio.hidro.hidroPU = { "cobre_1_": -5, "x.y": 9, cobre_3_4_: "abc" };
+    const san = G("sanearEstado")(sucio).hidro.hidroPU;   /* H-302 */ /* rev 2.9.23: la basura se descarta y entran sólo las referencias de mercado */
     eq(JSON.stringify(Object.keys(san).sort()), JSON.stringify(Object.keys(G("HIDRO_PU_REFERENCIA")).sort()), "precios inválidos descartados; quedan las referencias:");
     Object.values(san).forEach((e) => eq(e.origen, "referencia", "todo lo cargado es Referencia Budget:"));
   } finally {
-    S.hidro = hidro0; S.quote.hidroPU = pu0;
+    S.hidro = hidro0; S.hidro.hidroPU = pu0;
     if (perms0 === null) delete S.perms; else S.perms = perms0;
     G("recompute")();
   }
@@ -3953,7 +4045,8 @@ t("22.13 4.1 un respaldo con el cuarto limpio en formato viejo se migra al sanea
   cerca(c.supply, 64800, 1e-6, "suministro m³/h:");
   eq(c.ffu, 72, "FFU:");
   /* Lo que ya terminaba en el cuarto por omisión sigue igual (huella de INIT y proyectos nuevos). */
-  const def = JSON.stringify({ rooms: [G("defaultRoom")()], ci: 0 });
+  /* H-295: Cuartos limpios guarda también los precios de su cotización (semilla de la casa en un proyecto nuevo). */
+  const def = JSON.stringify({ rooms: [G("defaultRoom")()], ci: 0, precios: { ...G("CLEAN_PRECIO_SEED") }, comercial: { ...G("COMERCIAL_SEED") } });   /* H-303: y su bloque comercial */
   eq(JSON.stringify(G("sanearEstado")(JSON.parse(JSON.stringify(G("INIT")))).clean), def, "clean de INIT:");
   eq(JSON.stringify(G("sanearEstado")({ clean: { rooms: [], x: 1 } }).clean), def, "rooms vacío:");
   eq(JSON.stringify(G("sanearEstado")({ clean: [] }).clean), def, "clean arreglo:");
@@ -4285,13 +4378,16 @@ t("L.2 2.5 / H-229 tablas de espaciamiento: cobre al mínimo de MSS SP-58-2018 e
 
 /* ===== M. Balance global: compresor, bombas y FFU al cuadro eléctrico ====
    Decisión del dueño (15-sep-2026): compresor de aire, bomba de agua, bomba
-   contra incendio y FFU de cuartos limpios ya llegan al motor eléctrico, cada
-   uno con su propio permiso (aire>elec, hidro>elec, fuego>elec, clean>elec),
-   igual que ya llegaban el equipo HVAC y el ventilador. */
+   contra incendio y FFU de cuartos limpios llegan al motor eléctrico, cada
+   uno con su propio cruce (aire>elec, hidro>elec, fuego>elec, clean>elec),
+   igual que el equipo HVAC y el ventilador.
+   H-268 (decisión del dueño, 27-sep-2026): llegan SÓLO al aceptar la propuesta
+   «cedula>elec» (instantánea con origen y fecha, que concede los cruces); el
+   modo en vivo (tomarHVAC con permisos) se retiró y ya no mete nada al calcular. */
 function limpiarPermisosElecBalance() {
   ["aire>elec", "hidro>elec", "fuego>elec", "clean>elec", "equip>elec", "vent>elec"].forEach((k) => delete S.perms[k]);
 }
-t("M.1 sin ningún permiso nuevo autorizado, compresor, bombas y FFU no llegan al cuadro eléctrico", () => {
+t("M.1 (H-268) sin aceptar la propuesta, compresor, bombas y FFU no llegan al cuadro eléctrico: ni sin permisos ni con los cuatro autorizados (se retiró el modo en vivo)", () => {
   const g = { aire: JSON.parse(JSON.stringify(S.aire)), hidro: JSON.parse(JSON.stringify(S.hidro)), fuego: JSON.parse(JSON.stringify(S.fuego)), clean: JSON.parse(JSON.stringify(S.clean)), elec: JSON.parse(JSON.stringify(S.elec)), perms: JSON.parse(JSON.stringify(S.perms)) };
   try {
     S.aire = G("defaultAire")(); S.hidro = G("defaultHidro")(); S.fuego = G("defaultFuego")();
@@ -4299,45 +4395,55 @@ t("M.1 sin ningún permiso nuevo autorizado, compresor, bombas y FFU no llegan a
     S.elec.tomarHVAC = true;
     limpiarPermisosElecBalance();
     G("recompute")();
-    const E = G("ELEC");
-    if (E.calc.some((c) => /^(aire|hidro|fuego|ffu)-/.test(c.id))) throw new Error("una carga sin permiso llegó al cuadro eléctrico");
+    const sinNada = (E, caso) => { if (E.calc.some((c) => c.auto || /^(aire|hidro|fuego|ffu)-/.test(c.id))) throw new Error(`una carga de otro motor llegó al cuadro eléctrico sin aceptar la propuesta (${caso})`); };
+    sinNada(G("ELEC"), "sin permisos");
+    ["aire>elec", "hidro>elec", "fuego>elec", "clean>elec"].forEach((k) => { S.perms[k] = { ts: 1, via: "prueba M.1" }; });
+    G("recompute")();
+    sinNada(G("ELEC"), "con los cuatro permisos y tomarHVAC");
   } finally { S.aire = g.aire; S.hidro = g.hidro; S.fuego = g.fuego; S.clean = g.clean; S.elec = g.elec; Object.keys(S.perms).forEach((k) => delete S.perms[k]); Object.assign(S.perms, g.perms); G("recompute")(); }
 });
-t("M.2 con los cuatro permisos autorizados, las cuatro cargas llegan con la tensión del sistema (o 127 V para FFU)", () => {
-  const g = { aire: JSON.parse(JSON.stringify(S.aire)), hidro: JSON.parse(JSON.stringify(S.hidro)), fuego: JSON.parse(JSON.stringify(S.fuego)), clean: JSON.parse(JSON.stringify(S.clean)), elec: JSON.parse(JSON.stringify(S.elec)), perms: JSON.parse(JSON.stringify(S.perms)) };
+t("M.2 (H-268) con los cuatro cruces autorizados nada entra solo; al aceptar la propuesta las cuatro cargas llegan como instantánea con la tensión del sistema (o 127 V para FFU) y los permisos ya no mueven el cuadro", () => {
+  const g = { aire: JSON.parse(JSON.stringify(S.aire)), hidro: JSON.parse(JSON.stringify(S.hidro)), fuego: JSON.parse(JSON.stringify(S.fuego)), clean: JSON.parse(JSON.stringify(S.clean)), elec: JSON.parse(JSON.stringify(S.elec)), perms: JSON.parse(JSON.stringify(S.perms)), vinculos: JSON.parse(JSON.stringify(S.vinculos || {})) };
   try {
     S.aire = { ...G("defaultAire")(), consumos: [{ id: "c1", tipo: "pistola", nombre: "Prueba M.2", cant: 4, lmin: 0, bar: 0, uso: 0 }] };
     /* Arranque en ceros: defaultHidro() ya no trae muebles de ejemplo; sin
        ellos H.kWbomba sale 0 y el caso no aísla la bomba de agua. */
-    S.hidro = { ...G("defaultHidro")(), muebles: [{ id: "wc_flux", cant: 4 }, { id: "ming_flux", cant: 2 }, { id: "lavabo", cant: 4 }, { id: "fregadero", cant: 1 }, { id: "manguera", cant: 2 }] };
-    S.fuego = G("defaultFuego")();
+    S.hidro = { ...G("defaultHidro")(), presRed: 0, alturaEdificio: 0, muebles: [{ id: "wc_flux", cant: 4 }, { id: "ming_flux", cant: 2 }, { id: "lavabo", cant: 4 }, { id: "fregadero", cant: 1 }, { id: "manguera", cant: 2 }] };
+    S.fuego = { ...G("defaultFuego")(), area: 500, altura: 6, Lramal: 30, Lmontante: 12 };   /* H-264: contra incendio ya no hereda área ni altura: se capturan; H-210: sin cabezal ni montante la bomba queda pendiente */
     S.clean = { rooms: [{ ...G("defaultRoom")(), area: 60, height: 2.7, occ: 4, procW: 25 }], ci: 0 };
     S.elec.sistema = "3F4H-220"; S.elec.tomarHVAC = true;
     limpiarPermisosElecBalance();
     ["aire>elec", "hidro>elec", "fuego>elec", "clean>elec"].forEach((k) => { S.perms[k] = { ts: 1, via: "prueba M.2" }; });
     G("recompute")();
-    const E = G("ELEC"), A = G("AIRE"), H = G("HIDRO"), F = G("FUEGO"), C = G("CLEAN");
+    const A = G("AIRE"), H = G("HIDRO"), F = G("FUEGO"), C = G("CLEAN");
     if (!(A.principal && A.principal.kW > 0)) throw new Error("el caso no aísla lo que se quiere probar: el compresor por omisión debe tener kW > 0");
     if (!(H.kWbomba > 0)) throw new Error("el caso no aísla lo que se quiere probar: la bomba de agua por omisión debe tener kW > 0");
     if (!(F.kWbomba > 0)) throw new Error("el caso no aísla lo que se quiere probar: la bomba contra incendio por omisión debe tener kW > 0");
     if (!(C.sum.ffu > 0)) throw new Error("el caso no aísla lo que se quiere probar: el cuarto limpio por omisión debe tener FFU > 0");
-    const aire1 = E.calc.find((c) => c.id === "aire-1"), hidro1 = E.calc.find((c) => c.id === "hidro-1"),
-      fuego1 = E.calc.find((c) => c.id === "fuego-1"), ffu1 = E.calc.find((c) => c.id === "ffu-1");
-    if (!aire1) throw new Error("el compresor no llegó al cuadro con aire>elec autorizado");
-    if (!hidro1) throw new Error("la bomba de agua no llegó al cuadro con hidro>elec autorizado");
-    if (!fuego1) throw new Error("la bomba contra incendio no llegó al cuadro con fuego>elec autorizado");
-    if (!ffu1) throw new Error("los FFU no llegaron al cuadro con clean>elec autorizado");
+    /* H-268: con los cruces autorizados y tomarHVAC, sin aceptar la propuesta, nada entra. */
+    if (G("ELEC").calc.some((c) => c.auto || c.origen === "cedula")) throw new Error("una carga de otro motor entró al cuadro sin aceptar la propuesta");
+    migraCargasElec();   /* H-306: la propuesta se retiró; entran por la migración de un proyecto anterior en vivo */
+    const E = G("ELEC"), de = (o) => E.calc.find((c) => c.origen === "cedula" && c.kWOrigen === o);
+    const aire1 = de("aire"), hidro1 = de("hidro"), fuego1 = de("fuego"), ffu1 = de("ffu");
+    if (!aire1) throw new Error("el compresor no llegó al cuadro al aceptar la propuesta");
+    if (!hidro1) throw new Error("la bomba de agua no llegó al cuadro al aceptar la propuesta");
+    if (!fuego1) throw new Error("la bomba contra incendio no llegó al cuadro al aceptar la propuesta");
+    if (!ffu1) throw new Error("los FFU no llegaron al cuadro al aceptar la propuesta");
+    [aire1, hidro1, fuego1, ffu1].forEach((c) => { if (!(c.ts > 0)) throw new Error(`${c.nombre}: la instantánea debe llevar fecha`); });
     cerca(aire1.kW, A.principal.kW, 1e-9, "kW del compresor = el del catálogo, sin inventar otro dato:");
     eq(aire1.V, 220, "compresor a la tensión del sistema:"); eq(aire1.ph, 3, "compresor trifásico:"); eq(aire1.tipo, "motor");
     cerca(hidro1.kW, +H.kWbomba.toFixed(2), 1e-9, "kW de la bomba de agua:");
     cerca(fuego1.kW, +F.kWbomba.toFixed(2), 1e-9, "kW de la bomba contra incendio:");
     cerca(ffu1.kW, +(C.sum.ffu * G("FFU").watts / 1000).toFixed(2), 1e-9, "kW de los FFU = conteo × 120 W:");
     eq(ffu1.V, 127, "FFU a 127 V monofásico:"); eq(ffu1.ph, 1);
-    /* Cada uno mueve la demanda del tablero: quitar el permiso baja kVAdemanda. */
+    /* Cada una pesa en la demanda del tablero: quitar la carga aceptada del compresor baja kVAdemanda. Quitar el permiso ya no
+       mueve nada (H-268, regla 3: la instantánea es captura propia con origen). */
     const kVAconTodo = E.kVAdemanda;
     delete S.perms["aire>elec"]; G("recompute")();
-    if (!(G("ELEC").kVAdemanda < kVAconTodo)) throw new Error("quitar aire>elec no bajó la demanda del tablero");
-  } finally { S.aire = g.aire; S.hidro = g.hidro; S.fuego = g.fuego; S.clean = g.clean; S.elec = g.elec; Object.keys(S.perms).forEach((k) => delete S.perms[k]); Object.assign(S.perms, g.perms); G("recompute")(); }
+    cerca(G("ELEC").kVAdemanda, kVAconTodo, 1e-9, "quitar el permiso no mueve la instantánea aceptada (H-268):");
+    S.elec.cargas = S.elec.cargas.filter((c) => c.kWOrigen !== "aire"); G("recompute")();
+    if (!(G("ELEC").kVAdemanda < kVAconTodo)) throw new Error("quitar la carga del compresor no bajó la demanda del tablero");
+  } finally { S.aire = g.aire; S.hidro = g.hidro; S.fuego = g.fuego; S.clean = g.clean; S.elec = g.elec; Object.keys(S.perms).forEach((k) => delete S.perms[k]); Object.assign(S.perms, g.perms); Object.keys(S.vinculos || {}).forEach((k) => delete S.vinculos[k]); Object.assign(S.vinculos, g.vinculos); G("recompute")(); }
 });
 t("M.3 aceptar la propuesta combinada escribe las cuatro cargas nuevas con origen «cedula», y el alimentador ya las refleja", () => {
   const g = { aire: JSON.parse(JSON.stringify(S.aire)), hidro: JSON.parse(JSON.stringify(S.hidro)), fuego: JSON.parse(JSON.stringify(S.fuego)), clean: JSON.parse(JSON.stringify(S.clean)), elec: JSON.parse(JSON.stringify(S.elec)), perms: JSON.parse(JSON.stringify(S.perms)), vinculos: JSON.parse(JSON.stringify(S.vinculos || {})) };
@@ -4348,9 +4454,7 @@ t("M.3 aceptar la propuesta combinada escribe las cuatro cargas nuevas con orige
     limpiarPermisosElecBalance();
     G("CRUCES_ELEC").forEach((k) => { S.perms[k] = { ts: 1, via: "prueba M.3" }; });
     G("recompute")();
-    G("PROPUESTAS")["cedula>elec"].aplicar();
-    G("registrarVinculo")("cedula>elec", "aceptado");
-    G("recompute")();
+    migraCargasElec();   /* H-306 */
     const ced = S.elec.cargas.filter((c) => c.origen === "cedula");
     if (ced.length < 4) throw new Error(`se esperaban al menos 4 cargas aceptadas (compresor, bomba de agua, bomba de incendio, FFU); llegaron ${ced.length}`);
     const E = G("ELEC");
@@ -4358,30 +4462,34 @@ t("M.3 aceptar la propuesta combinada escribe las cuatro cargas nuevas con orige
     if (!(E.kVAdemanda > 0)) throw new Error("la demanda del tablero debe reflejar las cargas recién aceptadas");
   } finally { S.aire = g.aire; S.hidro = g.hidro; S.fuego = g.fuego; S.clean = g.clean; S.elec = g.elec; Object.keys(S.perms).forEach((k) => delete S.perms[k]); Object.assign(S.perms, g.perms); Object.keys(S.vinculos || {}).forEach((k) => delete S.vinculos[k]); Object.assign(S.vinculos, g.vinculos); G("recompute")(); }
 });
-t("M.4 (reordenamiento) un cambio en el compresor se refleja en el MISMO ciclo de recompute, no en el siguiente", () => {
-  /* Antes de esta rev, ELEC corría antes que AIRE/HIDRO/FUEGO en recompute():
-     un cambio en el compresor solo se veía en el cuadro eléctrico un
-     recompute() después. Esta prueba reproduce exactamente ese escenario. */
-  const g = { aire: JSON.parse(JSON.stringify(S.aire)), elec: JSON.parse(JSON.stringify(S.elec)), perms: JSON.parse(JSON.stringify(S.perms)) };
+t("M.4 (reordenamiento, H-268) un cambio en el compresor se refleja en la PROPUESTA en el MISMO ciclo de recompute, no en el siguiente; la instantánea aceptada no se mueve sola", () => {
+  /* Antes de la rev 2.9.5, ELEC corría antes que AIRE/HIDRO/FUEGO en recompute(): un cambio en el compresor solo se veía un
+     recompute() después. H-268: el compresor ya no entra al cuadro al calcular, pero la propuesta se arma en el mismo ciclo con
+     el compresor de ESE ciclo; lo aceptado es instantánea y no se mueve (regla 3). */
+  const g = { aire: JSON.parse(JSON.stringify(S.aire)), elec: JSON.parse(JSON.stringify(S.elec)), perms: JSON.parse(JSON.stringify(S.perms)), vinculos: JSON.parse(JSON.stringify(S.vinculos || {})) };
   try {
     S.aire = { ...G("defaultAire")(), consumos: [{ id: "c1", tipo: "actuador", nombre: "Chico", cant: 1, lmin: 0, bar: 0, uso: 0 }] };
-    S.elec.tomarHVAC = true;
+    S.elec.tomarHVAC = true;   /* el modo de revisiones anteriores ya no mete nada */
     limpiarPermisosElecBalance();
     S.perms["aire>elec"] = { ts: 1, via: "prueba M.4" };
     G("recompute")();
     const kWchico = G("AIRE").principal.kW;
-    const kWtabChico = G("ELEC").calc.find((c) => c.id === "aire-1").kW;
-    eq(kWtabChico, kWchico, "con el compresor chico, el cuadro ya trae su kW en el primer recompute:");
+    const propChico = G("propuestaElecFilas")().find((c) => c.kWOrigen === "aire");
+    if (!propChico) throw new Error("la propuesta no trae el compresor");
+    eq(propChico.kW, kWchico, "con el compresor chico, la propuesta ya trae su kW en el primer recompute:");
+    if (G("ELEC").calc.some((c) => c.kWOrigen === "aire")) throw new Error("H-268: el compresor no debe entrar al cuadro sin aceptar la propuesta");
+    migraCargasElec();   /* H-306 */
+    eq(G("ELEC").calc.find((c) => c.kWOrigen === "aire").kW, kWchico, "aceptada, el cuadro trae el kW del compresor chico:");
     S.aire = { ...G("defaultAire")(), consumos: [
       { id: "c1", tipo: "actuador", nombre: "Grande 1", cant: 400, lmin: 0, bar: 0, uso: 0 },
       { id: "c2", tipo: "pistola", nombre: "Grande 2", cant: 200, lmin: 0, bar: 0, uso: 0 },
     ] };
     G("recompute")();
     const kWgrande = G("AIRE").principal.kW;
-    const kWtabGrande = G("ELEC").calc.find((c) => c.id === "aire-1").kW;
     if (!(kWgrande > kWchico)) throw new Error("el caso no aísla lo que se quiere probar: el segundo compresor debe ser más grande");
-    eq(kWtabGrande, kWgrande, "un solo recompute() basta: el cuadro ya trae el kW del compresor grande, no el del chico:");
-  } finally { S.aire = g.aire; S.elec = g.elec; Object.keys(S.perms).forEach((k) => delete S.perms[k]); Object.assign(S.perms, g.perms); G("recompute")(); }
+    eq(G("propuestaElecFilas")().find((c) => c.kWOrigen === "aire").kW, kWgrande, "un solo recompute() basta: la propuesta ya trae el kW del compresor grande, no el del chico:");
+    eq(G("ELEC").calc.find((c) => c.kWOrigen === "aire").kW, kWchico, "la instantánea aceptada no se mueve sola (regla 3):");
+  } finally { S.aire = g.aire; S.elec = g.elec; Object.keys(S.perms).forEach((k) => delete S.perms[k]); Object.assign(S.perms, g.perms); Object.keys(S.vinculos || {}).forEach((k) => delete S.vinculos[k]); Object.assign(S.vinculos, g.vinculos); G("recompute")(); }
 });
 
 /* ===== N. Balance global: cierres de coherencia (aire y agua) ===========
@@ -4451,7 +4559,7 @@ t("N.2 balance de agua: con fuego>hidro autorizado, contrasta cisterna doméstic
    El termoplástico (CPVC/PEAD) sigue con el sistema propio de la suite: el
    motor integrado no lo cubre. */
 t("O.1 la corrida completa de SoporteCalc queda expuesta y calcula varilla y anclaje reales, no solo cuenta soportes", () => {
-  const g = { hidro: JSON.parse(JSON.stringify(S.hidro)), fuego: JSON.parse(JSON.stringify(S.fuego)), perms: JSON.parse(JSON.stringify(S.perms)) };
+  const g = { hidro: JSON.parse(JSON.stringify(S.hidro)), fuego: JSON.parse(JSON.stringify(S.fuego)), perms: JSON.parse(JSON.stringify(S.perms)), soporte: JSON.parse(JSON.stringify(S.soporte)) };
   try {
     /* Arranque en ceros: sin tramos capturados no hay nada de acero/cobre
        que SoporteCalc pueda calcular. */
@@ -4459,9 +4567,8 @@ t("O.1 la corrida completa de SoporteCalc queda expuesta y calcula varilla y anc
       tramos: [{ ...G("defaultTramoAgua")("AF-GENERAL"), um: 72, L: 25, alt: 3 }, { ...G("defaultTramoAgua")("AF-RAMAL BAÑOS"), um: 20, L: 18, alt: 3 }] };
     S.fuego = { ...G("defaultFuego")(), area: 600, altura: 6, Lramal: 30, Lmontante: 12, presFuente: 30 };
     Object.keys(S.perms).forEach((k) => delete S.perms[k]);
-    ["hidro>quote", "fuego>quote", "aire>quote", "duct>equip", "soporte>quote"].forEach((k) => { S.perms[k] = { ts: 1, via: "prueba O.1" }; });
-    S.soporte.usarMotores = true;
-    G("recompute")();
+    ["hidro>quote", "fuego>quote", "aire>quote", "soporte>quote"].forEach((k) => { S.perms[k] = { ts: 1, via: "prueba O.1" }; });
+    aceptarSoporte();   /* H-266: los tramos de los motores entran con la instantánea aceptada */
     const SOP = G("SOPORTE");
     eq(SOP.sopcalc.version, "0.1.0", "expone la corrida de SoporteCalc:");
     if (!(SOP.sopcalc.tramos.length > 0)) throw new Error("el caso no aísla lo que se quiere probar: debe haber tramos de acero/cobre calculados");
@@ -4474,7 +4581,7 @@ t("O.1 la corrida completa de SoporteCalc queda expuesta y calcula varilla y anc
     const conAnclaje = SOP.sopcalc.tramos.filter((t) => t.anclaje);
     if (!conAnclaje.length) throw new Error("ningún tramo trae anclaje calculado (estructura por omisión debe ser losa_concreto)");
     conAnclaje.forEach((t) => { if (!(t.anclaje.interaccion >= 0)) throw new Error(`${t.id}: interacción de anclaje inválida`); });
-  } finally { S.hidro = g.hidro; S.fuego = g.fuego; Object.keys(S.perms).forEach((k) => delete S.perms[k]); Object.assign(S.perms, g.perms); G("recompute")(); }
+  } finally { S.hidro = g.hidro; S.fuego = g.fuego; S.soporte = g.soporte; Object.keys(S.perms).forEach((k) => delete S.perms[k]); Object.assign(S.perms, g.perms); G("recompute")(); }
 });
 t("O.2 una carga que rebasa la varilla o el anclaje mayor del catálogo se declara con error, no se aprueba en silencio", () => {
   /* Unitario, directo al motor: no depende de armar una captura extrema en
@@ -4494,11 +4601,11 @@ t("O.2 una carga que rebasa la varilla o el anclaje mayor del catálogo se decla
   if (!(t.varilla === null)) throw new Error("no debe resolver varilla con esa carga forzada");
 });
 t("O.3 el termoplástico no calculado por SoporteCalc sigue por el sistema propio de la suite, y lo avisa", () => {
-  const g = { hidro: JSON.parse(JSON.stringify(S.hidro)) };
+  const g = { hidro: JSON.parse(JSON.stringify(S.hidro)), soporte: JSON.parse(JSON.stringify(S.soporte)) };
   try {
     S.hidro = { ...G("defaultHidro")(), material: "cpvc",
       tramos: [{ ...G("defaultTramoAgua")("AF-GENERAL"), um: 72, L: 25, alt: 3 }, { ...G("defaultTramoAgua")("AF-RAMAL BAÑOS"), um: 20, L: 18, alt: 3 }] };
-    G("recompute")();
+    aceptarSoporte();   /* H-266 */
     const SOP = G("SOPORTE");
     const grupo = (SOP.porTuberia || []).find((x) => x.etiqueta === "Hidráulica y sanitario");
     if (!grupo || grupo.fam !== "plastico") throw new Error("el caso no aísla lo que se quiere probar: debe agrupar como plástico");
@@ -4507,7 +4614,7 @@ t("O.3 el termoplástico no calculado por SoporteCalc sigue por el sistema propi
     if (!grupo.det.every((d) => d.ancla)) throw new Error("cada tramo de termoplástico trae su ancla por el camino propio (H-228)");
     if (!SOP.avisos.some((a) => /termopl.stico.*SoporteCalc solo cubre acero y cobre/.test(a.msg)))
       throw new Error("no avisa que el termoplástico se queda fuera del motor integrado");
-  } finally { S.hidro = g.hidro; G("recompute")(); }
+  } finally { S.hidro = g.hidro; S.soporte = g.soporte; G("recompute")(); }
 });
 t("O.4 el SDS capturado mueve la fuerza sísmica de los soportes (art. 13.3.1)", () => {
   const g = { soporte: JSON.parse(JSON.stringify(S.soporte)), hidro: JSON.parse(JSON.stringify(S.hidro)) };
@@ -4516,8 +4623,8 @@ t("O.4 el SDS capturado mueve la fuerza sísmica de los soportes (art. 13.3.1)",
        que traiga sismo calculado. */
     S.hidro = { ...G("defaultHidro")(), material: "acero",
       tramos: [{ ...G("defaultTramoAgua")("AF-GENERAL"), um: 72, L: 25, alt: 3 }, { ...G("defaultTramoAgua")("AF-RAMAL BAÑOS"), um: 20, L: 18, alt: 3 }] };
-    S.soporte.sismoSDS = 0.3; S.soporte.usarMotores = true;
-    G("recompute")();
+    S.soporte.sismoSDS = 0.3; S.soporte.alturaEstructura = 6;   /* H-266: altura de la estructura capturada */
+    aceptarSoporte();
     const bajo = G("SOPORTE").sopcalc.tramos.find((t) => t.sismo);
     if (!bajo) throw new Error("el caso no aísla lo que se quiere probar: debe haber al menos un tramo con sismo calculado");
     const fpBajo = bajo.sismo.Fp_kgf;
@@ -4563,15 +4670,15 @@ t("P.1 la pestaña Estructural cita StructCalc v0.1.2 (no v0.1.1) y no promete r
 t("P.2 «Solo esta vez» sí autoriza el cruce durante esa corrida, y no lo deja permanente", () => {
   const g = { perms: JSON.parse(JSON.stringify(S.perms)) };
   try {
-    delete S.perms["duct>load"];
+    delete S.perms["fuego>hidro"];
     let vistoDentro = null;
-    G("requestLink")("duct>load", () => { vistoDentro = G("linkAllowed")("duct>load"); });
+    G("requestLink")("fuego>hidro", () => { vistoDentro = G("linkAllowed")("fuego>hidro"); });
     const b = w.document.querySelector('[data-act="link-once"]');
     if (!b) throw new Error("no se abrió el diálogo de permiso con el botón «Solo esta vez»");
     b.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
     if (vistoDentro !== true) throw new Error("run() no vio el cruce autorizado durante «Solo esta vez»");
-    if (S.perms["duct>load"]) throw new Error("«Solo esta vez» no debe dejar el permiso guardado después");
-    if (G("linkAllowed")("duct>load")) throw new Error("el cruce debe volver a estar negado tras la operación única");
+    if (S.perms["fuego>hidro"]) throw new Error("«Solo esta vez» no debe dejar el permiso guardado después");
+    if (G("linkAllowed")("fuego>hidro")) throw new Error("el cruce debe volver a estar negado tras la operación única");
   } finally { Object.keys(S.perms).forEach((k) => delete S.perms[k]); Object.assign(S.perms, g.perms); }
 });
 t("P.3 la firma de la caché de Kaizen distingue proyectos con la misma arquitectura y distinta capacidad instalada", () => {
@@ -4586,7 +4693,7 @@ t("P.3 la firma de la caché de Kaizen distingue proyectos con la misma arquitec
        es la misma, la firma vieja (que dependía de .installed, inexistente)
        hubiera quedado idéntica. */
     S.zones = S.zones.concat(JSON.parse(JSON.stringify(S.zones)));
-    G("recompute")();
+    aceptarEquip();   /* H-267: la selección toma la carga duplicada al aceptar la propuesta (ya no la lee en vivo) */
     const SYS2 = G("SYS");
     if (SYS2.chosen.key !== SYS1.chosen.key) throw new Error("el caso no aísla lo que se quiere probar: la arquitectura debe seguir siendo la misma al duplicar la carga");
     const k2 = `${SYS2.chosen.key}|${SYS2.chosen.instPlant}|${SYS2.chosen.instTerm}`;
@@ -4594,18 +4701,20 @@ t("P.3 la firma de la caché de Kaizen distingue proyectos con la misma arquitec
   } finally { S.zones = g.zones; S.zi = g.zi; G("recompute")(); }
 });
 
-t("P.4 las bases de equipo en soportería leen S.quote.items directo, no la corrida de QUOTE con un ciclo de retraso", () => {
-  const g = { items: JSON.parse(JSON.stringify(S.quote.items)), basesEquipo: S.soporte.basesEquipo, usarMotores: S.soporte.usarMotores };
+t("P.4 las bases de equipo de la instantánea leen S.quote.items directo, no la corrida de QUOTE con un ciclo de retraso; sin instantánea ni captura no se cuentan (H-266)", () => {
+  const g = { items: JSON.parse(JSON.stringify(S.equip.items)), soporte: JSON.parse(JSON.stringify(S.soporte)) };   /* H-301: partidas en Selección */
   try {
-    S.quote.items = [];
-    S.soporte.basesEquipo = 0; S.soporte.usarMotores = true;
+    S.equip.items = [];
+    S.soporte.basesEquipo = 0; S.soporte.usarMotores = false; delete S.soporte.snap;
     G("recompute")();
-    const antes = G("SOPORTE").nEquipos;
     const id = G("CARRIER")[0].id;
-    S.quote.items = [{ id, qty: 3, unit: null }];
+    S.equip.items = [{ id, qty: 3, unit: null }];
     G("recompute")();
-    eq(G("SOPORTE").nEquipos, antes + 3, "un solo recompute() ya ve las 3 unidades agregadas a la cotización:");
-  } finally { S.quote.items = g.items; S.soporte.basesEquipo = g.basesEquipo; S.soporte.usarMotores = g.usarMotores; G("recompute")(); }
+    eq(G("SOPORTE").nEquipos, 0, "H-266: sin instantánea ni captura no se cuentan los equipos de la cotización:");
+    const aire = Number(G("AIRE") && G("AIRE").totalUnidades) || 0;
+    aceptarSoporte();
+    eq(G("SOPORTE").nEquipos, 3 + aire, "la instantánea ve las 3 unidades de la cotización sin esperar otra corrida:");
+  } finally { S.equip.items = g.items; S.soporte = g.soporte; G("recompute")(); }
 });
 t("P.5 la declaración de la base de precios en la licitación cita el estado real de la plaza, no siempre Baja California", () => {
   const g = { plaza: S.quote.plaza };
@@ -4705,13 +4814,13 @@ t("P.10 la receta de soportería empareja con la partida real, que usa PIEZA y n
 });
 
 t("P.11 la soportería contra incendio soporta el cabezal y el montante por separado, cada uno con su propio diámetro", () => {
-  const g = { fuego: JSON.parse(JSON.stringify(S.fuego)), perms: JSON.parse(JSON.stringify(S.perms)) };
+  const g = { fuego: JSON.parse(JSON.stringify(S.fuego)), perms: JSON.parse(JSON.stringify(S.perms)), soporte: JSON.parse(JSON.stringify(S.soporte)) };
   try {
     /* Arranque en ceros: sin Lramal/Lmontante capturados no hay metros que
        soportar, y agregarTuberia() descarta tramos de longitud 0. */
     S.fuego = { ...S.fuego, area: 600, altura: 6, Lramal: 30, Lmontante: 12, presFuente: 30 };
     S.perms["fuego>elec"] = { ts: 1, via: "prueba P.11" };
-    G("recompute")();
+    aceptarSoporte();   /* H-266 */
     const F = G("FUEGO");
     if (!(F.ram && F.mon)) throw new Error("el caso no aísla lo que se quiere probar: deben existir FUEGO.ram y FUEGO.mon");
     if (!(F.ram.d < F.mon.d)) throw new Error(`el caso no aísla lo que se quiere probar: el cabezal (${F.ram.d} mm) debe quedar más delgado que el montante (${F.mon.d} mm), que es lo que hace que el conteo separado importe`);
@@ -4723,7 +4832,7 @@ t("P.11 la soportería contra incendio soporta el cabezal y el montante por sepa
     eq(cabezal.d, F.ram.d, "el cabezal se soporta con su propio diámetro, no el del montante:");
     eq(montante.d, F.mon.d, "el montante conserva su propio diámetro:");
     if (!(cabezal.e < montante.e)) throw new Error("el cabezal, más delgado, debe pedir un espaciamiento más cerrado que el montante");
-  } finally { S.fuego = g.fuego; Object.keys(S.perms).forEach((k) => delete S.perms[k]); Object.assign(S.perms, g.perms); G("recompute")(); }
+  } finally { S.fuego = g.fuego; S.soporte = g.soporte; Object.keys(S.perms).forEach((k) => delete S.perms[k]); Object.assign(S.perms, g.perms); G("recompute")(); }
 });
 
 t("P.12 el espejo en inglés traduce los hitos de pago (título y condición de liberación), no los deja en español", () => {
@@ -4785,15 +4894,16 @@ t("Q.1 H-49 el factor de seguridad de la varilla (acero y cobre, vía SoporteCal
   } finally { S.soporte = sop0; G("recompute")(); }
 });
 
-t("Q.2 H-50 la amplificación sísmica ASCE 7-16 se alimenta con la altura real de zona, no con z=0 fijo", () => {
+t("Q.2 H-50 la amplificación sísmica ASCE 7-16 se alimenta con la altura real de la estructura, no con z=0 fijo (H-266: capturada en soportería, ya no la zona más alta)", () => {
   proyectoDePrueba();
-  const sop0 = JSON.parse(JSON.stringify(S.soporte));
+  const sop0 = JSON.parse(JSON.stringify(S.soporte)), h0 = S.zones[0].height;
   try {
-    S.soporte = G("defaultSoporte")();
+    S.soporte = { ...G("defaultSoporte")(), alturaEstructura: 6 };
     G("recompute")();
-    const hZonas = S.zones.reduce((a, z) => Math.max(a, z.height || 0), 0);
-    if (!(hZonas > 0)) throw new Error("el caso de prueba necesita al menos una zona con altura > 0");
-    eq(G("SOPORTE").sopcalc.contexto.sismo.h, hZonas, "sismo.h del contexto de SoporteCalc = altura de zona:");
+    eq(G("SOPORTE").sopcalc.contexto.sismo.h, 6, "sismo.h del contexto de SoporteCalc = altura de la estructura capturada:");
+    S.zones[0].height = 12; G("recompute")();
+    eq(G("SOPORTE").sopcalc.contexto.sismo.h, 6, "H-266: la altura de las zonas ya no la mueve:");
+    S.zones[0].height = h0; G("recompute")();
     /* Físico, con la fórmula ya existente: z=h (instalación de azotea, el caso
        que se trata como default) triplica el Fp_calculado_kgf (sin topes)
        contra z=0 (instalación a nivel de piso, el comportamiento de antes),
@@ -4801,7 +4911,7 @@ t("Q.2 H-50 la amplificación sísmica ASCE 7-16 se alimenta con la altura real 
     const conAltura = G("fuerzaSismica")({ Wp_kgf: 1000, SDS: 1, ap: 2.5, Rp: 9, z: 6, h: 6 });
     const sinAltura = G("fuerzaSismica")({ Wp_kgf: 1000, SDS: 1, ap: 2.5, Rp: 9, z: 0, h: 1 });
     cerca(conAltura.Fp_calculado_kgf / sinAltura.Fp_calculado_kgf, 3, 0.001, "razón Fp con z=h contra z=0:");
-  } finally { S.soporte = sop0; G("recompute")(); }
+  } finally { S.soporte = sop0; S.zones[0].height = h0; G("recompute")(); }
 });
 
 t("Q.3 H-56 / H-225 la altura de colgado no vuelve al respaldo fijo de 0.50 m ni se deriva de la altura de trabajo: capturada manda (más altura, más ML); sin captura la varilla queda pendiente y la altura de trabajo sólo se sugiere", () => {
@@ -4810,10 +4920,10 @@ t("Q.3 H-56 / H-225 la altura de colgado no vuelve al respaldo fijo de 0.50 m ni
     S.hidro = { ...G("defaultHidro")(), material: "acero",
       tramos: [{ ...G("defaultTramoAgua")("AF-GENERAL"), um: 72, L: 25, alt: 3 }, { ...G("defaultTramoAgua")("AF-RAMAL BAÑOS"), um: 20, L: 18, alt: 3 }] };
     const ml = () => Object.values(G("SOPORTE").sopcalc.despiece.varilla_m).reduce((a, m) => a + m, 0);
-    S.soporte = { ...G("defaultSoporte")(), alturaTrabajo: 8 }; G("recompute")();
+    S.soporte = { ...G("defaultSoporte")(), alturaTrabajo: 8 }; aceptarSoporte();   /* H-266 */
     eq(ml(), 0, "sin captura no hay ML de varilla (ni 0.5 m ni la altura de trabajo):"); contiene(G("SOPORTE").colgadoSugerido + "", "8", "la altura de trabajo se sugiere:");
-    S.soporte = { ...G("defaultSoporte")(), alturaTrabajo: 8, alturaColgadoM: 2 }; G("recompute")(); const dos = ml();
-    S.soporte = { ...G("defaultSoporte")(), alturaTrabajo: 8, alturaColgadoM: 1 }; G("recompute")(); const uno = ml();
+    S.soporte = { ...G("defaultSoporte")(), alturaTrabajo: 8, alturaColgadoM: 2 }; aceptarSoporte(); const dos = ml();
+    S.soporte = { ...G("defaultSoporte")(), alturaTrabajo: 8, alturaColgadoM: 1 }; aceptarSoporte(); const uno = ml();
     if (!(dos > uno && uno > 0)) throw new Error("con captura, más altura de colgado debe dar más ML: 2 m=" + dos + ", 1 m=" + uno);
   } finally { S.soporte = sop0; S.hidro = hidro0; G("recompute")(); }
 });
@@ -4837,20 +4947,25 @@ t("Q.4 H-47(b) una línea sola cuya carga excede el colgante sencillo escala sol
   if (pesado.errores.some((e) => /fuera del catálogo/.test(e))) throw new Error("no debería quedar error de varilla fuera de catálogo tras escalar a trapecio");
 });
 
-t("Q.5 H-51 el cuadro eléctrico carga TODAS las unidades de aire comprimido en servicio, no solo la principal", () => {
-  const aire0 = JSON.parse(JSON.stringify(S.aire)), elec0 = JSON.parse(JSON.stringify(S.elec)), g = { perms: JSON.parse(JSON.stringify(S.perms)) };
+t("Q.5 H-51 (H-268) el cuadro eléctrico carga TODAS las unidades de aire comprimido en servicio, no solo la principal, al aceptar la propuesta", () => {
+  const aire0 = JSON.parse(JSON.stringify(S.aire)), elec0 = JSON.parse(JSON.stringify(S.elec)), g = { perms: JSON.parse(JSON.stringify(S.perms)), vinculos: JSON.parse(JSON.stringify(S.vinculos || {})) };
   try {
     S.aire = { ...G("defaultAire")(), consumos: [{ id: "q5", tipo: "generico", nombre: "Carga de prueba", cant: 1, lmin: 40000, bar: 6, uso: 1 }] };
-    S.elec = { ...G("defaultElec")(), tomarHVAC: true };
+    S.elec = { ...G("defaultElec")() };
     S.perms["aire>elec"] = { ts: 1, via: "prueba Q.5" };
     G("recompute")();
     const A = G("AIRE");
     if (!(A.nUnidades > 1)) throw new Error(`el caso necesita más de un compresor en servicio, nUnidades=${A.nUnidades}`);
-    const fila = G("ELEC").calc.find((c) => c.id === "aire-1");
-    if (!fila) throw new Error("no se encontró la fila aire-1 en el cuadro eléctrico");
-    eq(fila.cant, A.nUnidades, "cant de la fila aire-1 = unidades en servicio:");
+    /* H-268: el compresor entra al cuadro sólo al aceptar la propuesta (instantánea), con todas sus unidades en servicio. */
+    const prop = G("propuestaElecFilas")().find((c) => c.kWOrigen === "aire");
+    if (!prop) throw new Error("la propuesta no trae el compresor");
+    eq(prop.cant, A.nUnidades, "cant del compresor propuesto = unidades en servicio:");
+    migraCargasElec();   /* H-306 */
+    const fila = G("ELEC").calc.find((c) => c.origen === "cedula" && c.kWOrigen === "aire");
+    if (!fila) throw new Error("no se encontró la carga del compresor en el cuadro eléctrico tras aceptar la propuesta");
+    eq(fila.cant, A.nUnidades, "cant de la carga del compresor = unidades en servicio:");
     cerca(fila.kWtot, A.principal.kW * A.nUnidades, 0.001, "kW total del compresor = kW de una unidad × unidades en servicio:");
-  } finally { S.aire = aire0; S.elec = elec0; S.perms = g.perms; G("recompute")(); }
+  } finally { S.aire = aire0; S.elec = elec0; S.perms = g.perms; S.vinculos = g.vinculos; G("recompute")(); }
 });
 
 t("Q.6 H-57 la estratificación por altura solo multiplica la ganancia de iluminación, no cubierta ni equipo", () => {
@@ -4871,21 +4986,22 @@ t("Q.6 H-57 la estratificación por altura solo multiplica la ganancia de ilumin
   } finally { S.zones = zones0; S.zi = zi0; G("recompute")(); }
 });
 
-t("Q.7 H-67 sin autorizar duct>soporte/load>civil, la cantidad se sigue contando y cotizando — nunca baja a cero", () => {
-  const g = { perms: JSON.parse(JSON.stringify(S.perms)) };
+t("Q.7 H-67/H-266: la soportería ya no cuenta con permisos sueltos: sin la instantánea no toma metros de los motores; con la instantánea guardada (H-307: copia propia) retirar un permiso no baja lo cuantificado (H-265: obra civil ya no depende de load>civil)", () => {
+  const g = { perms: JSON.parse(JSON.stringify(S.perms)), soporte: JSON.parse(JSON.stringify(S.soporte)) };
   try {
     Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "prueba Q.7 (todo autorizado)" }; });
-    G("recompute")();
-    const mDuctoAutorizado = G("SOPORTE").mDucto, areaAutorizada = G("CIVIL").area;
-    delete S.perms["duct>soporte"]; delete S.perms["load>civil"];
-    G("recompute")();
-    eq(G("SOPORTE").mDucto, mDuctoAutorizado, "mDucto NO baja al negar el permiso (H-67, nunca a cero):");
-    eq(G("CIVIL").area, areaAutorizada, "área de obra civil NO baja al negar el permiso (H-67, nunca a cero):");
-    if (mDuctoAutorizado > 0 && !G("SOPORTE").avisos.some((a) => /pendiente/.test(a.msg) && /duct.?soporte/.test(a.msg)))
-      throw new Error("debe avisar que duct>soporte está pendiente de autorizar");
-    if (areaAutorizada > 0 && !G("CIVIL").avisos.some((a) => /pendiente/.test(a.msg) && /load.?civil/.test(a.msg)))
-      throw new Error("debe avisar que load>civil está pendiente de autorizar");
-  } finally { S.perms = g.perms; G("recompute")(); }
+    S.soporte.usarMotores = false; delete S.soporte.snap; S.soporte.ductoM = 0; G("recompute")();
+    eq(G("SOPORTE").mDucto, 0, "H-266: con todos los permisos pero sin instantánea no se cuentan los ductos de los motores:");
+    aceptarSoporte();   /* H-307 */
+    const mDuctoAceptado = G("SOPORTE").mDucto, areaCivil = G("CIVIL").area;
+    delete S.perms["duct>soporte"]; G("recompute")();
+    eq(G("SOPORTE").mDucto, mDuctoAceptado, "lo aceptado no baja al retirar un permiso (H-67, nunca a cero):");
+    eq(G("CIVIL").area, areaCivil, "obra civil no depende de permisos:");
+    if (G("SOPORTE").avisos.some((a) => /pendiente de autorizar/.test(a.msg))) throw new Error("H-266: la soportería ya no avisa permisos pendientes");
+    /* H-265: obra civil es autónoma: no hay cruce load>civil que autorizar ni aviso de permiso pendiente. */
+    eq(G("LINKS")["load>civil"], undefined, "H-265: no queda cruce load>civil:");
+    if (G("CIVIL").avisos.some((a) => /load.?civil/.test(a.msg))) throw new Error("H-265: obra civil no debe hablar de un permiso load>civil");
+  } finally { S.perms = g.perms; S.soporte = g.soporte; G("recompute")(); }
 });
 
 t("Q.8 H-77/H-45/H-46 la instantánea de soportería guarda dimensiones, calibre y longitudes reales (no el respaldo genérico 400×200)", () => {
@@ -4896,8 +5012,7 @@ t("Q.8 H-77/H-45/H-46 la instantánea de soportería guarda dimensiones, calibre
     G("recompute")();
     const segReal = G("DUCT").segs[0];
     if (segReal.w === 400 && segReal.h === 200) throw new Error("el caso no aísla lo que se prueba: el ducto real ya coincide con el respaldo genérico, súbele el flujo");
-    G("propAceptar")("motores>soporte");
-    G("recompute")();
+    aceptarSoporte();   /* H-307 */
     const snap = S.soporte.snap.duct[0];
     eq(snap.w, segReal.w, "instantánea guarda el ancho real del ducto, no 400:");
     eq(snap.h, segReal.h, "instantánea guarda el alto real del ducto, no 200:");
@@ -4908,7 +5023,6 @@ t("Q.8 H-77/H-45/H-46 la instantánea de soportería guarda dimensiones, calibre
        marca desactualizada, no se recalcula sola. */
     S.duct.segments[0].flow = 20000;
     G("recompute")();
-    eq(G("estadoPropuesta")("motores>soporte").nivel, "desactualizado", "cambiar el flujo del ducto en vivo marca la instantánea desactualizada (regla 3):");
     eq(S.soporte.snap.duct[0].w, snap.w, "la instantánea aceptada NO se movió sola tras el cambio:");
   } finally { S.duct.segments = segs0; S.soporte = sop0; S.vinculos = vinc0; G("recompute")(); }
 });
@@ -4923,7 +5037,7 @@ t("Q.8b H-46 en modo instantánea la red contra incendio soporta metros reales, 
     G("recompute")();
     const F = G("FUEGO");
     if (!(F.nTotal > 0)) throw new Error("el caso de prueba necesita rociadores para tener red contra incendio");
-    G("propAceptar")("motores>soporte");
+    aceptarSoporte();
     G("recompute")();
     if (!(S.soporte.snap.fuego.Lram > 0 || S.soporte.snap.fuego.Lmon > 0))
       throw new Error("la instantánea de incendio se guardó sin longitudes: volvería a dar 0 soportes en modo instantánea");
@@ -4987,12 +5101,12 @@ t("Q.11 H-74 Hermosillo, San Luis Río Colorado y Rosarito existen como sitio cl
   eq(SITES.rosarito.db, SITES.tijuana.db, "rosarito reutiliza el dato de tijuana:"); eq(SITES.rosarito.wb, SITES.tijuana.wb, "rosarito BH:");
   /* El selector de sitio recoge las llaves nuevas automáticamente (es
      Object.entries(SITES), no una lista aparte que haya que tocar). */
-  const site0 = JSON.parse(JSON.stringify(S.site));
+  const site0 = JSON.parse(JSON.stringify(S.sitioCarga));   /* H-290: la carga calcula con el sitio de Carga térmica */
   try {
-    S.site = { key: "hermosillo" };
+    S.sitioCarga = { key: "hermosillo" };
     G("recompute")();
     cerca(G("SITE").db, 42.8, 0.01, "siteOf() resuelve hermosillo:");
-  } finally { S.site = site0; G("recompute")(); }
+  } finally { S.sitioCarga = site0; G("recompute")(); }
 });
 
 /* ============================================================================
@@ -5104,9 +5218,15 @@ function llenarTodoS() {
   if (!S.duct.segments.some((c) => c.tag === "TR-S")) S.duct.segments.push({ ...G("defaultSegment")("TR-S", 2500), length: 20 });
   const ms = G("MUEBLES"); S.hidro.muebles = [{ id: ms[0].id, cant: 6 }, { id: ms[1].id, cant: 6 }];
   const r0 = G("cleanRooms")()[0]; r0.area = 60; r0.height = 3; r0.occ = 4;
+  /* H-265: el cuarto clasificado de obra civil se captura en civil (antes lo tomaba del cuarto limpio). */
+  if (!(S.civil.cuartos || []).some((c) => c.id === "kS")) S.civil.cuartos = [...(S.civil.cuartos || []), { id: "kS", nombre: r0.name || "Cuarto", area: 60, altura: 3, perimetro: 0 }];
   /* H-250: los espejos EN-USD del banco necesitan tipo de cambio con fecha. */
   if (!G("fxVigente")()) { S.quote.fx = 18.5; S.quote.fxFecha = "2026-09-22"; S.quote.fxFuente = "banco de pruebas"; }
   G("recompute")();
+  /* H-267: la selección del proyecto lleno calcula con la propuesta de carga térmica aceptada (ya no la lee en vivo). */
+  if (!G("zonasSel")().length) aceptarEquip();
+  /* H-266: la soportería del proyecto lleno cuenta con su instantánea aceptada (ya no cuenta en vivo). */
+  if (!S.soporte.snap) aceptarSoporte();
 }
 /* Recoge los PDF que la barra manda a entregar, sin descargar nada. */
 function conPdfCapturado(fn) {
@@ -5238,7 +5358,7 @@ t("S.6 Memoria de cálculo emite el PDF de cada disciplina: con el nombre del pr
   eq(emitidos, 14, "catorce disciplinas con memoria propia:");
 });
 
-t("S.7 Cotización de esta disciplina reúne las partidas del motor; sin partidas o sin cruce autorizado se apaga con su razón", () => {
+t("S.7 Cotización de esta disciplina reúne las partidas del motor; sin partidas se apaga con su razón; H-304: ya no depende del permiso hacia la Cotización general", () => {
   llenarTodoS();
   let emitidos = 0, apagados = 0;
   conPdfCapturado((salida) => {
@@ -5254,13 +5374,13 @@ t("S.7 Cotización de esta disciplina reúne las partidas del motor; sin partida
     });
   });
   if (emitidos < 6) throw new Error(`sólo ${emitidos} cotizaciones emitidas`);
-  /* Sin autorizar el cruce, la razón trae el botón para autorizarlo. */
+  /* H-304: la cotización de la disciplina es de su motor: sin el cruce hacia la Cotización general sigue saliendo. */
   const perm = S.perms["elec>quote"];
   try {
     delete S.perms["elec>quote"]; G("recompute")();
     const b = boton("electrico", "pdf-cot-motor");
-    eq(apagado(b), true, "cruce sin autorizar:");
-    contiene(w.document.querySelector("#view .accbar").innerHTML, 'data-act="ask-link" data-id="elec>quote"', "botón para autorizar:");
+    eq(G("accEstado")("elec").cot.autorizar, undefined, "sin el cruce hacia la Cotización general, la de la disciplina no pide autorizarlo:");
+    eq(/data-act="ask-link" data-id="elec>quote"/.test(w.document.querySelector("#view .accbar").innerHTML), false, "ni ofrece el botón para autorizarlo:");
   } finally { S.perms["elec>quote"] = perm; G("recompute")(); }
 });
 
@@ -5363,16 +5483,17 @@ t("S.12 semáforo y gráficas en la rampa de grises: por forma y luminosidad, co
 
 t("S.13 en un proyecto sin captura, Calcular y Memoria se apagan también en los motores que tienen pisos internos (clean, equip, valor, fuego, civil)", () => {
   llenarTodoS();
-  const zs = S.zones, rooms = JSON.stringify(S.clean), fa = S.fuego.area, cv = JSON.stringify(S.civil);
+  const zs = S.zones, rooms = JSON.stringify(S.clean), fa = S.fuego.area, cv = JSON.stringify(S.civil), eqz = JSON.stringify(S.equip.zonas);
   try {
     S.zones = [G("defaultZone")("Vacía")];
+    S.equip.zonas = [];   /* H-267: la selección tiene captura propia (sus zonas de selección): sin ellas, sin captura */
     G("cleanRooms")().forEach((r) => { r.area = 0; r.height = 0; r.occ = 0; });
-    S.fuego.area = 0; S.civil.usarZonas = true;
+    S.fuego.area = 0; S.civil.usarZonas = true; S.civil.areas = []; S.civil.cuartos = [];   /* H-265: sin captura propia de civil */
     G("recompute")();
     ["limpios", "seleccion", "valor", "fuego", "civil"].forEach((tab) => {
       ["calc-motor", "pdf-memoria-motor"].forEach((act) => eq(apagado(boton(tab, act)), true, `${tab}/${act} sin captura:`));
     });
-  } finally { S.zones = zs; S.clean = JSON.parse(rooms); S.fuego.area = fa; S.civil = JSON.parse(cv); G("recompute")(); }
+  } finally { S.zones = zs; S.clean = JSON.parse(rooms); S.fuego.area = fa; S.civil = JSON.parse(cv); S.equip.zonas = JSON.parse(eqz); G("recompute")(); }
 });
 
 t("S.14 Calcular desde una pantalla de motor no deja a Kaizen ni a Ingeniería de valor en «sin datos»", () => {
@@ -5459,19 +5580,28 @@ t("S.18 semáforo: un proyecto vacío muestra «Sin datos» en TODAS las discipl
     const r = G("cleanRooms")()[0]; r.area = 60; r.height = 3; G("recompute")();
     n = niveles();
     const con = (id, msg) => { if (n[id] === "vacia") throw new Error(msg || `${id} debía tener datos`); };
-    con("clean"); con("civil", "civil hereda la geometría del cuarto:");
+    con("clean"); eq(n.civil, "vacia", "H-265: obra civil no se prende con el cuarto limpio (es autónoma):");
     ["load", "equip", "duct", "vent", "elec", "hidro", "aire"].forEach((id) => eq(n[id], "vacia", `${id} sigue vacío:`));
-    /* Una zona con área: carga, equipo, ventilación y contra incendio heredan. */
+    /* Una zona con área: carga se prende. H-262/H-264: ventilación y contra incendio ya no heredan: siguen vacíos. H-267: selección
+       de equipo tampoco se prende sola: sólo al aceptar la propuesta de carga térmica (o al capturar sus zonas). */
     S.zones[0].area = 200; S.zones[0].height = 4; G("recompute")();
     n = niveles();
-    ["load", "equip", "fuego"].forEach((id) => { if (n[id] === "vacia") throw new Error(`${id} con zona capturada sigue en «Sin datos» (${n[id]})`); });
+    if (n.load === "vacia") throw new Error("load con zona capturada sigue en «Sin datos»");
+    eq(n.equip, "vacia", "H-267: selección de equipo no se prende con la zona de carga térmica sin aceptar la propuesta:");
+    aceptarSitioCarga(); aceptarEquip(); n = niveles();   /* H-290: la carga calcula con su sitio, aceptado de Proyecto */
+    if (n.equip === "vacia") throw new Error("equip con la propuesta de carga térmica aceptada sigue en «Sin datos»");
+    eq(n.fuego, "vacia", "H-264: contra incendio no se prende con la zona de carga térmica:");
+    S.fuego.area = 200; G("recompute")(); n = niveles();
+    if (n.fuego === "vacia") throw new Error("contra incendio con área capturada sigue en «Sin datos»");
+    S.civil.areas = [{ id: "a1", nombre: "Nave", area: 200, altura: 4, perimetro: 0 }]; G("recompute")(); n = niveles();
+    if (n.civil === "vacia") throw new Error("obra civil con un área capturada sigue en «Sin datos»");
     /* Los motores que dependen de la captura de los demás tampoco se prenden solos. */
     G("reemplazarEstado")(G("defaultState")()); S.meta.name = "Proyecto vacío de prueba";
     Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "prueba S.18" }; }); G("recompute")();
     n = niveles();
     eq(n.quote, "vacia", "quote vacío:");
     ["valor", "kaizen"].forEach((id) => eq(n[id], "gestion", `${id} sin semáforo (rev 2.9.16):`));
-    S.hidro.muebles = [{ id: G("MUEBLES")[0].id, cant: 4 }, { id: G("MUEBLES")[1].id, cant: 4 }]; G("recompute")();
+    S.hidro.muebles = [{ id: G("MUEBLES")[0].id, cant: 4 }, { id: G("MUEBLES")[1].id, cant: 4 }]; S.hidro.presRed = 0; S.hidro.alturaEdificio = 0; G("recompute")();   /* AUD-14: los 0 que antes traía defaultHidro, ahora capturados */
     n = niveles();
     if (n.hidro === "vacia") throw new Error("hidro con muebles capturados sigue vacío");
     /* H-196: cisterna y bomba ya no traen precio semilla; con sólo muebles (sin tramos ni precios) la cotización no tiene
@@ -5593,11 +5723,11 @@ t("S.21 la huella de entradas es sólida: si cambia la salida de un motor, su se
   sellar();
   const base = w.eval("__firmasS()");
   const mutaciones = [
-    ["zonas: área", () => { S.zones[0].area += 50; }], ["zonas: muro norte", () => { S.zones[0].walls.N += 20; }], ["sitio: bulbo seco", () => { S.site.db += 3; }],
+    ["zonas: área", () => { S.zones[0].area += 50; }], ["zonas: muro norte", () => { S.zones[0].walls.N += 20; }], ["sitio de Carga: localidad", () => { S.sitioCarga.key = "mexicali"; }],
     ["ventilación: cambios de aire", () => { S.vent.ach += 2; }], ["ductos: longitud", () => { S.duct.segments[0].length += 15; }], ["cuarto limpio: área", () => { G("cleanRooms")()[0].area += 20; }],
     ["hidráulico: muebles", () => { S.hidro.muebles[0].cant += 4; }], ["contra incendio: ramal", () => { S.fuego.Lramal += 12; }], ["aire: caudal", () => { S.aire.consumos[0].lmin += 90; }],
     ["eléctrico: carga", () => { S.elec.cargas[0].kW += 5; }], ["civil: firme", () => { S.civil.firmeM2 = 300; }], ["soportería: altura de trabajo", () => { S.soporte.alturaTrabajo = 9; }],
-    ["cotización: factor de lista", () => { S.quote.priceFactor = 0.8; }], ["arquitectura forzada", () => { S.sysForce = "chiller"; }],
+    ["selección: factor de lista", () => { S.equip.precios.priceFactor = 0.8; }], ["arquitectura forzada", () => { S.sysForce = "chiller"; }],
   ];
   const flips = {};
   mutaciones.forEach(([nombre, muta]) => {
@@ -5612,7 +5742,7 @@ t("S.21 la huella de entradas es sólida: si cambia la salida de un motor, su se
   restaurar();
   /* Independencia: mover el ramal de contra incendio no toca el sello de motores que no lo leen. */
   ["load", "clean", "equip", "duct", "vent", "hidro", "aire"].forEach((id) => { if (flips["contra incendio: ramal"].includes(id)) throw new Error(`el ramal de contra incendio marcó desactualizado a ${id}`); });
-  ["fuego", "soporte"].forEach((id) => { if (!flips["contra incendio: ramal"].includes(id)) throw new Error(`el ramal de contra incendio debía marcar a ${id}`); });
+  if (!flips["contra incendio: ramal"].includes("fuego")) throw new Error("el ramal de contra incendio debía marcar a fuego");
   if (!flips["aire: caudal"].includes("aire") || flips["aire: caudal"].includes("hidro")) throw new Error("el caudal de aire debía marcar a aire y no a hidráulico");
   if (!flips["ventilación: cambios de aire"].includes("vent") || flips["ventilación: cambios de aire"].includes("duct")) throw new Error("la ventilación debía marcar a vent y no a ductos");
   /* Lo de presentación no marca nada. */
@@ -5645,12 +5775,12 @@ const a11yModal = () => w.document.getElementById("modal");
 
 t("S.A11Y.1 ningún elemento con data-act/data-tab/data-units queda sin ser <button>, <a href>, campo, <summary> o role + tabindex=\"0\" (todas las pantallas, listas, tarjetas, catálogo y ventanas)", () => {
   llenarTodoS();
-  const q0 = JSON.stringify(S.quote.items), cat0 = JSON.stringify(S.cat), qfam0 = S.qfam, tab0 = S.tab;
+  const q0 = JSON.stringify(S.equip.items), cat0 = JSON.stringify(S.cat), qfam0 = S.qfam, tab0 = S.tab;
   const malos = new Set(), vistos = { n: 0, noNativos: new Set() }, doc = w.document;
   const ver = (donde, raiz) => a11yRevisar(raiz || doc.body, donde, malos, vistos);
   try {
     /* Con una partida de equipo, para que la lista de la cotización y las tarjetas salgan pintadas. */
-    const c0 = G("CARRIER")[0]; S.quote.items.push({ id: c0.id, fam: G("FAMILIES")[0].id, qty: 1, unit: null }); G("recompute")();
+    const c0 = G("CARRIER")[0]; S.equip.items.push({ id: c0.id, fam: G("FAMILIES")[0].id, qty: 1, unit: null }); G("recompute")();
     const pantallas = [...new Set(G("tabsDeVista")().concat(["tablero", "proyecto", "catalogo", "comparativo"]))];
     pantallas.forEach((tab) => { S.tab = tab; G("render")(); ver(tab); });
     /* Selección de equipo pinta la lista de modelos de cada familia (div.pick + PDF + Seleccionar). */
@@ -5672,10 +5802,10 @@ t("S.A11Y.1 ningún elemento con data-act/data-tab/data-units queda sin ser <but
      ["tramo de ducto", "segmentSheet(0)"], ["origen de los datos", "cxOrigenHtml('carga')"]].forEach(([nom, expr]) => {
       G(`openModal(${expr})`); ver("ventana " + nom, a11yModal()); G("closeModal")();
     });
-    G("PENDING_LINK = null; requestLink('load>duct', () => {})"); ver("ventana de cruce", a11yModal()); G("closeModal")();
+    G("PENDING_LINK = null; openModal(linkModal('fuego>hidro'))"); ver("ventana de cruce", a11yModal()); G("closeModal")();
     G("pedirConfirmacion({ titulo: 'x', detalle: 'y', lista: [], boton: 'ok', onOk: () => {} })"); ver("ventana de confirmación", a11yModal()); G("closeModal")();
   } finally {
-    S.quote.items = JSON.parse(q0); S.cat = JSON.parse(cat0); S.qfam = qfam0; S.tab = tab0;
+    S.equip.items = JSON.parse(q0); S.cat = JSON.parse(cat0); S.qfam = qfam0; S.tab = tab0;
     G("closeModal")(); G("recompute")(); G("render")();
   }
   if (malos.size) throw new Error(`${malos.size} control(es) sin resolver:\n   ` + [...malos].slice(0, 12).join("\n   "));
@@ -5733,12 +5863,12 @@ t("S.A11Y.3 (rev 2.9.16, aplanado) la tarjeta de modelo de Selección es un <but
     eq(salida().length, n0 + 1, "clic en el PDF emite un PDF:");
     eq(a11yModal().hidden, true, "clic en el PDF no abre el detalle:");
   });
-  const sel0 = JSON.stringify(S.sel), q0 = JSON.stringify(S.quote.items);
+  const sel0 = JSON.stringify(S.sel), q0 = JSON.stringify(S.equip.items);
   try {
     clicS(sel);
     eq(((S.sel.modelos || {})[sel.dataset.fam] || {}).id, sel.dataset.id, "clic en Seleccionar registra el modelo elegido:");
     eq(a11yModal().hidden, true, "clic en Seleccionar no abre el detalle:");
-  } finally { S.sel = JSON.parse(sel0); S.quote.items = JSON.parse(q0); G("recompute")(); }
+  } finally { S.sel = JSON.parse(sel0); S.equip.items = JSON.parse(q0); G("recompute")(); }
 });
 
 t("S.A11Y.4 (rev 2.9.16, aplanado) la zona de carga de archivos ya no es un control: es un grupo con nombre, sus dos botones abren el selector una vez cada uno y el arrastre sigue sobre la zona", () => {
@@ -5859,7 +5989,7 @@ t("S.23 captura real: cantidades directas de obra civil, riel de soportería y e
     vacio(); S.vent.mode = "kitchen"; G("recompute")(); eq(cap("vent"), false, "modo cocina sin medidas:"); eq(G("capturaReal")("quote"), false, "y la cotización sigue vacía:");
     S.vent.hoodL = 2.5; S.vent.hoodW = 1.1; G("recompute")(); eq(cap("vent"), true, "modo cocina con medidas:");
     vacio(); S.vent.mode = "louver"; G("recompute")(); eq(cap("vent"), false, "rejilla sin medidas:");
-    vacio(); S.quote.items.push({ id: G("CARRIER")[0].id, fam: "chiller", qty: 1, unit: null }); G("recompute")(); eq(cap("quote"), true, "equipo elegido a mano:");
+    vacio(); S.equip.items.push({ id: G("CARRIER")[0].id, fam: "chiller", qty: 1, unit: null }); G("recompute")(); eq(cap("quote"), true, "equipo elegido a mano:");
     vacio(); S.kaizen.items.push({ id: "k1", titulo: "", estado: "planear", owner: "", ahorro: 0, nota: "" }); G("recompute")(); eq(cap("kaizen"), false, "mejora sin título:");
     S.kaizen.items[0].titulo = "Mejora real"; G("recompute")(); eq(cap("kaizen"), true, "mejora con título:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
@@ -5870,10 +6000,11 @@ t("S.24 propuestas entre disciplinas: un proyecto vacío no ofrece «Propuestas 
   try {
     G("reemplazarEstado")(G("defaultState")()); S.meta.name = "Vacío S.24";
     Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.24" }; }); G("recompute")();
-    ["cedula>elec", "motores>soporte"].forEach((id) => { const e = G("estadoPropuesta")(id); if (e.nivel === "pendiente" || e.nivel === "vivo") throw new Error(`${id}: propuesta «${e.nivel}» en proyecto vacío`); });
-    /* Con captura en el origen sí se ofrece. */
-    S.fuego.area = 300; G("recompute")();
-    if (G("estadoPropuesta")("motores>soporte").nivel === "sin-datos") throw new Error("con contra incendio capturado la propuesta de soportería debía estar disponible");
+    /* Las de Proyecto (sitio) no se arman con captura de otro motor: el sitio del proyecto es su dato propio. */
+    Object.keys(G("PROPUESTAS")).filter((id) => !/^proyecto>/.test(id)).forEach((id) => { const e = G("estadoPropuesta")(id); if (e.nivel === "pendiente" || e.nivel === "vivo") throw new Error(`${id}: propuesta «${e.nivel}» en proyecto vacío`); });
+    /* Con captura en el origen sí se ofrece (H-305–H-307: las que quedan son del núcleo HVAC y de Proyecto; se prueba con load>equip). */
+    aceptarSitioCarga(); S.zones = [{ ...G("defaultZone")("Nave S.24"), area: 200, height: 4, occ: 10, lights: 2000, equip: 2000 }]; G("recompute")();
+    if (G("estadoPropuesta")("load>equip").nivel === "sin-datos") throw new Error("con carga térmica capturada la propuesta de selección debía estar disponible");
     /* Sin cruces autorizados, el motivo de una cotización vacía es la autorización y no la falta de captura. */
     G("reemplazarEstado")(G("defaultState")()); S.meta.name = "Vacío S.24"; S.perms = {}; G("recompute")();
     if (!(G("cruceCotSinAutorizar")() > 0)) throw new Error("con S.perms vacío deben faltar cruces por autorizar");
@@ -5882,14 +6013,19 @@ t("S.24 propuestas entre disciplinas: un proyecto vacío no ofrece «Propuestas 
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
-t("S.25 la huella incluye lo que el eléctrico lee de ventilación y cuartos limpios, y lo que la selección lee de ductos", () => {
+t("S.25 (H-268) la huella del eléctrico es sólo su captura: no cambia con ventilación ni cuartos limpios (entran sólo como propuesta aceptada) y sí con sus propias cargas; la de la selección tampoco cambia con ductos (H-274: no hay vínculo) y sí con su presión capturada", () => {
   llenarTodoS();
   const nombres = () => ["elec", "equip"].map((id) => G("huellaMotor")(id));
   const h0 = nombres();
-  S.vent.ach += 2; G("recompute")(); const h1 = nombres(); if (h1[0] === h0[0]) throw new Error("la huella de eléctrico no cambia con ventilación");
-  S.vent.ach -= 2; G("cleanRooms")()[0].area += 10; G("recompute")(); const h2 = nombres(); if (h2[0] === h0[0]) throw new Error("la huella de eléctrico no cambia con cuartos limpios");
-  G("cleanRooms")()[0].area -= 10; S.duct.segments[0].length += 5; G("recompute")(); const h3 = nombres(); if (h3[1] === h0[1]) throw new Error("la huella de la selección no cambia con ductos");
-  S.duct.segments[0].length -= 5; G("recompute")();
+  /* H-268: el eléctrico es autónomo: lo que ventilación y cuartos limpios calculan ya no entra a su huella; llega sólo como propuesta
+     aceptada, que vive en S.elec.cargas (antes de H-268 la huella los incluía porque el motor los leía en vivo). */
+  S.vent.ach += 2; G("recompute")(); const h1 = nombres(); if (h1[0] !== h0[0]) throw new Error("la huella de eléctrico no debe cambiar con ventilación (H-268)");
+  S.vent.ach -= 2; G("cleanRooms")()[0].area += 10; G("recompute")(); const h2 = nombres(); if (h2[0] !== h0[0]) throw new Error("la huella de eléctrico no debe cambiar con cuartos limpios (H-268)");
+  G("cleanRooms")()[0].area -= 10; S.elec.cargas[0].kW += 1; G("recompute")(); const h2b = nombres(); if (h2b[0] === h0[0]) throw new Error("la huella de eléctrico debe cambiar con sus propias cargas");
+  S.elec.cargas[0].kW -= 1; S.duct.segments[0].length += 5; G("recompute")(); const h3 = nombres(); if (h3[1] !== h0[1]) throw new Error("la huella de la selección no debe cambiar con ductos (H-274)");
+  S.duct.segments[0].length -= 5; const esp0 = S.equip.espCaptura; S.equip.espCaptura = 0.7; G("recompute")();
+  if (nombres()[1] === h0[1]) throw new Error("la huella de la selección debe cambiar con su presión capturada (H-274)");
+  S.equip.espCaptura = esp0; G("recompute")();
   /* El texto del pie no promete Calcular cuando está apagado. */
   const zs = S.zones;
   try {
@@ -6164,14 +6300,14 @@ t("S.35 (rev 2.9.19, revisión adversarial de 2.9.16–2.9.18) pendientes en Exc
     /* rev 2.9.23: la cotización formal no sale con tubería sin precio; con precio sí, y el tramo sin UM sigue pendiente. */
     let tiro = ""; try { G("buildLicitacionPdf")(); } catch (e) { tiro = String(e.message); }
     contiene(tiro, "La cotización formal no sale con tubería sin precio", "licitación bloqueada sin precio:");
-    G("hidroDiametrosSinPrecio")().forEach((d) => { S.quote.hidroPU[G("claveHidroPU")("cpvc", d)] = 100; }); G("recompute")();
+    G("hidroDiametrosSinPrecio")().forEach((d) => { S.hidro.hidroPU[G("claveHidroPU")("cpvc", d)] = 100; }); G("recompute")();
     const lic = Buffer.from(licitacionFormal()).toString("latin1");
     contiene(lic, "PARTIDAS PENDIENTES, NO COTIZADAS", "licitación:");
     S.quote.modo = "privada";
-    /* Compresor sin demanda: no entra al cuadro eléctrico. */
-    S.elec.tomarHVAC = true; S.aire = G("defaultAire")(); G("recompute")();
+    /* Compresor sin demanda: no llega a la propuesta del eléctrico (H-268: al cuadro sólo entra lo que se acepta). */
+    S.aire = G("defaultAire")(); G("recompute")();
     eq(G("AIRE").nUnidades, 0, "aire sin demanda:");
-    eq((G("ELEC").calc || []).some((c) => c.id === "aire-1"), false, "sin fila de compresor en el eléctrico:");
+    eq(G("propuestaElecFilas")().some((c) => c.kWOrigen === "aire"), false, "sin compresor en la propuesta del eléctrico:");
     /* Contra incendio sin área con fuente municipal: ningún error falso. */
     S.zones[0].area = 0; /* el área de incendio se hereda de las zonas (regla 1): sin zonas con área, sin área */
     S.fuego = { ...G("defaultFuego")(), fuente: "municipal" }; G("recompute")();
@@ -6195,18 +6331,21 @@ t("S.36 (rev 2.9.20, decisión del dueño) versión por motor en el sello: sólo
   llenarTodoS();
   const MV = G("MOTOR_VER");
   /* H-107: carga v3 = lógica de la rev 2.9.21 (declarada en la 2.9.24); H-120: carga v4 = corrección CLTD por sitio. H-183: eléctrico v5 = Tabla 250-122 de la NOM; H-177: v6 = art. 440 con MCA/MOP; H-179: v7 = nada se supone (pendientes); H-178: v8 = corriente de motor por la Tabla 430-250/248.
-     H-194: hidro v5 = presión mínima por mueble de la Tabla 604.3 del IPC 2015 y CDT con máx(residual, mínima); H-195: v6 = equipo de emergencia fuera de Hunter; H-197: v7 = sin pisos sin norma (días, ΔT, pendiente 704.1); H-198: v8 = CPVC sólo hasta 2" CTS, fuera de catálogo y PEAD sin SDR como error. */
-  eq(MV.elec, "8", "eléctrico v8 (H-178):"); eq(MV.hidro, "8", "hidro v8 (H-198):"); eq(MV.load, "5", "carga v5 (H-141):"); eq(MV.duct, "4", "ductos v4 (H-165):"); eq(MV.equip, "1", "selección sin cambio de lógica: v1:");
+     H-194: hidro v5 = presión mínima por mueble de la Tabla 604.3 del IPC 2015 y CDT con máx(residual, mínima); H-195: v6 = equipo de emergencia fuera de Hunter; H-197: v7 = sin pisos sin norma (días, ΔT, pendiente 704.1); H-198: v8 = CPVC sólo hasta 2" CTS, fuera de catálogo y PEAD sin SDR como error.
+     H-263: carga v6 = calor del motor del ventilador seleccionado en Ventilación como misceláneos de la zona elegida; H-262: ventilación v4 = ya no hereda de carga térmica;
+     H-268: eléctrico v9 = autónomo (las cargas de otros motores sólo como propuesta aceptada). */
+  eq(MV.elec, "10", "eléctrico v10 (AUD-14):"); eq(MV.hidro, "10", "hidro v10 (AUD-18):"); eq(MV.load, "7", "carga v7 (H-290):"); eq(MV.duct, "4", "ductos v4 (H-165):"); eq(MV.equip, "4", "selección v4 (H-288):"); eq(MV.kaizen, "1", "Kaizen sin cambio de lógica: v1:");
   Object.keys(MV).forEach((id) => { const c = G("MOTOR_CAMBIOS")[id] || []; if (MV[id] !== "1" && !c.some((x) => x.ver === MV[id])) throw new Error(`${id}: la versión ${MV[id]} no tiene hallazgo registrado`); });
   const s0 = JSON.stringify(S.sellos || {});
   try {
-    /* Sello de la 2.9.15 (sin versión = v1) en selección y en hidro: sólo hidro se desactualiza (H-166 subió ductos a v2: el ejemplo sin cambio pasa a selección, que sigue en v1). */
-    S.sellos = { equip: { ts: 5, huella: G("huellaMotor")("equip") }, hidro: { ts: 5, huella: G("huellaMotor")("hidro") } }; G("recompute")();
-    eq(G("selloDe")("equip").estado, "calculado", "selección (motor v1, sin cambio):");
+    /* Sello de la 2.9.15 (sin versión = v1) en Kaizen y en hidro: sólo hidro se desactualiza (H-166 subió ductos a v2 y H-267 selección
+       a v2: el ejemplo sin cambio pasa a Kaizen, que sigue en v1). */
+    S.sellos = { kaizen: { ts: 5, huella: G("huellaMotor")("kaizen") }, hidro: { ts: 5, huella: G("huellaMotor")("hidro") } }; G("recompute")();
+    eq(G("selloDe")("kaizen").estado, "calculado", "Kaizen (motor v1, sin cambio):");
     const sh = G("selloDe")("hidro");
-    eq(sh.estado, "desactualizado", "hidro (motor v1 → v8):"); contiene(sh.texto, "v1 → v8", "texto:"); contiene(sh.texto, "Hunter", "nombra el hallazgo:"); contiene(sh.texto, "604.3", "nombra H-194:"); contiene(sh.texto, "Z358.1", "nombra H-195:"); contiene(sh.texto, "704.1", "nombra H-197:"); contiene(sh.texto, "catálogo", "nombra H-198:");
+    eq(sh.estado, "desactualizado", "hidro (motor v1 → v10):"); contiene(sh.texto, "v1 → v10", "texto:"); contiene(sh.texto, "Hunter", "nombra el hallazgo:"); contiene(sh.texto, "604.3", "nombra H-194:"); contiene(sh.texto, "Z358.1", "nombra H-195:"); contiene(sh.texto, "704.1", "nombra H-197:"); contiene(sh.texto, "catálogo", "nombra H-198:");
     const m = G("motoresCambiados")();
-    eq(m.map((x) => x.id).join(","), "hidro", "lista para el aviso al abrir:"); eq(m[0].de + ">" + m[0].a, "1>8", "de → a:");
+    eq(m.map((x) => x.id).join(","), "hidro", "lista para el aviso al abrir:"); eq(m[0].de + ">" + m[0].a, "1>10", "de → a:");
     /* Un sello viejo abre sin error y conserva su ver; el saneado acepta ver/resumen/previo y descarta basura. */
     const viejo = JSON.parse(JSON.stringify(S)); viejo.sellos = { hidro: { ts: 5, huella: G("huellaMotor")("hidro"), ver: "3", resumen: { Gasto: "1 L/s" }, previo: { ver: "2", ts: 4, resumen: { Gasto: "0.9 L/s" } } }, duct: { ts: 5, huella: G("huellaMotor")("duct"), ver: "x9", resumen: "no" } };
     const sv = G("sanearEstado")(viejo).sellos;
@@ -6216,14 +6355,15 @@ t("S.36 (rev 2.9.20, decisión del dueño) versión por motor en el sello: sólo
     const Q0 = G("HIDRO").Qtotal;
     clicS(boton("hidro", "calc-motor"));
     const sn = S.sellos.hidro;
-    eq(sn.ver, "8", "sello nuevo con la versión del motor:"); eq(sn.previo.ver, "1", "previo:"); eq(sn.previo.resumen.Gasto, "3.924 L/s", "cifras de antes:");
+    eq(sn.ver, "10", "sello nuevo con la versión del motor:"); eq(sn.previo.ver, "1", "previo:"); eq(sn.previo.resumen.Gasto, "3.924 L/s", "cifras de antes:");
     contiene(sn.resumen.Gasto, G("n")(Q0, 3), "cifras de después:");
     eq(G("selloDe")("hidro").estado, "calculado", "vuelto a sellar:");
     conPdfCapturado((salida) => {
       clicS(boton("hidro", "pdf-memoria-motor"));
       const txt = textoPdf(salida()[salida().length - 1].b);
-      contiene(txt, "CAMBIO DE MOTOR v1 -> v8", "la memoria dice el cambio:"); /* el PDF parte los renglones en varios Tj: se buscan las piezas */
-      contiene(txt, "ANTES", "antes:"); contiene(txt, "3.924 L/s", "cifra de antes:"); contiene(txt, "DESPUES", "después:"); contiene(txt, "motor v1", "versión de antes:"); contiene(txt, "motor v8", "versión de después:");
+      contiene(txt, "CAMBIO DE MOTOR v1 -> v10", "la memoria dice el cambio:"); /* el PDF parte los renglones en varios Tj: se buscan las piezas */
+      contiene(txt, "ANTES", "antes:"); contiene(txt, "3.924 L/s", "cifra de antes:"); contiene(txt, "DESPUES", "después:"); const plano = txt.replace(/\) Tj ET[\s\S]*?\(/g, " ");   /* el renglón puede partirse entre «motor» y la versión */
+      contiene(plano, "motor v1", "versión de antes:"); contiene(plano, "motor v10", "versión de después:");
     });
     eq(w.eval("MEMO_CAMBIO"), null, "la bandera de la memoria se limpia:");
   } finally { S.sellos = JSON.parse(s0); G("recompute")(); }
@@ -6232,7 +6372,7 @@ t("S.36 (rev 2.9.20, decisión del dueño) versión por motor en el sello: sólo
 t("S.37 (rev 2.9.20, decisión del dueño) control de humedad: dos casos de diseño ASHRAE, rige el mayor en total y en latente, memoria con ambos; sitio sin punto de rocío = faltante, no se estima", () => {
   const guardado = JSON.stringify(S);
   try {
-    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.37";
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.37"; aceptarSitioCarga();   /* H-290 */
     eq(G("SITES").tijuana.dp, 19.2, "Tijuana DP 0.4 %:"); eq(G("SITES").tijuana.dpHR, 14.2, "razón de humedad:"); eq(G("SITES").tijuana.dpDB, 22.8, "BS coincidente:");
     eq(G("SITES").tecate.dpRef.wmo, "722904", "Tecate: punto de rocío de estación de referencia (Brown Field):");
     const dz = G("defaultZone");
@@ -6304,13 +6444,13 @@ t("S.37 (rev 2.9.20, decisión del dueño) control de humedad: dos casos de dise
     contiene(pdf, "Dos casos ASHRAE", "PDF de carga:"); contiene(pdf, "deshumidificacion", "PDF nombra el caso:");
     eq(G("SITE").caso, "enfriamiento", "SITE restaurado:"); eq(G("SITE").Wfijo, null, "sin razón fija:");
     /* Sitio sin punto de rocío: faltante, aviso, un caso. */
-    S.site = { key: "custom", db: 40, wb: 24, alt: 100, range: 12, dp: 0, dpHR: 0, dpDB: 0 }; G("recompute")(); /* rev 2.9.23: Tecate ya trae estación de referencia; el faltante se prueba con un sitio sin DP */
+    S.sitioCarga = { key: "custom", db: 40, wb: 24, alt: 100, range: 12, dp: 0, dpHR: 0, dpDB: 0 }; G("recompute")(); /* rev 2.9.23: Tecate ya trae estación de referencia; el faltante se prueba con un sitio sin DP */
     const cl2 = G("LOADS")[1];
     eq(cl2.casos.faltante, true, "sitio sin DP: faltante:"); contiene(cl2.memo.join(" "), "FALTA el punto de rocío", "memoria lo dice:");
     if (!G("ENGINES").load.checks(cl2, "Limpio").some((a) => a.lvl === "warn" && /falta el punto de rocío/.test(a.msg))) throw new Error("falta el aviso de dato faltante");
     contiene(textoPdf(G("buildCargaPdf")()), "FALTA el punto de rocio", "PDF: faltante:");
     /* Personalizado captura sus tres datos de deshumidificación. */
-    S.site = { key: "custom", db: 40, wb: 24, alt: 100, range: 12, dp: 24, dpHR: 19.5, dpDB: 30 }; G("recompute")();
+    S.sitioCarga = { key: "custom", db: 40, wb: 24, alt: 100, range: 12, dp: 24, dpHR: 19.5, dpDB: 30 }; G("recompute")();
     cerca(G("LOADS")[1].casos.des.W, 19.5, 0.01, "personalizado:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
@@ -6319,35 +6459,35 @@ t("S.37 (rev 2.9.20, decisión del dueño) control de humedad: dos casos de dise
 t("S.38 (rev 2.9.22, decisión del dueño) sitio sin punto de rocío: marca roja en el PDF, captura manual sólo con fuente, estaciones ASHRAE de referencia que el usuario adopta", () => {
   const guardado = JSON.stringify(S);
   try {
-    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.38";
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.38"; aceptarSitioCarga();   /* H-290 */
     S.zones = [{ ...G("defaultZone")("Limpio"), spaceType: "cleanroom", iso: "iso7", achClean: 45, area: 120, height: 3, occ: 2 }];
     /* rev 2.9.23 · decisión del dueño: Tecate → Brown Field 722904 y Ensenada → Imperial Beach 722909 como ESTACIÓN DE REFERENCIA; Mexicali adopta 760053 como dato. */
     const T = G("SITES");
     eq(T.tecate.dpRef.wmo, "722904", "Tecate: Brown Field:"); eq(T.tecate.dp, 20.0, "DP de Brown Field:"); eq(T.ensenada.dpRef.wmo, "722909", "Ensenada: Imperial Beach:"); eq(T.ensenada.dp, 20.5, "DP de Imperial Beach:");
     eq(T.mexicali.dpRef, undefined, "Mexicali: dato propio, no referencia:"); eq(`${T.mexicali.db}/${T.mexicali.wb}/${T.mexicali.alt}/${T.mexicali.dp}`, "44/24.8/23/26.2", "Mexicali 760053 adoptada completa:"); contiene(T.mexicali.src, "WMO 760053", "fuente:");
-    S.site = { key: "tecate" }; G("recompute")();
+    S.sitioCarga = { key: "tecate" }; G("recompute")();
     if (!G("SITE").deshum || !G("SITE").deshum.referencia) throw new Error("Tecate debía usar la estación de referencia");
     contiene(G("LOADS")[0].memo.join(" "), "ESTACIÓN DE REFERENCIA, no del sitio: Brown Field", "memoria marca la referencia con nombre:"); contiene(G("LOADS")[0].memo.join(" "), "33 km", "y distancia:");
     contiene(Buffer.from(G("buildCargaPdf")()).toString("latin1"), "ESTACION DE REFERENCIA", "PDF marca la referencia:");
-    S.site = { key: "custom", dp: 0, dpHR: 0, dpDB: 0 }; G("recompute")();
+    S.sitioCarga = { key: "custom", db: 32.8, wb: 17.5, alt: 149, range: 9.2, dp: 0, dpHR: 0, dpDB: 0 }; G("recompute")();   /* H-290: el sitio propio de Carga, completo, sin punto de rocío */
     eq(G("SITE").deshum, null, "sitio sin DP:"); eq(G("LOADS")[0].casos.faltante, true, "faltante:");
     const pdf = Buffer.from(G("buildCargaPdf")()).toString("latin1");
     contiene(pdf, "DESHUMIDIFICACION NO EVALUADA: FALTA DATO CLIMATICO", "PDF marca la falta:");
     contiene(pdf, "0.941 0.337 0.114 rg", "en rojo (color de señal):");
     /* Captura manual sin fuente: no cuenta. Con fuente: cuenta y se imprime (sitio personalizado sin DP). */
-    S.site = { key: "custom", db: 40, wb: 24, alt: 100, range: 12, dp: 18, dpHR: 13, dpDB: 24, dpFuente: "" }; G("recompute")();
+    S.sitioCarga = { key: "custom", db: 40, wb: 24, alt: 100, range: 12, dp: 18, dpHR: 13, dpDB: 24, dpFuente: "" }; G("recompute")();
     if (!G("SITE").deshum) throw new Error("personalizado con DP debía usarse"); eq(G("SITE").deshum.fuente, "capturado por el usuario", "sin fuente declarada, personalizado dice capturado por el usuario:");
-    S.site.dpFuente = "ASHRAE 2021, estación X, cotejo del cliente"; G("recompute")();
+    S.sitioCarga.dpFuente = "ASHRAE 2021, estación X, cotejo del cliente"; G("recompute")();
     eq(G("SITE").deshum.fuente, "ASHRAE 2021, estación X, cotejo del cliente", "fuente declarada:");
     eq(G("LOADS")[0].casos.faltante, undefined, "se evalúan los dos casos:");
     /* Adoptar una estación de referencia: rellena DP, HR, BS coincidente y fuente. */
-    S.site = { key: "ensenada" }; G("recompute")(); S.tab = "proyecto"; G("render")();
-    const btn = w.document.querySelector('#view [data-act="site-ref-dp"][data-i="0"]');
+    S.sitioCarga = { key: "ensenada" }; G("recompute")(); S.tab = "carga"; G("render")();
+    const btn = w.document.querySelector('#view [data-act="site-ref-dp"][data-base="sitioCarga"][data-i="0"]');
     if (!btn) throw new Error("falta el botón para adoptar la estación de referencia");
     clicS(btn);
     const ref = G("SITES").ensenada.ref[0];
-    eq(S.site.dp, ref.dp, "DP adoptado:"); eq(S.site.dpHR, ref.dpHR, "HR adoptada:"); eq(S.site.dpDB, ref.dpDB, "BS coincidente adoptada:");
-    contiene(S.site.dpFuente, "WMO " + ref.wmo, "fuente declarada:"); contiene(S.site.dpFuente, "referencia adoptada", "marcada como referencia:");
+    eq(S.sitioCarga.dp, ref.dp, "DP adoptado:"); eq(S.sitioCarga.dpHR, ref.dpHR, "HR adoptada:"); eq(S.sitioCarga.dpDB, ref.dpDB, "BS coincidente adoptada:");
+    contiene(S.sitioCarga.dpFuente, "WMO " + ref.wmo, "fuente declarada:"); contiene(S.sitioCarga.dpFuente, "referencia adoptada", "marcada como referencia:");
     if (!G("SITE").deshum) throw new Error("tras adoptar, el sitio debía tener caso de deshumidificación");
     /* Saneado: DP no numérico se descarta; la fuente se acota. */
     const sucio = JSON.parse(JSON.stringify(S)); sucio.site.dp = "x"; sucio.site.dpFuente = "f".repeat(500);
@@ -6368,11 +6508,11 @@ t("S.39 (rev 2.9.22, decisión del dueño) precios de tubería hidráulica: PP-R
     eq(csv.split("\n").length - 1, Object.values(T).reduce((a, t) => a + t.d.length, 0), "una fila por diámetro y material:");
     contiene(csv, "cpvc,cpvc_1_1_4_,\"1 1/4\"\"\",,1,no,MXN,proveedor,no especificado,,,,,no especificado,,", "fila CPVC 1 1/4 (el diámetro lleva comillas):");
     if (/IUSA/.test(csv)) throw new Error("la plantilla no debe traer referencias IUSA (regla: únicamente California)");
-    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.39"; Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.39" }; });
-    S.zones[0].area = 100; S.zones[0].height = 3;
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.39"; Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.39" }; }); aceptarSitioCarga();   /* H-290 */
+    S.zones[0].area = 100; S.zones[0].height = 3; S.duct.difusores = 2;   /* H-300: los difusores que daba la zona se capturan en Ductos */
     S.hidro = { ...G("defaultHidro")(), material: "cpvc", tramos: [{ ...G("defaultTramoAgua")("AF-1"), um: 40, L: 25, alt: 0 }, { ...G("defaultTramoAgua")("AF-2"), um: 12, L: 12, alt: 0 }],
       muebles: [{ id: "wc_flux", cant: 4 }, { id: "lavabo", cant: 4 }] };
-    S.quote.hidroPU = {}; S.quote.fx = 18; S.quote.fxFecha = "2026-09-22"; S.quote.fxFuente = "prueba"; G("recompute")(); /* rev 2.9.23: USD sólo con tipo de cambio fechado */
+    S.hidro.hidroPU = {}; S.quote.fx = 18; S.quote.fxFecha = "2026-09-22"; S.quote.fxFuente = "prueba"; Object.assign(S.hidro, { fx: 18, fxFecha: "2026-09-22", fxFuente: "prueba" }); G("recompute")();   /* H-302: Hidrosanitario usa su tipo de cambio */ /* rev 2.9.23: USD sólo con tipo de cambio fechado */
     const sin = G("hidroDiametrosSinPrecio")();
     if (sin.length < 1) throw new Error("debía haber diámetros sin precio");
     eq(G("accEstado")("hidro").cot.ok, false, "cotización de hidro bloqueada sin precios:"); contiene(G("accEstado")("hidro").cot.razon, "Falta el precio", "razón:");
@@ -6465,7 +6605,7 @@ t("S.55 (H-198) CPVC sin renglones «SIN VERIFICAR» arriba de 2\" CTS y PEAD si
     const pc = () => (G("QUOTE").porCotizar || []).filter((x) => x.mot === "hidro" && x.un === "ML"); /* H-196: cisterna y bomba aparte */
     /* CPVC: la general no cabe en 2" CTS. */
     S.hidro = { ...G("defaultHidro")(), material: "cpvc", muebles, tramos: tramos() };
-    S.quote.hidroPU = { [G("claveHidroPU")("cpvc", '2"')]: 300 };
+    S.hidro.hidroPU = { [G("claveHidroPU")("cpvc", '2"')]: 300 };
     G("recompute")();
     let H = G("HIDRO");
     eq(H.tramos[0].fueraCatalogo, true, "la general queda fuera de catálogo:"); eq(H.tramos[1].fueraCatalogo, false, "el ramal cabe en 2\":");
@@ -6476,12 +6616,12 @@ t("S.55 (H-198) CPVC sin renglones «SIN VERIFICAR» arriba de 2\" CTS y PEAD si
     eq(g.qty, 25, "con sus metros:");
     eq(G("hidroDiametrosSinPrecio")().join(","), "", "el tramo fuera de catálogo no pide precio de un diámetro que no le corresponde:");
     S.hidro = { ...G("defaultHidro")(), material: "cpvc", muebles, tramos: tramos().slice(0, 1) };
-    S.quote.hidroPU = {};
+    S.hidro.hidroPU = {};
     G("recompute")();
     eq(G("hidroDiametrosSinPrecio")().join(","), "", "sólo con el tramo fuera de catálogo y sin precios, no se pide el precio del tope:");
     /* PEAD: diámetros sin SDR ni fuente. */
     S.hidro = { ...G("defaultHidro")(), material: "pead", muebles, tramos: tramos() };
-    S.quote.hidroPU = Object.fromEntries(G("TUB_AGUA").pead.d.map((x) => [G("claveHidroPU")("pead", String(x[1]).split(" ·")[0]), 300]));
+    S.hidro.hidroPU = Object.fromEntries(G("TUB_AGUA").pead.d.map((x) => [G("claveHidroPU")("pead", String(x[1]).split(" ·")[0]), 300]));
     G("recompute")(); H = G("HIDRO");
     if (!H.avisos.some((a) => a.lvl === "err" && /PEAD/.test(a.msg) && /SDR/.test(a.msg))) throw new Error("PEAD sin SDR debe dar error visible");
     eq(ml().length, 0, "PEAD no se cotiza por diámetro aunque haya precio capturado:");
@@ -6542,20 +6682,23 @@ t("S.58 (H-205) contra incendio hereda la altura MÁXIMA de las zonas (rociador 
     S.fuego = { ...G("defaultFuego")(), riesgo: "ord2", Lramal: 30, Lmontante: 12 };
     G("recompute")();
     cerca(G("geoProyecto")().altura, 5.4, 0.01, "la media ponderada sigue existiendo (volumen = área × altura):");
-    cerca(S.vent.height, 5.4, 0.01, "ventilación hereda la media (renueva volumen):");
-    eq(S.fuego.altura, 6, "contra incendio hereda la altura máxima (zona más alta):");
+    eq(S.vent.height, 0, "H-262: ventilación ya no hereda la altura; calcula con la suya:");
+    eq(S.fuego.altura, 0, "H-264: contra incendio ya no hereda la altura de las zonas:");
+    /* H-264: la altura al rociador más alto se captura; con 6 m (la zona más alta) la estática va a ese rociador. */
+    S.fuego.area = 500; S.fuego.altura = 6; G("recompute")();
     let F = G("FUEGO");
     eq(F.estatica, 7, "estática = altura al rociador más alto + 1 m:");
     if (!F.memo.some((m) => /rociador más alto/.test(m))) throw new Error("la memoria no dice que la estática va al rociador más alto");
     if (F.avisos.some((a) => /rack/.test(a.msg))) throw new Error("con 6 m no debe salir el aviso de rack");
-    /* Almacén de 13 m: la altura heredada es 13 (el promedio sería 3.91 y escondía el rack). */
+    /* Almacén de 13 m: se captura 13 (el promedio sería 3.91 y escondía el rack); las zonas no la mueven (H-264). */
     S.zones = [{ ...G("defaultZone")("Oficinas"), area: 2000, height: 3 }, { ...G("defaultZone")("Almacén"), area: 200, height: 13 }]; G("recompute")();
-    eq(S.fuego.altura, 13, "zona de 13 m: altura heredada 13:");
+    eq(S.fuego.altura, 6, "H-264: cambiar las zonas no mueve la altura capturada:");
+    S.fuego.altura = 13; G("recompute")();
     F = G("FUEGO");
     eq(F.estatica, 14, "estática 14 m:");
     if (!F.avisos.some((a) => /rack/.test(a.msg) && /13/.test(a.msg))) throw new Error("con 13 m debe salir el aviso de almacenamiento en rack con la altura real");
-    /* Captura propia: si el usuario escribe la altura del rociador más alto, la herencia no la pisa. */
-    S.fuego.altura = 9; G("marcarPropio")("fuego.altura"); G("recompute")();
+    /* Otra captura: manda en la estática. */
+    S.fuego.altura = 9; G("recompute")();
     eq(S.fuego.altura, 9, "la captura propia se respeta:"); eq(G("FUEGO").estatica, 10, "y manda en la estática:");
     /* La pantalla y la guía nombran el campo por lo que es. */
     S.tab = "fuego"; G("render")();
@@ -6718,7 +6861,7 @@ t("S.63 (H-218) el diámetro interior de la red de aire es del material: cobre t
 t("S.64 (H-154 + H-156) selección Greenheck: la cobertura real manda (cfmMin ≤ objetivo ≤ cfmMax, sin tolerancia ×0.9); la familia del modo sólo ordena entre los que cubren; si nadie cubre no hay modelo (ni en propuesta, ni en eléctrico) y el más cercano sólo sirve para el aviso", () => {
   const guardado = JSON.stringify(S);
   const pdfTxt = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");
-  const armar = (campos) => { G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.64"; Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.64" }; }); Object.assign(S.vent, campos); ["vent.area", "vent.height", "vent.occ"].forEach((k) => G("marcarPropio")(k)); G("recompute")(); return G("VENT"); };
+  const armar = (campos) => { G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.64"; aceptarSitioCarga(); Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.64" }; }); Object.assign(S.vent, campos); ["vent.area", "vent.height", "vent.occ"].forEach((k) => G("marcarPropio")(k)); G("recompute")(); return G("VENT"); };
   try {
     /* 1) Geometría del fixture: 11,643 CFM (objetivo 12,808). El GB-360 (4,000–9,000) no cubre; el CSW-30 (7,000–18,000) sí. */
     let V = armar({ mode: "general", spaceType: "office", area: 700, height: 4.71, occ: 46, ach: 6, ductLoss: .5, filterLoss: .25 });
@@ -6851,10 +6994,35 @@ t("S.68 (H-128) «Crear zona de carga con este cuarto» no inventa 12 W/m² de i
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+t("S.138 (H-281) la reposición de los cuartos limpios entra a carga térmica sólo como propuesta clean>load aceptada: el traspaso deja vínculo, origen y fecha; si el cuarto cambia, la propuesta sale desactualizada y la zona no se mueve sola; el origen no mueve el sello de carga (decisión del dueño del 27-sep-2026; reglas 2 y 3)", () => {
+  const guardado = JSON.stringify(S);
+  const act = (a) => { const b = w.document.createElement("button"); b.dataset.act = a; w.document.body.appendChild(b); b.dispatchEvent(new w.MouseEvent("click", { bubbles: true })); b.remove(); };
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.138";
+    S.zones = [{ ...G("defaultZone")("Sala de llenado"), area: 40, height: 3 }];
+    S.clean = { ci: 0, rooms: [{ ...G("defaultRoom")("Sala de llenado"), iso: "iso5", area: 40, height: 3, occ: 2 }] };
+    G("recompute")(); G("asegurarIdsZona")(); S.clean.rooms[0].zonaId = S.zones[0].id; G("recompute")();
+    const mk = Math.round(G("CLEAN").cur.makeup);
+    if (!(mk > 0)) throw new Error("el caso no aísla lo que se quiere probar: el cuarto trae reposición");
+    eq(G("estadoPropuesta")("clean>load").nivel, "pendiente", "con el cuarto vinculado hay propuesta sin decidir:");
+    S.zones[0].oaFixed = mk; G("recompute")(); const h0 = G("huellaMotor")("load");   /* ya capturado igual: aceptar sólo agrega el origen */
+    act("cl-handoff");
+    eq(G("huellaMotor")("load"), h0, "aceptar lo mismo que ya estaba capturado no cambia la huella de carga (el origen no es captura):");
+    eq(S.zones[0].oaFixed, mk, "la zona vinculada recibe la reposición:");
+    eq((S.vinculos["clean>load"] || {}).estado, "aceptado", "el traspaso queda como propuesta aceptada:");
+    eq((S.zones[0].origenOA || {}).motor, "clean", "la zona guarda de dónde sale su aire exterior:");
+    const huella = G("huellaMotor")("load");
+    S.clean.rooms[0].area = 80; G("recompute")();
+    eq(S.zones[0].oaFixed, mk, "la zona conserva lo aceptado (no se mueve sola):");
+    eq(G("estadoPropuesta")("clean>load").nivel, "desactualizado", "la propuesta sale desactualizada:");
+    eq(G("huellaMotor")("load"), huella, "el cambio del cuarto no toca la huella de carga:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 t("S.69 (H-141, decisión (a) del dueño) la diversidad del edificio se aplica UNA sola vez, en la planta: las ganancias internas y el pico de cada zona no la llevan; el objetivo de planta sí (×0.8), y la memoria lo declara como criterio Carrier por ratificar", () => {
   const guardado = JSON.stringify(S);
   const pdfTxt = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");
-  const armar = (bldDiv) => { G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.69"; S.zones = [{ ...G("defaultZone")("Oficina"), area: 100, height: 3, occ: 10, lights: 1000, equip: 500, spaceType: "office" }]; S.bldDiv = bldDiv; S.peakScan = false; G("recompute")(); return { L: G("LOADS")[0], Y: G("SYS") }; };
+  const armar = (bldDiv) => { G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.69"; aceptarSitioCarga(); S.zones = [{ ...G("defaultZone")("Oficina"), area: 100, height: 3, occ: 10, lights: 1000, equip: 500, spaceType: "office" }]; S.equip.div = bldDiv; S.peakScan = false; G("recompute")(); aceptarEquip(); if (!(G("SYS").plantTarget > 0)) throw new Error("el caso no aísla lo que se quiere probar: la planta debe tener objetivo (H-267: selección aceptada)"); return { L: G("LOADS")[0], Y: G("SYS") }; };
   const linea = (L, k) => L.lines.find((l) => l.label === k);
   try {
     const uno = armar(1), ocho = armar(0.8);
@@ -6916,7 +7084,7 @@ t("S.72 (H-231) al aceptar la instantánea motores>soporte las bases de equipo s
     eq(G("SOPORTE").nEquipos, 3, "en vivo: 2 equipos cotizados + 1 compresor:");
     const bases = () => (G("SOPORTE").part || []).filter((p) => /[Bb]ase/.test(p.desc)).reduce((a, p) => a + p.qty, 0);
     const enVivo = bases();
-    G("propAceptar")("motores>soporte"); G("recompute")();
+    aceptarSoporte(); G("recompute")();
     if (!S.soporte.snap) throw new Error("no quedó instantánea aceptada");
     eq(S.soporte.snap.nEquip, 3, "la instantánea guardó 3:");
     eq(G("SOPORTE").nEquipos, 3, "gobernado: las bases siguen siendo 3 (antes 2: se perdía el compresor):");
@@ -7034,9 +7202,10 @@ t("S.77 (H-228) termoplástico por subtipo, IPC 2009 T308.5 (MCP, secundaria): C
     G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.77"; Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.77" }; });
     S.zones[0].area = 200; S.zones[0].height = 6;
     S.hidro = { ...G("defaultHidro")(), material: "cpvc", muebles, tramos: tramos() };
-    S.fuego = G("defaultFuego")(); S.aire = G("defaultAire")(); S.duct.segments = []; S.quote.items = [];
-    S.soporte = { ...G("defaultSoporte")(), alturaColgadoM: 0.5, sismoSDS: 1.0, sismoFuente: "CFE MDOC-Sismo 2015, sitio Tijuana", estructuraTipo: "losa_concreto", estructuraFc: 250 };
-    G("recompute")();
+    S.fuego = G("defaultFuego")(); S.aire = G("defaultAire")(); S.duct.segments = []; S.equip.items = [];
+    /* H-266 (U5): con arriostramiento sísmico, sin la altura de la estructura el anclaje va «Por cotizar» (z/h = 0 no es dato): se captura. */
+    S.soporte = { ...G("defaultSoporte")(), alturaColgadoM: 0.5, sismoSDS: 1.0, sismoFuente: "CFE MDOC-Sismo 2015, sitio Tijuana", estructuraTipo: "losa_concreto", estructuraFc: 250, alturaEstructura: 6 };
+    aceptarSoporte();   /* H-266 */
     let R = G("SOPORTE"), h = hidroDe();
     if (!h || h.fam !== "plastico") throw new Error("el caso no aísla lo que se quiere probar: debe agrupar como termoplástico");
     eq(R.sopcalc.tramos.length, 0, "sólo hay tramos del camino propio (nada en SoporteCalc):");
@@ -7048,17 +7217,16 @@ t("S.77 (H-228) termoplástico por subtipo, IPC 2009 T308.5 (MCP, secundaria): C
     eq(pcAncla(), 0, "con SDS + fuente + estructura el anclaje se cotiza:");
     if (!R.memo.some((m) => /IPC 2009/.test(m) && /termopl/i.test(m) && /secundaria/.test(m))) throw new Error("la memoria no declara la fuente (secundaria) del claro del termoplástico");
     /* Con la instantánea motores>soporte aceptada el subtipo viaja con ella (la familia sola no alcanza). */
-    G("propAceptar")("motores>soporte"); G("recompute")();
+    aceptarSoporte(); G("recompute")();
     eq(JSON.stringify(hidroDe().det.map((d) => d.e)), JSON.stringify([1.219, 1.219]), "modo gobernado: CPVC sigue a 4 ft:");
-    delete S.soporte.snap; G("recompute")();
-    /* H-226 también gobierna las anclas del termoplástico: sin SDS con fuente van «Por cotizar». */
+    /* H-226 también gobierna las anclas del termoplástico: sin SDS con fuente van «Por cotizar» (H-266: con la instantánea aceptada). */
     S.soporte.sismoSDS = null; S.soporte.sismoFuente = ""; G("recompute")();
     eq(qty(/^Anclaje/), 0, "sin SDS con fuente no se cotizan las anclas del termoplástico:"); eq(pcAncla(), 38, "van «Por cotizar» con sus piezas:");
     /* PP-R capturado a mano, 1\": 32 in. */
     S.soporte = { ...G("defaultSoporte")(), usarMotores: false, tubHidroM: 30, tubHidroD: 25, tubHidroMat: "ppr", alturaColgadoM: 0.5 }; G("recompute")(); R = G("SOPORTE"); h = hidroDe();
     eq(JSON.stringify(h.det.map((d) => d.e)), JSON.stringify([0.813]), "PP-R 25 mm a mano: 32 in (antes 0.9 como CPVC):"); eq(h.n, Math.ceil(30 / 0.813) + 1, "soportes PP-R:");
     /* PEAD: sin renglón en la tabla, el tramo queda pendiente de claro (no se cuenta ni se cotiza). */
-    S.soporte = { ...G("defaultSoporte")(), alturaColgadoM: 0.5 }; S.hidro.material = "pead"; G("recompute")(); R = G("SOPORTE"); h = hidroDe();
+    S.soporte = { ...G("defaultSoporte")(), alturaColgadoM: 0.5 }; S.hidro.material = "pead"; aceptarSoporte(); R = G("SOPORTE"); h = hidroDe();
     eq(R.nSoportes, 0, "PEAD sin claro con fuente: no se cuentan soportes (antes 38 con la tabla de CPVC):");
     if (!(h && h.det.length === 2 && h.det.every((d) => d.pendiente && d.n === 0 && d.e === null))) throw new Error("los tramos de PEAD deben quedar marcados pendientes: " + JSON.stringify(h && h.det));
     if (!R.avisos.some((a) => /PEAD/.test(a.msg) && /pendiente/.test(a.msg) && /308\.5/.test(a.msg))) throw new Error("falta el aviso de PEAD pendiente de claro con su fuente");
@@ -7092,9 +7260,9 @@ t("S.78 (H-243) media caña y muro clasificado por cuarto limpio con su área y 
     cerca(G("CIVIL").mlCana, antes, 1e-9, "subir la nave a 10 m no mueve la media caña del cuarto limpio:");
     /* Perímetro capturado: manda y deja de ser estimado. */
     S.tab = "civil"; G("render")();
-    const clave = G("claveCuartoCivil")(G("CLEAN").list[0].name);
-    if (!w.document.querySelector('#view [data-path="civil.perimCuartos.' + clave + '"]')) throw new Error("falta el campo de perímetro por cuarto limpio");
-    S.civil.perimCuartos = { [clave]: 46 }; G("recompute")(); R = G("CIVIL");
+    /* H-265: el perímetro vive en el renglón del cuarto clasificado de la lista de civil. */
+    if (!w.document.querySelector('#view [data-path="civil.cuartos.0.perimetro"]')) throw new Error("falta el campo de perímetro por cuarto clasificado");
+    S.civil.cuartos[0].perimetro = 46; G("recompute")(); R = G("CIVIL");
     cerca(R.mlCana, 92, 1e-9, "con perímetro capturado 46 ml: 92 ml de media caña:"); cerca(R.muroLimpio, 138, 1e-9, "46 × 3 = 138 m²:");
     if (/estimado/.test(parte(/^Media caña/).desc)) throw new Error("con perímetro capturado la partida ya no es estimada");
     if (!R.memo.some((m) => /capturado/.test(m) && /Cuarto limpio 1/.test(m))) throw new Error("la memoria no dice de dónde sale el perímetro del cuarto");
@@ -7118,14 +7286,14 @@ t("S.79 (H-244, decisión 5 del dueño) la tabiquería no son los muros de carga
     cerca(G("CIVIL").total, antes, 1e-6, "un muro exterior capturado para carga térmica no mueve la obra civil:");
     /* Perímetro de tabiquería capturado por zona: manda. */
     S.tab = "civil"; G("render")();
-    const id = S.zones[0].id;
-    if (!w.document.querySelector('#view [data-path="civil.perimZonas.' + id + '"]')) throw new Error("falta el campo de perímetro de tabiquería por zona");
-    S.civil.perimZonas = { [S.zones[0].id]: 100, [S.zones[1].id]: 50, [S.zones[2].id]: 44, [S.zones[3].id]: 36 }; G("recompute")(); R = G("CIVIL");
+    /* H-265: el perímetro de tabiquería vive en el renglón del área de obra de la lista de civil. */
+    if (!w.document.querySelector('#view [data-path="civil.areas.0.perimetro"]')) throw new Error("falta el campo de perímetro de tabiquería por área");
+    [100, 50, 44, 36].forEach((p, i) => { S.civil.areas[i].perimetro = p; }); G("recompute")(); R = G("CIVIL");
     cerca(R.muroM2, 100 * 6 + 50 * 3 + 44 * 3 + 36 * 3, 1e-9, "con perímetros capturados: Σ perímetro × altura:");
     eq(R.estimado, false, "todo capturado, nada estimado:");
     if (/estimado/.test(noLimpio().desc)) throw new Error("con perímetros capturados la partida ya no dice estimado");
     /* Más perímetro capturado nunca baja el muro. */
-    const m1 = R.muroM2; S.civil.perimZonas[S.zones[1].id] = 60; G("recompute")();
+    const m1 = R.muroM2; S.civil.areas[1].perimetro = 60; G("recompute")();
     if (!(G("CIVIL").muroM2 > m1)) throw new Error("más perímetro capturado debe dar más muro");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
@@ -7137,7 +7305,8 @@ t("S.80 (H-254, regla d «tal cual») el factor de plaza no toca la sección H n
     S.quote.importacion = { monto: 18500, moneda: "MXN", fuente: "agente aduanal (cotización capturada)", fecha: "2026-09-20" };
     G("recompute")();
     const Q0 = G("QUOTE"), cat0 = G("catalogoConceptos")();
-    S.quote.plaza = "mexicali"; G("recompute")();
+    /* H-303: la plaza de cada motor se captura en su cotización; la de la Cotización general queda para lo que va tal cual. */
+    S.quote.plaza = "mexicali"; G("MOTORES_COT").forEach((k) => { S[k].comercial.plaza = "mexicali"; }); G("recompute")();
     const Q = G("QUOTE"), cat = G("catalogoConceptos")();
     const filas = (c) => c.secciones.flatMap((s) => s.partidas);
     const h = filas(cat).find((p) => p.sec === "H");
@@ -7170,8 +7339,8 @@ t("S.81 (H-253, regla e) la cotización formal no sale con precios que sólo val
     if (!/importaci/.test(w.document.querySelector("#view").textContent.match(/La cotización formal no sale[^]*$/)?.[0] || "")) throw new Error("la pantalla no dice por qué la formal está bloqueada");
     /* Referencia de mercado + mano de obra por capturar: bloquea. */
     S.quote.importacion = { monto: 18500, moneda: "MXN", fuente: "agente aduanal (cotización capturada)", fecha: "2026-09-20" };
-    const clave = Object.keys(S.quote.hidroPU)[0];
-    S.quote.hidroPU[clave] = { precio: 250, moneda: "MXN", iva: false, porTramo: 1, origen: "referencia", alcance: "material", fuente: "Home Depot San Diego CA", ubicacion: "San Diego, California", url: "https://example.org/ref", fecha: "2026-09-20" };
+    const clave = Object.keys(S.hidro.hidroPU)[0];
+    S.hidro.hidroPU[clave] = { precio: 250, moneda: "MXN", iva: false, porTramo: 1, origen: "referencia", alcance: "material", fuente: "Home Depot San Diego CA", ubicacion: "San Diego, California", url: "https://example.org/ref", fecha: "2026-09-20" };
     G("recompute")();
     if (!(G("QUOTE").referencias || []).length) throw new Error("el caso no aísla lo que se quiere probar: debe haber una referencia de mercado");
     B = G("bloqueosFormal")();
@@ -7179,7 +7348,7 @@ t("S.81 (H-253, regla e) la cotización formal no sale con precios que sólo val
     if (!B.some((b) => /mano de obra/.test(b))) throw new Error("la mano de obra por capturar debe bloquear la formal: " + JSON.stringify(B));
     contiene(tiro(), "referencia de mercado", "error de la formal con referencia:");
     /* USD sin tipo de cambio fechado: bloquea. */
-    delete S.quote.hidroPU[clave]; G("recompute")();
+    delete S.hidro.hidroPU[clave]; G("recompute")();
     S.quote.currency = "USD"; S.quote.fx = 18.25; S.quote.fxFecha = ""; G("recompute")();
     if (!G("QUOTE").usdSinFecha) throw new Error("el caso no aísla lo que se quiere probar: USD sin fecha");
     if (!G("bloqueosFormal")().some((b) => /tipo de cambio/.test(b))) throw new Error("USD sin fecha debe bloquear la formal");
@@ -7223,7 +7392,7 @@ t("S.83 (H-166) ductos: un tramo sin medida posible (ninguna de la serie cumple)
     Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.83" }; });
     S.soporte = { ...(S.soporte || {}), usarMotores: true };
     S.duct.segments = segs.map(([tag, flow, extra]) => ({ ...G("defaultSegment")(tag, flow), ...extra }));
-    G("recompute")(); return G("DUCT");
+    aceptarSoporte(); return G("DUCT");   /* H-266: la soportería ve los ductos con la instantánea aceptada */
   };
   const sinSeccion = (s, que) => {
     if (!s.error) throw new Error(que + ": el tramo debe traer error visible");
@@ -7267,10 +7436,10 @@ t("S.83 (H-166) ductos: un tramo sin medida posible (ninguna de la serie cumple)
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
-t("S.84 (H-167) «Generar desde carga» trae sólo los caudales: sin longitudes ni accesorios que nadie capturó (antes 20/10/15 m, tee 0.65, salida 1.0, entrada 0.03); cada tramo queda «pendiente de longitud» sin kilos, juntas, soportes ni importe, y al capturar la longitud entra", () => {
+t("S.84 (H-167) la red con sólo caudales (antes «Generar desde carga», retirado en H-305) no lleva longitudes: sin longitudes ni accesorios que nadie capturó (antes 20/10/15 m, tee 0.65, salida 1.0, entrada 0.03); cada tramo queda «pendiente de longitud» sin kilos, juntas, soportes ni importe, y al capturar la longitud entra", () => {
   const guardado = JSON.stringify(S);
   try {
-    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.84"; S.site = { key: "tijuana" };
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.84"; S.site = { key: "tijuana" }; aceptarSitioCarga();   /* H-290 */
     const dz = G("defaultZone");
     S.zones = [
       { ...dz("Producción"), area: 400, height: 6, occ: 30, lights: 8000, equip: 12000, walls: { N: 40, S: 40, E: 30, W: 30, NE: 0, SE: 0, SW: 0, NW: 0 }, roof: 400 },
@@ -7278,7 +7447,7 @@ t("S.84 (H-167) «Generar desde carga» trae sólo los caudales: sin longitudes 
     ];
     Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.84" }; });
     G("recompute")();
-    G("chainToDuct")(true); G("recompute")();
+    capturaTramos();   /* H-305: la red que armaba «Generar desde carga», capturada a mano (sólo caudales) */
     const segs = S.duct.segments, D = G("DUCT"), tot = G("totals")();
     eq(segs.length, 4, "principal + 2 ramales + aire exterior:");
     eq(segs[0].flow, Math.round(tot.cfm * 1.699 / 3.6), "el caudal del principal sí sale de la carga:");
@@ -7299,8 +7468,7 @@ t("S.84 (H-167) «Generar desde carga» trae sólo los caudales: sin longitudes 
     Q = G("QUOTE");
     if (!Q.aux.some((a) => a.mot === "duct" && a.un === "KG")) throw new Error("con longitud capturada hay partida de lámina");
     eq(Q.pendientes.filter((p) => p.mot === "duct" && /longitud/.test(p.motivo)).length, 3, "quedan pendientes los otros tres:");
-    /* La propuesta de cruce dice qué trae y qué no */
-    contiene(G("PROPUESTAS")["load>duct"].que, "sin longitudes ni accesorios", "texto de la propuesta load>duct:");
+    /* H-305: la propuesta load>duct se retiró (S.185). */
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
@@ -7390,7 +7558,9 @@ t("S.87 (H-224, parte no bloqueada) la soportería de la red contra incendio usa
     Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.87" }; });
     S.fuego = { ...S.fuego, riesgo: "ord2", area: 700, altura: 4.71, rociador: "k80", material, Lramal: 30, Lmontante: 12, presFuente: 30, fuente: "cisterna" };
     S.soporte = { ...S.soporte, alturaColgadoM: 1, ...(soporte || {}) };
-    G("recompute")(); return G("SOPORTE");
+    /* H-266: con los motores, la soportería cuenta con la instantánea aceptada; a mano, sin ella. */
+    if (soporte && soporte.usarMotores === false) G("recompute")(); else aceptarSoporte();
+    return G("SOPORTE");
   };
   const redFuego = (SP) => (SP.porTuberia || []).find((x) => x.etiqueta === "Contra incendio");
   try {
@@ -7434,10 +7604,2215 @@ t("S.88 (H-154) la pantalla de ventilación sin modelo se dibuja y dice «Ningú
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+t("S.98 (H-262) ventilación calcula sólo con sus propios datos: el área, la altura y los ocupantes de Carga térmica ya no se copian solos (decisión del dueño, 27-sep-2026: cada disciplina con sus propios datos)", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.98";
+    S.zones = [{ ...G("defaultZone")("Nave"), area: 400, height: 6, occ: 30 }];
+    G("recompute")();
+    if (!(G("geoProyecto")().area > 0)) throw new Error("el caso no aísla lo que se quiere probar: carga térmica debe tener geometría");
+    eq(S.vent.area, 0, "el área de ventilación no se copia de carga térmica:");
+    eq(S.vent.height, 0, "la altura de ventilación no se copia de carga térmica:");
+    eq(S.vent.occ, 0, "los ocupantes de ventilación no se copian de carga térmica:");
+    /* Lo capturado en ventilación manda y carga térmica no lo mueve. */
+    S.vent.area = 120; S.vent.height = 4; G("recompute")();
+    S.zones[0].area = 800; G("recompute")();
+    eq(S.vent.area, 120, "carga térmica no mueve el área capturada en ventilación:");
+    eq(S.vent.height, 4, "carga térmica no mueve la altura capturada en ventilación:");
+    S.tab = "ventilacion"; G("render")();
+    const txt = w.document.getElementById("view").textContent;
+    if (/heredada de Carga térmica|se heredará de Carga térmica/.test(txt)) throw new Error("la pantalla de ventilación todavía anuncia herencia de carga térmica");
+    eq(G("PROPUESTAS")["load>vent"], undefined, "no queda propuesta carga térmica → ventilación:");
+    eq(G("LINKS")["load>vent"], undefined, "no queda cruce load>vent:");
+    if (/como reposición/.test(txt)) throw new Error("la pantalla de ventilación sigue ofreciendo el aire exterior de carga térmica como propuesta");
+    if (/hered/i.test(txt)) throw new Error("la pantalla de ventilación sigue hablando de herencia: " + (/.{0,60}hered.{0,60}/i.exec(txt) || [""])[0]);
+    /* Sin local capturado (el estado inicial de todo proyecto nuevo) se dice «pendiente», no se calcula 0 en silencio. */
+    S.vent.area = 0; S.vent.height = 0; G("recompute")(); S.tab = "ventilacion"; G("render")();
+    if (!G("VENT").avisos.some((a) => /pendiente de la captura/.test(a.msg))) throw new Error("ventilación sin área ni altura no avisa que el caudal queda pendiente de captura");
+    contiene(w.document.getElementById("view").textContent, "pendiente de captura", "la pantalla de ventilación dice que el caudal queda pendiente:");
+    S.vent.area = 120; S.vent.height = 4; G("recompute")();
+    if (G("VENT").avisos.some((a) => /pendiente de la captura/.test(a.msg))) throw new Error("con área y altura capturadas no debe quedar el aviso de pendiente");
+    /* Contra incendio no es parte de este hallazgo: sigue como estaba. */
+    eq(S.fuego.area, 0, "H-264: contra incendio tampoco hereda el área de las zonas:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+t("S.99 (H-263) al seleccionar el ventilador, el calor de su motor (HP de referencia del submittal × 745.7 W) entra a la zona elegida de Carga térmica como «Misceláneos»; sólo eso; se declara ESTIMADO (regla 8); es instantánea (si ventilación cambia, la carga no se mueve y la pantalla avisa); sellos, contrato, deshacer y guardado en orden (decisión del dueño, 27-sep-2026)", () => {
+  const guardado = JSON.stringify(S);
+  const misc = (r) => r.lines.find((l) => /^Misceláneos · Ventilación/.test(l.label));
+  const vista = () => w.document.getElementById("view").textContent;
+  const sellar = (id, ts) => { S.sellos[id] = { ts, ver: G("MOTOR_VER")[id], huella: G("huellaMotor")(id) }; };
+  const H = G("HIST"), hist0 = { pila: H.pila, ix: H.ix };
+  const huellas = () => Object.keys(G("MOTOR_VER")).map((id) => id + ":" + G("huellaMotor")(id)).join("|");
+  try {
+    G("histReiniciar")();
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.99"; aceptarSitioCarga();   /* H-290 */
+    Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.99" }; });
+    S.zones = [{ ...G("defaultZone")("Nave"), area: 400, height: 6, occ: 30 }, { ...G("defaultZone")("Oficina"), area: 100, height: 3, occ: 10 }];
+    G("asegurarIdsZona")();
+    Object.assign(S.vent, { mode: "general", spaceType: "office", area: 400, height: 6, occ: 0, ach: 6 });
+    G("recompute")();
+    const e = G("VENT").eq.primary;
+    if (!e) throw new Error("el caso no aísla lo que se quiere probar: ventilación debe tener modelo");
+    const hp = G("greenSheet")(G("GREEN").find((x) => x.id === e.id)).hp;
+    const antes0 = G("LOADS")[0].grand, antes1 = G("LOADS")[1].grand;
+    if (G("LOADS").some(misc)) throw new Error("sin seleccionar no debe haber misceláneos de ventilación");
+    /* Un proyecto guardado con la versión anterior no trae miscVent ni vent.seleccion; al abrirlo, sanearEstado los agrega en
+       null. Ninguna huella de sello debe moverse por eso (si no, abrir un proyecto sin cambios diría «la captura cambió»). */
+    const conNulos = huellas();
+    S.zones.forEach((z) => { delete z.miscVent; }); delete S.vent.seleccion;
+    eq(huellas(), conNulos, "los campos nuevos en null no mueven ninguna huella de sello:");
+    S.zones.forEach((z) => { z.miscVent = null; }); S.vent.seleccion = null;
+    /* Sellos antes de seleccionar: ventilación y carga «calculado». */
+    S.sellos = {}; sellar("vent", 5); sellar("load", 5);
+    eq(G("selloDe")("load").estado, "calculado", "el caso arranca con carga sellada:");
+    /* Se selecciona desde la pantalla, eligiendo la zona. */
+    S.tab = "ventilacion"; G("render")();
+    const d = w.document;
+    const btn = d.querySelector('[data-act="vent-seleccionar"]');
+    if (!btn) throw new Error("ventilación no tiene botón para seleccionar el modelo");
+    contiene(btn.textContent, "estimado", "el botón declara que los HP son estimados:");
+    const selZ = d.getElementById("vent-sel-zona");
+    if (!selZ) throw new Error("con dos zonas debe pedir a qué zona entra la carga");
+    selZ.value = S.zones[1].id; btn.click();
+    if (!G("HIST").pila.some((x) => x.etiqueta === "seleccionar ventilador")) throw new Error("seleccionar no dejó instantánea en el historial (deshacer)");
+    const L0 = G("LOADS")[0], L1 = G("LOADS")[1];
+    const lin = misc(L1);
+    if (!lin) throw new Error("la zona elegida no recibió la carga del ventilador seleccionado");
+    cerca(lin.s, hp * 745.7, 1, "calor del motor = HP de referencia × 745.7 W:");
+    eq(lin.l, 0, "el calor del motor es sensible:");
+    contiene(lin.label, e.model, "el renglón dice el modelo:");
+    contiene(lin.d, "ESTIMADO", "regla 8: el renglón declara que el HP es una estimación de catálogo, no dato de placa:");
+    contiene(lin.d, "745.7", "regla 8: el renglón declara la conversión:");
+    if (!L1.memo.some((m) => /Misceláneos/.test(m) && /ESTIMADO/.test(m))) throw new Error("la memoria de la zona no declara la procedencia del renglón");
+    if (misc(L0)) throw new Error("la otra zona no debe recibir la carga");
+    eq(Math.round(L0.grand), Math.round(antes0), "la otra zona no cambia:");
+    if (!(L1.grand >= antes1 + lin.s - 1)) throw new Error(`la zona elegida debe subir al menos ${lin.s} W (antes ${antes1}, después ${L1.grand})`);
+    /* Sellos: carga cambió de entradas (desactualizado); ventilación no (la selección no es entrada de computeVent). */
+    eq(G("selloDe")("load").estado, "desactualizado", "carga térmica: la selección es una entrada nueva:");
+    eq(G("selloDe")("vent").estado, "calculado", "ventilación: seleccionar no cambia sus entradas:");
+    /* El cruce queda declarado: trazado de origen (memoria integral y libro de la propuesta, con su espejo EN) y memoria de ventilación. */
+    const fila = G("trazaHerencia")().find((r) => r.destinoId === "load" && /Misceláneos/.test(r.campo));
+    if (!fila) throw new Error("el trazado de origen no declara el ventilador que entró a carga térmica");
+    contiene(fila.campo, e.model, "la fila del trazado dice el modelo:"); contiene(fila.origen, "Ventilación", "la fila dice el origen:");
+    if (!(fila.en && /Miscellaneous/.test(fila.en.campo))) throw new Error("regla 7: la fila del trazado no trae su espejo en inglés");
+    contiene(textoPdf(G("buildVentPdf")()), "Seleccionado por el usuario", "la memoria de ventilación dice a dónde entró el calor del motor:");
+    /* La pantalla de carga muestra el renglón y la gráfica lo incluye. */
+    S.zi = 1; S.tab = "carga"; G("render")();
+    contiene(vista(), "Misceláneos · Ventilación", "la pestaña de carga lista el renglón:");
+    contiene(vista(), "Misceláneos (ventilador seleccionado)", "la gráfica «Dónde está la carga» tiene su cubeta:");
+    if (!w.document.querySelector('#view [data-act="vent-quitar"]')) throw new Error("desde Carga térmica no se puede quitar la carga del ventilador");
+    contiene(vista(), "seleccionado en Ventilación", "la tarjeta de la zona dice de dónde viene:");
+    /* Volver a sellar carga y seleccionar de nuevo el mismo modelo: nada cambia; la fecha de la instantánea no mueve el sello. */
+    sellar("load", 6);
+    S.tab = "ventilacion"; G("render")();
+    d.getElementById("vent-sel-zona").value = S.zones[1].id; d.querySelector('[data-act="vent-seleccionar"]').click();
+    eq(G("selloDe")("load").estado, "calculado", "reseleccionar el mismo modelo no mueve el sello de carga:");
+    /* Regla 3: si ventilación cambia a otro modelo, carga térmica se queda con lo seleccionado y la pantalla avisa. */
+    const g1 = G("LOADS")[1].grand;
+    S.vent.ach = 7; G("recompute")();
+    const e2 = G("VENT").eq.primary;
+    if (!e2 || e2.id === e.id) throw new Error("el caso no aísla lo que se quiere probar: con 7 cambios/h debe salir otro modelo que cubra");
+    eq(Math.round(G("LOADS")[1].grand), Math.round(g1), "si cambia ventilación, la carga no se mueve sola:");
+    S.tab = "ventilacion"; G("render")();
+    contiene(vista(), "ya no coincide", "la pantalla avisa que la selección quedó atrás:");
+    /* Un proyecto guardado conserva la selección y la carga. */
+    const s2 = G("sanearEstado")(JSON.parse(JSON.stringify(S)));
+    eq(s2.vent.seleccion.modeloId, e.id, "la selección sobrevive al guardar y abrir:");
+    eq(s2.zones[1].miscVent.W, Math.round(hp * 745.7), "la carga de la zona sobrevive al guardar y abrir:");
+    /* Si la zona desaparece, la pantalla lo dice. */
+    S.zi = 0;
+    const zona1 = S.zones[1]; S.zones = [S.zones[0]]; G("recompute")(); S.tab = "ventilacion"; G("render")();
+    contiene(vista(), "ya no existe", "la pantalla avisa que la zona que recibía el calor ya no existe:");
+    S.zones = [S.zones[0], zona1]; G("recompute")();
+    /* Quitar la selección la saca de carga térmica, deja el contrato limpio y no toca el sello de ventilación. */
+    sellar("vent", 7);
+    S.tab = "ventilacion"; G("render")();
+    const q = d.querySelector('[data-act="vent-quitar"]');
+    if (!q) throw new Error("no hay botón para quitar la selección");
+    q.click();
+    if (!G("HIST").pila.some((x) => x.etiqueta === "quitar selección de ventilador")) throw new Error("quitar no dejó instantánea en el historial (deshacer)");
+    if (G("LOADS").some(misc)) throw new Error("al quitar la selección la carga debe salir de carga térmica");
+    eq(S.vent.seleccion, null, "quitar deja la clave declarada (null), no la borra:");
+    eq(G("selloDe")("vent").estado, "calculado", "ventilación: quitar tampoco cambia sus entradas:");
+    const falt = G("selfCheck")().faltantes.filter((f) => /seleccion|miscVent/.test(f.ruta));
+    if (falt.length) throw new Error("contrato 16.4 tras quitar: " + falt.map((f) => f.ruta).join(", "));
+  } finally { H.pila = hist0.pila; H.ix = hist0.ix; G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+t("S.100 (H-264) contra incendio es autónomo: el área a proteger y la altura al rociador más alto se capturan en su pestaña; no se heredan de carga térmica ni se toman en vivo (decisión del dueño, 27-sep-2026: todos los motores independientes)", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.100";
+    Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.100" }; });
+    S.zones = [{ ...G("defaultZone")("Nave"), area: 400, height: 6, occ: 30 }, { ...G("defaultZone")("Oficina"), area: 100, height: 3, occ: 10 }];
+    S.fuego = { ...G("defaultFuego")(), riesgo: "ord2", Lramal: 30, Lmontante: 12, tomarArea: true };
+    G("recompute")();
+    if (!(G("geoProyecto")().area > 0)) throw new Error("el caso no aísla lo que se quiere probar: carga térmica debe tener geometría");
+    eq(S.fuego.area, 0, "el área a proteger no se copia de carga térmica:");
+    eq(S.fuego.altura, 0, "la altura no se copia de carga térmica:");
+    eq(G("FUEGO").area, 0, "ni se toma en vivo aunque haya permisos y tomarArea:");
+    if (!G("FUEGO").memo.some((m) => /Sin área protegida capturada/.test(m))) throw new Error("sin área capturada la memoria debe decirlo");
+    eq(G("LINKS")["load>fuego"], undefined, "no queda cruce load>fuego:");
+    eq(Object.keys(G("HEREDA")).length, 0, "ninguna disciplina hereda:");
+    if (G("ARISTAS").some((a) => a.a === "fuego" && a.regla === 1)) throw new Error("el diagrama sigue dibujando una herencia hacia contra incendio");
+    /* Lo capturado manda y las zonas no lo mueven. */
+    S.fuego.area = 700; S.fuego.altura = 6; G("recompute")();
+    S.zones[0].area = 900; S.zones[0].height = 9; G("recompute")();
+    eq(S.fuego.area, 700, "carga térmica no mueve el área capturada:"); eq(S.fuego.altura, 6, "ni la altura capturada:");
+    eq(G("FUEGO").estatica, 7, "la estática va a la altura capturada + 1 m:");
+    S.tab = "fuego"; G("render")();
+    const txt = w.document.getElementById("view").textContent;
+    if (/heredada de|se heredará de/i.test(txt)) throw new Error("la pantalla de contra incendio todavía anuncia herencia");
+    /* El texto explicativo vive sólo en la guía (decisión del dueño del 19-sep-2026: sin texto de guía en la vista). */
+    contiene(G("GUIA").fuego.ojo, "no las toma de Carga térmica", "la guía dice que se capturan aquí:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+t("S.105 (H-210) contra incendio sin altura al rociador más alto, cabezal o montante capturados no dimensiona la bomba: presión y potencia quedan pendientes, con error, semáforo «incompleta», pendiente en la cotización (ES/EN) y sin carga a Eléctrico; sin 6, 30 ni 12 m ocultos por omisión (regla 6)", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.105";
+    Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.105" }; });
+    S.fuego = { ...G("defaultFuego")(), riesgo: "ord2", area: 500, Lramal: 30, Lmontante: 12 };   // altura sin capturar (0)
+    G("recompute")();
+    const F = () => G("FUEGO");
+    if (!(F().qTotal > 0)) throw new Error("el caso no aísla lo que se quiere probar: con área capturada hay demanda");
+    eq(F().hpBomba, 0, "sin altura no se dimensiona la potencia de la bomba (HP):");
+    eq(F().presBomba, 0, "ni su presión:");
+    if (!F().avisos.some((a) => a.lvl === "err" && /altura/.test(a.msg))) throw new Error("sin altura el aviso es error");
+    eq((G("semaforoSuite")().find((x) => x.id === "fuego") || {}).nivel, "incompleta", "semáforo de contra incendio:");
+    if (G("QUOTE").porCotizar.some((p) => p.clave === "bombaFuego")) throw new Error("la bomba sin altura no va «Por cotizar» como dimensionada por el motor");
+    if (!G("QUOTE").pendientes.some((p) => p.mot === "fuego" && /pendiente de altura/.test(p.motivo) && /height/.test(p.motivoEn || ""))) throw new Error("la bomba debe quedar pendiente de altura en la cotización (ES/EN)");
+    if (!G("QUOTE").porCotizar.some((p) => p.clave === "cisternaFuego")) throw new Error("la reserva no depende de la altura: sigue «Por cotizar»");
+    if (G("cargasOtrosMotoresElec")(S.elec).some((f) => f.kWOrigen === "fuego")) throw new Error("sin bomba dimensionada no se ofrece su carga a Eléctrico");
+    S.tab = "fuego"; G("render")();
+    const potencia = [...w.document.querySelectorAll("#view .metric")].find((m) => /Potencia/.test(m.querySelector(".k").textContent));
+    contiene(potencia ? potencia.textContent : "", "pendiente", "la pantalla dice que la potencia está pendiente:");
+    /* Sin cabezal o sin montante tampoco: la fricción no se supone. */
+    S.fuego.altura = 6; S.fuego.Lramal = 0; G("recompute")();
+    eq(F().hpBomba, 0, "sin cabezal capturado no se dimensiona la bomba:");
+    if (!F().avisos.some((a) => a.lvl === "err" && /cabezal/.test(a.msg))) throw new Error("sin cabezal el aviso es error");
+    S.fuego.Lramal = 30; S.fuego.Lmontante = 0; G("recompute")();
+    eq(F().hpBomba, 0, "sin montante capturado tampoco:");
+    /* Sin valores por omisión ocultos: un proyecto con los campos nulos no toma 6, 30 ni 12 m. */
+    G("reemplazarEstado")({ ...JSON.parse(JSON.stringify(S)), fuego: { ...S.fuego, altura: null, Lramal: null, Lmontante: null } }); G("recompute")();
+    if (F().estatica === 7 || F().Lram === 30 || F().Lmon === 12) throw new Error(`campos nulos leídos como 6/30/12 m: estática ${F().estatica}, cabezal ${F().Lram}, montante ${F().Lmon}`);
+    if (F().memo.some((m) => /6 m capturados/.test(m))) throw new Error("una altura nula se leyó como 6 m capturados");
+    eq(F().hpBomba, 0, "con los campos nulos la bomba queda pendiente:");
+    /* Con red municipal no se afirma que alcance sin altura. */
+    S.fuego = { ...S.fuego, altura: 0, Lramal: 30, Lmontante: 12, fuente: "municipal", presFuente: 35 }; G("recompute")();
+    if (F().alcanza === true) throw new Error("sin altura no se puede afirmar que la red municipal alcanza");
+    /* Con todo capturado, la bomba vuelve (6 + 1 m de estática). */
+    S.fuego = { ...S.fuego, altura: 6, fuente: "cisterna" }; G("recompute")();
+    eq(F().estatica, 7, "con la altura capturada la estática vuelve (6 + 1):");
+    eq(F().hpBomba, 35, "potencia con todo capturado:");
+    contiene(G("QUOTE").porCotizar.find((p) => p.clave === "bombaFuego").desc, "39.1 m", "bomba con todo capturado:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+t("S.106 (H-264) un proyecto guardado antes de H-264 abre con la altura y el área que le daba la herencia (zona más alta y suma de zonas) o que tomaba en vivo (tomarArea con permiso load>fuego), marcadas «sin confirmar», no como capturadas (misma cifra al abrir; regla 8)", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    const viejo = { ...G("defaultState")(), meta: { name: "S.106" },
+      zones: [{ ...G("defaultZone")("Oficinas"), area: 2000, height: 3 }, { ...G("defaultZone")("Almacén"), area: 200, height: 13 }],
+      fuego: { ...G("defaultFuego")(), riesgo: "ord2", area: 2200, altura: 3.91, Lramal: 30, Lmontante: 12 },
+      her: { "fuego.area": { modo: "heredado", ts: 1, valor: 2200, origen: "load" }, "fuego.altura": { modo: "heredado", ts: 1, valor: 3.91, origen: "load" } } };
+    G("importarRespaldo")(JSON.stringify(viejo)); G("recompute")();
+    const F = () => G("FUEGO"), tray = () => F().memo.find((m) => /^Trayectoria/.test(m)) || "";
+    eq(S.fuego.altura, 13, "la altura que la herencia le daba al abrir (la zona más alta, H-205):");
+    eq(S.fuego.area, 2200, "el área que la herencia le daba (suma de zonas):");
+    eq(F().estatica, 14, "estática con la zona más alta + 1 m:");
+    if (!F().avisos.some((a) => /rack/.test(a.msg))) throw new Error("con 13 m debe salir el aviso de almacenamiento en rack");
+    if (/capturados en esta pestaña/.test(tray())) throw new Error(`la altura migrada no es captura del usuario: …${tray().slice(-150)}`);
+    contiene(tray(), "sin confirmar", "la memoria dice que la altura se tomó al abrir, sin confirmar:");
+    if (!F().avisos.some((a) => a.lvl === "warn" && /sin confirmar/.test(a.msg))) throw new Error("falta el aviso para confirmar lo tomado al abrir");
+    eq(S.her["fuego.altura"], undefined, "el registro de herencia se retira:");
+    S.fuego.altura = 12; G("recompute")();
+    if (/sin confirmar/.test(tray())) throw new Error("con otra altura capturada ya no está «sin confirmar»");
+    /* U2: con tomarArea y el permiso load>fuego se tomaba EN VIVO el área de las zonas: abre con esa área. */
+    const vivo = { ...G("defaultState")(), meta: { name: "S.106 b" }, perms: { "load>fuego": { ts: 1, via: "S.106" } },
+      zones: [{ ...G("defaultZone")("Nave"), area: 800, height: 6 }],
+      fuego: { ...G("defaultFuego")(), riesgo: "ord2", area: 600, altura: 6, Lramal: 30, Lmontante: 12, tomarArea: true } };
+    G("importarRespaldo")(JSON.stringify(vivo)); G("recompute")();
+    eq(S.fuego.area, 800, "el área que se tomaba en vivo de las zonas (tomarArea + load>fuego):");
+    eq(F().nTotal, Math.ceil(800 / F().r.cobertura), "rociadores con esa área:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+t("S.107 (H-264) el sello de contra incendio sólo depende de su captura: aceptar la propuesta de soportería (que concede fuego>soporte) o cambiar cualquier permiso no lo marca «desactualizado · la captura cambió» (computeFuego ya no lee permisos)", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.107";
+    S.fuego = { ...G("defaultFuego")(), riesgo: "ord2", area: 500, altura: 6, Lramal: 30, Lmontante: 12 };
+    S.duct.segments = [G("defaultSegment")("SA-1", 2500)];
+    G("recompute")();
+    S.sellos = S.sellos || {}; S.sellos.fuego = { ts: 1, huella: G("huellaMotor")("fuego"), ver: G("motorVer")("fuego") };
+    eq(G("selloDe")("fuego").estado, "calculado", "recién sellado:");
+    const antes = JSON.stringify([G("FUEGO").memo, G("FUEGO").hpBomba, G("FUEGO").nTotal]);
+    /* Soportería guarda su instantánea (H-307: la propuesta se retiró; es copia propia de soportería). */
+    S.perms["fuego>soporte"] = { ts: 1, via: "S.107" }; aceptarSoporte();
+    eq(JSON.stringify([G("FUEGO").memo, G("FUEGO").hpBomba, G("FUEGO").nTotal]), antes, "contra incendio no cambia:");
+    eq(G("selloDe")("fuego").estado, "calculado", "aceptar la propuesta de soportería no marca contra incendio:");
+    S.perms["fuego>quote"] = { ts: 1, via: "S.107" }; delete S.perms["fuego>soporte"]; G("recompute")();
+    eq(G("selloDe")("fuego").estado, "calculado", "ni conceder o retirar otros permisos:");
+    S.fuego.altura = 7; G("recompute")();
+    eq(G("selloDe")("fuego").estado, "desactualizado", "cambiar su captura sí lo marca:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+t("S.101 (H-265) obra civil es autónoma: sus áreas de obra y sus cuartos clasificados se capturan en su pestaña; no toma las zonas de carga térmica ni los cuartos limpios; un proyecto anterior los copia una vez al abrirlo, con las mismas cifras (decisión del dueño, 27-sep-2026)", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.101";
+    Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.101" }; });
+    S.zones = [{ ...G("defaultZone")("Nave"), area: 400, height: 6 }, { ...G("defaultZone")("Oficina"), area: 100, height: 3 }];
+    const r0 = G("cleanRooms")()[0]; r0.area = 60; r0.height = 3;
+    G("recompute")();
+    if (!(G("geoProyecto")().area > 0 && G("CLEAN").sum.area > 0)) throw new Error("el caso no aísla lo que se quiere probar: debe haber zonas y cuarto limpio");
+    let R = G("CIVIL");
+    eq(R.area, 0, "civil no toma el área de las zonas de carga térmica:");
+    eq(R.areaLimpia, 0, "ni el área de los cuartos limpios:");
+    eq(G("LINKS")["load>civil"], undefined, "no queda cruce load>civil:"); eq(G("LINKS")["clean>civil"], undefined, "no queda cruce clean>civil:");
+    if (G("ARISTAS").some((a) => a.a === "civil" && a.regla === 1)) throw new Error("el diagrama sigue dibujando una herencia hacia obra civil");
+    if (!R.avisos.some((a) => /captura las áreas de obra/.test(a.msg))) throw new Error("sin áreas capturadas debe avisar que faltan");
+    /* Captura propia: áreas y cuartos de civil. */
+    S.civil.areas = [{ id: "a1", nombre: "Nave", area: 400, altura: 6, perimetro: 100 }, { id: "a2", nombre: "Oficina", area: 100, altura: 3, perimetro: 0 }];
+    S.civil.cuartos = [{ id: "k1", nombre: "Cuarto A", area: 60, altura: 3, perimetro: 32 }];
+    G("recompute")(); R = G("CIVIL");
+    eq(R.area, 500, "área = suma de las áreas de obra capturadas:"); eq(R.areaLimpia, 60, "área clasificada = cuartos capturados:");
+    cerca(R.muroM2, 100 * 6 + 2 * 2.5 * Math.sqrt(100 / 1.5) * 3, 1e-6, "tabiquería: capturada × altura + rectángulo 3:2 estimado:");
+    eq(R.estimado, true, "la oficina sin perímetro queda estimada:");
+    cerca(R.muroLimpio, 32 * 3, 1e-9, "muro clasificado = perímetro × altura del cuarto:"); cerca(R.mlCana, 64, 1e-9, "media caña doble:");
+    /* Las zonas y los cuartos limpios ya no la mueven. */
+    const t0 = R.total; S.zones[0].area = 900; S.zones[0].height = 9; r0.area = 200; G("recompute")();
+    cerca(G("CIVIL").total, t0, 1e-6, "cambiar zonas o cuartos limpios no mueve la obra civil:");
+    /* Sin altura capturada no se suponen 2.8 m: muro en 0 y aviso. */
+    S.civil.areas[1].altura = 0; G("recompute")();
+    cerca(G("CIVIL").muroM2, 100 * 6, 1e-6, "la oficina sin altura no aporta muro:");
+    if (!G("CIVIL").avisos.some((a) => /sin altura capturada/.test(a.msg))) throw new Error("un área sin altura debe avisar que su muro queda pendiente");
+    S.civil.areas[1].altura = 3; G("recompute")();
+    /* Pantalla: la captura vive en la pestaña. */
+    S.tab = "civil"; G("render")();
+    const d = w.document, txt = d.getElementById("view").textContent;
+    if (/Heredado/.test(txt)) throw new Error("la pantalla de civil todavía dice «Heredado»");
+    ["civil.areas.0.area", "civil.areas.0.altura", "civil.areas.1.perimetro", "civil.cuartos.0.perimetro"].forEach((p) => { if (!d.querySelector(`#view [data-path="${p}"]`)) throw new Error("falta el campo " + p); });
+    const add = d.querySelector('#view [data-act="civil-add"][data-tipo="areas"]'); if (!add) throw new Error("no hay botón para agregar un área de obra");
+    add.click(); eq(S.civil.areas.length, 3, "agregar desde la pantalla:");
+    if (new Set(S.civil.areas.map((a) => a.id)).size !== 3) throw new Error("los ids de las áreas deben ser únicos");
+    /* Un proyecto anterior (sin áreas propias de civil) abre con sus áreas y su cuarto copiados de zonas y cuartos limpios. */
+    const viejo = JSON.parse(fs.readFileSync("parches/regresion-motores/regresion-motores.emp.json", "utf8"));
+    if (Array.isArray(viejo.civil.areas)) throw new Error("el caso no aísla lo que se quiere probar: el fixture debe ser de antes de H-265");
+    G("importarRespaldo")(JSON.stringify(viejo)); G("recompute")();
+    eq(S.civil.areas.map((a) => a.nombre).join(","), "Producción,Oficinas,Limpio ISO 7,Laboratorio HR", "áreas copiadas de las zonas:");
+    eq(S.civil.cuartos.map((c) => c.nombre + ":" + c.area + "×" + c.altura).join(","), "Cuarto limpio 1:120×3", "cuarto copiado del cuarto limpio:");
+    eq(S.civil.perimZonas, undefined, "los perímetros por zona pasan al renglón:"); eq(S.civil.perimCuartos, undefined, "y los del cuarto también:");
+    const t1 = G("CIVIL").total; S.zones[0].area = 5000; G("recompute")();
+    cerca(G("CIVIL").total, t1, 1e-6, "ya migrado, obra civil no sigue a las zonas:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+t("S.115 (H-265) obra civil: con «De las áreas de obra capturadas aquí» y la lista vacía el motor no usa los totales a mano que la pantalla no muestra: área 0, aviso y nada a la cotización (regla 6)", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.115";
+    Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.115" }; });
+    S.civil = { ...G("defaultCivil")(), usarZonas: false, areaManual: 500, alturaManual: 3, murosManual: 300 };
+    G("recompute")();
+    if (!(G("CIVIL").total > 0)) throw new Error("el caso no aísla lo que se quiere probar: con totales a mano hay obra civil");
+    S.civil.usarZonas = true; S.civil.areas = []; S.civil.cuartos = []; G("recompute")();
+    eq(G("CIVIL").area, 0, "sin áreas de obra capturadas no hay área (los totales a mano, ocultos, no se usan):");
+    eq(G("CIVIL").total, 0, "ni importe:");
+    if (G("QUOTE").aux.some((a) => a.mot === "civil")) throw new Error("la cotización no lleva partidas de civil sin áreas capturadas");
+    if (!G("CIVIL").avisos.some((a) => /No hay área/.test(a.msg))) throw new Error("falta el aviso de que no hay área");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+t("S.116 (H-265) obra civil: un área de obra o un cuarto clasificado sin altura llega a la cotización como «pendiente de altura» (ES/EN), no desaparece de la propuesta sin aviso (regla 6)", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.116";
+    Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.116" }; });
+    S.civil = { ...G("defaultCivil")(), usarZonas: true,
+      areas: [{ id: "a1", nombre: "Nave", area: 400, altura: 6, perimetro: 80 }, { id: "a2", nombre: "Bodega", area: 100, altura: 0, perimetro: 40 }],
+      cuartos: [{ id: "k1", nombre: "Cuarto ISO 7", area: 60, altura: 0, perimetro: 32 }] };
+    G("recompute")();
+    if (!(G("CIVIL").total > 0)) throw new Error("el caso no aísla lo que se quiere probar: la nave con altura sí se cotiza");
+    const P = () => G("QUOTE").pendientes.filter((p) => p.mot === "civil");
+    if (!P().some((p) => /Bodega/.test(p.desc) && /pendiente de altura/.test(p.motivo) && /height pending/.test(p.motivoEn || "") && p.descEn)) throw new Error("el área de obra sin altura no llegó a pendientes de la cotización (ES/EN)");
+    if (!P().some((p) => /Cuarto ISO 7/.test(p.desc) && /pendiente de altura/.test(p.motivo) && /height pending/.test(p.motivoEn || "") && p.descEn)) throw new Error("el cuarto clasificado sin altura no llegó a pendientes de la cotización (ES/EN)");
+    S.civil.areas[1].altura = 3; S.civil.cuartos[0].altura = 3; G("recompute")();
+    if (P().some((p) => /pendiente de altura/.test(p.motivo))) throw new Error("con las alturas capturadas ya no queda pendiente de altura");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+t("S.117 (H-265) un proyecto anterior a H-265 con una zona sin área pero con tabiquería capturada en obra civil abre con la misma obra civil: la migración también copia esa zona (misma cifra al abrir)", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    const base = G("defaultState")();
+    const zNave = { ...G("defaultZone")("Nave"), area: 400, height: 6 }, zPasillo = { ...G("defaultZone")("Pasillo"), area: 0, height: 3 };
+    const civil = { ...base.civil, usarZonas: true, perimZonas: { [zPasillo.id || "z2"]: 50 } };
+    delete civil.areas; delete civil.cuartos;
+    G("importarRespaldo")(JSON.stringify({ ...base, meta: { name: "S.117" }, zones: [zNave, zPasillo], civil })); G("recompute")();
+    const pas = (S.civil.areas || []).find((a) => a.nombre === "Pasillo");
+    if (!pas) throw new Error("la migración descartó el pasillo con 50 ml de tabiquería capturados");
+    eq(pas.perimetro, 50, "con su tabiquería capturada:"); eq(pas.altura, 3, "y su altura:");
+    const nave = G("CIVIL").zonasCivil.find((z) => z.name === "Nave");
+    cerca(G("CIVIL").muroM2, nave.muro + 50 * 3, 1e-6, "el muro suma la tabiquería del pasillo (50 ml × 3 m), como antes de H-265:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+t("S.118 (H-265) «Nuevo desde plantilla» y «Referencia interna» vuelven genéricos los nombres de las áreas de obra y de los cuartos clasificados de obra civil y quitan su origen de archivo, que pueden nombrar la obra o el cliente (los datos técnicos quedan)", () => {
+  const civil = { ...G("defaultCivil")(), usarZonas: true,
+    areas: [{ id: "a1", nombre: "Nave OBRA-X Planta 3", area: 400, altura: 6, perimetro: 80, origen: { archivo: "levantamiento OBRA-X.xlsx", hoja: "Areas", fila: 3 } }],
+    cuartos: [{ id: "k1", nombre: "Sala ISO 7 OBRA-X", area: 60, altura: 3, perimetro: 32 }] };
+  const ref = G("anonimizarRegistro")({ id: "s118", ts: 1, data: { ...G("defaultState")(), meta: { name: "OBRA-X" }, civil } }, 1);
+  const txt = JSON.stringify(ref.data.civil);
+  if (/OBRA-X/.test(txt)) throw new Error(`la referencia interna conserva el nombre de la obra en obra civil: ${txt.slice(0, 220)}`);
+  eq(ref.data.civil.areas[0].nombre, "Área de obra 1", "nombre genérico del área de obra:");
+  eq(ref.data.civil.cuartos[0].nombre, "Cuarto clasificado 1", "nombre genérico del cuarto clasificado:");
+  eq(ref.data.civil.areas[0].area, 400, "los datos técnicos quedan:"); eq(ref.data.civil.cuartos[0].perimetro, 32, "y el perímetro:");
+  const pl = G("etiquetasGenericas")({ civil: JSON.parse(JSON.stringify(civil)) });
+  if (/OBRA-X/.test(JSON.stringify(pl.civil))) throw new Error("la plantilla conserva el nombre de la obra en obra civil");
+});
+t("S.144 (H-264, H-265) ni el tablero ni el libro de la propuesta (ES/EN) dicen que las disciplinas heredan la geometría o que hay «valores heredados» (decisión del dueño del 27-sep-2026: ninguna hereda; regla 8)", () => {
+  S.tab = "tablero"; G("render")();
+  if (/Heredan la geometr/i.test(w.document.getElementById("view").textContent)) throw new Error("el tablero dice que las disciplinas heredan la geometría");
+  const es = Buffer.from(G("buildPropuestaXlsx")({ lang: "es", mon: "MXN" })).toString("utf8");
+  const en = Buffer.from(G("buildPropuestaXlsx")({ lang: "en", mon: "USD" })).toString("utf8");
+  ["heredan las demas disciplinas", "VALORES HEREDADOS", "valor heredado"].forEach((x) => { if (es.includes(x)) throw new Error(`el libro ES dice «${x}»`); });
+  ["inherited by the other disciplines", "INHERITED VALUES", "inherited value"].forEach((x) => { if (en.includes(x)) throw new Error(`el libro EN dice «${x}»`); });
+  if (/valor heredado/.test(w.document.getElementById("btn-print").title)) throw new Error("el botón de la memoria integral habla de valores heredados");
+});
+t("S.145 (H-264, H-265, H-266) los textos de obra civil, contra incendio, soportería y del diagrama dicen dónde se captura cada dato (en su pestaña) y no hablan de herencia; concordancia «áreas de obra capturadas» (regla 8)", () => {
+  Object.entries(G("ARISTA_TXT")).forEach(([k, v]) => { if (/hered/i.test(v)) throw new Error(`el texto de flecha «${k}» habla de herencia: ${v}`); });
+  const D = G("DOMAINS");
+  contiene(D.fuego.owns, "altura al rociador más alto", "contra incendio declara que captura la altura:"); contiene(D.fuego.owns, "Área a proteger", "y el área a proteger:");
+  if (/Si cuenta de los motores/.test(D.soporte.owns)) throw new Error("soportería describe un conteo en vivo que ya no existe");
+  const c0 = JSON.stringify(S.civil);
+  try {
+    S.civil = { ...G("defaultCivil")(), usarZonas: true, areas: [], cuartos: [] };
+    contiene(G("civilListaHtml")("areas", "Áreas de obra", "Tabiquería (ml)", []), "Sin áreas de obra capturadas", "concordancia:");
+    S.civil.areas = [{ id: "a1", nombre: "Nave", area: 400, altura: 6, perimetro: 0 }]; S.civil.cuartos = [{ id: "k1", nombre: "Sala", area: 60, altura: 3, perimetro: 0 }];
+    G("recompute")();
+    const txt = G("CIVIL").memo.join(" ") + " " + G("CIVIL").avisos.map((a) => a.msg).join(" ");
+    const mal = txt.match(/.{0,40}(tabiquería de cada zona|perímetro de cada cuarto limpio).{0,30}/);
+    if (mal) throw new Error(`civil manda a capturar en otra pestaña: «${mal[0]}»`);
+    contiene(txt, "de cada área de obra", "la memoria dice dónde se captura la tabiquería:");
+    contiene(txt, "de cada cuarto clasificado", "y el perímetro de los cuartos:");
+  } finally { S.civil = JSON.parse(c0); G("recompute")(); }
+});
+t("S.146 (decisión del dueño, 28-sep-2026) cada «Calcular» de una pestaña también genera y descarga la memoria de cálculo en PDF de esa disciplina; sin captura suficiente no calcula ni descarga, y lo dice", () => {
+  const guardado = JSON.stringify(S), orig = w.deliverPdf, bajadas = [];
+  try {
+    w.deliverPdf = (bytes, nombre) => { bajadas.push({ nombre, n: bytes ? bytes.length : 0 }); };
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.146";
+    G("accCalcular")("fuego");
+    eq(bajadas.length, 0, "sin área capturada no calcula ni descarga:");
+    S.fuego = { ...G("defaultFuego")(), riesgo: "ord2", area: 500, altura: 6, Lramal: 30, Lmontante: 12 }; G("recompute")();
+    G("accCalcular")("fuego");
+    eq(bajadas.length, 1, "Calcular descargó la memoria:");
+    contiene(bajadas[0].nombre, G("MOTOR_ACC").fuego.archivo, "es la memoria de contra incendio:");
+    if (!(bajadas[0].n > 1000)) throw new Error("el PDF salió vacío");
+    if (!(S.sellos.fuego && S.sellos.fuego.ts > 0)) throw new Error("Calcular también sella, como antes");
+    contiene(w.document.getElementById("toast").textContent, "memoria PDF descargada", "el aviso lo dice:");
+    G("accCalcular")("fuego");
+    eq(bajadas.length, 2, "cada clic en Calcular vuelve a descargarla:");
+  } finally { w.deliverPdf = orig; G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+t("S.102 (H-266) soportería es autónoma: sin la instantánea aceptada no cuenta metros de otros motores (se retiró el conteo en vivo); aceptarla los cuantifica y ya no se mueven solos; alturas y bases se capturan; un proyecto anterior se migra al abrir con las mismas cifras (decisión del dueño, 27-sep-2026)", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.102";
+    Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.102" }; });
+    S.zones = [{ ...G("defaultZone")("Nave"), area: 400, height: 6, occ: 30 }, { ...G("defaultZone")("Oficina"), area: 100, height: 3, occ: 10 }];
+    S.duct.segments = [{ ...G("defaultSegment")("TR-1", 3000), length: 20 }];
+    G("recompute")();
+    if (!G("DUCT").segs.some((x) => Number(x.L) > 0)) throw new Error("el caso no aísla lo que se quiere probar: ductos debe tener un tramo con longitud");
+    let SP = G("SOPORTE");
+    eq(SP.mDucto, 0, "sin aceptar la propuesta no se cuentan los metros de ductos:");
+    eq(SP.hTrab, 0, "la altura de trabajo no sale de las zonas:"); eq(SP.hEstructura, 0, "ni la de la estructura:");
+    /* «Usar los motores» sin instantánea (un estado de revisiones anteriores o capturado directo) tampoco cuenta en vivo. */
+    S.soporte.usarMotores = true; G("recompute")(); SP = G("SOPORTE");
+    eq(SP.mDucto, 0, "con «usar los motores» pero sin instantánea tampoco se cuenta en vivo:");
+    if (SP.avisos.some((a) => /aceptar su propuesta/.test(a.msg))) throw new Error("H-307: ningún aviso manda a aceptar la propuesta retirada");
+    /* Con instantánea guardada (H-307: copia propia): ya cuantificado no se mueve solo. */
+    aceptarSoporte(); SP = G("SOPORTE");
+    const m1 = SP.mDucto; if (!(m1 >= 20)) throw new Error("con la instantánea aceptada deben contarse los 20 m de ducto: " + m1);
+    S.duct.segments[0].length = 50; G("recompute")();
+    eq(G("SOPORTE").mDucto, m1, "ya cuantificado no se mueve solo:");
+    /* Alturas y bases capturadas: mandan y las zonas no las mueven. */
+    Object.assign(S.soporte, { alturaTrabajo: 7.2, alturaEstructura: 6, basesEquipo: 2, mesesElevacion: 2 }); G("recompute")();
+    eq(G("SOPORTE").hTrab, 7.2, "altura de trabajo capturada:"); eq(G("SOPORTE").nEquipos, 2, "bases capturadas:");
+    S.zones[0].height = 12; G("recompute")();
+    eq(G("SOPORTE").hTrab, 7.2, "cambiar las zonas no mueve la altura de trabajo:"); eq(G("SOPORTE").hEstructura, 6, "ni la de la estructura:");
+    /* Sin altura de trabajo: renta pendiente, no se supone. */
+    S.soporte.alturaTrabajo = 0; G("recompute")(); SP = G("SOPORTE");
+    if (!SP.avisos.some((a) => /no hay altura de trabajo capturada/.test(a.msg))) throw new Error("sin altura de trabajo debe avisar que la renta queda pendiente");
+    if (SP.part.some((p) => /renta/.test(p.desc))) throw new Error("sin altura de trabajo no debe cotizarse renta de elevación");
+    /* Contra incendio sin longitudes de cabezal y montante: la red queda pendiente; ya no se suponen 30 + 12 m leídos en vivo. */
+    S.fuego = { ...G("defaultFuego")(), area: 500, altura: 6 }; aceptarSoporte();
+    if (!G("SOPORTE").manualPendientes.some((p) => /sin longitudes de cabezal y montante/.test(p.que))) throw new Error("la red contra incendio sin longitudes debe quedar pendiente");
+    const t2 = G("SOPORTE").total; S.fuego.Lramal = 40; S.fuego.Lmontante = 10; G("recompute")();
+    cerca(G("SOPORTE").total, t2, 1e-9, "con la instantánea aceptada, contra incendio no se cuela en vivo:");
+    /* Un proyecto anterior que contaba en vivo: al abrirlo toma la instantánea y las alturas que usaba; desde ahí no cuenta en vivo. */
+    const viejo = JSON.parse(fs.readFileSync("parches/regresion-motores/regresion-motores.emp.json", "utf8"));
+    if ("alturaEstructura" in viejo.soporte || viejo.soporte.snap) throw new Error("el caso no aísla lo que se quiere probar: el fixture debe ser de antes de H-266 y en vivo");
+    G("importarRespaldo")(JSON.stringify(viejo)); G("recompute")();
+    if (!(S.soporte.snap && typeof S.soporte.snap === "object")) throw new Error("al abrir un proyecto en vivo debe tomarse la instantánea");
+    eq(S.soporte.alturaTrabajo, 7.2, "altura de trabajo = la que usaba (zona más alta 6 m + 1.2):"); eq(S.soporte.alturaEstructura, 6, "altura de la estructura = la zona más alta:");
+    const mv = G("SOPORTE").mDucto; S.duct.segments.push({ ...G("defaultSegment")("TR-X", 3000), length: 40 }); G("recompute")();
+    eq(G("SOPORTE").mDucto, mv, "ya migrado no cuenta en vivo:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+/* ===== S.130 (H-266) la migración de soportería lee el sí/no guardado como texto (H-42) antes de decidir ===== */
+t("S.130 (H-266) un proyecto a mano con el sí/no de soportería guardado como texto («false», H-42) abre a mano: no toma una instantánea ni registra una aceptación que nadie hizo y conserva sus metros; con una instantánea vieja recupera las bases que contaba; «true» en texto o sin la clave sigue migrando a instantánea (revisión adversarial C2; decisión del dueño, 27-sep-2026)", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    const nave = { ...G("defaultZone")("Nave"), area: 400, height: 6 };
+    /* Sin alturaEstructura: guardado antes de H-266, así que la migración corre. */
+    const saneado = (sop) => G("sanearEstado")(JSON.parse(JSON.stringify({ zones: [nave], soporte: sop })));
+    let s = saneado({ usarMotores: "false", ductoM: 30, ductoAnchoMm: 400, ductoAltoMm: 300 });
+    eq(s.soporte.usarMotores, false, "el sí/no guardado como texto se respeta:");
+    eq(s.soporte.tomarInstantanea, undefined, "no se marca una instantánea que el usuario no aceptó:");
+    eq(s.soporte.tomarBases, true, "como todo proyecto a mano sin bases, toma una vez las que contaba:");
+    eq(s.soporte.ductoM, 30, "los metros capturados se conservan:");
+    /* Controles: el booleano false da lo mismo; «true» en texto, o sin la clave (contaba en vivo), toma la instantánea. */
+    s = saneado({ usarMotores: false, ductoM: 30 });
+    eq(s.soporte.tomarInstantanea, undefined, "booleano false:"); eq(s.soporte.tomarBases, true, "booleano false, bases:");
+    s = saneado({ usarMotores: "true", ductoM: 30 });
+    eq(s.soporte.usarMotores, true, "«true» en texto:"); eq(s.soporte.tomarInstantanea, true, "«true» en texto toma la instantánea:");
+    s = saneado({ ductoM: 30 });
+    eq(s.soporte.tomarInstantanea, true, "sin la clave (contaba en vivo) toma la instantánea:");
+    /* Por el camino real (importarRespaldo): los 100 m que hay en Ductos no entran; quedan los 30 m capturados, sin vínculo. */
+    const p = JSON.parse(JSON.stringify(G("defaultState")())); p.meta.name = "S.130";
+    p.zones = [nave]; p.duct.segments = [{ ...G("defaultSegment")("TR-1", 3000), length: 100 }];
+    p.soporte = { usarMotores: "false", ductoM: 30, ductoAnchoMm: 400, ductoAltoMm: 300 };
+    G("importarRespaldo")(JSON.stringify(p)); G("recompute")();
+    eq(S.soporte.usarMotores, false, "abierto con importarRespaldo sigue a mano:");
+    eq(G("SOPORTE").mDucto, 30, "cuenta los 30 m capturados, no los 100 m de Ductos:");
+    eq(S.vinculos["motores>soporte"], undefined, "no queda registrada una aceptación que nadie hizo:");
+    /* Con «false» en texto, una instantánea vieja guardada y dos equipos Carrier en la cotización: recupera sus dos bases. */
+    const fam = G("FAMILIES")[0], m = G("familyPool")(fam.id)[0];
+    if (!m || !G("CARRIER").some((x) => x.id === m.id)) throw new Error("el caso no aísla lo que se quiere probar: hace falta un equipo Carrier cotizable");
+    p.duct.segments = []; p.equip.items = [{ id: m.id, fam: fam.id, qty: 2, unit: null }];
+    p.soporte.snap = { duct: [], hidro: [], hidroMat: "acero", fuego: { nTotal: 0, Lram: 0, ramD: 100, Lmon: 0, monD: 100 }, aire: [], aireMat: "acero", nEquip: 0, ts: 1 };
+    G("importarRespaldo")(JSON.stringify(p)); G("recompute")();
+    eq(S.soporte.basesEquipo, 2, "a mano con instantánea vieja: toma las 2 bases que contaba (antes 0):");
+    eq(G("SOPORTE").nEquipos, 2, "y las cuenta:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+/* ===== S.131 (H-266) sin altura de la estructura el anclaje no se cotiza como calculado (z/h = 0 no es dato) ===== */
+t("S.131 (H-266) con arriostramiento sísmico y sin la altura de la estructura capturada el anclaje va «Por cotizar» con su motivo (aviso, memoria y cotización): z/h = 0 no es dato del edificio aunque haya SDS con fuente y losa con f'c; con la altura, o sin sismo, se cotiza (revisión adversarial U5; regla 6)", () => {
+  const guardado = JSON.stringify(S);
+  const anclas = () => (G("SOPORTE").part || []).filter((p) => /^Anclaje/.test(p.desc));
+  const pc = () => (G("QUOTE").porCotizar || []).filter((p) => p.mot === "soporte" && p.clave === "anclajeSop");
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.131";
+    Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.131" }; });
+    const muebles = [{ id: "wc_flux", cant: 4 }, { id: "ming_flux", cant: 2 }, { id: "lavabo", cant: 4 }, { id: "fregadero", cant: 1 }, { id: "manguera", cant: 2 }];
+    S.hidro = { ...G("defaultHidro")(), material: "acero", muebles, tramos: [{ ...G("defaultTramoAgua")("AF-GENERAL"), um: 72, L: 25, alt: 3 }, { ...G("defaultTramoAgua")("AF-RAMAL"), um: 20, L: 18, alt: 3 }] };
+    S.fuego = G("defaultFuego")(); S.aire = G("defaultAire")(); S.duct.segments = []; S.equip.items = [];
+    S.soporte = { ...G("defaultSoporte")(), alturaColgadoM: 0.5, alturaTrabajo: 5, mesesElevacion: 1,
+      sismoSDS: 1.2, sismoFuente: "CFE MDOC-Sismo 2015, sitio Tijuana", estructuraTipo: "losa_concreto", estructuraFc: 250 };
+    aceptarSoporte();
+    let R = G("SOPORTE");
+    if (!(R.nSoportes > 0 && R.anclajesPza.some((a) => a.cnt > 0))) throw new Error("el caso no aísla lo que se quiere probar: debe haber soportes con ancla");
+    eq(R.hEstructura, 0, "la altura de la estructura no está capturada:");
+    eq(R.sdsCapturado && R.estructuraCapturada, true, "SDS con fuente y losa con f'c sí están capturados:");
+    const nAnclas = R.anclajesPza.reduce((a, x) => a + x.cnt, 0);
+    eq(R.anclajePendiente, true, "sin altura de la estructura el anclaje no se cotiza como calculado (z/h = 0 supuesto):");
+    eq(anclas().length, 0, "sin partida de anclaje con importe:");
+    eq(pc().reduce((a, p) => a + p.qty, 0), nAnclas, "las anclas van «Por cotizar» con sus piezas:");
+    if (!pc().every((p) => /altura de la estructura/.test(p.desc) && /height/.test(p.descEn))) throw new Error("la partida Por cotizar debe decir que falta la altura de la estructura (ES/EN): " + JSON.stringify(pc().map((p) => p.desc)));
+    if (pc().some((p) => /SDS con fuente, tipo de estructura/.test(p.desc))) throw new Error("con SDS y estructura capturados la partida no debe pedirlos: " + pc()[0].desc);
+    if (!R.avisos.some((a) => /Anclaje «Por cotizar»/.test(a.msg) && /altura de la estructura/.test(a.msg))) throw new Error("el aviso de anclaje debe decir que falta la altura de la estructura");
+    const mFp = R.memo.find((m) => /Fuerza sísmica/.test(m)) || "";
+    if (!/z\/h 0 DE REFERENCIA/.test(mFp) || !/sin capturar/.test(mFp)) throw new Error("la memoria no debe presentar z/h = 0 como dato: " + mFp.slice(0, 260));
+    /* Con la altura capturada el anclaje se calcula y se cotiza. */
+    S.soporte.alturaEstructura = 8; G("recompute")(); R = G("SOPORTE");
+    eq(R.anclajePendiente, false, "con la altura capturada:"); eq(anclas().reduce((a, p) => a + p.qty, 0), nAnclas, "se cotizan las anclas:"); eq(pc().length, 0, "ya no está Por cotizar:");
+    if (!R.memo.some((m) => /Fuerza sísmica/.test(m) && /z\/h 1/.test(m) && !/DE REFERENCIA \(altura/.test(m))) throw new Error("con 8 m la memoria dice z/h 1 como dato capturado");
+    /* Sin arriostramiento sísmico la altura no entra al anclaje (Fp = 0): se cotiza sin ella. */
+    S.soporte.alturaEstructura = 0; S.soporte.sismico = false; G("recompute")(); R = G("SOPORTE");
+    eq(R.anclajePendiente, false, "sin sismo la altura no hace falta para el anclaje:"); eq(anclas().length, 1, "se cotiza:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+/* ===== S.132 (H-266) la migración no acepta una instantánea vacía y un proyecto anterior no abre «con cambios sin guardar» ===== */
+t("S.132 (H-266) un proyecto anterior que contaba en vivo sin nada que soportar en los motores de origen ni metros capturados a mano abre a mano con sus bases: no registra una aceptación vacía que sale «Desactualizada» en la tarjeta y en el trazado; con metros capturados a mano que el conteo en vivo no contaba toma la instantánea como antes y abre con las mismas cifras (0 m, no los metros a mano); uno con metros en los motores toma su instantánea y, abierto desde Mis proyectos sin tocar nada, no pide «Hay cambios sin guardar» (revisión adversarial U8)", () => {
+  const guardado = JSON.stringify(S), lista = JSON.stringify(G("projList")());
+  try {
+    /* (1) Guardado antes de H-266 (sin alturaEstructura) en el modo por omisión (contaba en vivo, sin instantánea), sin ductos,
+       agua, incendio ni aire; con dos equipos Carrier en la cotización, que el conteo en vivo tomaba como bases. */
+    const fam = G("FAMILIES")[0], m = G("familyPool")(fam.id)[0];
+    if (!m || !G("CARRIER").some((x) => x.id === m.id)) throw new Error("el caso no aísla lo que se quiere probar: hace falta un equipo Carrier cotizable");
+    const p = JSON.parse(JSON.stringify(G("defaultState")())); p.meta.name = "S.132";
+    p.duct.segments = []; p.equip.items = [{ id: m.id, fam: fam.id, qty: 2, unit: null }];
+    p.soporte = { usarMotores: true, sismico: true, alturaTrabajo: 0, mesesElevacion: 3, basesEquipo: 0, rielM: 0 };
+    G("importarRespaldo")(JSON.stringify(p)); G("recompute")();
+    eq(S.vinculos["motores>soporte"], undefined, "sin nada que proponer no queda registrada una aceptación:");
+    eq(S.soporte.snap, undefined, "ni una instantánea vacía:");
+    eq(S.soporte.usarMotores, false, "abre a mano:");
+    eq(G("SOPORTE").nEquipos, 2, "mismas cifras: las 2 bases que contaba:"); eq(S.soporte.basesEquipo, 2, "capturadas una vez:");
+    /* Con metros capturados a mano guardados de cuando estuvo en «valores propios» (30 m de ducto 400×300 y 20 m de hidráulica
+       Ø50 de acero), que el conteo en vivo no contaba: abrir a mano los contaría (22 soportes, 41,454 MXN: otras cifras). Toma la
+       instantánea como antes (d8f8b5e): 0 m de los motores, las mismas cifras; los metros capturados se conservan (revisión de U8). */
+    const pm = JSON.parse(JSON.stringify(G("defaultState")())); pm.meta.name = "S.132-M";
+    pm.zones = [{ ...G("defaultZone")("Nave"), area: 400, height: 6 }]; pm.duct.segments = [];
+    pm.soporte = { usarMotores: true, ductoM: 30, ductoAnchoMm: 400, ductoAltoMm: 300, tubHidroM: 20, tubHidroD: 50, tubHidroMat: "acero" };
+    G("importarRespaldo")(JSON.stringify(pm)); G("recompute")();
+    eq(G("SOPORTE").mDucto, 0, "con metros capturados a mano que el conteo en vivo no contaba abre con las mismas cifras de antes: ducto");
+    eq(G("SOPORTE").mTub, 0, "tubería:"); eq(G("SOPORTE").nSoportes, 0, "soportes:"); eq(G("SOPORTE").total, 0, "total:");
+    eq(S.soporte.usarMotores === true && !!S.soporte.snap, true, "toma la instantánea, como antes:");
+    eq(S.soporte.ductoM, 30, "los metros capturados a mano se conservan:"); eq(S.soporte.tubHidroM, 20, "también los de hidráulica:");
+    /* Con metros en un motor de origen, aunque sin captura real (red de aire con longitud y sin consumos), la toma igual: el conteo en
+       vivo los soportaba y abre con las mismas cifras. */
+    const pa = JSON.parse(JSON.stringify(G("defaultState")())); pa.meta.name = "S.132-A";
+    pa.aire = { ...pa.aire, Lprincipal: 30, Lramales: 12 };
+    pa.soporte = { usarMotores: true, sismico: true, alturaTrabajo: 0, mesesElevacion: 3, basesEquipo: 0, rielM: 0 };
+    G("importarRespaldo")(JSON.stringify(pa)); G("recompute")();
+    eq(!!S.soporte.snap, true, "con metros en el origen toma la instantánea:"); eq(G("SOPORTE").mTub, 42, "mismas cifras (30 + 12 m de aire):");
+    /* (2) Guardado antes de H-266 en vivo con 20 m de ducto, en Mis proyectos; se abre y no se toca nada. */
+    const q = JSON.parse(JSON.stringify(G("defaultState")())); q.meta.name = "S.132-B";
+    q.zones = [{ ...G("defaultZone")("Nave"), area: 400, height: 6 }];
+    q.duct.segments = [{ ...G("defaultSegment")("TR-1", 3000), length: 20 }];
+    q.soporte = { usarMotores: true, sismico: true, alturaTrabajo: 0, mesesElevacion: 3, basesEquipo: 0, rielM: 0 };
+    G("projPersist")([{ id: "p132b", name: "S.132-B", ts: 1757000000000, rev: "2.9.20", tons: 0, zones: 1, client: "", location: "", data: q }].concat(JSON.parse(lista)));
+    G("projOpen")("p132b");
+    eq(S.vinculos["motores>soporte"] && S.vinculos["motores>soporte"].estado, "migrado", "con metros toma la instantánea de lo que contaba (de la migración, sin confirmar; H-307):");
+    eq(G("SOPORTE").mDucto, 20, "mismas cifras:");
+    eq(G("cxzSucio")(), false, "abierto sin tocar nada no tiene cambios sin guardar:");
+    S.soporte.rielM = 5; G("recompute")();
+    eq(G("cxzSucio")(), true, "un cambio del usuario sí:");
+    G("projSave")(true);
+    eq(G("cxzSucio")(), false, "guardado, ya no:");
+  } finally {
+    G("closeModal")(); w.eval("clearTimeout(autoT)");
+    G("projPersist")(JSON.parse(lista)); G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")();
+  }
+});
+
+/* ===== S.133 (H-266) lo que la migración copia o supone al abrir queda con su origen, sin cambiar la cifra ===== */
+t("S.133 (H-266) lo que la migración de soportería copia o supone al abrir un proyecto anterior (altura de trabajo = zona más alta + 1.2 m, supuesto de la casa; altura de la estructura = la zona más alta) conserva la cifra pero no queda como captura del usuario: su origen, «sin confirmar», sale en pantalla, en la partida de renta, en la memoria, en las observaciones y en el pendiente de la propuesta (ES/EN); al capturar otro valor la marca cae (revisión adversarial U10; reglas 6 y 8, precedente H-179)", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    const p = JSON.parse(JSON.stringify(G("defaultState")())); p.meta.name = "S.133";
+    p.zones = [{ ...G("defaultZone")("Nave"), area: 400, height: 6 }];
+    Object.keys(G("LINKS")).forEach((k) => { p.perms[k] = { ts: 1, via: "S.133" }; });
+    /* Guardado antes de H-266 (sin alturaEstructura ni altura de trabajo): la migración las toma de la zona más alta. */
+    p.soporte = { usarMotores: false, sismico: true, ductoM: 30, ductoAnchoMm: 400, ductoAltoMm: 300, mesesElevacion: 2, alturaColgadoM: 0.5,
+      sismoSDS: 1.2, sismoFuente: "CFE MDOC-Sismo 2015, sitio Tijuana", estructuraTipo: "losa_concreto", estructuraFc: 250 };
+    G("importarRespaldo")(JSON.stringify(p)); G("recompute")();
+    let R = G("SOPORTE");
+    eq(S.soporte.alturaTrabajo, 7.2, "la cifra no cambia al abrir: altura de trabajo"); eq(S.soporte.alturaEstructura, 6, "ni la de la estructura:");
+    const renta = () => (G("SOPORTE").part || []).find((x) => /· renta$/.test(x.desc));
+    if (!renta() || !R.memo.some((m) => /Fuerza sísmica/.test(m))) throw new Error("el caso no aísla lo que se quiere probar: debe haber renta de elevación y sismo");
+    const total = R.total;
+    const origen = /de la migración.*zona más alta \(6 m\) \+ 1\.2 m.*supuesto de la casa/;
+    if (!origen.test(renta().nota || "")) throw new Error("la partida de renta debe decir de dónde sale la altura: " + renta().nota);
+    const mElev = R.memo.find((m) => /^Elevación/.test(m)) || "";
+    if (!origen.test(mElev)) throw new Error("la memoria debe decir de dónde sale la altura de trabajo: " + mElev.slice(0, 200));
+    const mFp = R.memo.find((m) => /Fuerza sísmica/.test(m)) || "";
+    if (!/altura de la estructura 6 m, de la migración.*zona más alta de Carga térmica/.test(mFp)) throw new Error("la memoria del sismo debe decir de dónde sale la altura de la estructura: " + mFp.slice(0, 300));
+    if (!R.avisos.some((a) => /sin confirmar/.test(a.msg) && /altura de trabajo 7\.2 m/.test(a.msg) && /altura de la estructura 6 m/.test(a.msg))) throw new Error("las observaciones deben listar lo que la migración puso sin confirmar");
+    S.tab = "soporte"; G("render")();
+    const pant = w.document.body.textContent;
+    if (!/Altura de trabajo 7\.2 m: de la migración/.test(pant) || !/Altura de la estructura 6 m: de la migración/.test(pant)) throw new Error("la pantalla debe decir el origen de las dos alturas");
+    /* Con los meses de renta sin capturar, el pendiente de la propuesta nombra la altura con su origen (ES/EN). */
+    S.soporte.mesesElevacion = null; G("recompute")();
+    const pr = (G("QUOTE").pendientes || []).find((x) => x.mot === "soporte" && /Renta de elevación/.test(x.desc));
+    if (!pr || !/sin confirmar/.test(pr.desc) || !/unconfirmed/.test(pr.descEn)) throw new Error("el pendiente de la renta debe decir que la altura viene de la migración (ES/EN): " + JSON.stringify(pr));
+    S.soporte.mesesElevacion = 2;
+    /* Al capturar otro valor la marca cae. */
+    S.soporte.alturaTrabajo = 5; S.soporte.alturaEstructura = 8; G("recompute")(); R = G("SOPORTE");
+    if (/migración/.test(renta().nota || "") || R.memo.some((m) => /de la migración/.test(m)) || R.avisos.some((a) => /sin confirmar/.test(a.msg))) throw new Error("capturado, ya no es de la migración");
+    /* De vuelta a la cifra de la migración sin capturarla, sigue siendo de la migración; capturada (en pantalla o desde un plano,
+       setPath), la misma cifra queda confirmada. La marca sólo dice el origen: no mueve la cifra. */
+    S.soporte.alturaTrabajo = 7.2; S.soporte.alturaEstructura = 6; G("recompute")();
+    if (!origen.test(renta().nota || "")) throw new Error("la misma cifra sin capturar sigue siendo de la migración: " + renta().nota);
+    G("setPath")("soporte.alturaTrabajo", 7.2); G("setPath")("soporte.alturaEstructura", 6); G("recompute")(); R = G("SOPORTE");
+    if (/migración/.test(renta().nota || "") || R.memo.some((m) => /de la migración/.test(m)) || R.avisos.some((a) => /sin confirmar/.test(a.msg))) throw new Error("capturada, la misma cifra queda confirmada");
+    eq(R.total, total, "la marca no mueve la cifra:");
+    /* Con la zona más alta de 1.5 m la migración ponía el mínimo de 3 m de la casa: el origen lo dice. */
+    const s3 = G("sanearEstado")(JSON.parse(JSON.stringify({ zones: [{ ...G("defaultZone")("Bodega"), area: 50, height: 1.5 }], soporte: { usarMotores: false } })));
+    eq(s3.soporte.alturaTrabajo, 3, "mínimo de la casa, misma cifra:");
+    const o3 = G("origenMigradoSop")("alturaTrabajo", (s3.soporte.sinConfirmar || {}).alturaTrabajo), o3en = G("origenMigradoSop")("alturaTrabajo", (s3.soporte.sinConfirmar || {}).alturaTrabajo, true);
+    if (!/mínimo de 3 m.*supuesto de la casa/.test(o3) || !/house minimum of 3 m/.test(o3en)) throw new Error("el origen del mínimo de 3 m: " + o3 + " / " + o3en);
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+/* ===== S.134 (H-266) la propuesta de soportería muestra lo que propone y de dónde sale ===== */
+t("S.134 (H-266, H-307) la instantánea guardada de soportería muestra los metros y Ø de la red contra incendio (cabezal y montante, no sólo rociadores) y el origen por motor (no «Ductos y calibres» para todo) en su tarjeta y en la cédula; es copia propia: si contra incendio cambia, no se mueve ni se compara; capturado a mano, la cédula lo dice", () => {
+  const guardado = JSON.stringify(S);
+  const tarjeta = () => { S.tab = "soporte"; G("render")(); const c = w.document.querySelector(".prop"); return c ? c.textContent.replace(/\s+/g, " ") : ""; };
+  const pdf = () => [...Buffer.from(G("buildSoportePdf")()).toString("latin1").matchAll(/\(((?:[^()\\]|\\.)*)\) Tj/g)].map((m) => m[1]).join(" ");
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.134";
+    S.duct.segments = [];
+    S.fuego = { ...G("defaultFuego")(), area: 600, altura: 6, Lramal: 30, Lmontante: 12 };
+    S.soporte = { ...G("defaultSoporte")(), alturaColgadoM: 0.5, alturaTrabajo: 5, mesesElevacion: 1, alturaEstructura: 6 };
+    G("recompute")();
+    const F = G("FUEGO"), fuegoLab = G("DOMAINS").fuego.label;
+    if (!(F.Lram === 30 && F.Lmon === 12 && F.nTotal > 0)) throw new Error("el caso no aísla lo que se quiere probar: cabezal 30 m y montante 12 m");
+    aceptarSoporte();   /* proyecto con la instantánea guardada */
+    let c = tarjeta();
+    if (!/cabezal 30 m/.test(c) || !/montante 12 m/.test(c)) throw new Error("la tarjeta debe mostrar los metros de la red contra incendio: " + c.slice(0, 300));
+    if (!c.includes(`${fuegoLab} → `) || c.includes("Ductos y calibres →")) throw new Error("la tarjeta debe nombrar el motor de origen verdadero: " + c.slice(0, 160));
+    /* La cédula dice de dónde salen los tramos: la instantánea con su fecha y sus motores de origen. */
+    const hoy = G("fechaCorta")(S.soporte.snap.ts);
+    const p1 = pdf();
+    if (!p1.includes("instantánea aceptada el " + hoy) || !p1.includes(fuegoLab)) throw new Error("la cédula debe decir que los tramos son de la instantánea, su fecha y su origen");
+    /* El cabezal pasa a 80 m: la instantánea es copia propia; ni se mueve ni se compara (H-307). */
+    S.fuego.Lramal = 80; G("recompute")();
+    c = tarjeta();
+    if (!/cabezal 30 m/.test(c) || /Desactualizada|Hoy propone|Qué cambió/.test(c)) throw new Error("la instantánea no se mueve ni se compara con contra incendio: " + c.slice(0, 300));
+    eq(G("SOPORTE").mTub, 42, "sigue contando cabezal 30 + montante 12:");
+    /* Capturado a mano: la cédula lo dice. */
+    S.soporte.usarMotores = false; delete S.soporte.snap; S.soporte.tubFuegoM = 20; S.soporte.tubFuegoD = 50; G("recompute")();
+    if (!pdf().includes("capturados a mano")) throw new Error("la cédula debe decir que los metros son capturados a mano");
+  } finally { w.eval("clearTimeout(autoT)"); G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+/* ===== S.135 (H-266) textos de soportería que describían el conteo en vivo retirado ===== */
+t("S.135 (H-266, H-307) los textos de soportería describen lo que hoy hace: sin instantánea cuenta sólo lo capturado en su pestaña; la barra de acciones y los avisos no mandan a aceptar metros de los otros motores ni dicen que hay metros «sin aceptar» (la propuesta se retiró) ni que no hay ductos calculados", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    /* H-307: los cruces duct/hidro/fuego/aire → soportería se retiraron (S.187). La conducta: los metros de Ductos no entran. */
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.135";
+    S.duct.segments = [{ ...G("defaultSegment")("TR-1", 3000), length: 20 }, { ...G("defaultSegment")("TR-2", 2000), length: 15 }];
+    G("recompute")();
+    eq(G("SOPORTE").mDucto, 0, "los metros de Ductos no entran a soportería:");
+    const razon = G("accEstado")("soporte").calc.razon || "";
+    if (/Ductos y calibres o las tuberías|acepta la propuesta|sin aceptar/.test(razon)) throw new Error("la barra de acciones no debe mandar a aceptar metros de los otros motores: " + razon);
+    let av = G("SOPORTE").avisos.map((a) => a.msg).join(" | ");
+    if (/no hay ductos ni tubería calculados en los motores/.test(av)) throw new Error("el aviso dice que no hay ductos aunque los hay: " + av);
+    if (/sin aceptar|al aceptar su propuesta/.test(av)) throw new Error("ningún aviso lee los otros motores para mandar a aceptar: " + av);
+    if (!/No hay soportes que contar/.test(av)) throw new Error("sin nada capturado, «no hay nada»: " + av);
+    /* Sin nada en los motores ni capturado: lo mismo. */
+    S.duct.segments = []; G("recompute")();
+    av = G("SOPORTE").avisos.map((a) => a.msg).join(" | ");
+    if (!/No hay soportes que contar/.test(av) || /sin aceptar/.test(av)) throw new Error("sin nada, «no hay nada»: " + av);
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+/* ===== S.136 (H-266) «Capturo lo mío» no borra sin preguntar lo ya cuantificado, y Deshacer lo recupera ===== */
+t("S.136 (H-266, H-307) «Capturar a mano» con una instantánea de soportería ya cuantificada pregunta antes de dejarla (dice qué se deja de contar) y Deshacer la recupera tal como estaba (revisión adversarial U15; decisión del dueño: lo cuantificado no se mueve solo)", () => {
+  const guardado = JSON.stringify(S);
+  const act = (a, id) => { const b = w.document.createElement("button"); b.dataset.act = a; if (id) b.dataset.id = id; w.document.body.appendChild(b); b.dispatchEvent(new w.MouseEvent("click", { bubbles: true })); b.remove(); };
+  const modal = () => w.document.getElementById("modal");
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.136"; G("histReiniciar")();
+    S.duct.segments = [];
+    S.fuego = { ...G("defaultFuego")(), area: 600, altura: 6, Lramal: 30, Lmontante: 12 };
+    S.soporte = { ...G("defaultSoporte")(), alturaColgadoM: 0.5, alturaTrabajo: 5, mesesElevacion: 1, alturaEstructura: 6 };
+    G("recompute")(); G("histSnap")("inicio S.136");
+    aceptarSoporte();   /* proyecto con la instantánea guardada */
+    eq(G("SOPORTE").mTub, 42, "instantánea con cabezal 30 + montante 12:");
+    /* Contra incendio cambia; la instantánea sigue (copia propia). */
+    S.fuego.Lramal = 80; G("recompute")();
+    eq(G("SOPORTE").mTub, 42, "sigue con lo cuantificado:");
+    /* «Capturar a mano»: pregunta antes de dejar lo ya cuantificado. */
+    act("sop-propio");
+    if (!S.soporte.snap) throw new Error("«Capturar a mano» borró la instantánea ya cuantificada sin preguntar");
+    if (modal().hidden || !/instantánea guardada/i.test(modal().textContent) || !/42 m/.test(modal().textContent)) throw new Error("debe preguntar y decir qué se deja de contar: " + (modal().hidden ? "(sin ventana)" : modal().textContent.replace(/\s+/g, " ").slice(0, 300)));
+    act("confirmar-si");
+    eq(S.soporte.snap, undefined, "confirmado, deja la instantánea:"); eq(G("SOPORTE").mTub, 0, "y cuenta lo capturado a mano:");
+    /* Deshacer la recupera tal como estaba. */
+    G("deshacer")(); G("recompute")();
+    if (!S.soporte.snap) throw new Error("Deshacer no recuperó la instantánea");
+    eq(G("SOPORTE").mTub, 42, "Deshacer devuelve lo cuantificado:");
+  } finally { G("closeModal")(); w.eval("clearTimeout(autoT)"); G("reemplazarEstado")(JSON.parse(guardado)); G("histReiniciar")(); G("recompute")(); }
+});
+
+/* ===== S.137 (H-266) las bases de equipo que la migración copia al abrir quedan «de la migración, sin confirmar» ===== */
+t("S.137 (H-266) las bases de equipo que la migración de soportería copia al abrir un proyecto anterior (el conteo de equipos de la cotización que se hacía: a mano sin bases capturadas, o en vivo sin nada que soportar) conservan la cifra pero no quedan como captura: la memoria, las observaciones y la pantalla dicen «de la migración, sin confirmar» y de dónde salen mientras la cifra sea esa; capturar el campo (setPath) las confirma aunque sea la misma cifra (revisión adversarial de U10; reglas 6 y 8, precedente H-179)", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    const fam = G("FAMILIES")[0], m = G("familyPool")(fam.id)[0];
+    if (!m || !G("CARRIER").some((x) => x.id === m.id)) throw new Error("el caso no aísla lo que se quiere probar: hace falta un equipo Carrier cotizable");
+    const mB = () => G("SOPORTE").memo.find((x) => /^Bases de equipo/.test(x)) || "(sin memoria de bases)";
+    const avisoB = () => G("SOPORTE").avisos.find((a) => /sin confirmar/.test(a.msg) && /bases de equipo \d+ \(/.test(a.msg));
+    for (const um of [false, true]) {
+      /* Guardado antes de H-266 (sin alturaEstructura), sin bases capturadas y con dos equipos Carrier en la cotización: la
+         migración copia las 2 bases que contaba (a mano: tomarBases; en vivo sin nada que soportar: U8, abre a mano). */
+      const caso = um ? "en vivo sin nada que soportar:" : "a mano sin bases:";
+      const p = JSON.parse(JSON.stringify(G("defaultState")())); p.meta.name = "S.137";
+      p.duct.segments = []; p.equip.items = [{ id: m.id, fam: fam.id, qty: 2, unit: null }];
+      p.soporte = { usarMotores: um, mesesElevacion: 2 };
+      G("importarRespaldo")(JSON.stringify(p)); G("recompute")();
+      eq(G("SOPORTE").nEquipos, 2, `${caso} la cifra no cambia al abrir:`); const total = G("SOPORTE").total;
+      if (!/de la migración al abrir, sin confirmar: conteo de equipos de la cotización al abrir/.test(mB()) || /capturadas/.test(mB())) throw new Error(`${caso} la memoria debe decir que las bases son de la migración, sin confirmar, y de dónde salen: ${mB()}`);
+      if (!avisoB() || !/bases de equipo 2 \(conteo de equipos de la cotización al abrir\)/.test(avisoB().msg)) throw new Error(`${caso} las observaciones deben listar las bases que puso la migración: ${JSON.stringify(G("SOPORTE").avisos.map((a) => a.msg))}`);
+      S.tab = "soporte"; G("render")();
+      if (!/Bases de equipo 2: de la migración al abrir, sin confirmar: conteo de equipos de la cotización al abrir/.test(w.document.body.textContent)) throw new Error(`${caso} la pantalla debe decir el origen de las bases`);
+      const sc = (S.soporte.sinConfirmar || {}).basesEquipo || {};
+      eq(`${sc.valor} · ${sc.origen}`, "2 · conteo de equipos de la cotización al abrir", `${caso} la marca guarda la cifra y su origen:`);
+      /* Otra cifra quita la marca; de vuelta a la cifra de la migración sin capturarla, sigue siendo de la migración. */
+      S.soporte.basesEquipo = 3; G("recompute")();
+      if (!/\(capturadas; H-266\)/.test(mB()) || avisoB()) throw new Error(`${caso} con otra cifra ya no es de la migración: ${mB()}`);
+      S.soporte.basesEquipo = 2; G("recompute")();
+      if (!/sin confirmar/.test(mB())) throw new Error(`${caso} la misma cifra sin capturar sigue siendo de la migración: ${mB()}`);
+      /* Capturada en pantalla o desde un plano (setPath), la misma cifra queda confirmada; la marca no mueve la cifra. */
+      G("setPath")("soporte.basesEquipo", 2); G("recompute")();
+      if (!/\(capturadas; H-266\)/.test(mB()) || avisoB()) throw new Error(`${caso} capturadas, la misma cifra queda confirmada: ${mB()}`);
+      eq(G("SOPORTE").total, total, `${caso} la marca no mueve la cifra:`);
+    }
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+/* ===== S.103 (H-268) eléctrico autónomo: las cargas de otros motores entran sólo como propuesta aceptada (instantánea) ===== */
+t("S.103 (H-268) eléctrico es autónomo: con permisos y tomarHVAC, sin aceptar la propuesta, la cédula, el ventilador, el compresor, las bombas y los FFU NO entran al cuadro (se retiró el modo en vivo); la migración (H-306: la propuesta se retiró) deja una instantánea con fecha que no se mueve sola; un proyecto guardado en vivo migra al abrir con las mismas cifras (sólo con los cruces que tenía); el sello no cambia al reabrir (decisión del dueño, 27-sep-2026)", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.103"; aceptarSitioCarga();   /* H-290 */
+    Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.103" }; });
+    S.zones = [{ ...G("defaultZone")("Nave"), area: 400, height: 6, occ: 30, lights: 8000, equip: 12000 }, { ...G("defaultZone")("Oficina"), area: 100, height: 3, occ: 10, lights: 1500, equip: 2000 }];
+    S.vent = { ...S.vent, mode: "general", area: 500, height: 5.4, occ: 40 };
+    S.aire = { ...G("defaultAire")(), consumos: [{ id: "c1", tipo: "pistola", nombre: "Prueba S.103", cant: 4, lmin: 0, bar: 0, uso: 0 }] };
+    S.hidro = { ...G("defaultHidro")(), presRed: 0, alturaEdificio: 0, muebles: [{ id: "wc_flux", cant: 4 }, { id: "ming_flux", cant: 2 }, { id: "lavabo", cant: 4 }, { id: "fregadero", cant: 1 }, { id: "manguera", cant: 2 }] };
+    S.fuego = { ...G("defaultFuego")(), area: 500, altura: 6, Lramal: 30, Lmontante: 12 };   /* H-210: con trayectoria capturada la bomba se dimensiona */
+    S.clean = { rooms: [{ ...G("defaultRoom")(), area: 60, height: 2.7, occ: 4, procW: 25 }], ci: 0 };
+    S.elec = { ...G("defaultElec")(), trafoKVA: 300, trafoZ: 4, Ltablero: 30, tomarHVAC: true,
+      cargas: [{ ...G("defaultCarga")("Alumbrado S.103"), tipo: "alumbrado", kW: 9.5, V: 127, ph: 1, cant: 1, L: 40, fp: .95 }] };
+    G("recompute")();
+    aceptarEquip();   /* H-267: la cédula HVAC sale de la selección, que calcula con la propuesta de carga térmica aceptada */
+    const fuentes = { cedula: !!(G("SYS") && G("SYS").chosen && G("SYS").chosen.id !== "none"), compresor: !!(G("AIRE").principal && G("AIRE").principal.kW > 0 && G("AIRE").nUnidades > 0), bombaAgua: G("HIDRO").kWbomba > 0, bombaIncendio: G("FUEGO").kWbomba > 0, ffu: G("CLEAN").sum.ffu > 0 };
+    Object.entries(fuentes).forEach(([k, v]) => { if (!v) throw new Error(`el caso no aísla lo que se quiere probar: ${k} debe tener algo que proponer`); });
+    const prop = G("propuestaElecFilas")();
+    if (!(prop.length >= 5)) throw new Error("la propuesta debe traer la cédula, el compresor, las bombas y los FFU: " + prop.length);
+    /* 1) Con todos los cruces autorizados y tomarHVAC (el modo en vivo de revisiones anteriores), sin aceptar: sólo lo capturado. */
+    let R = G("ELEC");
+    eq(R.calc.length, 1, "sin aceptar la propuesta sólo cuenta la carga capturada (nada entra en vivo):");
+    if (R.calc.some((c) => c.auto)) throw new Error("una carga entró en vivo desde otro motor");
+    eq(G("PROPUESTAS")["cedula>elec"], undefined, "H-306: la propuesta se retiró:");
+    const demSolo = R.kVAdemanda;
+    /* 2) La migración (H-306: ya no hay propuesta que aceptar) deja las cargas como instantánea con origen y fecha. */
+    migraCargasElec(); R = G("ELEC");
+    const ced = S.elec.cargas.filter((c) => c.origen === "cedula");
+    eq(ced.length, prop.length, "las cargas propuestas quedan en el cuadro con origen «cedula»:");
+    ced.forEach((c) => { if (!(c.ts > 0)) throw new Error(`${c.nombre}: sin fecha de aceptación`); });
+    ["hvac", "aire", "hidro", "fuego", "ffu"].forEach((o) => { if (!ced.some((c) => c.kWOrigen === o)) throw new Error(`falta la carga de origen ${o} en la instantánea`); });
+    if (!(R.kVAdemanda > demSolo)) throw new Error("aceptadas, la demanda del tablero debe subir");
+    eq(R.calc.length, 1 + ced.length, "el cuadro trae la capturada más las aceptadas:");
+    eq((G("vinculoDe")("cedula>elec") || {}).estado, "migrado", "queda registrado su origen, de la migración y sin confirmar (H-306, auditoría externa):");
+    /* 3) Regla 3: el origen cambia, el cuadro no se mueve, la propuesta avisa; y la propuesta sí refleja el cambio en el mismo ciclo. */
+    const dem1 = R.kVAdemanda, comp1 = ced.find((c) => c.kWOrigen === "aire").kW;
+    S.aire.consumos = [{ id: "c1", tipo: "actuador", nombre: "Grande 1", cant: 400, lmin: 0, bar: 0, uso: 0 }, { id: "c2", tipo: "pistola", nombre: "Grande 2", cant: 200, lmin: 0, bar: 0, uso: 0 }]; G("recompute")();
+    if (!(G("AIRE").principal.kW > comp1)) throw new Error("el caso no aísla lo que se quiere probar: el compresor nuevo debe ser mayor");
+    cerca(G("ELEC").kVAdemanda, dem1, 1e-9, "ya aceptada, la instantánea no se mueve sola aunque el compresor cambie:");
+    eq(S.elec.cargas.find((c) => c.kWOrigen === "aire").kW, comp1, "el kW aceptado se conserva:");
+    cerca(G("propuestaElecFilas")().find((c) => c.kWOrigen === "aire").kW, G("AIRE").principal.kW, 1e-9, "la propuesta trae el compresor nuevo en el mismo recompute:");
+    /* 4) Los permisos ya no mueven el cuadro: las aceptadas son captura propia con origen; los parámetros propios mandan. */
+    G("CRUCES_ELEC").forEach((k) => { delete S.perms[k]; }); G("recompute")();
+    cerca(G("ELEC").kVAdemanda, dem1, 1e-9, "quitar los cruces no saca las cargas ya aceptadas:");
+    S.elec.tempAmb = 50; G("recompute")();
+    if (!(G("ELEC").alim.awg !== R.alim.awg || G("ELEC").calc.some((c, i) => c.cond.awg !== R.calc[i].cond.awg))) throw new Error("la temperatura ambiente capturada en la pestaña debe mandar en el calibre");
+    S.elec.tempAmb = 40; G("recompute")();
+    /* 5) Textos: pantalla, guía y memoria dicen de dónde salen las cargas; nada habla del modo en vivo. */
+    const v = G("viewElec")();
+    if (/en vivo/i.test(v)) throw new Error("la pantalla sigue hablando del modo en vivo");
+    contiene(G("GUIA").electrico.ojo, "autónomo", "la guía lo declara:");
+    if (!G("ELEC").memo.some((m) => /Origen de las cargas \(H-268\)/.test(m) && /aceptada\(s\) de otros motores/.test(m))) throw new Error("la memoria no dice de dónde salen las cargas");
+    /* 6) Proyecto guardado en vivo (tomarHVAC con los cruces autorizados): abre con las MISMAS cifras que hoy da aceptar la propuesta, como instantánea con fecha, y desde ahí no cuenta en vivo. */
+    const fixture = JSON.parse(fs.readFileSync("parches/regresion-motores/regresion-motores.emp.json", "utf8"));
+    if (fixture.elec.tomarHVAC || "h268" in fixture.elec) throw new Error("el caso no aísla lo que se quiere probar: el fixture debe ser de antes de H-268 y sin modo en vivo");
+    G("importarRespaldo")(JSON.stringify(fixture)); G("recompute")();
+    const antes = G("ELEC").kVAdemanda;
+    migraCargasElec();   /* H-306 */
+    const esperado = JSON.stringify(G("cifrasMotor")("elec")), nCed = S.elec.cargas.filter((c) => c.origen === "cedula").length;
+    if (!(nCed >= 6)) throw new Error("el fixture debe proponer las seis fuentes (cédula, extractor, compresor, bombas, FFU): " + nCed);
+    const vivo = JSON.parse(JSON.stringify(fixture)); vivo.elec.tomarHVAC = true;
+    G("importarRespaldo")(JSON.stringify(vivo)); G("recompute")();
+    eq(S.elec.tomarHVAC, false, "el modo en vivo queda apagado al abrir:");
+    eq(S.elec.cargas.filter((c) => c.origen === "cedula").length, nCed, "las cargas que tomaba en vivo quedan como instantánea:");
+    if (!S.elec.cargas.filter((c) => c.origen === "cedula").every((c) => c.ts > 0)) throw new Error("la instantánea migrada debe llevar fecha");
+    eq(JSON.stringify(G("cifrasMotor")("elec")), esperado, "abre con las mismas cifras que tenía en vivo:");
+    if (!(G("ELEC").kVAdemanda > antes)) throw new Error("el caso no aísla lo que se quiere probar: las cargas en vivo deben pesar en la demanda");
+    eq((G("vinculoDe")("cedula>elec") || {}).estado, "migrado", "queda registrada de la migración, sin confirmar (H-306, auditoría externa):");
+    const demMig = G("ELEC").kVAdemanda;
+    S.aire.consumos.push({ id: "cx", tipo: "actuador", nombre: "Más", cant: 400, lmin: 0, bar: 0, uso: 0 }); G("recompute")();
+    cerca(G("ELEC").kVAdemanda, demMig, 1e-9, "ya migrado no cuenta en vivo:");
+    /* 6b) En vivo con un solo cruce autorizado: sólo migra ese; no se conceden cruces nuevos. */
+    const parcial = JSON.parse(JSON.stringify(fixture)); parcial.elec.tomarHVAC = true;
+    ["vent>elec", "aire>elec", "hidro>elec", "fuego>elec", "clean>elec"].forEach((k) => { delete parcial.perms[k]; });
+    G("importarRespaldo")(JSON.stringify(parcial)); G("recompute")();
+    const cedP = S.elec.cargas.filter((c) => c.origen === "cedula");
+    if (!cedP.length || !cedP.every((c) => c.kWOrigen === "hvac")) throw new Error("con sólo equip>elec autorizado debía migrar únicamente la cédula HVAC: " + cedP.map((c) => c.kWOrigen).join(","));
+    if (S.perms["aire>elec"]) throw new Error("la migración no debe conceder cruces que no estaban autorizados");
+    /* 6c) tomarHVAC sin ningún cruce autorizado: no había nada en vivo, nada se acepta. */
+    const nada = JSON.parse(JSON.stringify(fixture)); nada.elec.tomarHVAC = true; G("CRUCES_ELEC").forEach((k) => { delete nada.perms[k]; });
+    G("importarRespaldo")(JSON.stringify(nada)); G("recompute")();
+    eq(S.elec.cargas.filter((c) => c.origen === "cedula").length, 0, "sin cruces autorizados no había nada en vivo: nada se acepta:");
+    eq(G("vinculoDe")("cedula>elec"), null, "y no se registra vínculo:");
+    eq(S.elec.tomarHVAC, false, "el modo en vivo queda apagado:");
+    /* 7) Sello: guardar y reabrir un proyecto ya migrado no dice «la captura cambió». */
+    G("importarRespaldo")(JSON.stringify(vivo)); G("recompute")();
+    S.sellos = S.sellos || {}; S.sellos.elec = { ts: 1700000000000, huella: G("huellaMotor")("elec"), ver: G("MOTOR_VER").elec };
+    G("importarRespaldo")(JSON.stringify({ v: G("FORMATO_GUARDADO"), ...JSON.parse(JSON.stringify(S)) })); G("recompute")();
+    eq(G("selloDe")("elec").estado, "calculado", "reabrir el proyecto no cambia la huella del eléctrico:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+/* ===== S.104 (H-267) selección de equipo autónoma: calcula sólo con sus zonas de selección (capturadas o aceptadas) ===== */
+t("S.104 (H-267) selección de equipo es autónoma: sin aceptar la propuesta, cambiar la carga de una zona NO mueve el sistema integrado; aceptarla lo calcula con una instantánea con fecha; si la carga cambia después, la propuesta sale «desactualizada» y el sistema no se mueve; una zona capturada a mano sin perfil horario deja la simultaneidad «pendiente»; un proyecto guardado antes abre con las mismas cifras (decisión del dueño, 27-sep-2026)", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.104"; aceptarSitioCarga();   /* H-290 */
+    Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.104" }; });
+    G("propAceptar")("proyecto>equip");   /* H-288: el sitio de Selección, aceptado de Proyecto; aquí se prueba la carga */
+    S.zones = [{ ...G("defaultZone")("Nave"), area: 400, height: 6, occ: 30, lights: 8000, equip: 12000 }, { ...G("defaultZone")("Oficina"), area: 100, height: 3, occ: 10, lights: 1500, equip: 2000 }];
+    G("recompute")();
+    if (!(G("totals")().tons > 1)) throw new Error("el caso no aísla lo que se quiere probar: la carga térmica debe tener toneladas");
+    const cifras = () => JSON.stringify([G("SYS").nz, G("SYS").sumPeaks, G("SYS").blockTons, G("cifrasMotor")("equip")]);
+    const huellaE = () => G("huellaMotor")("equip");
+    const s0 = cifras(), h0 = huellaE();
+    /* 1) Sin aceptar: la carga de una zona cambia y la selección no se mueve (antes la leía en vivo: el núcleo térmico compartía sin permiso). */
+    S.zones[0].occ = 60; S.zones[0].equip = 20000; G("recompute")();
+    eq(cifras(), s0, "sin aceptar la propuesta, cambiar la carga de una zona no mueve el sistema integrado:");
+    eq(huellaE(), h0, "ni la huella de la selección (ENTRADAS.equip ya no lleva la carga):");
+    eq(G("SYS").chosen.id, "none", "sin zonas de selección no hay sistema:");
+    eq(G("estadoPropuesta")("load>equip").nivel, "pendiente", "la carga queda como propuesta por decidir:");
+    eq(G("DOMAINS").equip.cluster === "termico", false, "selección ya no está en el núcleo térmico:");
+    delete S.perms["load>equip"]; eq(G("linkAllowed")("load>equip"), false, "el cruce load>equip pide permiso (ya no pasa por sameCluster):");
+    /* 2) Aceptar: instantánea con origen y fecha; concede el cruce; el sistema integrado toma la carga. */
+    const t0 = Date.now();
+    G("propAceptar")("load>equip");
+    const Z = S.equip.zonas;
+    eq(Z.length, 2, "una zona de selección por zona de carga:");
+    Z.forEach((z, i) => {
+      eq(z.origen && z.origen.motor, "load", `zona ${i + 1} con origen carga térmica:`);
+      if (!(z.origen.fecha >= t0)) throw new Error(`zona ${i + 1} sin fecha de aceptación`);
+      eq(z.name, S.zones[i].name, "nombre:"); cerca(z.tons, G("LOADS")[i].tons, 1e-12, "TR:");
+    });
+    if (!S.perms["load>equip"]) throw new Error("aceptar la propuesta debe conceder load>equip");
+    eq(G("SYS").nz, 2, "el sistema integrado calcula con las zonas aceptadas:");
+    cerca(G("SYS").sumPeaks, G("totals")().tons, 1e-9, "suma de picos = carga aceptada:");
+    eq(G("estadoPropuesta")("load>equip").nivel, "aceptado", "aceptada y vigente:");
+    const s1 = cifras(), h1 = huellaE(), tons1 = G("SYS").sumPeaks;
+    /* 3) Regla 3: la carga cambia; la selección no se mueve; la propuesta avisa y trae la carga nueva en el mismo ciclo. */
+    S.zones[1].occ = 40; S.zones[1].equip = 9000; G("recompute")();
+    eq(cifras(), s1, "ya aceptada, la selección no se mueve aunque la carga cambie:");
+    eq(huellaE(), h1, "ni su huella:");
+    eq(G("estadoPropuesta")("load>equip").nivel, "desactualizado", "la propuesta avisa que el origen cambió:");
+    cerca(G("zonasPropuestasEquip")()[1].tons, G("LOADS")[1].tons, 1e-12, "la propuesta trae la carga nueva en el mismo recompute:");
+    const dif = G("diferenciasEquip")();
+    if (!dif.some((d) => d.zona === "Oficina" && d.cambios.some((c) => c.campo === "tons"))) throw new Error("«ver diferencias» debe mostrar la TR de la zona que cambió");
+    eq(G("semaforoSuite")().find((x) => x.id === "equip").nivel, "desactualizada", "el semáforo de selección lo dice:");
+    contiene(G("viewSeleccion")(), "Ver diferencias", "la pestaña ofrece ver las diferencias:");
+    /* 4) Volver a aceptar: toma la carga nueva. */
+    G("propAceptar")("load>equip");
+    cerca(G("SYS").sumPeaks, G("totals")().tons, 1e-9, "al volver a aceptar toma la carga nueva:");
+    if (!(G("SYS").sumPeaks > tons1)) throw new Error("el caso no aísla lo que se quiere probar: la carga nueva debe ser mayor");
+    /* 5) Zona capturada a mano: sin perfil horario la simultaneidad queda pendiente (no se inventa perfil); procedencia en pantalla. */
+    if (!G("SYS").haveProf) throw new Error("el caso no aísla lo que se quiere probar: con las zonas aceptadas debe haber barrido horario");
+    const k = G("agregarZonaEquip")();
+    G("editarZonaEquip")(k, "name", "Bodega"); G("editarZonaEquip")(k, "tons", 3); G("editarZonaEquip")(k, "cfm", 1200); G("editarZonaEquip")(k, "area", 150);
+    G("recompute")();
+    eq(S.equip.zonas[k].origen, null, "la zona capturada a mano no lleva origen:");
+    eq(S.equip.zonas[k].profile, null, "no se inventa perfil:");
+    eq(G("SYS").nz, 3, "entra al sistema:");
+    eq(G("SYS").haveProf, false, "sin perfil en una zona no hay simultaneidad por hora:");
+    cerca(G("SYS").blockTons, G("SYS").sumPeaks, 1e-9, "el bloque es la suma de picos (sin diversidad supuesta):");
+    const v = G("viewSeleccion")();
+    contiene(v, "capturada en esta pestaña", "procedencia a mano:"); contiene(v, "aceptada el", "procedencia de la carga:");
+    if (!/simultaneidad por hora[^<]*pendiente/i.test(v)) throw new Error("la pantalla debe declarar la simultaneidad por hora como pendiente");
+    if (!G("ENGINES").equip.checks().some((c) => /pendiente/.test(c.msg) && /Bodega/.test(c.msg))) throw new Error("la validación debe declarar la zona sin perfil");
+    /* Editar la TR de una zona aceptada: queda «editada aquí» y sin perfil (pendiente); no se reescala nada. */
+    G("editarZonaEquip")(0, "tons", 12); G("recompute")();
+    eq(S.equip.zonas[0].editada, true, "la zona aceptada que se edita queda marcada:"); eq(S.equip.zonas[0].profile, null, "y sin perfil:");
+    cerca(G("SYS").peaks.find((p) => p.zone === "Nave").tons, 12, 1e-12, "con la TR capturada:");
+    /* 6) Entregables con procedencia. */
+    const pdf = textoPdf(G("buildSeleccionPdf")());
+    contiene(pdf, "Procedencia", "memoria de selección:"); contiene(pdf, "aceptada", "memoria de selección:"); contiene(pdf, "capturada en esta", "memoria de selección:");
+    const ced = textoPdf(G("buildCedulaEquiposPdf")()); contiene(ced, "Procedencia de las zonas", "cédula:");
+    if (!G("trazaHerencia")().some((r) => r.destinoId === "equip" && r.en && r.en.campo)) throw new Error("el trazado de origen debe llevar la fila de selección con espejo EN");
+    /* 7) Proyecto guardado antes de H-267 (sin zonas de selección): abre con la instantánea tomada al abrir y las mismas cifras. */
+    const fixture = JSON.parse(fs.readFileSync("parches/regresion-motores/regresion-motores.emp.json", "utf8"));
+    if ("equip" in fixture) throw new Error("el caso no aísla lo que se quiere probar: el fixture debe ser de antes de H-267");
+    const esperado = JSON.parse(fs.readFileSync("parches/regresion-motores/regresion-motores.esperado.json", "utf8")).motores.equip.cifras;
+    G("importarRespaldo")(JSON.stringify(fixture)); G("recompute")();
+    eq(S.equip.zonas.length, fixture.zones.length, "toma una zona de selección por zona de carga:");
+    eq(S.equip.tomarDeCarga, null, "la marca se consume una sola vez:");
+    if (!S.equip.zonas.every((z) => z.origen && z.origen.motor === "load" && z.origen.fecha > 0)) throw new Error("la instantánea migrada debe llevar origen y fecha");
+    eq((G("vinculoDe")("load>equip") || {}).estado, "aceptado", "queda registrada como propuesta aceptada:");
+    eq(G("estadoPropuesta")("load>equip").nivel, "aceptado", "vigente:");
+    eq(JSON.stringify(G("cifrasMotor")("equip")), JSON.stringify(esperado), "abre con las mismas cifras de selección:");
+    if (S.perms["load>equip"]) throw new Error("la migración no concede cruces nuevos (cambiaría la huella de otros motores)");
+    const hMig = huellaE(), sMig = cifras();
+    S.zones[0].occ += 50; G("recompute")(); eq(cifras(), sMig, "ya migrado no lee la carga en vivo:"); S.zones[0].occ -= 50; G("recompute")();
+    /* 8) Sellos: un sello viejo dice «el motor cambió»; reabrir un proyecto migrado conserva la huella. */
+    S.sellos = { equip: { ts: 1700000000000, huella: "0123456789abcd", ver: "1" } };
+    const sv = G("selloDe")("equip"); eq(sv.estado, "desactualizado", "sello de la versión anterior:"); contiene(sv.texto, "el motor cambió", "sello viejo:");
+    S.sellos.equip = { ts: 1700000000000, huella: hMig, ver: G("MOTOR_VER").equip };
+    G("importarRespaldo")(JSON.stringify({ v: G("FORMATO_GUARDADO"), ...JSON.parse(JSON.stringify(S)) })); G("recompute")();
+    eq(G("selloDe")("equip").estado, "calculado", "reabrir el proyecto migrado conserva la huella:");
+    G("importarRespaldo")(JSON.stringify(fixture)); G("recompute")(); eq(huellaE(), hMig, "migrar otra vez (otra fecha) da la misma huella:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+/* ===== S.120–S.125 (H-272) · la carga de archivos alimenta la CAPTURA PROPIA de cada disciplina independiente =====
+   Decisión del dueño (27-sep-2026): todos los motores independientes; «al insertar los archivos con el levantamiento
+   (planos, información, Excel, bases de datos de planos o dibujos, y catálogos) utiliza la metadata para iniciar con el
+   cálculo». Los archivos de prueba se arman aquí (como en las secciones 17, 20 y 21): un plano DXF de levantamiento con
+   tres cuartos (dos con altura rotulada), un plano de instalaciones, una memoria PDF, un Excel de locales y CSV de
+   extracción y de cargas. Sin nombres de clientes. */
+{
+  const zlibx = await import("node:zlib");
+  const tA = async (nombre, fn) => { try { const r = await fn(); if (r === false) { fail++; fallos.push([nombre, "devolvió falso"]); } else ok++; } catch (e) { fail++; fallos.push([nombre, e.message]); } };
+  const archivo = (nombre, c, ruta) => ({ file: new w.File([typeof c === "string" ? c : new Uint8Array(c)], nombre), ruta: ruta || nombre });
+  const par = (c, v) => `${String(c).padStart(3)}\n${v}\n`;
+  const lw = (capa, pts) => par(0, "LWPOLYLINE") + par(8, capa) + par(90, pts.length) + par(70, 1) + pts.map(([x, y]) => par(10, x) + par(20, y)).join("");
+  const rect = (capa, x0, y0, x1, y1) => lw(capa, [[x0, y0], [x1, y0], [x1, y1], [x0, y1]]);
+  const txt = (c, x, y, s) => par(0, "TEXT") + par(8, c) + par(10, x) + par(20, y) + par(40, 250) + par(1, s);
+  const lin = (c, L) => par(0, "LINE") + par(8, c) + par(10, 0) + par(20, 0) + par(11, L) + par(21, 0);
+  const dxfDe = (cuerpo) => par(0, "SECTION") + par(2, "HEADER") + par(9, "$INSUNITS") + par(70, 4) + par(0, "ENDSEC") + par(0, "SECTION") + par(2, "ENTITIES") + cuerpo + par(0, "ENDSEC") + par(0, "EOF");
+  /* Levantamiento en planta (mm): nave 20×15 m (300 m², h 6, perímetro 70) con un cuarto limpio ISO 8 de 6×5 m adentro (30 m²,
+     perímetro 22, SIN altura rotulada); oficina 10×8 m (80 m², h 3, perímetro 36) pegada a la nave. */
+  const DXF_LEV = dxfDe(rect("A-MURO", 0, 0, 20000, 15000) + txt("A-TEXTO", 10000, 12000, "NAVE PRODUCCION 300 m2 h=6.00 m") +
+    rect("A-MURO", 20000, 0, 30000, 8000) + txt("A-TEXTO", 25000, 4000, "OFICINA 80 m2 h=3.00 m") +
+    rect("A-MURO", 2000, 2000, 8000, 7000) + txt("A-TEXTO", 5000, 4500, "CUARTO LIMPIO ISO 8 30 m2"));
+  /* Plano de instalaciones: una nave con altura rotulada y tres redes medibles por capa. */
+  const DXF_INST = dxfDe(rect("A-MURO", 0, 0, 20000, 15000) + txt("A-TEXTO", 10000, 7000, "NAVE h=7.50 m") +
+    lin("IH-AGUA-FRIA", 45000) + lin("M-DUCTO-SA", 60000) + lin("PCI-ROCIADORES", 38000));
+  const pdfDe = (paginas) => { const objs = []; const add = (b) => { objs.push(Buffer.isBuffer(b) ? b : Buffer.from(b, "latin1")); return objs.length; };
+    const font = add("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
+    const cont = paginas.map((t2) => { const z = zlibx.deflateSync(Buffer.from(t2, "latin1")); return add(Buffer.concat([Buffer.from(`<< /Length ${z.length} /Filter /FlateDecode >>\nstream\n`), z, Buffer.from("\nendstream")])); });
+    const pagesId = objs.length + cont.length + 1;
+    const pags = cont.map((c) => add(`<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 612 792] /Contents ${c} 0 R /Resources << /Font << /F1 ${font} 0 R >> >> >>`));
+    add(`<< /Type /Pages /Kids [${pags.map((p) => p + " 0 R").join(" ")}] /Count ${pags.length} >>`); const cat = add(`<< /Type /Catalog /Pages ${pagesId} 0 R >>`);
+    const partes = [Buffer.from("%PDF-1.4\n")]; let pos = partes[0].length; const offs = [];
+    objs.forEach((o, i) => { offs.push(pos); const b = Buffer.concat([Buffer.from(`${i + 1} 0 obj\n`), o, Buffer.from("\nendobj\n")]); partes.push(b); pos += b.length; });
+    partes.push(Buffer.from(`xref\n0 ${objs.length + 1}\n0000000000 65535 f \n${offs.map((o) => String(o).padStart(10, "0") + " 00000 n \n").join("")}trailer\n<< /Size ${objs.length + 1} /Root ${cat} 0 R >>\nstartxref\n${pos}\n%%EOF\n`));
+    return Buffer.concat(partes); };
+  const PDF_LEV = pdfDe(["BT /F1 12 Tf 72 720 Td (LEVANTAMIENTO DE LA NAVE) Tj 0 -16 Td (Altura libre: 6.0 m  Ocupacion: 35 personas) Tj ET",
+    "BT /F1 12 Tf 72 720 Td (Cambios de aire 8 cambios/h) Tj ET"]);
+  const zipDe = (e) => G("zipCrear")(e.map((x) => ({ nombre: x.nombre, datos: typeof x.datos === "string" ? new w.TextEncoder().encode(x.datos) : new Uint8Array(x.datos) })));
+  const celda = (r, v) => typeof v === "number" ? `<c r="${r}"><v>${v}</v></c>` : `<c r="${r}" t="inlineStr"><is><t>${v}</t></is></c>`;
+  const xlsxDe = (nombreHoja, filas) => zipDe([
+    { nombre: "[Content_Types].xml", datos: '<Types xmlns="x"><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/></Types>' },
+    { nombre: "xl/workbook.xml", datos: `<workbook xmlns="x" xmlns:r="r"><sheets><sheet name="${nombreHoja}" sheetId="1" r:id="rId1"/></sheets></workbook>` },
+    { nombre: "xl/_rels/workbook.xml.rels", datos: '<Relationships><Relationship Id="rId1" Type="w" Target="worksheets/sheet1.xml"/></Relationships>' },
+    { nombre: "xl/worksheets/sheet1.xml", datos: `<worksheet><sheetData>${filas.map((f, i) => `<row r="${i + 1}">${f.map((v, j) => celda(String.fromCharCode(65 + j) + (i + 1), v)).join("")}</row>`).join("")}</sheetData></worksheet>` },
+  ]);
+  /* Levantamiento en Excel: un renglón de título arriba del encabezado, como lo exportan los programas de planos. */
+  const XLSX_LEV = xlsxDe("Levantamiento", [["Levantamiento de locales", "", "", "", ""], ["Local", "Área (m²)", "Altura (m)", "Perímetro (m)", "Clasificación"],
+    ["Nave producción", 300, 6, 70, ""], ["Oficina", 80, 3, 36, ""], ["Cuarto limpio", 30, 3, 22, "ISO 8"]]);
+  const CSV_EXTRACCION = "Nombre,Capa,Area,Perimetro,Altura\nNave,A-LOCAL,300 m2,70 m,6 m\nOficina,A-LOCAL,80 m2,36 m,3 m\n";
+  const textoPdf = (u8) => Buffer.from(u8).toString("latin1");
+  const filasT = () => G("cxzArchivos")();
+  const esperaCola = async () => { for (let i = 0; i < 400; i++) { if (!G("CXZ_OCUPADO") && !filasT().some((f) => f.estado === "espera" && f.motor !== "sin" && f.motor !== "referencia") && !filasT().some((f) => f.estado === "procesando")) return; await new Promise((r) => setTimeout(r, 15)); } throw new Error("la cola de procesamiento no terminó"); };
+  const REBANADAS = ["zones", "clean", "vent", "fuego", "civil", "soporte", "duct", "hidro", "aire", "elec"];
+  const foto = () => Object.fromEntries(REBANADAS.map((k) => [k, JSON.stringify(S[k])]));
+  const cambiaron = (a, b) => REBANADAS.filter((k) => a[k] !== b[k]);
+  const HUELLAS = ["load", "clean", "vent", "fuego", "civil", "soporte", "duct", "hidro", "aire"];
+  const huellas = () => Object.fromEntries(HUELLAS.map((k) => [k, G("huellaMotor")(k)]));
+  const huellasMovidas = (a, b) => HUELLAS.filter((k) => a[k] !== b[k]);
+  const limpio = (nombre) => { G("closeModal")(); G("reemplazarEstado")(G("defaultState")()); S.meta.name = nombre; G("projSave")(true); G("recompute")(); };
+  const cargar = async (entradas) => { S.tab = "tablero"; await G("cxzAgregarArchivos")(entradas); await esperaCola(); };
+  const ultimoLote = (tab) => { const L = G("cxLotesDe")(tab); return L[L.length - 1]; };
+  const guardado = JSON.stringify(S);
+  try {
+    await tA("S.120 (H-272a) obra civil: el plano y el Excel del levantamiento alimentan SU captura (S.civil.areas y S.civil.cuartos, un renglón por espacio con nombre, área, altura si viene, perímetro si viene y su archivo); ya no se escribe civil.areaManual ni se apaga usarZonas; lo que el archivo no trae queda pendiente (altura 0); sólo obra civil cambia", async () => {
+      limpio("S.120");
+      S.civil.areas = [{ id: "a1", nombre: "Patio techado", area: 50, altura: 4, perimetro: 30 }]; G("recompute")();
+      const f0 = foto(), h0 = huellas();
+      await cargar([archivo("levantamiento.dxf", DXF_LEV, "Obra civil/levantamiento.dxf")]);
+      const fila = filasT()[0];
+      eq(fila.motor, "civil", "la carpeta manda:"); eq(fila.estado, "listo", fila.detalle);
+      eq(S.civil.usarZonas, true, "cargar un plano no cambia obra civil a «totales capturados a mano»:");
+      eq(Number(S.civil.areaManual) || 0, 0, "el área del plano no va al total a mano:");
+      eq(JSON.stringify(S.civil.areas[0]), JSON.stringify({ id: "a1", nombre: "Patio techado", area: 50, altura: 4, perimetro: 30 }), "lo capturado a mano sigue igual:");
+      const nave = S.civil.areas.find((a) => /NAVE/i.test(a.nombre)), ofi = S.civil.areas.find((a) => /OFICINA/i.test(a.nombre));
+      if (!nave || !ofi) throw new Error("cada espacio del plano debe ser un renglón de «Áreas de obra»: " + JSON.stringify(S.civil.areas));
+      cerca(nave.area, 300, .01, "área de la nave:"); cerca(nave.altura, 6, 1e-9, "altura rotulada de la nave:"); cerca(nave.perimetro, 70, .01, "perímetro del polígono:");
+      cerca(ofi.area, 80, .01, "área de la oficina:"); cerca(ofi.altura, 3, 1e-9, "cada espacio con SU altura, no la mayor del plano:"); cerca(ofi.perimetro, 36, .01, "perímetro de la oficina:");
+      if (new Set(S.civil.areas.map((a) => a.id)).size !== S.civil.areas.length) throw new Error("ids repetidos en las áreas de obra");
+      const k = (S.civil.cuartos || []).find((c) => /LIMPIO/i.test(c.nombre));
+      if (!k) throw new Error("el cuarto ISO 8 del plano debe entrar como cuarto clasificado de obra civil: " + JSON.stringify(S.civil.cuartos));
+      cerca(k.area, 30, .01, "área del cuarto:"); cerca(k.perimetro, 22, .01, "perímetro del cuarto:"); eq(Number(k.altura) || 0, 0, "sin altura rotulada no se supone ninguna (regla 6):");
+      if (S.civil.areas.some((a) => /LIMPIO/i.test(a.nombre))) throw new Error("el cuarto dentro de la nave no se cuenta además como área de obra");
+      G("recompute")(); cerca(G("CIVIL").area, 50 + 300 + 80, .01, "área de obra = lo capturado + lo del plano:");
+      if (!G("CIVIL").avisos.some((a) => /sin altura capturada/.test(a.msg))) throw new Error("el motor debe avisar que el cuarto sin altura queda pendiente");
+      /* Trazabilidad (regla 8): cada renglón aplicado con su archivo y su rótulo; en pantalla, en «Origen de los datos» y en la memoria. */
+      const L = ultimoLote("civil");
+      const ap = L.aplicados.filter((a) => a.destino === "civil.areas" || a.destino === "civil.cuartos");
+      eq(ap.length, 3, "un registro de origen por renglón:");
+      ap.forEach((a) => { eq(a.archivo, "levantamiento.dxf", "archivo de origen:"); if (!a.texto) throw new Error("el registro no dice el rótulo del plano del que salió"); });
+      contiene(G("cxOrigenHtml")("civil"), "NAVE PRODUCCION", "«Origen de los datos» lista el renglón:");
+      S.tab = "civil"; G("render")();
+      contiene(w.document.getElementById("view").textContent, "levantamiento.dxf", "la pestaña dice de qué archivo salió cada renglón:");
+      contiene(textoPdf(G("buildCivilPdf")()), "levantamiento.dxf", "la memoria de obra civil cita el archivo:");
+      /* Aislamiento: sólo obra civil cambia. */
+      eq(cambiaron(f0, foto()).join(","), "civil", "rebanadas del estado que cambiaron:");
+      eq(huellasMovidas(h0, huellas()).join(","), "civil", "huellas de motor que se movieron:");
+      /* Excel del levantamiento: un renglón por local, con hoja y fila de origen. */
+      limpio("S.120b");
+      await cargar([archivo("levantamiento.xlsx", XLSX_LEV, "Obra civil/levantamiento.xlsx")]);
+      const fx = filasT()[0];
+      eq(fx.motor, "civil", "la carpeta manda:"); eq(fx.estado, "listo", fx.detalle);
+      eq(S.civil.areas.map((a) => `${a.nombre}:${a.area}×${a.altura}/${a.perimetro}`).join(","), "Nave producción:300×6/70,Oficina:80×3/36", "áreas de obra del Excel:");
+      eq((S.civil.cuartos || []).map((c) => `${c.nombre}:${c.area}×${c.altura}/${c.perimetro}`).join(","), "Cuarto limpio:30×3/22", "cuartos clasificados del Excel:");
+      const apx = ultimoLote("civil").aplicados.filter((a) => /^civil\.(areas|cuartos)$/.test(a.destino));
+      eq(apx.length, 3, "registros de origen del Excel (2 áreas + 1 cuarto):");
+      apx.forEach((a) => { contiene(a.archivo, "levantamiento.xlsx", "archivo:"); contiene(a.archivo, "Levantamiento", "hoja:"); if (!(a.fila > 2)) throw new Error("el origen no dice la fila de la hoja (contando el título y el encabezado): " + JSON.stringify(a)); });
+      eq(apx.find((a) => /Oficina/.test(a.etiqueta)).fila, 4, "fila de la oficina en la hoja:");
+      eq(Number(S.civil.areaManual) || 0, 0, "ni como total a mano:");
+      /* Extracción de datos de AutoCAD en CSV, con la unidad en la celda: entra completa, no sólo el renglón «Nave». */
+      limpio("S.120c");
+      await cargar([archivo("extraccion.csv", CSV_EXTRACCION, "Obra civil/extraccion.csv")]);
+      eq(S.civil.areas.map((a) => `${a.nombre}:${a.area}×${a.altura}/${a.perimetro}`).join(","), "Nave:300×6/70,Oficina:80×3/36", "la extracción entra renglón por renglón:");
+      eq(Number(S.civil.areaManual) || 0, 0, "el área no va al total a mano:");
+      eq(w.__errs.length, 0, "errores de ventana:");
+    });
+    await tA("S.121 (H-272b) reaplicar un archivo no duplica: volver a revisar tras recargar, reasignar ida y vuelta, cargar el mismo archivo otra vez y «Aplicar» en la ventana reconocen lo que ya entró de ese archivo (clave archivo+dato), no lo repiten ni pisan lo editado; la fila lo dice; quitar el archivo avisa y no borra los datos; 34 archivos dejan 34 registros de origen", async () => {
+      limpio("S.121");
+      await cargar([archivo("levantamiento.dxf", DXF_LEV, "Obra civil/levantamiento.dxf")]);
+      const f = filasT()[0];
+      eq(f.motor, "civil", "motor:"); eq(S.civil.areas.length, 2, "áreas al cargar:"); eq(S.civil.cuartos.length, 1, "cuartos al cargar:");
+      const lotes0 = G("cxLotesDe")("civil").length, aplicados0 = f.aplicados;
+      /* 1) Tras recargar la página no queda el lote de sesión: «Volver a revisar» vuelve a leer el archivo. */
+      delete G("CXZ_LOTES")[f.id];
+      await G("cxzRevisar")(f.id);
+      eq(S.civil.areas.length, 2, "volver a revisar tras recargar duplicó las áreas:"); eq(S.civil.cuartos.length, 1, "…o los cuartos:");
+      eq(G("cxLotesDe")("civil").length, lotes0, "no se agrega un registro de origen vacío:");
+      contiene(f.detalle, "ya habían entrado", "la fila dice que ya habían entrado:"); eq(f.aplicados, aplicados0, "la fila sigue contando lo que entró de este archivo:");
+      const m = w.document.getElementById("modal");
+      contiene(m.textContent, "ya había entrado de este archivo", "la ventana marca lo ya entrado:");
+      /* 2) «Aplicar» en la ventana tampoco repite. */
+      m.querySelector('[data-act="cx-aplicar"]').dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+      await new Promise((r) => setTimeout(r, 10));
+      eq(S.civil.areas.length, 2, "«Aplicar» duplicó:"); eq(G("cxLotesDe")("civil").length, lotes0, "registros de origen tras «Aplicar»:");
+      /* 3) Reasignar a otra disciplina y de vuelta: la otra recibe lo suyo, la primera no repite. */
+      G("cxzReasignar")(f.id, "fuego"); await esperaCola();
+      if (!(S.fuego.area > 0)) throw new Error("reasignado a contra incendio no recibió su área a proteger: " + f.detalle);
+      G("cxzReasignar")(f.id, "civil"); await esperaCola();
+      eq(S.civil.areas.length, 2, "reasignar ida y vuelta duplicó las áreas:"); eq(S.civil.cuartos.length, 1, "…o los cuartos:");
+      contiene(f.detalle, "ya habían entrado");
+      /* 4) Lo que el usuario editó después no se pisa: el área a proteger que entró sola se cambió a mano. */
+      S.fuego.area = 999; G("recompute")();
+      const f2 = (await (async () => { await cargar([archivo("levantamiento.dxf", DXF_LEV, "Contra incendio/levantamiento.dxf")]); return filasT()[filasT().length - 1]; })());
+      eq(f2.motor, "fuego"); eq(S.fuego.area, 999, "el mismo plano en otra carpeta pisó el área editada a mano:");
+      contiene(f2.detalle, "ya habían entrado", "la fila nueva dice que ese dato ya había entrado de este archivo:");
+      /* 5) El mismo archivo otra vez en la misma disciplina: no repite y lo dice. */
+      await cargar([archivo("levantamiento.dxf", DXF_LEV, "Obra civil/levantamiento.dxf")]);
+      const f3 = filasT()[filasT().length - 1];
+      eq(f3.motor, "civil"); eq(S.civil.areas.length, 2, "cargar el mismo archivo otra vez duplicó:"); contiene(f3.detalle, "ya habían entrado");
+      /* 6) Quitar el archivo de la tabla no borra lo que entró (puede estar editado) y lo dice. */
+      await G("cxzQuitar")(f.id);
+      eq(S.civil.areas.length, 2, "quitar el archivo borró los renglones:");
+      contiene(w.document.querySelector("#toast").textContent, "siguen en Obra civil", "el aviso dice dónde quedaron:");
+      if (!G("cxLotesDe")("civil").some((l) => l.archivoRetirado)) throw new Error("el registro de origen no quedó marcado «archivo retirado»");
+      contiene(G("cxOrigenHtml")("civil"), "archivo retirado", "«Origen de los datos» lo dice:");
+      /* 7) Trazado sin tope corto: 34 cuadros de cargas distintos son 34 registros de origen (antes 30). */
+      limpio("S.121b");
+      const cuadros = Array.from({ length: 34 }, (_, i) => archivo(`cuadro-${i + 1}.csv`, `circuito,descripcion,Potencia (kW),Tension,Fases\nC-${i + 1},Tablero ${i + 1},${(i + 1) * 0.5},220 V,3F\n`, `Electrico/cuadro-${i + 1}.csv`));
+      await cargar(cuadros);
+      eq(S.elec.cargas.length, 34, "cargas:"); eq(G("cxLotesDe")("electrico").length, 34, "registros de origen (uno por archivo):");
+      eq(w.__errs.length, 0, "errores de ventana:");
+    });
+    await tA("S.122 (H-272c) nada se supone al cargar: la zona de carga térmica entra sólo con lo que el plano trae (altura y personas rotuladas, muros exteriores a esa altura; ocupantes, luces, equipo y vidrio en 0 = pendientes); un cuarto sin clase ISO escrita queda sin marcar con la clase pendiente; el área a proteger de un plano de varios cuartos es la suma de sus polígonos exteriores y la altura la del cuarto más alto, con su origen; un consumo de aire sin columna de cantidad es 1 por renglón", async () => {
+      limpio("S.122");
+      await cargar([archivo("levantamiento.dxf", DXF_LEV, "Carga termica/levantamiento.dxf")]);
+      const f = filasT()[0]; eq(f.motor, "carga", "motor:"); eq(f.estado, "listo", f.detalle);
+      /* Las zonas son los cuartos «hoja» del plano (la nave contiene al cuarto limpio y no se duplica como zona). */
+      const ofi = S.zones.find((z) => /OFICINA/.test(z.name)), k = S.zones.find((z) => /LIMPIO/.test(z.name));
+      if (!ofi || !k) throw new Error("zonas del plano: " + S.zones.map((z) => z.name).join(","));
+      cerca(ofi.height, 3, 1e-9, "altura rotulada de la oficina:"); eq(ofi.occ, 0, "ocupantes no rotulados no se suponen:"); eq(ofi.lights, 0, "luces no se suponen:"); eq(ofi.equip, 0, "equipo no se supone:");
+      cerca(ofi.walls.N, 10 * 3, .2, "muro norte = ancho × altura rotulada:"); eq(ofi.walls.W, 0, "cara compartida con la nave:");
+      eq(["N", "NE", "E", "SE", "S", "SW", "W", "NW"].reduce((a, o) => a + ofi.glass[o], 0), 0, "el vidrio no se deduce de un plano:");
+      eq(k.height, 0, "sin altura rotulada no se supone ninguna:"); eq(["N", "E", "S", "W"].reduce((a, o) => a + k.walls[o], 0), 0, "sin altura no hay muro que calcular:");
+      const pK = G("CXZ_LOTES")[f.id].propuestas.find((p) => /LIMPIO/.test(p.etiqueta));
+      contiene(pK.valor, "pendientes", "la propuesta dice qué queda pendiente:"); contiene(pK.valor, "altura", "…incluida la altura:");
+      contiene((G("CXZ_LOTES")[f.id].analisis.avisosPropuesta || []).join(" "), "no se suponen", "el aviso de la carga lo dice:");
+      aceptarSitioCarga();   /* H-290: el proyecto nuevo acepta el sitio de Proyecto para calcular la carga */
+      const Lofi = G("LOADS")[S.zones.indexOf(ofi)];
+      if (!(Lofi && Lofi.tons > 0)) throw new Error("la oficina con altura rotulada debe producir carga (muros y envolvente): " + JSON.stringify(Lofi && Lofi.tons));
+      /* Cuartos limpios: sin clase ISO escrita no se supone ISO 7: el cuarto se ofrece sin marcar y lo dice. */
+      limpio("S.122b");
+      const DXF_SINISO = dxfDe(rect("A-MURO", 0, 0, 8000, 5000) + txt("A-TEXTO", 4000, 2500, "CUARTO LIMPIO LLENADO 40 m2"));
+      await cargar([archivo("llenado.dxf", DXF_SINISO, "Cuartos limpios/llenado.dxf")]);
+      const f2 = filasT()[0]; eq(f2.motor, "limpios", "motor:");
+      const p2 = G("CXZ_LOTES")[f2.id].propuestas.find((p) => p.grupo === "cuarto");
+      if (!p2) throw new Error("no se propuso el cuarto: " + f2.detalle);
+      eq(p2.marcado, false, "sin clase ISO escrita no entra solo:"); eq(!!p2.aplicado, false, "…ni se aplicó:"); contiene(p2.valor, "pendiente", "la propuesta dice que la clase queda pendiente:");
+      if ((S.clean.rooms || []).some((r) => /LLENADO/.test(r.name))) throw new Error("el cuarto sin clase entró solo con una clase supuesta");
+      contiene(f2.detalle, "por revisar", "la fila lo deja por revisar:");
+      /* Contra incendio: el área a proteger es la suma de los espacios exteriores del plano, no el rótulo de un cuarto; la altura, la del más alto. */
+      limpio("S.122c");
+      await cargar([archivo("levantamiento.dxf", DXF_LEV, "Contra incendio/levantamiento.dxf")]);
+      eq(S.fuego.area, 380, "área a proteger = nave + oficina (antes 300, el rótulo de un cuarto):"); cerca(S.fuego.altura, 6, 1e-9, "altura del cuarto más alto:");
+      const apH = ultimoLote("fuego").aplicados.find((a) => a.destino === "fuego.altura");
+      if (!apH) throw new Error("la altura no quedó registrada con su origen"); contiene(apH.texto, "NAVE", "el origen dice de qué cuarto salió la altura:");
+      /* Aire comprimido: sin columna de cantidad, cada renglón es un consumidor; la demanda pico ya no es 0. */
+      limpio("S.122d");
+      await cargar([archivo("consumos.csv", "Equipo,Consumo (l/min)\nPistola de soplado,400\nCilindro,250\n", "Aire comprimido/consumos.csv")]);
+      eq(filasT()[0].motor, "aire", "motor:"); eq(S.aire.consumos.length, 2, "consumos:");
+      eq(S.aire.consumos.map((c) => c.cant).join(","), "1,1", "un consumidor por renglón:");
+      G("recompute")(); cerca(G("AIRE").pico, 650, .5, "demanda pico:");
+      eq(w.__errs.length, 0, "errores de ventana:");
+    });
+    await tA("S.123 (H-272d) un archivo alimenta a varias disciplinas: el levantamiento (por carpeta o por tener varios espacios) se lee una vez y ofrece sus datos a obra civil, carga térmica, cuartos limpios, contra incendio, ventilación y soportería, cada uno a su captura propia y con su registro de origen, sin cruces ni permisos; ventilación ofrece cada cuarto sin marcar; soportería recibe los metros por capa y la altura libre como altura de la estructura sin marcar, sin casilla de conteo ni altura de trabajo; con instantánea aceptada los metros no entran solos; el cuadro de cargas en HP entra con kW, FP y distancia", async () => {
+      limpio("S.123");
+      const h0 = huellas(), perms0 = JSON.stringify(S.perms || {});
+      await cargar([archivo("levantamiento.dxf", DXF_LEV, "Levantamiento/levantamiento.dxf")]);
+      const f = filasT()[0];
+      eq(f.motor, "levantamiento", "un levantamiento alimenta a varias disciplinas:"); eq(f.estado, "listo", f.detalle);
+      eq(S.civil.areas.length, 2, "obra civil recibe sus áreas:"); eq(S.civil.cuartos.length, 1, "…y su cuarto:"); eq(S.civil.usarZonas, true);
+      eq(S.zones.filter((z) => /OFICINA|LIMPIO/.test(z.name)).length, 2, "carga térmica recibe sus zonas:");
+      eq((S.clean.rooms || []).filter((r) => /LIMPIO/.test(r.name)).length, 1, "cuartos limpios recibe el cuarto ISO 8:");
+      eq(S.fuego.area, 380, "contra incendio recibe el área a proteger:"); cerca(S.fuego.altura, 6, 1e-9, "…y la altura:");
+      eq(S.vent.area, 0, "ventilación no recibe el área total sola (elige el local):");
+      const lv = G("CXZ_LOTES")[f.id];
+      if (!lv || !lv.compuesto) throw new Error("el levantamiento debe dejar un lote por disciplina");
+      const pv = ((lv.porTab.ventilacion || {}).lote || { propuestas: [] }).propuestas.filter((p) => p.destino === "vent.area");
+      if (pv.length < 2 || pv.some((p) => p.marcado || p.aplicado)) throw new Error("ventilación debe ofrecer cada cuarto como opción sin marcar: " + JSON.stringify(pv.map((p) => [p.etiqueta, p.marcado])));
+      eq(huellasMovidas(h0, huellas()).sort().join(","), "civil,clean,fuego,load", "huellas de motor que se movieron:");
+      eq(JSON.stringify(S.perms || {}), perms0, "no se conceden permisos entre disciplinas:");
+      contiene(f.detalle, "Obra civil", "la fila cuenta por disciplina:"); contiene(f.detalle, "Contra incendio");
+      const M = G("cxzEstadoMotores")();
+      if (M.some((m) => m.id === "levantamiento")) throw new Error("«levantamiento» no es un motor: cuenta en cada disciplina");
+      eq(M.find((m) => m.id === "civil").archivos, 1, "el estado de obra civil cuenta el levantamiento:"); eq(M.find((m) => m.id === "civil").aplicados, 3, "…con lo que aplicó ahí:");
+      eq(M.find((m) => m.id === "fuego").aplicados, 2, "contra incendio cuenta su área y su altura:");
+      ["civil", "carga", "limpios", "fuego"].forEach((t) => { const L = G("cxLotesDe")(t); if (!L.length || !L[L.length - 1].aplicados.some((a) => a.archivo === "levantamiento.dxf")) throw new Error(t + ": sin registro de origen del levantamiento"); });
+      await G("cxzRevisar")(f.id);
+      const m = w.document.getElementById("modal");
+      contiene(m.textContent, "Este levantamiento alimenta", "la ventana ofrece una pestaña por disciplina:"); contiene(m.textContent, "Obra civil"); contiene(m.textContent, "Ventilación");
+      m.querySelector('[data-act="cx-cambiar"][data-cx-tab="fuego"]').dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+      contiene(w.document.getElementById("modal").textContent, "Área a proteger", "cambiar de pestaña muestra el lote de esa disciplina:");
+      G("closeModal")();
+      /* Reprocesar (tras recargar) no duplica en ninguna de las disciplinas (H-272b). */
+      delete G("CXZ_LOTES")[f.id]; await G("cxzRevisar")(f.id); G("closeModal")();
+      eq(S.civil.areas.length, 2, "civil no duplica:"); eq(S.zones.filter((z) => /OFICINA|LIMPIO/.test(z.name)).length, 2, "carga no duplica:"); eq(S.fuego.area, 380);
+      eq(f.motor, "levantamiento", "la fila sigue siendo levantamiento:");
+      /* Una planta suelta con varios espacios también es levantamiento; con uno solo sigue siendo zona (20.4). */
+      limpio("S.123a");
+      await cargar([archivo("planta.dxf", DXF_LEV)]);
+      eq(filasT()[0].motor, "levantamiento", "planta suelta con varios espacios:"); contiene(filasT()[0].motivo, "espacios");
+      /* Soportería con un plano de instalaciones. */
+      limpio("S.123b");
+      await cargar([archivo("instalaciones.dxf", DXF_INST, "Soporteria/instalaciones.dxf")]);
+      const fs2 = filasT()[0]; eq(fs2.motor, "soporte", "motor:"); eq(fs2.estado, "listo", fs2.detalle);
+      cerca(S.soporte.ductoM, 60, .1, "ducto medido:"); cerca(S.soporte.tubHidroM, 45, .1, "tubería hidro medida:"); cerca(S.soporte.tubFuegoM, 38, .1, "tubería contra incendio medida:");
+      eq(S.soporte.usarMotores, false, "usarMotores no cambia:"); eq(Number(S.soporte.alturaTrabajo) || 0, 0, "la altura de trabajo no se estima del plano:"); eq(Number(S.soporte.alturaEstructura) || 0, 0, "la altura de la estructura no entra sola:");
+      const ls = G("CXZ_LOTES")[fs2.id].propuestas;
+      if (ls.some((p) => p.destino === "soporte.usarMotores")) throw new Error("ya no hay casilla de conteo por motores");
+      const pE = ls.find((p) => p.destino === "soporte.alturaEstructura");
+      if (!pE || pE.marcado) throw new Error("la altura libre del plano debe ofrecerse sin marcar como altura de la estructura: " + JSON.stringify(ls.map((p) => p.destino)));
+      cerca(pE.valor, 7.5, 1e-9, "altura libre del plano:");
+      contiene(textoPdf(G("buildSoportePdf")()), "instalaciones.dxf", "la memoria de soportería cita el plano:");
+      /* Con instantánea de motores aceptada los metros del plano no entran solos y se dice. */
+      limpio("S.123c");
+      S.soporte.snap = G("snapshotSoporte")(); S.soporte.usarMotores = true; G("recompute")();
+      await cargar([archivo("instalaciones.dxf", DXF_INST, "Soporteria/instalaciones.dxf")]);
+      eq(Number(S.soporte.ductoM) || 0, 0, "con instantánea aceptada los metros del plano no entran solos:");
+      const pD = G("CXZ_LOTES")[filasT()[0].id].propuestas.find((p) => p.destino === "soporte.ductoM");
+      if (!pD || pD.marcado) throw new Error("los metros deben ofrecerse sin marcar con la instantánea aceptada"); contiene(pD.texto, "instantánea", "…y decir por qué:");
+      /* Eléctrico: un cuadro en HP con factor de potencia y distancia entra completo; lo que no viene queda pendiente. */
+      limpio("S.123d");
+      await cargar([archivo("cuadro-hp.csv", "Equipo,HP,Tension,Fases,FP,Distancia (m)\nBomba de agua,5,220 V,3F,0.85,30\nExtractor de aire,2,220 V,3F,0.8,12\n", "Electrico/cuadro-hp.csv")]);
+      eq(filasT()[0].motor, "electrico", "motor:"); eq(S.elec.cargas.length, 2, "cargas desde HP: " + filasT()[0].detalle);
+      cerca(S.elec.cargas[0].kW, 5 * 0.746, .001, "kW desde HP:"); eq(S.elec.cargas[0].fp, 0.85, "factor de potencia leído:"); eq(S.elec.cargas[0].L, 30, "distancia:"); eq(S.elec.cargas[0].V, 220); eq(S.elec.cargas[0].ph, 3);
+      contiene(String(ultimoLote("electrico").aplicados[0].valor), "HP", "el origen dice que el kW salió de HP:");
+      const sinV = await G("cxProcesarArchivos")([archivo("cuadro-sin-v.csv", "Equipo,kW\nHorno,5\n").file], "electrico");
+      const pSinV = sinV.propuestas.find((p) => p.grupo === "carga");
+      eq(pSinV.marcado, false, "sin tensión ni fases en el archivo la carga no entra sola:"); contiene(pSinV.valor, "pendiente", "…y dice que quedan pendientes:");
+      eq(w.__errs.length, 0, "errores de ventana:");
+    });
+    await tA("S.124 (H-272e) catálogos y listas de precios quedan como referencia consultable con archivo, hoja/página y fila (marca, modelo, capacidad, precio con moneda y vigencia); no entran solos a ningún motor ni dejan registro de datos aplicados; el tablero los muestra y «Consultar» los abre; una lista de precios de tubería se ofrece para importarla a hidrosanitario con sus reglas; quitar el archivo retira sus referencias", async () => {
+      limpio("S.124");
+      const h0 = huellas(), f0 = foto();
+      const XLSX_CAT = xlsxDe("Catalogo", [["Marca", "Modelo", "Capacidad (TR)", "kW", "Precio (MXN)", "Vigencia"], ["Carrier", "RTU-10", 10, 11.5, 185000, "2026-08-01"], ["Carrier", "RTU-15", 15, 16.8, 240000, ""]]);
+      await cargar([archivo("catalogo-rtu.xlsx", XLSX_CAT, "Catalogos/catalogo-rtu.xlsx")]);
+      const f = filasT()[0];
+      eq(f.motor, "catalogo", "un catálogo es referencia consultable, no selección:"); eq(f.estado, "listo", f.detalle); contiene(f.detalle, "referencia"); contiene(f.detalle, "no entran a ningún motor");
+      const R = S.cx.referencias || [];
+      eq(R.length, 2, "renglones de referencia:");
+      eq(R[0].marca, "Carrier", "marca:"); eq(R[0].modelo, "RTU-10", "modelo:"); contiene(R[0].capacidad, "10 TR", "capacidad con su unidad del encabezado:"); contiene(R[0].capacidad, "kW");
+      eq(R[0].precio, 185000, "precio:"); eq(R[0].moneda, "MXN", "moneda del encabezado:"); eq(R[0].fecha, "2026-08-01", "vigencia:");
+      contiene(R[0].archivo, "catalogo-rtu.xlsx", "archivo:"); contiene(R[0].archivo, "Catalogo", "hoja:"); eq(R[0].fila, 2, "fila de la hoja:"); eq(R[1].fila, 3); eq(R[1].fecha, null, "sin vigencia queda null, no una fecha supuesta:");
+      eq(cambiaron(f0, foto()).join(","), "", "ningún motor recibe nada de un catálogo:"); eq(huellasMovidas(h0, huellas()).join(","), "", "ninguna huella se mueve:");
+      eq((S.cx.lotes || []).length, 0, "no hay registro de datos aplicados: nada entró a un motor:");
+      eq(G("cxzEstadoMotores")().some((m) => m.id === "catalogo"), false, "el catálogo no es un motor:");
+      S.tab = "tablero"; G("render")();
+      const v = w.document.getElementById("view"), txt = v.textContent;
+      contiene(txt, "Referencias del proyecto ejecutivo", "el tablero muestra las referencias:"); contiene(txt, "RTU-10"); contiene(txt, "catalogo-rtu.xlsx"); contiene(txt, "fila 3"); contiene(txt, "sin fecha de vigencia", "el precio sin vigencia se declara referencia:");
+      const btn = v.querySelector('[data-act="cxz-catalogo"]');
+      if (!btn) throw new Error("la fila del catálogo no ofrece «Consultar»");
+      btn.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+      contiene(w.document.getElementById("modal").textContent, "RTU-15", "«Consultar» abre el catálogo:"); G("closeModal")();
+      /* Reprocesar no duplica las referencias. */
+      delete G("CXZ_LOTES")[f.id]; f.estado = "espera"; await G("cxzProcesarPendientes")(); await esperaCola();
+      eq((S.cx.referencias || []).length, 2, "reprocesar duplicó las referencias:");
+      /* Cédula de equipos en PDF: cada equipo con marca y capacidad, con su página. */
+      limpio("S.124b");
+      const PDF_CED = pdfDe(["BT /F1 12 Tf 72 720 Td (CEDULA DE EQUIPOS) Tj 0 -16 Td (UMA-01 Carrier 39M 12 TR 4500 CFM) Tj ET"]);
+      await cargar([archivo("cedula.pdf", PDF_CED, "Catalogos/cedula.pdf")]);
+      eq(filasT()[0].motor, "catalogo", "motor:"); eq(filasT()[0].estado, "listo", filasT()[0].detalle);
+      const uma = (S.cx.referencias || []).find((r) => r.tag === "UMA-01");
+      if (!uma) throw new Error("la cédula en PDF no dejó al equipo como referencia: " + JSON.stringify(S.cx.referencias));
+      eq(uma.marca, "Carrier", "marca:"); eq(uma.pagina, 1, "página:"); contiene(uma.capacidad, "12", "capacidad del mismo renglón:");
+      eq((S.cx.lotes || []).length, 0, "nada entró a selección ni a otro motor:");
+      /* Lista de precios de tubería: referencia, y se ofrece importarla a hidrosanitario con las reglas del importador. */
+      limpio("S.124c");
+      /* El diámetro 1/2" va entrecomillado como lo exporta cualquier hoja de cálculo ("1/2"""). */
+      await cargar([archivo("precios-tuberia.csv", "material,diametro,precio,moneda,fuente,fecha\ncpvc,\"1/2\"\"\",85,MXN,proveedor local,2026-09-01\n", "Catalogos/precios-tuberia.csv")]);
+      const fp = filasT()[0];
+      eq(fp.motor, "catalogo", "una lista de precios es catálogo:"); eq(fp.estado, "listo", fp.detalle); eq(fp.info.preciosHidro, true, "se reconoce como lista de precios de tubería:");
+      eq((S.cx.referencias || []).length, 1, "un renglón de referencia:"); eq(S.cx.referencias[0].precio, 85);
+      const clave = G("claveHidroPU")("cpvc", '1/2"');
+      if (S.hidro.hidroPU && S.hidro.hidroPU[clave]) throw new Error("el precio entró solo a hidrosanitario: debe esperar la orden del usuario");
+      S.tab = "tablero"; G("render")();
+      w.document.querySelector('#view [data-act="cxz-catalogo"]').dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+      const bImp = w.document.querySelector('#modal [data-act="cxz-catalogo-hidro"]');
+      if (!bImp) throw new Error("la ventana no ofrece importar la lista a precios de hidrosanitario");
+      bImp.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+      for (let i = 0; i < 100 && !(S.hidro.hidroPU && S.hidro.hidroPU[clave]); i++) await new Promise((r) => setTimeout(r, 10));
+      if (!(S.hidro.hidroPU && S.hidro.hidroPU[clave] && S.hidro.hidroPU[clave].precio === 85)) throw new Error("la importación a precios de hidro no ocurrió: " + JSON.stringify(S.hidro.hidroPU));
+      G("closeModal")();
+      /* Quitar el archivo retira sus referencias (no son datos aplicados). */
+      await G("cxzQuitar")(fp.id);
+      eq((S.cx.referencias || []).length, 0, "quitar el archivo retira sus referencias:");
+      eq(w.__errs.length, 0, "errores de ventana:");
+    });
+    await tA("S.125 (H-272 · regla 8) la memoria integral, las memorias por disciplina y el libro de la propuesta (ES y EN) dicen la verdad sobre lo que entró desde archivos: cada dato con archivo, página o fila y «entró solo al cargar» / «aceptado por el usuario»; ya no afirman que todo lo aceptó el usuario antes de entrar al motor", async () => {
+      limpio("S.125");
+      /* Entra solo desde el tablero (dato claro)… */
+      await cargar([archivo("levantamiento.dxf", DXF_LEV, "Obra civil/levantamiento.dxf")]);
+      eq(S.civil.areas.length, 2, "áreas al cargar:");
+      /* …y el usuario acepta a mano desde «Punto de partida» de ventilación (altura, ocupantes y cambios de aire de una memoria en PDF). */
+      await G("cxAlElegir")([archivo("memoria.pdf", PDF_LEV).file], "ventilacion");
+      const m = w.document.getElementById("modal");
+      if (m.hidden) throw new Error("no se abrió la ventana de hallazgos");
+      m.querySelector('[data-act="cx-aplicar"]').dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+      await new Promise((r) => setTimeout(r, 10));
+      cerca(S.vent.height, 6, 1e-9, "altura aceptada:"); eq(S.vent.occ, 35, "ocupantes aceptados:");
+      const lv = ultimoLote("ventilacion");
+      if (!lv || !lv.aplicados.length || !lv.aplicados.every((a) => a.auto === false)) throw new Error("lo aceptado en la ventana debe quedar marcado como aceptado por el usuario: " + JSON.stringify(lv && lv.aplicados.map((a) => a.auto)));
+      if (!ultimoLote("civil").aplicados.every((a) => a.auto === true)) throw new Error("lo que entró solo debe quedar marcado como tal");
+      /* Memoria integral. */
+      const txt = textoPdf(G("buildMemoriaIntegralPdf")());
+      if (/aceptado por el usuario antes de entrar al motor/.test(txt)) throw new Error("la memoria integral sigue afirmando que todo lo aceptó el usuario");
+      contiene(txt, "datos cargados de archivos del proyecto ejecutivo", "trazado de origen:");
+      contiene(txt, "solo al cargar", "distingue lo que entró solo:"); contiene(txt, "aceptado por el usuario", "…de lo aceptado:");
+      contiene(txt, "levantamiento.dxf"); contiene(txt, "memoria.pdf"); contiene(txt, "p. 1", "página del PDF:");
+      contiene(txt, "supuso", "regla 6 declarada (el párrafo se parte en renglones; basta la palabra):");
+      /* Memorias por disciplina. */
+      contiene(textoPdf(G("buildVentPdf")()), "memoria.pdf", "la memoria de ventilación cita el archivo:");
+      const civilTxt = textoPdf(G("buildCivilPdf")());
+      contiene(civilTxt, "levantamiento.dxf"); contiene(civilTxt, "solo al cargar", "la memoria de civil dice cómo entró cada renglón:");
+      /* Libro de la propuesta, ES y EN (espejo). */
+      const xlEs = Buffer.from(G("buildPropuestaXlsx")({ lang: "es", mon: "MXN" })).toString("utf8");
+      contiene(xlEs, "DATOS QUE ENTRARON DESDE ARCHIVOS DEL PROYECTO EJECUTIVO", "el libro trae la sección:"); contiene(xlEs, "levantamiento.dxf"); contiene(xlEs, "memoria.pdf");
+      contiene(xlEs, "entró solo al cargar", "ES: entró solo:"); contiene(xlEs, "aceptado por el usuario", "ES: aceptado:"); contiene(xlEs, "p. 1", "ES: página:");
+      const xlEn = Buffer.from(G("buildPropuestaXlsx")({ lang: "en", mon: "MXN" })).toString("utf8");
+      contiene(xlEn, "DATA ENTERED FROM EXECUTIVE-PROJECT FILES", "EN: sección:"); contiene(xlEn, "entered on load", "EN: entró solo:"); contiene(xlEn, "accepted by the user", "EN: aceptado:");
+      eq(w.__errs.length, 0, "errores de ventana:");
+    });
+    /* [H-272: siguientes] */
+  } finally { G("closeModal")(); G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+}
+
 /* ===== R. Regresión por motor (rev 2.9.22, decisión del dueño): un proyecto fijo con cifras esperadas por disciplina ===== */
 const REG_DIR = "parches/regresion-motores/";
 const REG_PROY = fs.readFileSync(REG_DIR + "regresion-motores.emp.json", "utf8");
 const REG_ESP = JSON.parse(fs.readFileSync(REG_DIR + "regresion-motores.esperado.json", "utf8"));
+const REG_PROY2 = fs.readFileSync(REG_DIR + "regresion-motores-2.emp.json", "utf8");   /* AUD-12 */
+const REG_ESP2 = JSON.parse(fs.readFileSync(REG_DIR + "regresion-motores-2.esperado.json", "utf8"));
+/* AUD-12 · tolerancia flotante: comparación de cifras de R.1 y R.4 contra su esperado. El esperado del proyecto 2 se generó en
+   otra máquina y la pérdida hf de un tramo de hidro difiere en el último bit (1.2097917164475953 contra …958); quote y valor lo
+   arrastran. Criterio de la casa: dos números son iguales si |a − b| ≤ 1e-9 · max(|a|, |b|) (sin tolerancia absoluta: cero contra
+   no cero sí es cambio). Textos, nulos, llaves y renglones se comparan exactos. R.3 no la usa: compara dos corridas en la misma
+   máquina. */
+const TOL_CIFRAS = 1e-9;
+const cifrasIguales = (a, b) => {
+  if (typeof a === "number" && typeof b === "number") return a === b || Math.abs(a - b) <= TOL_CIFRAS * Math.max(Math.abs(a), Math.abs(b));
+  if (Array.isArray(a) || Array.isArray(b)) return Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((x, i) => cifrasIguales(x, b[i]));
+  if (a && b && typeof a === "object" && typeof b === "object") {
+    const ka = Object.keys(a), kb = Object.keys(b);
+    return ka.length === kb.length && ka.every((k) => Object.prototype.hasOwnProperty.call(b, k) && cifrasIguales(a[k], b[k]));
+  }
+  return a === b;
+};
+/* Las dos pasan antes por JSON, como el esperado guardado: llaves indefinidas fuera, NaN e Infinity como null. */
+const comoJSON = (x) => (x === undefined ? undefined : JSON.parse(JSON.stringify(x)));
+const mismasCifras = (a, b) => cifrasIguales(comoJSON(a), comoJSON(b));
+t("S.201 (AUD-12) R.1 y R.4 comparan cifras con tolerancia relativa 1e-9: la última cifra de coma flotante que cambia de una máquina a otra no truena; un cambio de 1e-6, de texto, de nulo a cero o de forma sí", () => {
+  eq(mismasCifras({ tramos: [["T-2", 0.5, 1.2097917164475953]] }, { tramos: [["T-2", 0.5, 1.2097917164475958]] }), true, "hidro hf del proyecto 2 (1.2097917164475953 contra …958, 4e-16 relativo):");
+  eq(mismasCifras({ total: 561693.5918104438 }, { total: 561693.5918104439 }), true, "valor total del proyecto 2 (2e-16 relativo):");
+  eq(mismasCifras({ q: 1 }, { q: 1.000001 }), false, "1e-6 relativo sí es cambio:");
+  eq(mismasCifras({ q: 1 }, { q: 1 + 2e-9 }), false, "2e-9 relativo sí es cambio:");
+  eq(mismasCifras({ q: 0 }, { q: 1e-300 }), false, "cero contra no cero sí es cambio:");
+  eq(mismasCifras({ q: null }, { q: 0 }), false, "nulo (pendiente) contra cero sí es cambio:");
+  eq(mismasCifras([["a", 1]], [["b", 1]]), false, "texto distinto sí es cambio:");
+  eq(mismasCifras({ x: 1 }, { x: 1, y: 2 }), false, "llave de más sí es cambio:");
+  eq(mismasCifras([1, 2], [1, 2, 3]), false, "renglón de más sí es cambio:");
+  eq(mismasCifras({ x: [1, "2"] }, { x: [1, 2] }), false, "texto contra número sí es cambio:");
+});
+t("S.126 (H-274) selección de equipo no tiene ningún vínculo con ductos, en ninguna dirección (decisión del dueño, 28-sep-2026): con todos los permisos, alargar el troncal no mueve la presión ni la huella de selección; no hay cruce, propuesta ni flecha entre los dos y la pantalla no habla de ductos", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.126";
+    Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.126" }; });
+    S.duct.segments = [{ ...G("defaultSegment")("SA-1", 2500), length: 20 }]; G("recompute")();
+    const antes = { esp: G("requisitoFam")("rtu").esp, huella: G("huellaMotor")("equip") };
+    S.duct.segments[0].length = 400; G("recompute")();
+    eq(G("requisitoFam")("rtu").esp, antes.esp, "la presión de selección no sigue a ductos:");
+    eq(G("huellaMotor")("equip"), antes.huella, "ni la huella de selección:");
+    const conDuct = (k) => /(^|>)duct(>|$)/.test(k) && /(^|>)equip(>|$)/.test(k);
+    eq(Object.keys(G("LINKS")).concat(Object.keys(G("PROPUESTAS"))).filter(conDuct).join(", "), "", "cruces o propuestas entre ductos y selección:");
+    if (G("ARISTAS").some((a) => (a.de === "duct" && a.a === "equip") || (a.de === "equip" && a.a === "duct"))) throw new Error("el diagrama une ductos y selección");
+    S.tab = "seleccion"; G("render")();
+    if (/Autorizar ductos|red de ductos|dato de ductos/i.test(w.document.getElementById("view").textContent)) throw new Error("la pantalla de selección sigue hablando de ductos");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+t("S.127 (H-274) la presión estática externa se captura en Selección: sin captura queda «pendiente» y no se supone; capturada, gobierna el requisito, su casilla está conectada y sobrevive a reabrir el proyecto", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.127"; G("recompute")();
+    eq(G("requisitoFam")("rtu").esp, 0, "sin captura no hay presión (no se supone):");
+    contiene(G("requisitoFam")("rtu").espNota, "pendiente", "y se dice:");
+    S.tab = "seleccion"; G("render")();
+    const casilla = w.document.querySelector('#view input[data-path="equip.espCaptura"]');
+    if (!casilla) throw new Error("la pestaña de selección no tiene la casilla de presión estática externa");
+    casilla.value = "0.8"; casilla.dispatchEvent(new w.Event("input", { bubbles: true }));
+    eq(S.equip.espCaptura, 0.8, "la casilla captura la presión:");
+    G("recompute")(); eq(G("requisitoFam")("rtu").esp, 0.8, "la capturada gobierna el requisito:");
+    G("importarRespaldo")(JSON.stringify(S)); G("recompute")();
+    eq(G("requisitoFam")("rtu").esp, 0.8, "y sobrevive a reabrir el proyecto:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+t("S.128 (H-274) la memoria de selección ya no imprime la preselección por zona leída en vivo de Carga térmica (la preselección es de carga y vive en su memoria)", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.128"; aceptarSitioCarga();   /* H-290 */
+    S.zones = [{ ...G("defaultZone")("Nave"), area: 400, height: 6, occ: 20, lights: 4000, equip: 8000 }]; G("recompute")();
+    /* Con zonas de selección (aceptadas como instantánea), para que la memoria salga completa y no en blanco. */
+    G("propAceptar")("load>equip"); G("propAceptar")("proyecto>equip"); G("recompute")();
+    if (!(G("zonasSel")().length > 0)) throw new Error("el caso no aísla lo que se quiere probar: la selección debe tener zonas");
+    const pdf = textoPdf(G("buildSeleccionPdf")());
+    contiene(pdf, "8. Presion estatica externa", "la memoria dice de dónde sale la presión:");
+    contiene(pdf, "pendiente de captura", "y sin captura la deja pendiente:");
+    if (/Preseleccion por zona/.test(pdf)) throw new Error("la memoria de selección sigue imprimiendo la preselección de carga en vivo");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+t("S.156 (H-286, X-3) Valor: el consumo por TR de cada sistema alterno sale de su tecnología (la planta o, sin planta, sus terminales, con la eficiencia estimada de su familia y su fuente), no siempre de split DX (decisión del dueño D5, 28-sep-2026)", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.156"; aceptarSitioCarga();   /* H-290 */
+    const dz = G("defaultZone");
+    S.zones = [{ ...dz("Oficina"), area: 600, height: 3, occ: 40, lights: 6000, equip: 9000 }, { ...dz("Nave"), area: 1500, height: 7, occ: 30, lights: 12000, equip: 30000 }];
+    G("recompute")(); G("propAceptar")("load>equip"); G("propAceptar")("proyecto>equip"); S.sysForce = "chiller"; S.tab = "valor"; G("VZ_CACHE").key = null; G("recompute")();
+    const SYS = G("SYS"); eq(SYS.chosen.id, "chiller", "el caso fija la planta de agua helada:");
+    const EF = G("EFF_EST"), cat = G("CARRIER");
+    const ficha = (o) => { const m = o.plant && o.plant[0] ? o.plant[0].model : o.terms && o.terms[0] ? o.terms[0].model : null; return typeof m === "string" ? cat.find((e) => e.model === m) : m; };
+    const ef = (o) => EF[G("corrKeyOf")(ficha(o))];
+    const V = G("computeIngValor")();
+    let revisadas = 0;
+    SYS.opts.filter((o) => o.id !== SYS.chosen.id).forEach((o) => {
+      const dkW = (ef(SYS.chosen).kWTR - ef(o).kWTR) * SYS.blockTons;
+      if (!(dkW > 0.2)) return;
+      const p = V.props.find((x) => x.id === "sis-" + o.id);
+      if (!p) throw new Error(`${o.id}: falta la medida de sistema alterno`);
+      cerca(p.kW, dkW, 1e-9, `${o.id}: kW menos con la eficiencia de su tecnología:`);
+      contiene(p.justificacion, ef(o).src, `${o.id}: la justificación dice de dónde sale su consumo:`);
+      revisadas++;
+    });
+    if (revisadas < 2) throw new Error("el caso no aísla lo que se quiere probar: debe haber al menos dos alternativas de otra tecnología");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("VZ_CACHE").key = null; G("recompute")(); }
+});
+t("S.157 (H-287, X-1) un material que no existe en el catálogo se avisa mientras está en el proyecto y el aviso se va al corregirlo (antes seguía, en la validación y en Kaizen, hasta recargar la página)", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.157"; aceptarSitioCarga();   /* H-290 */
+    S.zones = [{ ...G("defaultZone")("Nave"), area: 200, height: 4, occ: 5, lights: 1000, equip: 1000, wallMat: "no_existe_s157" }]; G("recompute")();
+    const avisa = () => G("validateAll")().rows.some((r) => /no_existe_s157/.test(r.msg));
+    if (!avisa()) throw new Error("el caso no aísla lo que se quiere probar: el material inexistente debe avisarse");
+    S.zones[0].wallMat = G("MATS").find((m) => m.kind === "wall").id; G("recompute")();
+    if (avisa()) throw new Error("el aviso del material inexistente sigue después de corregirlo");
+    eq(G("MISSING_MATS").size, 0, "ya no quedan materiales faltantes:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+t("S.158 (H-288) Selección corrige la capacidad de catálogo con SU sitio (decisión del dueño D1, 28-sep-2026: cada pestaña el suyo): sin sitio no se supone uno y queda pendiente; aceptado de Proyecto es una copia con origen y fecha que no se mueve si Proyecto cambia (la propuesta sale desactualizada); capturado en la pestaña gobierna; un proyecto guardado abre con el sitio de Proyecto copiado y las mismas cifras", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.158"; aceptarSitioCarga();   /* H-290 */
+    const dz = G("defaultZone");
+    S.zones = [{ ...dz("Oficina"), area: 600, height: 3, occ: 40, lights: 6000, equip: 9000 }, { ...dz("Nave"), area: 1500, height: 7, occ: 30, lights: 12000, equip: 30000 }];
+    G("recompute")(); G("propAceptar")("load>equip"); G("recompute")();
+    /* 1) Sin sitio en Selección: no se selecciona y se dice por qué. */
+    eq(G("SYS").chosen.id, "none", "sin sitio en Selección no se selecciona equipo:");
+    contiene(G("SYS").chosen.note, "sitio", "y se dice por qué:");
+    eq(G("estadoPropuesta")("proyecto>equip").nivel, "pendiente", "el sitio de Proyecto queda como propuesta por decidir:");
+    /* 2) Aceptar el de Proyecto: copia con origen y fecha. */
+    G("propAceptar")("proyecto>equip"); G("recompute")();
+    const cif = () => JSON.stringify([G("SYS").chosen.id, G("SYS").chosen.instPlant, G("SYS").chosen.instTerm, G("SYS").chosen.units]);
+    if (G("SYS").chosen.id === "none") throw new Error("con el sitio aceptado debe haber sistema");
+    const c0 = cif(), h0 = G("huellaMotor")("equip");
+    eq(S.equip.sitio.origen, "Proyecto", "la copia dice de dónde sale:");
+    if (!(S.equip.sitio.ts > 0)) throw new Error("la copia no trae fecha");
+    /* 3) Proyecto cambia de sitio: Selección no se mueve sola y la propuesta sale desactualizada. */
+    S.site = { key: "mexicali" }; G("recompute")();
+    eq(cif(), c0, "cambiar el sitio de Proyecto no mueve la selección:");
+    eq(G("huellaMotor")("equip"), h0, "ni su huella:");
+    eq(G("estadoPropuesta")("proyecto>equip").nivel, "desactualizado", "la propuesta sale desactualizada:");
+    /* 4) Capturado en la pestaña: gobierna. */
+    S.tab = "seleccion"; G("render")();
+    const casilla = w.document.querySelector('#view input[data-eqsitio="db"]');
+    if (!casilla) throw new Error("la pestaña de Selección no tiene la casilla del bulbo seco de su sitio");
+    casilla.value = "46"; casilla.dispatchEvent(new w.Event("change", { bubbles: true })); G("recompute")();
+    eq(S.equip.sitio.db, 46, "la casilla captura el bulbo seco:");
+    eq(S.equip.sitio.origen, "capturado en Selección", "y el origen pasa a ser la captura:");
+    if (cif() === c0) throw new Error("el sitio capturado en Selección debe gobernar la capacidad en sitio");
+    /* 5) Proyecto guardado antes de H-288 (sin sitio de Selección): abre con el de Proyecto copiado y las mismas cifras. */
+    S.site = { key: "tijuana" }; G("recompute")(); G("propAceptar")("proyecto>equip"); G("recompute")();
+    const c1 = cif();
+    const viejo = JSON.parse(JSON.stringify(S)); delete viejo.equip.sitio; if (viejo.vinculos) delete viejo.vinculos["proyecto>equip"];
+    G("importarRespaldo")(JSON.stringify(viejo)); G("recompute")();
+    eq(cif(), c1, "el proyecto guardado abre con las mismas cifras:");
+    contiene(S.equip.sitio.origen, "migración", "con el sitio de Proyecto copiado y marcado:");
+    eq(G("estadoPropuesta")("proyecto>equip").nivel, "aceptado", "como propuesta aceptada con fecha:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+t("S.166 (H-283) el sitio de Proyecto no marca Cuartos limpios: su cálculo no lo usa y su huella ya no lo lleva; un sello anterior abre diciendo que cambió la forma del sello (no «la captura cambió») y la memoria dice que el sitio no entra al cálculo ni imprime el margen HAP de Carga térmica", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.166";
+    S.zones = [{ ...G("defaultZone")("Limpio"), spaceType: "cleanroom", iso: "iso7", achClean: 45, area: 120, height: 3, occ: 2, lights: 720, equip: 2400 }];
+    G("recompute")();
+    if (!(G("CLEAN").list.length > 0)) throw new Error("el caso no aísla lo que se quiere probar: debe haber un cuarto limpio");
+    const h0 = G("huellaMotor")("clean"), c0 = JSON.stringify(G("CLEAN"));
+    S.site = { key: "custom", db: 45, wb: 28, alt: 2240, range: 14 }; G("recompute")();
+    eq(JSON.stringify(G("CLEAN")), c0, "el cálculo de cuartos limpios no usa el sitio:");
+    eq(G("huellaMotor")("clean"), h0, "y su huella ya no lo lleva:");
+    S.sellos = { clean: { ts: 5, huella: "0123456789abcd", ver: G("motorVer")("clean") } };
+    const st = G("selloDe")("clean");
+    eq(st.estado, "desactualizado", "un sello de antes de H-283 queda por volver a sellar:");
+    contiene(st.texto, "cambió la forma del sello", "y dice por qué:");
+    if (/la captura cambió/.test(st.texto)) throw new Error("un sello de forma anterior no debe decir que la captura cambió");
+    const pdf = textoPdf(G("buildLimpioSuitePdf")());
+    contiene(pdf, "no entra al calculo", "la memoria dice que el sitio no entra al cálculo:");
+    if (/Margen de error HAP/.test(pdf)) throw new Error("la memoria de cuartos limpios imprime el margen HAP de Carga térmica");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+t("S.167 (H-284) el sitio de Proyecto no marca Ductos: su cálculo no lo usa (densidad, viscosidad y rugosidad se capturan en Ductos) y su huella ya no lo lleva; un sello anterior dice que cambió la forma del sello", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.167";
+    S.duct.segments = [{ ...G("defaultSegment")("SA-1", 2500), length: 20 }]; G("recompute")();
+    if (!(G("DUCT").path > 0)) throw new Error("el caso no aísla lo que se quiere probar: la red debe tener caída de presión");
+    const h0 = G("huellaMotor")("duct"), d0 = JSON.stringify(G("DUCT"));
+    S.site = { key: "custom", db: 45, wb: 28, alt: 2240, range: 14 }; G("recompute")();
+    eq(JSON.stringify(G("DUCT")), d0, "el cálculo de ductos no usa el sitio:");
+    eq(G("huellaMotor")("duct"), h0, "y su huella ya no lo lleva:");
+    S.sellos = { duct: { ts: 5, huella: "0123456789abcd", ver: G("motorVer")("duct") } };
+    contiene(G("selloDe")("duct").texto, "cambió la forma del sello", "un sello anterior dice qué cambió:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+t("S.168 (H-285) el sitio de Proyecto no marca Hidráulica: su cálculo no lo usa y su huella ya no lo lleva (el sello sigue «calculado» al cambiar el sitio); un sello anterior dice que cambió la forma del sello", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.168";
+    S.hidro.tramos = [{ ...G("defaultTramoAgua")("AF-1"), um: 40, L: 20, alt: 3 }]; G("recompute")();
+    const h0 = G("huellaMotor")("hidro"), r0 = JSON.stringify(G("HIDRO"));
+    S.sellos = { hidro: { ts: 5, huella: h0, ver: G("motorVer")("hidro"), hf: 2 } };
+    S.site = { key: "custom", db: 45, wb: 28, alt: 2240, range: 14 }; G("recompute")();
+    eq(JSON.stringify(G("HIDRO")), r0, "el cálculo hidráulico no usa el sitio:");
+    eq(G("huellaMotor")("hidro"), h0, "y su huella ya no lo lleva:");
+    eq(G("selloDe")("hidro").estado, "calculado", "el sello sigue calculado al cambiar el sitio de Proyecto:");
+    S.sellos = { hidro: { ts: 5, huella: "0123456789abcd", ver: G("motorVer")("hidro") } };
+    contiene(G("selloDe")("hidro").texto, "cambió la forma del sello", "un sello anterior dice qué cambió:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+t("S.169 (H-289) la diversidad del edificio se captura en Selección (decisión del dueño D1, 28-sep-2026: cada pestaña el suyo): Proyecto ya no la pide; la casilla de Selección gobierna el objetivo de planta; Carga térmica no la usa ni la imprime; un proyecto guardado abre con la misma diversidad y las mismas cifras", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.169"; aceptarSitioCarga();   /* H-290 */
+    S.zones = [{ ...G("defaultZone")("Nave"), area: 400, height: 6, occ: 30, lights: 8000, equip: 12000 }, { ...G("defaultZone")("Oficina"), area: 100, height: 3, occ: 10, lights: 1500, equip: 2000 }];
+    G("recompute")(); aceptarEquip();
+    const t0 = G("SYS").plantTarget, cargas0 = JSON.stringify(G("LOADS").map((r) => [r.tons, r.grand, r.memo]));
+    if (!(t0 > 0)) throw new Error("el caso no aísla lo que se quiere probar: la planta debe tener objetivo");
+    S.tab = "proyecto"; G("render")();
+    if (w.document.querySelector('#view [data-path="bldDiv"]')) throw new Error("la pestaña de Proyecto sigue pidiendo la diversidad del edificio");
+    S.tab = "seleccion"; G("render")();
+    const casilla = w.document.querySelector('#view input[data-path="equip.div"]');
+    if (!casilla) throw new Error("la pestaña de Selección no tiene la casilla de la diversidad del edificio");
+    casilla.value = "0.8"; casilla.dispatchEvent(new w.Event("input", { bubbles: true })); G("recompute")();
+    eq(S.equip.div, 0.8, "la casilla captura la diversidad:");
+    cerca(G("SYS").plantTarget, t0 * 0.8, 1e-9, "y gobierna el objetivo de planta, una sola vez:");
+    eq(JSON.stringify(G("LOADS").map((r) => [r.tons, r.grand, r.memo])), cargas0, "Carga térmica no la usa ni la imprime en su memoria:");
+    if (/Diversidad de edificio/.test(textoPdf(G("buildCargaPdf")()))) throw new Error("la memoria de carga imprime la diversidad del edificio, que es de Selección");
+    const t1 = G("SYS").plantTarget;
+    const viejo = JSON.parse(JSON.stringify(S)); viejo.bldDiv = 0.8; delete viejo.equip.div;
+    G("importarRespaldo")(JSON.stringify(viejo)); G("recompute")();
+    eq(S.equip.div, 0.8, "un proyecto guardado abre con su diversidad en Selección:");
+    cerca(G("SYS").plantTarget, t1, 1e-9, "y con las mismas cifras:");
+    eq(S.bldDiv, undefined, "sin el dato viejo en Proyecto:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+t("S.170 (H-291) el sitio de Proyecto no marca Ventilación: su cálculo no lo usa y su huella ya no lo lleva (el sello sigue «calculado» al cambiar el sitio); un sello anterior dice que cambió la forma del sello", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.170";
+    S.vent = { ...S.vent, mode: "general", area: 200, height: 4, ach: 6 }; G("recompute")();
+    const h0 = G("huellaMotor")("vent"), r0 = JSON.stringify(G("VENT"));
+    S.sellos = { vent: { ts: 5, huella: h0, ver: G("motorVer")("vent"), hf: 2 } };
+    S.site = { key: "custom", db: 45, wb: 28, alt: 2240, range: 14 }; G("recompute")();
+    eq(JSON.stringify(G("VENT")), r0, "el cálculo no usa el sitio:");
+    eq(G("huellaMotor")("vent"), h0, "y su huella ya no lo lleva:");
+    eq(G("selloDe")("vent").estado, "calculado", "el sello sigue calculado al cambiar el sitio de Proyecto:");
+    S.sellos = { vent: { ts: 5, huella: "0123456789abcd", ver: G("motorVer")("vent") } };
+    contiene(G("selloDe")("vent").texto, "cambió la forma del sello", "un sello anterior dice qué cambió:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+t("S.171 (H-292) el sitio de Proyecto no marca Contra incendio: su cálculo no lo usa y su huella ya no lo lleva (el sello sigue «calculado» al cambiar el sitio); un sello anterior dice que cambió la forma del sello", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.171";
+    S.fuego = { ...S.fuego, area: 600, altura: 6, Lramal: 30, Lmontante: 12, presFuente: 30 }; G("recompute")();
+    const h0 = G("huellaMotor")("fuego"), r0 = JSON.stringify(G("FUEGO"));
+    S.sellos = { fuego: { ts: 5, huella: h0, ver: G("motorVer")("fuego"), hf: 2 } };
+    S.site = { key: "custom", db: 45, wb: 28, alt: 2240, range: 14 }; G("recompute")();
+    eq(JSON.stringify(G("FUEGO")), r0, "el cálculo no usa el sitio:");
+    eq(G("huellaMotor")("fuego"), h0, "y su huella ya no lo lleva:");
+    eq(G("selloDe")("fuego").estado, "calculado", "el sello sigue calculado al cambiar el sitio de Proyecto:");
+    S.sellos = { fuego: { ts: 5, huella: "0123456789abcd", ver: G("motorVer")("fuego") } };
+    contiene(G("selloDe")("fuego").texto, "cambió la forma del sello", "un sello anterior dice qué cambió:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+t("S.172 (H-290) Carga térmica calcula con SU sitio de diseño (decisión del dueño D1, 28-sep-2026: cada pestaña el suyo): sin sitio no se supone uno (la carga queda pendiente y se dice qué falta); aceptado de Proyecto es una copia con origen y fecha que no se mueve si Proyecto cambia (la propuesta sale desactualizada); capturado en su pestaña gobierna; un proyecto guardado abre con el sitio de Proyecto copiado y las mismas cifras", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.172";
+    S.zones = [{ ...G("defaultZone")("Oficina"), area: 200, height: 3, occ: 20, lights: 2000, equip: 3000, walls: { N: 20, S: 20, E: 10, O: 10 } }];
+    G("recompute")();
+    /* 1) Sin sitio de Carga: no se calcula ninguna zona y se dice qué falta. */
+    eq(G("LOADS").length, 0, "sin sitio de Carga no se calcula ninguna zona:");
+    eq(G("totals")().sinSitio, true, "el total lo dice:");
+    contiene(G("accEstado")("load").calc.razon || "", "sitio", "Calcular dice qué falta:");
+    eq(G("estadoPropuesta")("proyecto>load").nivel, "pendiente", "el sitio de Proyecto queda como propuesta por decidir:");
+    S.tab = "carga"; G("render")();
+    contiene(w.document.getElementById("view").textContent, "Sitio de diseño de Carga térmica", "la pestaña muestra su tarjeta de sitio:");
+    /* 2) Aceptar el de Proyecto: copia con origen y fecha. */
+    G("propAceptar")("proyecto>load"); G("recompute")();
+    eq(G("LOADS").length, 1, "con el sitio aceptado se calcula la zona:");
+    const t0 = G("totals")().tons, h0 = G("huellaMotor")("load");
+    if (!(t0 > 0)) throw new Error("el caso no aísla lo que se quiere probar: la zona debe tener toneladas");
+    eq(S.sitioCarga.origen, "Proyecto", "la copia dice de dónde sale:");
+    if (!(S.sitioCarga.ts > 0)) throw new Error("la copia no trae fecha");
+    /* 3) Proyecto cambia de sitio: Carga no se mueve sola y la propuesta sale desactualizada. */
+    S.site = { key: "mexicali" }; G("recompute")();
+    eq(G("totals")().tons, t0, "cambiar el sitio de Proyecto no mueve la carga:");
+    eq(G("huellaMotor")("load"), h0, "ni su huella:");
+    eq(G("estadoPropuesta")("proyecto>load").nivel, "desactualizado", "la propuesta sale desactualizada:");
+    /* 4) Capturado en la pestaña: gobierna. */
+    S.tab = "carga"; G("render")();
+    const lista = w.document.querySelector('#view select[data-path="sitioCarga.key"]');
+    if (!lista) throw new Error("la pestaña de Carga no tiene la lista de localidades de su sitio");
+    lista.value = "mexicali"; lista.dispatchEvent(new w.Event("input", { bubbles: true })); G("recompute")();
+    eq(S.sitioCarga.key, "mexicali", "la lista captura el sitio de Carga:");
+    contiene(S.sitioCarga.origen, "capturado en Carga", "y el origen pasa a ser la captura:");
+    if (!(G("totals")().tons > t0)) throw new Error("el sitio capturado en Carga debe gobernar la carga (Mexicali es más caluroso)");
+    /* 5) Proyecto guardado antes de H-290 (sin sitio de Carga): abre con el de Proyecto copiado y las mismas cifras. */
+    S.site = { key: "tijuana" }; G("propAceptar")("proyecto>load"); G("recompute")();
+    const t1 = G("totals")().tons;
+    const viejo = JSON.parse(JSON.stringify(S)); delete viejo.sitioCarga; if (viejo.vinculos) delete viejo.vinculos["proyecto>load"];
+    G("importarRespaldo")(JSON.stringify(viejo)); G("recompute")();
+    cerca(G("totals")().tons, t1, 1e-12, "el proyecto guardado abre con las mismas cifras:");
+    contiene(S.sitioCarga.origen, "migración", "con el sitio de Proyecto copiado y marcado:");
+    eq(G("estadoPropuesta")("proyecto>load").nivel, "aceptado", "como propuesta aceptada con fecha:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+/* ===== H-293 · cada motor saca su propia cotización (decisión del dueño, 29-sep-2026) ===== */
+t("S.173 (H-293) la cotización de Contra incendio sale de su propio motor: el precio del rociador instalado se captura en Contra incendio (copia de la semilla de la casa) y la cotización global sólo junta sus renglones tal cual; un proyecto anterior conserva su precio", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.173";
+    S.perms["fuego>quote"] = { ts: 1, via: "S.173" };
+    S.fuego = { ...G("defaultFuego")(), area: 400, altura: 6, Lramal: 20, Lmontante: 8 };
+    G("recompute")();
+    const fila = () => (G("QUOTE").aux || []).find((a) => a.mot === "fuego");
+    if (!fila() || !(G("FUEGO").nTotal > 0)) throw new Error("el caso no aísla lo que se quiere probar: debe haber partida de rociadores");
+    const nR = G("FUEGO").nTotal;
+    eq(fila().unit, 2850, "un proyecto nuevo arranca con la semilla de la casa (la misma cifra de antes):");
+    S.fuego.precioRociador = 3000; S.quote.rociador = 9999; G("recompute")();
+    eq(fila().unit, 3000, "el precio sale de la captura de Contra incendio, no de la cotización:");
+    eq(fila().total, 3000 * nR, "total = precio × rociadores del motor:");
+    eq(JSON.stringify((G("FUEGO").cot || { aux: [] }).aux.map((a) => [a.desc, a.total])), JSON.stringify([[fila().desc, fila().total]]),
+      "la cotización global junta el renglón que armó el motor, tal cual:");
+    const viejo = JSON.parse(JSON.stringify(S)); delete viejo.fuego.precioRociador; viejo.quote.rociador = 3100;
+    const s = G("sanearEstado")(viejo);
+    eq(s.fuego.precioRociador, 3100, "un proyecto anterior conserva su precio, ahora en Contra incendio:");
+    eq("rociador" in s.quote, false, "la cotización ya no guarda el precio del rociador:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+t("S.174 (H-294) la cotización de Ventilación sale de su propio motor: el precio por CFM se captura en Ventilación (copia de la semilla de la casa) y la cotización global sólo junta sus renglones tal cual; un proyecto anterior conserva su precio", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.174";
+    S.perms["vent>quote"] = { ts: 1, via: "S.174" };
+    S.vent = { ...S.vent, mode: "general", area: 200, height: 4, ach: 6 };
+    G("recompute")();
+    const filas = () => (G("QUOTE").aux || []).filter((a) => a.mot === "vent");
+    if (!filas().length || !(G("VENT").demand > 0)) throw new Error("el caso no aísla lo que se quiere probar: debe haber partida de ventilación");
+    eq(filas()[0].unit, 145, "un proyecto nuevo arranca con la semilla de la casa (la misma cifra de antes):");
+    S.vent.precioCFM = 160; S.quote.fanCFM = 999; G("recompute")();
+    eq(filas()[0].unit, 160, "el precio sale de la captura de Ventilación, no de la cotización:");
+    eq(filas()[0].total, 160 * Math.round(G("VENT").demand), "total = precio × CFM del motor:");
+    eq(JSON.stringify(((G("VENT").cot || { aux: [] }).aux).map((a) => [a.desc, a.total])), JSON.stringify(filas().map((a) => [a.desc, a.total])),
+      "la cotización global junta los renglones que armó el motor, tal cual:");
+    const viejo = JSON.parse(JSON.stringify(S)); delete viejo.vent.precioCFM; viejo.quote.fanCFM = 150;
+    const s = G("sanearEstado")(viejo);
+    eq(s.vent.precioCFM, 150, "un proyecto anterior conserva su precio, ahora en Ventilación:");
+    eq("fanCFM" in s.quote, false, "la cotización ya no guarda el precio por CFM:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+t("S.175 (H-295) la cotización de Cuartos limpios sale de su propio motor: los precios de FFU, HEPA de repuesto y rejilla se capturan en Cuartos limpios (copia de la semilla de la casa) y la cotización global sólo junta sus renglones tal cual; un proyecto anterior conserva sus precios", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.175";
+    S.perms["clean>quote"] = { ts: 1, via: "S.175" };
+    Object.assign(S.clean.rooms[0], { area: 60, height: 3, iso: "iso7" });
+    G("recompute")();
+    const filas = () => (G("QUOTE").aux || []).filter((a) => a.mot === "clean");
+    if (filas().length !== 3 || !(G("CLEAN").sum.ffu > 0)) throw new Error("el caso no aísla lo que se quiere probar: deben salir FFU, HEPA y rejillas");
+    eq(JSON.stringify(filas().map((a) => a.unit)), JSON.stringify([42000, 9800, 3200]), "un proyecto nuevo arranca con la semilla de la casa (las mismas cifras de antes):");
+    S.clean.precios = { ffu: 45000, hepaSpare: 10000, grille: 3500 }; S.quote.ffu = 1; S.quote.hepaSpare = 1; S.quote.grille = 1; G("recompute")();
+    eq(JSON.stringify(filas().map((a) => a.unit)), JSON.stringify([45000, 10000, 3500]), "los precios salen de la captura de Cuartos limpios, no de la cotización:");
+    eq(JSON.stringify(((G("CLEAN").cot || { aux: [] }).aux).map((a) => [a.desc, a.total])), JSON.stringify(filas().map((a) => [a.desc, a.total])),
+      "la cotización global junta los renglones que armó el motor, tal cual:");
+    const viejo = JSON.parse(JSON.stringify(S)); delete viejo.clean.precios; Object.assign(viejo.quote, { ffu: 41000, hepaSpare: 9000, grille: 3000 });
+    const s = G("sanearEstado")(viejo);
+    eq(JSON.stringify(s.clean.precios), JSON.stringify({ ffu: 41000, hepaSpare: 9000, grille: 3000 }), "un proyecto anterior conserva sus precios, ahora en Cuartos limpios:");
+    eq(["ffu", "hepaSpare", "grille"].some((k) => k in s.quote), false, "la cotización ya no guarda esos precios:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+t("S.176 (H-296) la cotización de Aire comprimido sale de su propio motor: los precios de la central (compresor, tanque, secador, filtros, red y bajadas) se capturan en Aire comprimido (copia de la lista de la casa) y la cotización global sólo junta sus renglones tal cual; un proyecto anterior conserva sus precios", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.176";
+    S.aire.consumos = [{ id: "u1", tipo: "actuador", nombre: "Línea de prueba", cant: 12, lmin: 0, bar: 0, uso: 0 }];
+    S.perms["aire>quote"] = { ts: 1, via: "S.176" }; G("recompute")();
+    const filas = () => (G("QUOTE").aux || []).filter((a) => a.mot === "aire");
+    const tanque = () => filas().find((a) => a.un === "LITRO");
+    if (!(G("AIRE").fadRequerido > 0) || !tanque()) throw new Error("el caso no aísla lo que se quiere probar: debe salir la central de aire con su tanque");
+    eq(tanque().unit, 195, "arranca con la lista de la casa (la misma cifra de antes):");
+    const antes = JSON.stringify(filas().map((a) => [a.desc, a.total]));
+    S.aire.precios = { ...S.aire.precios, tanqueL: 250 }; S.quote.tanqueL = 1; G("recompute")();
+    eq(tanque().unit, 250, "el precio sale de la captura de Aire comprimido, no de la cotización:");
+    eq(JSON.stringify(((G("AIRE").cot || { aux: [] }).aux).map((a) => [a.desc, a.total])), JSON.stringify(filas().map((a) => [a.desc, a.total])),
+      "la cotización global junta los renglones que armó el motor, tal cual:");
+    S.aire.precios = { ...S.aire.precios, tanqueL: 195 }; G("recompute")();
+    eq(JSON.stringify(filas().map((a) => [a.desc, a.total])), antes, "con los precios de antes, los mismos renglones e importes:");
+    const viejo = JSON.parse(JSON.stringify(S)); delete viejo.aire.precios; Object.assign(viejo.quote, { tanqueL: 210, filtroAire: 40000 });
+    const s = G("sanearEstado")(viejo);
+    eq(JSON.stringify([s.aire.precios.tanqueL, s.aire.precios.filtroAire, s.aire.precios.puntoUso]), JSON.stringify([210, 40000, 4850]), "un proyecto anterior conserva sus precios, ahora en Aire comprimido:");
+    eq(["compresorMXN", "tanqueL", "secadorM3min", "filtroAire", "aireM", "puntoUso"].some((k) => k in s.quote), false, "la cotización ya no guarda esos precios:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+t("S.177 (H-297) la cotización de Obra civil la arma su propio motor (CIVIL.cot) y la cotización global sólo junta esos renglones tal cual: no vuelve a leer las partidas ni los pendientes de altura de Obra civil", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.177";
+    S.perms["civil>quote"] = { ts: 1, via: "S.177" };
+    S.civil.areas = [{ id: "a1", nombre: "Nave", area: 200, altura: 5, perimetro: 60 }, { id: "a2", nombre: "Bodega", area: 80, altura: 0 }];
+    G("recompute")();
+    const C = G("CIVIL");
+    if (!(C.total > 0) || !(C.pendAltura && C.pendAltura.areas.length)) throw new Error("el caso no aísla lo que se quiere probar: debe haber partidas y un área pendiente de altura");
+    const deCivil = () => (G("QUOTE").aux || []).filter((a) => a.mot === "civil").map((a) => [a.desc, a.total]);
+    eq(JSON.stringify(deCivil()), JSON.stringify(((C.cot || { aux: [] }).aux).map((a) => [a.desc, a.total])), "la global junta los renglones que armó el motor:");
+    /* Lo que diga la cotización del motor es lo que junta la global (no recalcula de CIVIL.part). */
+    C.cot = { aux: [{ desc: "RENGLÓN DEL MOTOR", descEn: "ENGINE ROW", qty: 1, unit: 10, total: 10, sec: "A", un: "LOTE", mot: "civil" }], pendientes: [], porCotizar: [] };
+    G("QUOTE").aux = G("computeQuote")().aux;
+    eq(JSON.stringify(deCivil()), JSON.stringify([["RENGLÓN DEL MOTOR", 10]]), "la cotización global usa la cotización del motor, sin recalcular:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+t("S.178 (H-298) la cotización de Soportería la arma su propio motor (SOPORTE.cot: partidas de la sección G, pendientes y «Por cotizar») y la cotización global sólo junta esos renglones tal cual", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.178";
+    S.perms["soporte>quote"] = { ts: 1, via: "S.178" };
+    S.soporte = { ...G("defaultSoporte")(), usarMotores: false, tubHidroM: 60, tubHidroD: 50, tubHidroMat: "acero", alturaColgadoM: 0.5 };
+    G("recompute")();
+    const R = G("SOPORTE");
+    if (!(R.total > 0)) throw new Error("el caso no aísla lo que se quiere probar: debe haber partidas de soportería");
+    const deSop = () => (G("QUOTE").aux || []).filter((a) => a.mot === "soporte").map((a) => [a.desc, a.total]);
+    eq(JSON.stringify(deSop()), JSON.stringify(((R.cot || { aux: [] }).aux).map((a) => [a.desc, a.total])), "la global junta los renglones que armó el motor:");
+    R.cot = { aux: [{ desc: "RENGLÓN DEL MOTOR", descEn: "ENGINE ROW", qty: 1, unit: 10, total: 10, sec: "G", un: "LOTE", mot: "soporte" }],
+      pendientes: [{ mot: "soporte", desc: "PENDIENTE DEL MOTOR", descEn: "ENGINE PENDING", motivo: "x", motivoEn: "x" }], porCotizar: [] };
+    const Q = G("computeQuote")();
+    eq(JSON.stringify(Q.aux.filter((a) => a.mot === "soporte").map((a) => [a.desc, a.total])), JSON.stringify([["RENGLÓN DEL MOTOR", 10]]), "partidas: la del motor, sin recalcular:");
+    eq(JSON.stringify(Q.pendientes.filter((p) => p.mot === "soporte").map((p) => p.desc)), JSON.stringify(["PENDIENTE DEL MOTOR"]), "pendientes: los del motor, sin recalcular:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+t("S.179 (H-299) la cotización eléctrica la arma su propio motor (ELEC.cot: alimentador, tierra, canalización y tablero «Por cotizar», y lo pendiente) y la cotización global sólo junta esos renglones tal cual", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.179";
+    S.elec.cargas = [{ id: "c1", nombre: "Motor de prueba", tipo: "motor", kW: 7.5, V: 220, ph: 3, cant: 1, L: 30, fp: .85, fija: false },
+      { id: "c2", nombre: "Ramal sin corriente", tipo: "motor", kW: 0, V: 220, ph: 3, cant: 1, L: 20, fp: .85, fija: false }];
+    S.perms["elec>quote"] = { ts: 1, via: "S.179" }; G("recompute")();
+    const R = G("ELEC");
+    if (!(R.kVAdemanda > 0)) throw new Error("el caso no aísla lo que se quiere probar: debe haber demanda eléctrica");
+    const deElec = (Q) => JSON.stringify([Q.porCotizar.filter((p) => p.mot === "elec").map((p) => [p.desc, p.qty]), Q.pendientes.filter((p) => p.mot === "elec").map((p) => p.desc)]);
+    const C = R.cot || { porCotizar: [], pendientes: [] };
+    eq(deElec(G("QUOTE")), JSON.stringify([C.porCotizar.map((p) => [p.desc, p.qty]), C.pendientes.map((p) => p.desc)]), "la global junta los renglones que armó el motor:");
+    R.cot = { aux: [], pendientes: [{ mot: "elec", desc: "PENDIENTE DEL MOTOR", descEn: "ENGINE PENDING", motivo: "x", motivoEn: "x" }],
+      porCotizar: [{ sec: "C", mot: "elec", clave: "x", un: "LOTE", qty: 1, motivo: "x", desc: "RENGLÓN DEL MOTOR", descEn: "ENGINE ROW" }] };
+    eq(deElec(G("computeQuote")()), JSON.stringify([[["RENGLÓN DEL MOTOR", 1]], ["PENDIENTE DEL MOTOR"]]), "la cotización global usa la cotización del motor, sin recalcular:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+t("S.180 (H-300) la cotización de Ductos sale de su propio motor: los difusores se capturan en Ductos (ya no salen de los CFM de Carga térmica), los precios de lámina y difusor son de Ductos, y un proyecto anterior abre con la misma cantidad y los mismos precios", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.180"; aceptarSitioCarga();
+    S.zones = [{ ...G("defaultZone")("Zona 1"), area: 400, height: 3, occ: 20, lights: 4000, equip: 4000 }];
+    S.duct.segments = [{ ...G("defaultSegment")("TR-1", 1000), length: 12 }];
+    G("recompute")();
+    if (!(G("totals")().cfm > 0) || !(G("DUCT").boq.kg > 0)) throw new Error("el caso no aísla lo que se quiere probar: debe haber carga con CFM y lámina");
+    const dif = () => (G("QUOTE").aux || []).find((a) => a.mot === "duct" && /^Difusores/.test(a.desc));
+    eq(!!dif(), false, "sin captura en Ductos, los difusores no salen de los CFM de Carga térmica:");
+    eq((G("QUOTE").pendientes || []).some((p) => p.mot === "duct" && /^Difusores/.test(p.desc)), true, "quedan pendientes de cantidad:");
+    S.duct.difusores = 5; S.duct.precios = { kg: 170, difusor: 7000 }; S.quote.diffuser = 1; S.quote.ductKg = 1; G("recompute")();
+    eq(JSON.stringify([dif().qty, dif().unit]), JSON.stringify([5, 7000]), "la cantidad y el precio salen de Ductos:");
+    eq((G("QUOTE").aux || []).find((a) => a.mot === "duct" && /^Ducto de lámina/.test(a.desc)).unit, 170, "el precio de la lámina sale de Ductos:");
+    S.zones[0].area = 800; G("recompute")();
+    eq(dif().qty, 5, "cambiar la carga térmica ya no mueve los difusores:");
+    /* Proyecto anterior: sin difusores ni precios en Ductos; los precios estaban en la cotización. */
+    const viejo = JSON.parse(JSON.stringify(S)); delete viejo.duct.difusores; delete viejo.duct.precios; delete viejo.duct.difusoresSinConfirmar;
+    viejo.quote.diffuser = 6000; viejo.quote.ductKg = 160;
+    G("reemplazarEstado")(viejo); G("recompute")();
+    const nMig = Math.ceil(G("totals")().cfm / 400);
+    eq(S.duct.difusores, nMig, "un proyecto anterior abre con la cantidad que daba la carga (1 por 400 CFM), ahora capturada en Ductos:");
+    eq(JSON.stringify([dif().qty, dif().unit, /CFM ÷ 400 CFM por boca/.test(dif().desc)]), JSON.stringify([nMig, 6000, true]), "mismo renglón que antes:");
+    eq(JSON.stringify(S.duct.precios), JSON.stringify({ kg: 160, difusor: 6000 }), "los precios de la cotización pasan a Ductos:");
+    eq(["ductKg", "diffuser"].some((k) => k in S.quote), false, "la cotización ya no los guarda:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+t("S.181 (H-301) la cotización de equipos sale de Selección de equipo: sus partidas y sus precios (familia, economía de escala, factor de lista, instalación, tubería por TR y control) se capturan en Selección y la cotización global sólo junta sus renglones; un proyecto anterior conserva partidas y precios", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.181";
+    const fam = G("FAMILIES")[0], m = G("familyPool")(fam.id)[0];
+    S.equip.items = [{ id: m.id, fam: fam.id, qty: 2, unit: null }]; G("recompute")();
+    const L = () => (G("QUOTE").lines || []);
+    eq(L().length, 1, "la partida capturada en Selección entra a la cotización:");
+    const u0 = L()[0].unit;
+    if (!(u0 > 0)) throw new Error("el caso no aísla lo que se quiere probar: la partida debe tener precio de lista");
+    S.equip.precios.priceFactor = 0.5; S.quote.priceFactor = 3; G("recompute")();
+    cerca(L()[0].unit, u0 * 0.5, 1e-6, "el factor de lista es el de Selección, no el de la cotización:");
+    eq(JSON.stringify(G("SYS").cot.lines.map((l) => [l.desc, l.total])), JSON.stringify(L().map((l) => [l.desc, l.total])), "la cotización global junta los renglones de Selección, tal cual:");
+    const inst = (G("QUOTE").aux || []).find((a) => a.mot === "equip" && /^Instalación mecánica/.test(a.desc));
+    cerca(inst.total, L()[0].total * 0.35, 1e-6, "instalación con el porcentaje de Selección:");
+    /* Proyecto anterior: partidas y precios en la cotización. */
+    const viejo = JSON.parse(JSON.stringify(S)); delete viejo.equip.items; delete viejo.equip.precios;
+    viejo.quote.items = [{ id: m.id, fam: fam.id, qty: 3, unit: null }]; viejo.quote.priceFactor = 0.9; viejo.quote.instPct = 0.3; viejo.quote.price = { [fam.price]: 50000 };
+    const s = G("sanearEstado")(viejo);
+    eq(JSON.stringify([s.equip.items.length, s.equip.items[0].qty, s.equip.precios.priceFactor, s.equip.precios.instPct, s.equip.precios.price[fam.price]]), JSON.stringify([1, 3, 0.9, 0.3, 50000]),
+      "un proyecto anterior conserva sus partidas y precios, ahora en Selección:");
+    eq(["items", "price", "priceFactor", "instPct", "pipeTR", "controls", "scaleExp"].some((k) => k in s.quote), false, "la cotización ya no los guarda:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+t("S.182 (H-302) la cotización hidrosanitaria sale de su propio motor: los precios de tubería y el tipo de cambio con fecha se capturan en Hidrosanitario (no en la Cotización) y un proyecto anterior conserva precios, bitácora y tipo de cambio", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.182"; S.perms["hidro>quote"] = { ts: 1, via: "S.182" };
+    S.hidro = { ...S.hidro, material: "cpvc", tramos: [{ ...G("defaultTramoAgua")("AF-1"), um: 40, L: 25, alt: 0 }], muebles: [{ id: "wc_flux", cant: 4 }] };
+    G("recompute")();
+    const k = G("claveHidroPU")("cpvc", String(G("HIDRO").tramos[0].nom).split(" ·")[0]);
+    S.hidro.hidroPU[k] = { precio: 10, moneda: "USD", iva: false, porTramo: 1, origen: "proveedor", fuente: "prueba", fecha: "2026-09-22" };
+    Object.assign(S.hidro, { fx: 20, fxFecha: "2026-09-22", fxFuente: "tipo de cambio de Hidrosanitario" });
+    Object.assign(S.quote, { fx: 18, fxFecha: "2026-09-22", fxFuente: "tipo de cambio de la Cotización" });
+    G("recompute")();
+    const fila = () => (G("QUOTE").aux || []).find((a) => a.mot === "hidro");
+    if (!fila()) throw new Error("el caso no aísla lo que se quiere probar: debe haber tubería con precio");
+    cerca(fila().unit, 200, 1e-9, "10 USD × 20 MXN/USD de Hidrosanitario (no 18 de la Cotización):");
+    eq(JSON.stringify(G("HIDRO").cot.aux.map((a) => [a.desc, a.total])), JSON.stringify((G("QUOTE").aux || []).filter((a) => a.mot === "hidro").map((a) => [a.desc, a.total])), "la cotización global junta los renglones del motor:");
+    S.hidro.fxFecha = ""; G("recompute")();
+    eq(!!fila(), false, "sin fecha en el tipo de cambio de Hidrosanitario, lo que está en USD no se cotiza:");
+    /* Proyecto anterior: precios, bitácora y tipo de cambio en la cotización. */
+    const viejo = JSON.parse(JSON.stringify(S)); delete viejo.hidro.hidroPU; delete viejo.hidro.hidroPUlog; delete viejo.hidro.fx; delete viejo.hidro.fxFecha; delete viejo.hidro.fxFuente;
+    viejo.quote.hidroPU = { [k]: 150 }; viejo.quote.hidroPUlog = []; Object.assign(viejo.quote, { fx: 18.25, fxFecha: "2026-09-21", fxFuente: "Banxico FIX" });
+    const s = G("sanearEstado")(viejo);
+    eq(JSON.stringify([s.hidro.hidroPU[k], s.hidro.fx, s.hidro.fxFecha, s.hidro.fxFuente]), JSON.stringify([150, 18.25, "2026-09-21", "Banxico FIX"]), "un proyecto anterior conserva precios y tipo de cambio, ahora en Hidrosanitario:");
+    eq(["hidroPU", "hidroPUlog"].some((x) => x in s.quote), false, "la cotización ya no guarda los precios de tubería:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+t("S.183 (H-303) plaza, factor de plaza, base, FASAR y referencia son campos propios de la cotización de cada motor: el factor de un motor mueve sólo sus renglones, el de la Cotización general ya no los mueve, y un proyecto anterior toma para cada motor los valores de hoy", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.183";
+    S.perms["fuego>quote"] = { ts: 1, via: "S.183" }; S.perms["vent>quote"] = { ts: 1, via: "S.183" };
+    S.fuego = { ...S.fuego, area: 400, altura: 6, Lramal: 20, Lmontante: 8 }; Object.assign(S.vent, { mode: "general", area: 200, height: 4, ach: 6 });
+    G("recompute")();
+    const fila = (m) => G("catalogoConceptos")().secciones.flatMap((s) => s.partidas).find((p) => p.mot === m);
+    if (!fila("fuego") || !fila("vent")) throw new Error("el caso no aísla lo que se quiere probar: deben salir contra incendio y ventilación");
+    const u0 = fila("fuego").unit, v0 = fila("vent").unit, d0 = G("QUOTE").direct;
+    S.fuego.comercial.plazaFactor = 1.1; S.quote.plazaFactor = 0.5; G("recompute")();
+    cerca(fila("fuego").unit, u0 * 1.1, 1e-6, "el factor de plaza de Contra incendio mueve sus renglones:");
+    cerca(fila("vent").unit, v0, 1e-9, "y no los de Ventilación, ni el de la Cotización general:");
+    cerca(G("QUOTE").direct, d0 + G("FUEGO").cot.aux.reduce((a, x) => a + x.total, 0) * 0.1, 1e-6, "el costo directo suma cada renglón con el factor de su motor:");
+    /* Proyecto anterior: la plaza estaba sólo en la cotización general. */
+    const viejo = JSON.parse(JSON.stringify(S)); G("MOTORES_COT").forEach((k) => { if (viejo[k]) delete viejo[k].comercial; });
+    Object.assign(viejo.quote, { plaza: "mexicali", plazaFactor: 1.05, basePrecio: "casa", fasar: 1.5, refBase: "BIMSA 2026" });
+    const s = G("sanearEstado")(viejo);
+    eq(JSON.stringify(G("MOTORES_COT").map((k) => [s[k].comercial.plaza, s[k].comercial.plazaFactor, s[k].comercial.fasar, s[k].comercial.refBase]).filter((x, i, a) => JSON.stringify(x) !== JSON.stringify(a[0]))), "[]", "todos los motores toman los mismos valores:");
+    eq(JSON.stringify([s.fuego.comercial.plaza, s.fuego.comercial.plazaFactor, s.fuego.comercial.fasar, s.fuego.comercial.refBase]), JSON.stringify(["mexicali", 1.05, 1.5, "BIMSA 2026"]), "los de la cotización general de hoy:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+t("S.184 (H-304) la cotización de cada disciplina (tarjeta y PDF) sale de la cotización de su motor, con su bloque comercial: no depende del permiso hacia la Cotización general y con el permiso da los mismos renglones e importes que el catálogo", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.184"; S.perms = {};
+    S.fuego = { ...S.fuego, area: 400, altura: 6, Lramal: 20, Lmontante: 8 }; G("recompute")();
+    const c = G("cotizacionDeMotor")("fuego");
+    eq(c.partidas.length > 0, true, "sin permiso hacia la Cotización general, contra incendio tiene su cotización:");
+    eq(G("accEstado")("fuego").cot.ok, true, "y su PDF sale:");
+    S.perms["fuego>quote"] = { ts: 1, via: "S.184" }; G("recompute")();
+    const cat = G("catalogoConceptos")().secciones.flatMap((s) => s.partidas).filter((p) => p.mot === "fuego");
+    eq(JSON.stringify(G("cotizacionDeMotor")("fuego").partidas.map((p) => [p.desc, p.unit, p.total])), JSON.stringify(cat.map((p) => [p.desc, p.unit, p.total])), "con el permiso, lo mismo que el catálogo:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+t("S.185 (H-305) ductos calcula sólo con los tramos capturados en su pestaña: ya no hay propuesta ni cruce carga térmica → ductos (load>duct, duct>load), ni botón para generar tramos desde la carga, ni aviso cruzado de caudal; un proyecto guardado que la aceptó conserva sus tramos y sus cifras", () => {
+  const guardado = JSON.stringify(S), tab0 = S.tab;
+  try {
+    eq(G("PROPUESTAS")["load>duct"], undefined, "no queda propuesta carga térmica → ductos:");
+    eq(G("LINKS")["load>duct"], undefined, "no queda el cruce load>duct:");
+    eq(G("LINKS")["duct>load"], undefined, "no queda el cruce duct>load:");
+    eq(G("typeof chainToDuct"), "undefined", "no queda la función que generaba los tramos:");
+    S.tab = "proyecto"; G("render")();
+    if (/data-act="chain-duct"/.test(vista())) throw new Error("Proyecto sigue ofreciendo generar los tramos de ducto desde la carga");
+    S.tab = "ductos"; G("render")();
+    if (/Caudales por tramo desde la carga térmica/.test(vista())) throw new Error("Ductos sigue mostrando la propuesta de la carga térmica");
+    /* Ningún aviso cruzado: aunque el tronco mueva la mitad de lo que pide la carga y el cruce viejo esté autorizado. */
+    S.perms["duct>load"] = { ts: 1, via: "S.185" };
+    S.duct.segments = [{ ...G("defaultSegment")("SA-PRINCIPAL", Math.round(G("totals")().cfm * 1.699 / 3.6 / 2)), length: 10, fittings: [] }];
+    G("recompute")();
+    if (G("validateAll")().rows.some((r) => /Cruce carga/.test(r.msg))) throw new Error("validateAll sigue cruzando el caudal de ductos con la carga térmica");
+    /* Proyecto guardado que había aceptado la propuesta: conserva sus tramos y sus cifras. */
+    S.vinculos = S.vinculos || {}; S.vinculos["load>duct"] = { estado: "aceptado", ts: 1, origen: "Carga térmica", firma: "x" };
+    S.perms["load>duct"] = { ts: 1, via: "S.185" };
+    G("recompute")();
+    const kg0 = G("DUCT").boq.kg, seg0 = JSON.stringify(S.duct.segments);
+    G("reemplazarEstado")(JSON.parse(JSON.stringify(S))); G("recompute")();
+    eq(JSON.stringify(S.duct.segments), seg0, "los tramos aceptados se conservan:");
+    eq(G("DUCT").boq.kg, kg0, "los kilos no cambian:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); S.tab = tab0; G("recompute")(); }
+});
+
+t("S.186 (H-306) el eléctrico calcula sólo con las cargas de su cuadro: ya no hay propuesta «Cargas eléctricas de los demás motores» (cedula>elec), ni cruces ni flechas de los demás motores hacia el eléctrico; las cargas ya aceptadas se conservan con sus cifras y un proyecto anterior en vivo se migra igual que antes", () => {
+  const guardado = JSON.stringify(S), tab0 = S.tab;
+  try {
+    eq(G("PROPUESTAS")["cedula>elec"], undefined, "no queda la propuesta de cargas de los demás motores:");
+    ["equip>elec", "vent>elec", "aire>elec", "hidro>elec", "fuego>elec", "clean>elec"].forEach((k) => eq(G("LINKS")[k], undefined, `no queda el cruce ${k}:`));
+    eq(G("ARISTAS").filter((a) => a.a === "elec" && a.regla === 2).length, 0, "flechas de propuesta hacia el eléctrico:");
+    S.tab = "electrico"; G("render")();
+    if (/Cargas eléctricas de los demás motores|acepta la propuesta/.test(vista())) throw new Error("el eléctrico sigue ofreciendo la propuesta de los demás motores");
+    /* Las cargas ya aceptadas (origen «cedula») se conservan: mismas cifras al abrir. Si el banco no las trae a esta altura, se
+       meten por la migración de un proyecto anterior en vivo (la única vía que queda). */
+    if (!(S.elec.cargas || []).some((c) => c.origen === "cedula")) migraCargasElec();
+    const ced = (S.elec.cargas || []).filter((c) => c.origen === "cedula").length;
+    if (!ced) throw new Error("el banco no trae cargas aceptadas: la prueba no probaría la conservación");
+    const kva0 = G("ELEC").kVAdemanda;
+    G("reemplazarEstado")(JSON.parse(JSON.stringify(S))); G("recompute")();
+    eq(S.elec.cargas.filter((c) => c.origen === "cedula").length, ced, "cargas aceptadas conservadas:");
+    eq(G("ELEC").kVAdemanda, kva0, "kVA de demanda:");
+    /* Proyecto anterior en modo en vivo (tomarHVAC con los cruces autorizados): al abrir se migra una sola vez, como antes (H-268). */
+    const viejo = JSON.parse(guardado);
+    viejo.elec.cargas = viejo.elec.cargas.filter((c) => c.origen !== "cedula"); viejo.elec.tomarHVAC = true; delete viejo.elec.h268;   /* guardado antes de H-268 */
+    viejo.perms = { ...(viejo.perms || {}) }; ["equip>elec", "vent>elec", "aire>elec", "hidro>elec", "fuego>elec", "clean>elec"].forEach((k) => { viejo.perms[k] = { ts: 1, via: "S.186" }; });
+    if (viejo.vinculos) delete viejo.vinculos["cedula>elec"];
+    G("importarRespaldo")(JSON.stringify(viejo)); G("recompute")();
+    eq(S.elec.cargas.filter((c) => c.origen === "cedula").length, ced, "el proyecto en vivo abre con las mismas cargas de los demás motores:");
+    eq(G("ELEC").kVAdemanda, kva0, "y los mismos kVA:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); S.tab = tab0; G("recompute")(); }
+});
+
+t("S.187 (H-307) soportería calcula sólo con lo suyo: ya no hay propuesta «Metros de ducto y tubería contados por los motores» (motores>soporte), ni cruces ni flechas hacia soportería, ni avisos que lean los otros motores; la instantánea ya guardada es copia propia (mismas cifras, no se compara con los motores) y se puede dejar para capturar a mano", () => {
+  const guardado = JSON.stringify(S), tab0 = S.tab;
+  try {
+    eq(G("PROPUESTAS")["motores>soporte"], undefined, "no queda la propuesta de metros de los motores:");
+    ["duct>soporte", "hidro>soporte", "fuego>soporte", "aire>soporte"].forEach((k) => eq(G("LINKS")[k], undefined, `no queda el cruce ${k}:`));
+    eq(G("ARISTAS").filter((a) => a.a === "soporte" && a.regla === 2).length, 0, "flechas de propuesta hacia soportería:");
+    /* Sin instantánea: cuenta sólo lo capturado; ningún aviso manda a aceptar metros de los otros motores. */
+    S.soporte.usarMotores = false; delete S.soporte.snap; G("recompute")();
+    if (G("SOPORTE").avisos.some((a) => /aceptar su propuesta/.test(a.msg))) throw new Error("un aviso de soportería sigue leyendo los otros motores para mandar a aceptar su propuesta");
+    S.tab = "soporte"; G("render")();
+    if (/Metros de ducto y tubería contados por los motores/.test(vista())) throw new Error("soportería sigue ofreciendo la propuesta de los motores");
+    /* Proyecto con instantánea guardada: es copia propia; no se mueve ni se compara con los motores. */
+    if (!(S.duct.segments || []).length) throw new Error("el banco no trae tramos de ducto: la prueba no probaría la instantánea");
+    S.soporte.snap = G("snapshotSoporte")(); S.soporte.usarMotores = true; G("recompute")();
+    const n0 = G("SOPORTE").nSoportes, L0 = S.duct.segments[0].length;
+    S.duct.segments[0].length = Number(L0) + 50; G("recompute")();
+    eq(G("SOPORTE").nSoportes, n0, "la instantánea no se mueve con ductos:");
+    G("render")();
+    const b = w.document.querySelector('[data-act="sop-propio"]');
+    if (!b) throw new Error("con instantánea guardada no hay cómo dejarla para capturar a mano");
+    if (/desactualizada/i.test(w.document.getElementById("view").textContent)) throw new Error("la instantánea se sigue comparando con los motores");
+    b.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+    const ok = w.document.querySelector('[data-act="confirmar-si"]'); if (ok) ok.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+    eq(S.soporte.usarMotores, false, "capturar a mano deja la instantánea:"); eq(S.soporte.snap, undefined, "sin instantánea:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); S.tab = tab0; G("recompute")(); }
+});
+
+t("S.188 (H-308) computeSoporte no lee los resultados de los otros motores (DUCT, HIDRO, FUEGO, AIRE, QUOTE, S.hidro ni S.aire): sin fuentes propias no cuenta sus metros aunque «usar los motores» esté activo; con la instantánea guardada calcula con ella, sin intercambiar los globales, y da las mismas cifras", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("recompute")();
+    if (!G("DUCT").segs.some((s) => Number(s.L) > 0)) throw new Error("el caso no aísla lo que se quiere probar: Ductos debe tener un tramo con longitud");
+    /* Sin fuentes propias (sin instantánea): nada de los otros motores, aunque «usar los motores» venga activo. */
+    const R = G("computeSoporte")({ ...S.soporte, usarMotores: true, ductoM: 0, tubHidroM: 0, tubFuegoM: 0, tubAireM: 0 });
+    eq(R.mDucto, 0, "sin fuentes propias no cuenta los metros de Ductos:");
+    eq(R.mTub, 0, "ni los de las tuberías:");
+    /* Con la instantánea guardada: mismas cifras aunque los resultados globales de los otros motores no existan. */
+    aceptarSoporte();
+    const R0 = G("SOPORTE"), cifras = (x) => JSON.stringify([x.mDucto, x.mTub, x.nSoportes, x.nEquipos, x.total]);
+    const esperado = cifras(R0);
+    const R1 = G(`(() => { const sv = [DUCT, HIDRO, FUEGO, AIRE, QUOTE]; try { DUCT = HIDRO = FUEGO = AIRE = QUOTE = null; return computeSoporteGobernado(S.soporte); } finally { [DUCT, HIDRO, FUEGO, AIRE, QUOTE] = sv; } })()`);
+    eq(cifras(R1), esperado, "con la instantánea no depende de los resultados globales:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+t("S.189 (AUD-03) aire comprimido calcula con SUS tablas y funciones: el diámetro interior del cobre tipo L y el factor de fricción (Haaland) son copias propias; cambiar la tabla de hidrosanitario o la función de ductos no mueve aire", () => {
+  const guardado = JSON.stringify(S);
+  const tabla0 = JSON.stringify(G("TUB_AGUA").cobre.d), h0 = G("haaland");
+  try {
+    S.aire = { ...G("defaultAire")(), material: "cobre", Lprincipal: 55, Lramales: 20, consumos: [{ id: "s189", tipo: "generico", nombre: "Prueba S.189", cant: 6, lmin: 900, bar: 6, uso: .6 }] };
+    G("recompute")();
+    const cifras = () => JSON.stringify(G("AIRE").tramos.map((t) => [t.d, t.V, t.dPbar]));
+    const antes = cifras();
+    if (!G("AIRE").tramos.length) throw new Error("el caso no aísla lo que se quiere probar: la red de aire debe tener tramos");
+    /* Otra disciplina cambia su tabla y su función: aire no se mueve. */
+    G("TUB_AGUA").cobre.d = G("TUB_AGUA").cobre.d.map(([d, nom]) => [d * 1.5, nom]);
+    G("haaland = function () { return 0.5; }");
+    G("recompute")();
+    eq(cifras(), antes, "aire no se mueve con la tabla de hidrosanitario ni con la función de ductos:");
+    eq(G("AIRE").tramos.every((t) => t.d > 0), true, "sigue dimensionando con su tabla:");
+  } finally { G("TUB_AGUA").cobre.d = JSON.parse(tabla0); w.haaland = h0; G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+t("S.190 (AUD-03) contra incendio calcula con SUS funciones: Hazen-Williams y la velocidad del agua son copias propias; cambiar las de hidrosanitario no mueve contra incendio", () => {
+  const guardado = JSON.stringify(S), h0 = G("hazen");
+  try {
+    S.fuego = { ...G("defaultFuego")(), riesgo: "ord2", area: 800, altura: 7, Lramal: 35, Lmontante: 12, presFuente: 30 };
+    G("recompute")();
+    const cifras = () => JSON.stringify([G("FUEGO").hfRam, G("FUEGO").hfMon, G("FUEGO").ram && G("FUEGO").ram.d, G("FUEGO").mon && G("FUEGO").mon.d, G("FUEGO").hpBomba]);
+    const antes = cifras();
+    if (!(G("FUEGO").hfRam > 0)) throw new Error("el caso no aísla lo que se quiere probar: debe haber fricción en el cabezal");
+    G("hazen = function () { return 1; }");
+    G("recompute")();
+    eq(cifras(), antes, "contra incendio no se mueve con la función de Hazen-Williams de hidrosanitario:");
+    /* velAgua es const (no se puede sustituir): se exige que el dimensionado de contra incendio no la llame. */
+    if (/\bvelAgua\(/.test(G("sizeFuego").toString()) || /\bhazen\(/.test(G("computeFuego").toString())) throw new Error("contra incendio sigue llamando a las funciones de hidrosanitario");
+  } finally { w.hazen = h0; G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+t("S.191 (AUD-03) ventilación calcula con SU tabla de tipos de espacio (ASHRAE 62.1 Rp y Ra) y sus tasas de aire exterior; cambiar la tabla o las constantes de carga térmica no mueve ventilación", () => {
+  const guardado = JSON.stringify(S), sp0 = JSON.stringify(G("SPACES")), p0 = JSON.stringify(G("P"));
+  try {
+    S.vent = { ...S.vent, mode: "general", spaceType: "production", area: 2000, height: 3, ach: .5, occ: 0 };
+    G("recompute")();
+    const antes = JSON.stringify([G("VENT").demand, G("VENT").m3h]);
+    if (!(G("VENT").demand > 0)) throw new Error("el caso no aísla lo que se quiere probar: debe haber caudal");
+    const SP = G("SPACES"); Object.values(SP).forEach((x) => { x.Rp = x.Rp * 3; x.Ra = x.Ra * 3; });
+    const P = G("P"); P.OA_PERS = P.OA_PERS * 3; P.OA_M2 = P.OA_M2 * 3;
+    G("recompute")();
+    eq(JSON.stringify([G("VENT").demand, G("VENT").m3h]), antes, "ventilación no se mueve con la tabla ni las constantes de carga térmica:");
+    if (/\bSPACES\b|\bspaceOf\(/.test(G("computeVent").toString())) throw new Error("computeVent sigue leyendo la tabla de carga térmica");
+  } finally { Object.assign(G("SPACES"), JSON.parse(sp0)); Object.assign(G("P"), JSON.parse(p0)); G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+t("S.192 (AUD-03) el eléctrico no lee constantes de cuartos limpios: la procedencia del kW de una carga de FFU no cita los W por módulo del catálogo de FFU (constante de cuartos limpios), sino que queda con los datos de la propia carga", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    /* Una carga de FFU migrada con 150 W por módulo (su propio dato, en el nombre y en su kW). */
+    S.elec = { ...G("defaultElec")(), trafoKVA: 300, trafoZ: 4, Ltablero: 30,
+      cargas: [{ ...G("defaultCarga")("Módulos FFU · 10 × 150 W"), id: "s192", tipo: "motor", kW: 1.5, kWRef: 1.5, V: 127, ph: 1, cant: 1, L: 20, fp: .85, origen: "cedula", ts: 1, kWOrigen: "ffu", aparato: true }] };
+    G("recompute")();
+    const memo = G("ELEC").memo.join(" ");
+    contiene(memo, "de catálogo de la casa", "el caso no aísla lo que se quiere probar: la carga debe decir su procedencia de catálogo:");
+    const w0 = G("FFU").watts;
+    if (memo.includes(`${w0} W por módulo`)) throw new Error(`la memoria del eléctrico cita los ${w0} W por módulo del catálogo de FFU de cuartos limpios`);
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+t("S.193 (AUD-14) hidrosanitario sin presión de la red ni altura del edificio capturadas no calcula con valores inventados (antes 25 m y 6 m): presión residual y carga dinámica quedan pendientes con aviso; la bomba no se dimensiona ni se declara «no alcanza»", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    S.hidro = { ...G("defaultHidro")(), material: "cobre", tramos: [{ ...G("defaultTramoAgua")("AF-1"), id: "s193", um: 40, L: 20, alt: 3 }], muebles: [{ id: "wc_flux", cant: 3 }, { id: "lavabo", cant: 3 }] };
+    eq(G("defaultHidro")().presRed, null, "un proyecto nuevo nace sin presión de la red (pendiente):"); eq(G("defaultHidro")().alturaEdificio, null, "ni altura del edificio:");
+    delete S.hidro.presRed; S.hidro.alturaEdificio = null;   /* sin capturar (ausente o vacío) */
+    G("recompute")();
+    const H = G("HIDRO");
+    if (!(H.Qtotal > 0)) throw new Error("el caso no aísla lo que se quiere probar: debe haber gasto");
+    eq(H.presDisp, null, "presión residual pendiente (sin presión de la red):"); eq(H.presOk, null, "no se sabe si alcanza:");
+    eq(H.cdt, null, "carga dinámica pendiente (sin altura del edificio):"); eq(H.hpBomba, 0, "sin bomba dimensionada:");
+    if (!H.avisos.some((a) => /presión (de la red|en la toma).*pendiente/i.test(a.msg))) throw new Error("falta el aviso de presión de la red pendiente");
+    if (!H.avisos.some((a) => /altura del edificio.*pendiente|pendiente.*altura del edificio/i.test(a.msg))) throw new Error("falta el aviso de altura del edificio pendiente");
+    const C = H.cot;
+    if (C.porCotizar.some((x) => /no alcanza/.test(x.desc))) throw new Error("la cotización de hidrosanitario declara que la presión no alcanza sin saberlo");
+    if (!C.pendientes.some((x) => /bombeo/i.test(x.desc) && /pendiente/.test(x.motivo))) throw new Error("el equipo de bombeo debe quedar pendiente en la cotización de hidrosanitario");
+    /* Con los dos datos capturados, calcula como antes. */
+    S.hidro.presRed = 25; S.hidro.alturaEdificio = 6; G("recompute")();
+    if (!(G("HIDRO").cdt > 6 && G("HIDRO").presDisp !== null)) throw new Error("con presión y altura capturadas debe calcular");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+t("S.194 (AUD-14) eléctrico sin valores inventados: selConductor sin distancia ni fp no supone 20 m ni fp 0.9 (la caída queda pendiente); una MCA/MOP ESTIMADA por la suite (0.85·FLA × 125 % / 175 %) no fija el conductor ni la protección: se imprime como referencia y el equipo se dimensiona sin placa hasta capturarla", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    const c = G("selConductor")({ I: 50, V: 220, ph: 3 });
+    eq(c.L, null, "sin distancia no se suponen 20 m:"); eq(c.dv, null, "la caída queda pendiente:");
+    const dm = (x) => ({ ...G("defaultCarga")(x.nombre), V: 220, ph: 3, cant: 1, L: 20, fp: .85, ...x });
+    S.elec = { ...G("defaultElec")(), trafoKVA: 300, trafoZ: 4, Ltablero: 30,
+      cargas: [dm({ nombre: "Condensadora 10 TR", id: "s194", tipo: "motor", kW: 12, modelo: "38AUD-012", mca: 30, mop: 45, placaEstimada: true })] };
+    G("recompute")();
+    const r = G("ELEC").calc[0];
+    eq(r.art440, false, "MCA/MOP estimados no activan el art. 440:");
+    if (r.cond.ocpd <= 45 && r.cond.ocpd < G("selConductor")({ I: r.I, V: 220, ph: 3, L: 20, fp: .85, motor: true }).ocpd) throw new Error("la protección no debe salir del MOP estimado");
+    if (!G("ELEC").avisos.some((a) => /estimad/i.test(a.msg) && /no fija/i.test(a.msg))) throw new Error("falta el aviso de que la MCA/MOP estimada no fija la protección");
+    /* Con MCA y MOP de placa sí rige el art. 440. */
+    S.elec.cargas[0].placaEstimada = false; G("recompute")();
+    eq(G("ELEC").calc[0].art440, true, "con placa rige el art. 440:");
+    if (!(G("ELEC").calc[0].cond.ocpd <= 45)) throw new Error("con MOP de placa la protección no pasa de él");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+t("S.195 (AUD-14) soportería: la tubería capturada a mano sin material no se soporta como acero (antes «acero» por omisión): queda pendiente de material, sin soportes ni importe; un proyecto nuevo nace sin material", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    const d0 = G("defaultSoporte")();
+    eq([d0.tubHidroMat, d0.tubFuegoMat, d0.tubAireMat].join(","), ",,", "un proyecto nuevo nace sin material de tubería:");
+    S.soporte = { ...G("defaultSoporte")(), usarMotores: false, alturaTrabajo: 5, alturaEstructura: 6, alturaColgadoM: 1, mesesElevacion: 0, tubHidroM: 30, tubHidroD: 50 };
+    G("recompute")();
+    const R = G("SOPORTE");
+    eq(R.mTub, 0, "sin material no se cuentan metros de tubería:");
+    if (!R.manualPendientes.some((p) => /material/.test(p.falta))) throw new Error("la tubería sin material debe quedar pendiente de material");
+    /* Con el material capturado sí se soporta. */
+    S.soporte.tubHidroMat = "acero"; G("recompute")();
+    eq(G("SOPORTE").mTub, 30, "con acero capturado cuenta los 30 m:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+t("S.196 (AUD-14) aire comprimido no dimensiona la red con datos que nadie capturó: material desconocido ya no se toma como aluminio, y en aluminio o inoxidable (DI del fabricante pendiente) no se usa cédula 40 «indicativa»: diámetros y caída de la red quedan pendientes con aviso", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    const arma = (material) => { S.aire = { ...G("defaultAire")(), material, Lprincipal: 60, Lramales: 20, consumos: [{ id: "s196", tipo: "generico", nombre: "Prueba S.196", cant: 4, lmin: 500, bar: 6, uso: .5 }] }; G("recompute")(); return G("AIRE"); };
+    let A = arma("aluminio");
+    if (!(A.fadRequerido > 0)) throw new Error("el caso no aísla lo que se quiere probar: debe haber demanda");
+    eq(A.tramos.every((t) => t.d == null && t.pendiente === true), true, "aluminio sin DI del fabricante: diámetros pendientes (sin cédula 40 indicativa):");
+    eq(A.dPtotal, null, "caída de la red pendiente:");
+    if (!A.avisos.some((a) => /DI del fabricante/.test(a.msg) && /pendiente/.test(a.msg))) throw new Error("falta el aviso de DI del fabricante pendiente");
+    A = arma("material_raro");
+    eq(A.mat.label === G("TUB_AIRE").aluminio.label, false, "un material desconocido no se toma como aluminio:");
+    eq(A.tramos.every((t) => t.d == null), true, "sin material no se dimensiona la red:");
+    if (!A.avisos.some((a) => /[Mm]aterial de la red/.test(a.msg) && /pendiente/.test(a.msg))) throw new Error("falta el aviso de material pendiente");
+    if (!A.cot.pendientes.some((p) => /[Rr]ed de aire/.test(p.desc))) throw new Error("la red sin material debe quedar pendiente en la cotización de aire");
+    /* Con cobre (DI de ASTM B88) sí se dimensiona. */
+    A = arma("cobre");
+    eq(A.tramos.every((t) => t.d > 0), true, "en cobre se dimensiona:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+t("S.197 (AUD-18) el colector usa la columna de ¼ in/ft de IPC 2015 Tabla 710.1(1) sólo desde ¼ in/ft = 2.083 % (antes desde 2 %, que es menos que ¼ in/ft): al 2 % rige la de ⅛ in/ft, la misma conversión de pendMin704", () => {
+  const sd = G("sizeDrenaje");
+  eq(sd(200, 0, "colector", 2).d, 150, "200 UD al 2 % (< 2.083 %): columna ⅛ in/ft, 4\" admite 180 → 6\":");
+  eq(sd(200, 0, "colector", 2.09).d, 100, "200 UD al 2.09 % (≥ 2.083 %): columna ¼ in/ft, 4\" admite 216:");
+  eq(sd(200, 0, "colector", 0.25 / 12 * 100).d, 100, "justo en ¼ in/ft rige la columna ¼:");
+  cerca(G("pendMin704")(50), 0.25 / 12 * 100, 1e-9, "pendMin704 usa la misma conversión (¼ in/ft = 2.0833 %):");
+});
+
+t("S.198 (AUD-15/16) hidrosanitario rotula cada presión mínima con SU fuente (la regadera de emergencia y la tarja de laboratorio no están en IPC 2015 Tabla 604.3) en memoria y PDF; sin presión de la red la memoria y el PDF no declaran «no alcanza»; la nota del hidroneumático no cita NFPA 20 sin su texto", () => {
+  const guardado = JSON.stringify(S);
+  const pdf = () => [...Buffer.from(G("buildHidroPdf")()).toString("latin1").matchAll(/\(((?:[^()\\]|\\.)*)\) Tj/g)].map((m) => m[1]).join(" ").replace(/\\(.)/g, "$1");
+  try {
+    S.hidro = { ...G("defaultHidro")(), material: "cobre", alturaEdificio: 6, tramos: [{ ...G("defaultTramoAgua")("AF-1"), id: "s198", um: 20, L: 20, alt: 3 }],
+      muebles: [{ id: "lavabo", cant: 4 }, { id: "lavaojos", cant: 1 }, { id: "tarja_lab", cant: 2 }] };
+    G("recompute")();
+    const H = G("HIDRO");
+    eq(H.masExigente && H.masExigente.id, "lavaojos", "el caso no aísla lo que se quiere probar: rige la regadera de emergencia:");
+    eq(H.rigeNorma, true, "rige la mínima del mueble sobre el residual:");
+    const memo = H.memo.join(" ");
+    if (/regadera de emergencia[^.]*IPC 2015 Tabla 604\.3/i.test(memo) || /mínima de norma del mueble más exigente/.test(memo)) throw new Error("la memoria rotula la regadera de emergencia como mínima de IPC 2015 Tabla 604.3");
+    contiene(memo, "criterio de la casa", "la memoria dice la fuente de la regadera de emergencia:");
+    const p = pdf();
+    if (/minima de norma, IPC 2015 Tabla 604\.3/.test(p)) throw new Error("el PDF rotula la carga dinámica con IPC 2015 Tabla 604.3 aunque rige la regadera de emergencia");
+    /* Sin presión de la red (pendiente) ni la memoria ni el PDF dicen «no alcanza». */
+    if (/no alcanza/.test(p) || /La presión de la red no alcanza/.test(memo)) throw new Error("sin presión de la red capturada se declara «no alcanza»");
+    S.tab = "hidro"; G("render")();
+    if (/NFPA 20 exige/.test(w.document.getElementById("view").textContent)) throw new Error("la nota del hidroneumático cita NFPA 20 sin texto de norma");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+t("S.199 (H-306/H-307) al abrir un proyecto anterior, las cargas eléctricas que tomaba en vivo y la instantánea de metros de soportería quedan «de la migración, sin confirmar» (no «aceptado»: nadie las aceptó), cada carga con su motor de origen (equip, vent, aire, hidro, fuego, clean); memoria, PDF y pantalla lo dicen; confirmarlas no mueve cifras ni el sello", () => {
+  const guardado = JSON.stringify(S), tab0 = S.tab;
+  const clic = (sel) => { const b = w.document.querySelector(sel); if (!b) throw new Error(`no hay botón ${sel}`); b.dispatchEvent(new w.MouseEvent("click", { bubbles: true })); };
+  try {
+    /* H-306: proyecto guardado en vivo (tomarHVAC con los cruces autorizados). */
+    const fixture = JSON.parse(fs.readFileSync("parches/regresion-motores/regresion-motores.emp.json", "utf8"));
+    const vivo = JSON.parse(JSON.stringify(fixture)); vivo.elec.tomarHVAC = true;
+    G("importarRespaldo")(JSON.stringify(vivo)); G("recompute")();
+    const ced = S.elec.cargas.filter((c) => c.origen === "cedula");
+    if (!(ced.length >= 6)) throw new Error("el caso no aísla lo que se quiere probar: el fixture debe migrar las seis fuentes: " + ced.length);
+    const rec = G("vinculoDe")("cedula>elec") || {};
+    if (rec.estado === "aceptado") throw new Error("la migración registra las cargas como «aceptado» sin que nadie las aceptara");
+    eq(rec.sinConfirmar, true, "el registro de la migración queda sin confirmar:");
+    const mapa = { hvac: "equip", vent: "vent", aire: "aire", hidro: "hidro", fuego: "fuego", ffu: "clean" };
+    ced.forEach((c) => { eq(c.migrado, true, `${c.nombre}: de la migración, sin confirmar:`); eq(c.origenMotor, mapa[c.kWOrigen], `${c.nombre}: motor de origen del renglón:`); });
+    ["equip", "vent", "aire", "hidro", "fuego", "clean"].forEach((o) => { if (!ced.some((c) => c.origenMotor === o)) throw new Error(`ningún renglón registra el origen ${o}`); });
+    const memo = G("ELEC").memo.join(" ");
+    contiene(memo, "de la migración al abrir, sin confirmar", "la memoria lo dice:");
+    contiene(memo, "Ventilación", "la memoria nombra el motor de origen de cada renglón:");
+    contiene(memo, "Cuartos limpios", "también el de los FFU:");
+    if (!/migracion al abrir, sin confirmar/.test(txtPdfE(G("buildElecPdf")()))) throw new Error("el PDF del eléctrico no dice que las cargas son de la migración, sin confirmar");
+    S.tab = "electrico"; G("render")();
+    contiene(vista(), "de la migración al abrir, sin confirmar", "la pantalla lo dice:");
+    /* Capturar un dato del renglón lo confirma; el botón confirma todas. Ninguna de las dos cosas mueve cifras ni el sello. */
+    const cifras = JSON.stringify(G("cifrasMotor")("elec")), huella = G("huellaMotor")("elec");
+    const i0 = S.elec.cargas.findIndex((c) => c.origen === "cedula");
+    G("setPath")(`elec.cargas.${i0}.nombre`, S.elec.cargas[i0].nombre); G("recompute")();
+    eq(S.elec.cargas[i0].migrado, undefined, "capturar un dato del renglón lo confirma:");
+    G("render")(); clic('[data-act="ec-confirmar-mig"]');
+    eq(S.elec.cargas.filter((c) => c.migrado).length, 0, "confirmadas, ninguna queda de la migración:");
+    eq(G("vinculoDe")("cedula>elec").estado, "aceptado", "confirmadas por el usuario, quedan aceptadas:");
+    eq(JSON.stringify(G("cifrasMotor")("elec")), cifras, "confirmar no mueve cifras:");
+    eq(G("huellaMotor")("elec"), huella, "ni el sello del eléctrico:");
+    if (/de la migración al abrir, sin confirmar/.test(G("ELEC").memo.join(" "))) throw new Error("confirmadas, la memoria sigue diciendo «sin confirmar»");
+    /* H-307: proyecto guardado antes de H-266 que contaba en vivo 20 m de ducto. */
+    const q = JSON.parse(JSON.stringify(G("defaultState")())); q.meta.name = "S.199";
+    q.zones = [{ ...G("defaultZone")("Nave"), area: 400, height: 6 }];
+    q.duct.segments = [{ ...G("defaultSegment")("TR-1", 3000), length: 20 }];
+    q.soporte = { usarMotores: true, sismico: true, alturaTrabajo: 0, mesesElevacion: 3, basesEquipo: 0, rielM: 0 };
+    G("importarRespaldo")(JSON.stringify(q)); G("recompute")();
+    eq(G("SOPORTE").mDucto, 20, "el caso no aísla lo que se quiere probar: toma la instantánea de lo que contaba:");
+    const recS = G("vinculoDe")("motores>soporte") || {};
+    if (recS.estado === "aceptado") throw new Error("la migración registra la instantánea de soportería como «aceptado» sin que nadie la aceptara");
+    eq(recS.sinConfirmar, true, "la instantánea queda sin confirmar:");
+    S.tab = "soporte"; G("render")();
+    contiene(vista(), "de la migración al abrir, sin confirmar", "la pantalla de soportería lo dice:");
+    if (!/migraci.n al abrir, sin confirmar/.test(txtPdfE(G("buildSoportePdf")()))) throw new Error("el PDF de soportería no dice que la instantánea es de la migración, sin confirmar");
+    const tot = G("SOPORTE").total;
+    clic('[data-act="sop-confirmar-mig"]');
+    eq(G("vinculoDe")("motores>soporte").estado, "aceptado", "confirmada por el usuario, queda aceptada:");
+    eq(G("vinculoDe")("motores>soporte").sinConfirmar, false, "ya no sin confirmar:");
+    eq(G("SOPORTE").total, tot, "confirmar no mueve cifras:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); S.tab = tab0; G("recompute")(); }
+});
+
+t("S.200 (H-309) el sello del eléctrico sólo depende de su captura: conceder o retirar un permiso de otro motor (fuego>quote, load>quote) no lo marca «desactualizado · la captura cambió» (desde H-306 computeElec no lee ningún permiso); cambiar su captura sí lo marca", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.200";
+    S.elec = { ...G("defaultElec")(), cargas: [{ ...G("defaultCarga")("Bomba S.200"), id: "s200", V: 220, ph: 3, cant: 1, L: 25, fp: .85, tipo: "motor", kW: 5.5 }] };
+    G("recompute")();
+    S.sellos = S.sellos || {}; S.sellos.elec = { ts: 1, huella: G("huellaMotor")("elec"), ver: G("motorVer")("elec"), hf: G("formaHuella")("elec") };
+    eq(G("selloDe")("elec").estado, "calculado", "recién sellado:");
+    const antes = JSON.stringify(G("cifrasMotor")("elec"));
+    S.perms["fuego>quote"] = { ts: 1, via: "S.200" }; S.perms["load>quote"] = { ts: 1, via: "S.200" }; G("recompute")();
+    eq(JSON.stringify(G("cifrasMotor")("elec")), antes, "el eléctrico no cambia:");
+    eq(G("selloDe")("elec").estado, "calculado", "conceder permisos de otros motores no marca el eléctrico:");
+    delete S.perms["fuego>quote"]; G("recompute")();
+    eq(G("selloDe")("elec").estado, "calculado", "ni retirarlos:");
+    S.elec.cargas[0].kW = 7.5; G("recompute")();
+    eq(G("selloDe")("elec").estado, "desactualizado", "cambiar su captura sí lo marca:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {
   const guardado = JSON.stringify(S);
   try {
@@ -7446,12 +9821,54 @@ t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esper
     Object.keys(MV).forEach((id) => {
       const e = REG_ESP.motores[id];
       if (!e) { fallas.push(`${id}: sin esperado (corre node parches/regresion-motores/genera.mjs)`); return; }
-      const ahora = JSON.stringify(G("cifrasMotor")(id)), esp = JSON.stringify(e.cifras);
       if (e.ver !== MV[id]) fallas.push(`${id}: MOTOR_VER subió a v${MV[id]} y el esperado es de v${e.ver}: regenera el esperado de ese motor (genera.mjs) en el mismo commit que sube la versión`);
-      else if (ahora !== esp) fallas.push(`${id}: las cifras cambiaron con la MISMA versión v${MV[id]}: cambió la lógica del motor sin subir MOTOR_VER (o el fixture). Sube la versión con su hallazgo en MOTOR_CAMBIOS y regenera el esperado`);
+      else if (!mismasCifras(G("cifrasMotor")(id), e.cifras)) fallas.push(`${id}: las cifras cambiaron con la MISMA versión v${MV[id]}: cambió la lógica del motor sin subir MOTOR_VER (o el fixture). Sube la versión con su hallazgo en MOTOR_CAMBIOS y regenera el esperado`);
     });
     if (fallas.length) throw new Error(fallas.join("\n   "));
     eq(Object.keys(REG_ESP.motores).length, Object.keys(MV).length, "todos los motores tienen esperado:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+/* AUD-12 (auditoría externa, 29-sep-2026): desde H-262 se retiraron herencias y cruces y subieron varias versiones, pero el proyecto
+   fijo no ejercitaba las ramas nuevas. El segundo proyecto fijo (parches/regresion-motores/proyecto-2.arma.js) se captura disciplina
+   por disciplina en su propia pestaña y las ejercita; sus cifras (también soportería a mano) se vigilan como las de R.1. */
+t("R.4 (AUD-12) segundo proyecto fijo capturado disciplina por disciplina: ejercita motor con MCA/MOP, aluminio, protección > 300 A sin distancia ni transformador, diversidad ≠ 1, ΔP negativa < 5 Pa, ducto de grasa, ventilador sin cobertura, regadera de emergencia, CPVC fuera de catálogo, varios tanques, cobre en aire y soportería con instantánea y a mano; el eléctrico vigila tierra, caída de tensión, Icc y kAIC; si un motor cambia sin subir MOTOR_VER, truena", () => {
+  const guardado = JSON.stringify(S), P = JSON.parse(REG_PROY2);
+  try {
+    G("importarRespaldo")(REG_PROY2); S.tab = "tablero"; G("KZ_CACHE").key = null; G("VZ_CACHE").key = null; G("recompute")();
+    /* Ninguna disciplina se generó a partir de otra: sin propuestas aceptadas, sitios propios, zonas de selección capturadas. */
+    eq(Object.keys(P.vinculos || {}).length, 0, "sin propuestas aceptadas:");
+    eq(P.sitioCarga.origen, "capturado en Carga térmica", "sitio de Carga capturado en su pestaña:");
+    eq(P.equip.sitio.origen, "capturado en Selección", "sitio de Selección capturado en su pestaña:");
+    eq(P.equip.zonas.every((z) => !z.origen), true, "zonas de selección capturadas en su pestaña:");
+    /* Las ramas que el proyecto debe ejercitar: si el fixture las pierde, la regresión deja de verlas. */
+    const E = G("ELEC"), D = G("DUCT"), V = G("VENT"), H = G("HIDRO"), A = G("AIRE");
+    eq(E.mat, "aluminio", "eléctrico en aluminio:");
+    if (!E.calc.some((c) => c.art440 && !c.mcaEst && !c.mopEst)) throw new Error("falta el motor con MCA y MOP de placa");
+    if (!(E.principal > 300)) throw new Error("la protección principal debe pasar de 300 A: " + E.principal);
+    eq(E.alim.dv, null, "sin distancia al tablero (caída del alimentador pendiente):"); eq(E.IccTrafo, null, "sin transformador (Icc pendiente):");
+    if (!E.calc.some((c) => c.sinL)) throw new Error("falta una carga sin distancia capturada");
+    if (!(G("divSel")() < 1)) throw new Error("la diversidad del edificio debe ser distinta de 1");
+    if (!P.clean.rooms.some((r) => r.dp < 0 && Math.abs(r.dp) < 5)) throw new Error("falta el cuarto con ΔP negativa menor que 5 Pa");
+    if (!D.segs.some((s) => s.gauge && s.gauge.grasa)) throw new Error("falta el ducto de grasa");
+    if (!(V.demand > 0) || (V.eq && V.eq.primary)) throw new Error("el ventilador debe quedar sin cobertura del catálogo");
+    if (!P.hidro.muebles.some((m) => m.id === "lavaojos")) throw new Error("falta la regadera de emergencia");
+    if (!(P.hidro.material === "cpvc" && H.tramos.some((t) => t.fueraCatalogo))) throw new Error("falta el CPVC fuera de catálogo");
+    if (!(A.nTanques > 1)) throw new Error("faltan los varios tanques pulmón"); eq(P.aire.material, "cobre", "cobre en aire:");
+    if (!(S.soporte.snap && S.soporte.usarMotores === true && Number(S.soporte.ductoM) > 0)) throw new Error("soportería debe traer instantánea guardada y metros a mano");
+    /* El eléctrico vigila también tierra, caída de tensión, Icc y kAIC. */
+    const ce = G("cifrasMotor")("elec");
+    ["tierra", "dv", "Icc", "kAIC"].forEach((k) => { if (!ce || !(k in ce)) throw new Error(`cifras vigiladas del eléctrico: falta ${k}`); });
+    /* Cifras de cada motor contra su esperado (quote, kaizen y valor sólo se vigilan: congelados). */
+    const MV = G("MOTOR_VER"), fallas = [];
+    const compara = (nom, id, e, ahora) => {
+      if (!e) { fallas.push(`${nom}: sin esperado (corre node parches/regresion-motores/genera.mjs)`); return; }
+      if (e.ver !== MV[id]) fallas.push(`${nom}: MOTOR_VER subió a v${MV[id]} y el esperado es de v${e.ver}: regenera el esperado (genera.mjs) en el mismo commit`);
+      else if (!mismasCifras(ahora, e.cifras)) fallas.push(`${nom}: las cifras cambiaron con la MISMA versión v${MV[id]}: sube MOTOR_VER con su hallazgo y regenera el esperado`);
+    };
+    Object.keys(MV).forEach((id) => compara(id, id, REG_ESP2.motores[id], G("cifrasMotor")(id)));
+    S.soporte.usarMotores = false; G("recompute")();
+    compara("soporte·a mano", "soporte", REG_ESP2.variantes && REG_ESP2.variantes["soporte·a mano"], G("cifrasMotor")("soporte"));
+    if (fallas.length) throw new Error(fallas.join("\n   "));
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 t("R.2 abrir un proyecto viejo nunca recalcula solo: los sellos quedan como venían, las disciplinas afectadas dicen Desactualizado y nada se vuelve a sellar ni a guardar", () => {
@@ -7517,7 +9934,7 @@ t("S.40 una instalación limpia abre con todo en cero: sin proyectos, sin cuarto
   eq(SL.hidro.muebles.length + SL.hidro.tramos.length, 0, "sin muebles ni tramos de agua:"); eq(num(SL.fuego.area), 0, "sin área contra incendio:");
   eq(SL.aire.consumos.length, 0, "sin consumos de aire:"); eq(num(SL.civil.firmeM2) + num(SL.civil.puertasSimples) + num(SL.civil.puertasLimpias), 0, "civil en ceros:");
   eq(num(SL.soporte.rielM) + num(SL.soporte.basesEquipo), 0, "soportería en ceros:");
-  eq(SL.quote.items.length, 0, "sin equipos elegidos:"); eq(JSON.stringify(SL.quote.hidroPU), JSON.stringify(GL("HIDRO_PU_REFERENCIA")), "sólo referencias de mercado de tubería, ningún precio de proveedor:"); eq((SL.quote.hidroPUlog || []).length, 0, "sin bitácora de precios:"); eq(SL.quote.fxFecha, "", "tipo de cambio sin fecha capturada:"); eq(SL.kaizen.items.length, 0, "sin mejoras:");
+  eq(SL.equip.items.length, 0, "sin equipos elegidos:"); eq(JSON.stringify(SL.hidro.hidroPU), JSON.stringify(GL("HIDRO_PU_REFERENCIA")), "sólo referencias de mercado de tubería, ningún precio de proveedor:"); eq((SL.hidro.hidroPUlog || []).length, 0, "sin bitácora de precios:"); eq(SL.quote.fxFecha, "", "tipo de cambio sin fecha capturada:"); eq(SL.kaizen.items.length, 0, "sin mejoras:");
   eq(Object.keys(SL.sellos).length, 0, "sin sellos:"); eq(Object.keys(SL.perms).length, 0, "sin cruces autorizados:");
   GL("recompute()");
   eq(GL("QUOTE").tot, 0, "cotización en cero:"); eq(GL("totals()").tons, 0, "carga en cero:"); eq(GL("HIDRO").Qtotal, 0, "hidro en cero:"); eq(GL("FUEGO").qTotal, 0, "incendio en cero:"); eq(GL("AIRE").fadRequerido, 0, "aire en cero:"); eq(GL("CIVIL").total + GL("SOPORTE").total, 0, "civil y soportería en cero:");
@@ -7536,24 +9953,24 @@ t("S.41 (rev 2.9.23) referencias de mercado: únicamente California y sólo mate
   try {
     /* 1. IUSA fuera: no hay referencias cargadas; el cobre sale Por cotizar. */
     eq(JSON.stringify(G("HIDRO_PU_REFERENCIA")), "{}", "sin referencias cargadas hasta recibir los libros de Craftsman:");
-    if (/IUSA/.test(JSON.stringify(G("defaultState")().quote.hidroPU))) throw new Error("un proyecto nuevo trae IUSA");
-    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.41"; Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.41" }; });
-    S.zones[0].area = 100; S.zones[0].height = 3;
+    if (/IUSA/.test(JSON.stringify(G("defaultState")().hidro.hidroPU))) throw new Error("un proyecto nuevo trae IUSA");
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.41"; Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.41" }; }); aceptarSitioCarga();   /* H-290 */
+    S.zones[0].area = 100; S.zones[0].height = 3; S.duct.difusores = 2;   /* H-300: los difusores que daba la zona se capturan en Ductos */
     S.hidro = { ...G("defaultHidro")(), material: "cobre", tramos: [{ ...G("defaultTramoAgua")("AF-1"), um: 40, L: 25, alt: 0 }, { ...G("defaultTramoAgua")("AF-2"), um: 12, L: 12, alt: 0 }], muebles: [{ id: "wc_flux", cant: 4 }, { id: "lavabo", cant: 4 }] };
-    S.quote.fx = 18.25; S.quote.fxFecha = "2026-09-22"; S.quote.fxFuente = "Banxico FIX"; G("recompute")();
+    S.quote.fx = 18.25; S.quote.fxFecha = "2026-09-22"; S.quote.fxFuente = "Banxico FIX"; Object.assign(S.hidro, { fx: 18.25, fxFecha: "2026-09-22", fxFuente: "Banxico FIX" }); G("recompute")();   /* H-302 */
     const noms = [...new Set(G("HIDRO").tramos.filter((x) => x.Lcap > 0 && x.um > 0).map((x) => String(x.nom).split(" ·")[0]))];
     eq(G("hidroDiametrosSinPrecio")().length, noms.length, "cobre sin precio: todos los diámetros Por cotizar:");
     eq((G("QUOTE").porCotizar || []).filter((p) => p.mot === "hidro" && p.un === "ML").length, noms.length, "una partida Por cotizar por diámetro:");
     eq(G("cotUnificadaEstado")().ok, true, "el Budget sale:"); eq(G("accEstado")("hidro").cot.ok, false, "la formal no:");
     /* 2. Un proyecto guardado con las referencias IUSA las pierde al abrir, con antes/después en la bitácora (archivo, no borrado). */
     const viejo = JSON.parse(JSON.stringify(S));
-    viejo.quote.hidroPU = { cobre_1_: { precio: 2924.99, moneda: "MXN", iva: true, porTramo: 6.10, origen: "referencia", fuente: "Tienda IUSA, menudeo", ubicacion: "México", url: "", fecha: "2026-09-21" }, cobre_2_: 333 };
-    const sv = G("sanearEstado")(viejo).quote;
+    viejo.hidro.hidroPU = { cobre_1_: { precio: 2924.99, moneda: "MXN", iva: true, porTramo: 6.10, origen: "referencia", fuente: "Tienda IUSA, menudeo", ubicacion: "México", url: "", fecha: "2026-09-21" }, cobre_2_: 333 };
+    const sv = G("sanearEstado")(viejo).hidro;   /* H-302: los precios de tubería son de Hidrosanitario */
     eq(sv.hidroPU.cobre_1_, undefined, "la referencia IUSA sale del Budget:"); eq(sv.hidroPU.cobre_2_, 333, "el precio de proveedor local se respeta:");
     eq(sv.hidroPUlog.length, 1, "queda archivada en la bitácora:"); eq(sv.hidroPUlog[0].via, "regla California", "vía:"); eq(sv.hidroPUlog[0].antes.precio, 2924.99, "antes:"); contiene(sv.hidroPUlog[0].despues.fuente, "Por cotizar", "después:");
     /* 3. Referencia de prueba aislada (California, sólo material, USD): se convierte con tipo de cambio fechado; el renglón dice material y la mano de obra queda pendiente. */
     const k0 = G("claveHidroPU")("cobre", noms[0]);
-    S.quote.hidroPU[k0] = REF_PRUEBA("USD"); G("recompute")();
+    S.hidro.hidroPU[k0] = REF_PRUEBA("USD"); G("recompute")();
     const e0 = G("hidroPUEntrada")(k0); cerca(e0.precioM, 4.2 * 18.25, 1e-9, "4.20 USD × 18.25 por metro:"); eq(e0.alcance, "material", "sólo material:"); eq(e0.iva, false, "antes de impuestos tal como lo dice la fuente:");
     const r0 = (G("QUOTE").aux || []).find((a) => a.mot === "hidro" && a.un === "ML"); contiene(r0.desc, "material, precio de referencia de mercado", "renglón: material:"); contiene(r0.desc, "mano de obra por capturar", "y mano de obra por capturar:");
     contiene((G("QUOTE").pendientes || []).map((p) => p.motivo).join("|"), "mano de obra por capturar", "pendiente de mano de obra (no se estima):");
@@ -7563,23 +9980,23 @@ t("S.41 (rev 2.9.23) referencias de mercado: únicamente California y sólo mate
     contiene(pdf, "REFERENCIA DE PRUEBA (no es una fuente real), ed. 2026, p. 1, San Diego, CA, 2026-09-22; 4.2 USD, sólo material, antes de impuestos, lista: costo de material de estimador", "etiqueta honesta completa:");
     contiene(pdf, "18.25 MXN/USD del 2026-09-22 (Banxico FIX)", "tipo de cambio con fecha y fuente:");
     /* 4. Etiqueta honesta: lo que la fuente no dice queda «no especificado», nunca supuesto. */
-    S.quote.hidroPU[k0] = REF_PRUEBA("USD", { iva: null, lista: "", edicion: "", pagina: "" }); G("recompute")();
+    S.hidro.hidroPU[k0] = REF_PRUEBA("USD", { iva: null, lista: "", edicion: "", pagina: "" }); G("recompute")();
     const e1 = G("hidroPUEntrada")(k0); eq(e1.iva, null, "impuestos no especificados:"); eq(e1.lista, "no especificado", "lista no especificada:");
     contiene(txtPdf(G("buildPropuestaPdf")({ lang: "es", mon: "MXN" })), "impuestos: no especificado, lista: no especificado", "el PDF lo dice tal cual:");
     /* 5. Sólo material: si la fuente combina material y mano de obra sin separarlos, Por cotizar. */
-    S.quote.hidroPU[k0] = REF_PRUEBA("USD", { alcance: "material_mo" }); G("recompute")();
+    S.hidro.hidroPU[k0] = REF_PRUEBA("USD", { alcance: "material_mo" }); G("recompute")();
     eq(G("hidroPUEntrada")(k0).combinado, true, "combinado:"); eq(G("hidroDiametrosSinPrecio")().includes(noms[0]), true, "sin precio:");
     eq((G("QUOTE").porCotizar || []).find((p) => p.clave === k0).motivo, "material y mano de obra combinados", "motivo Por cotizar:");
     contiene((G("QUOTE").pendientes || []).map((p) => p.motivo).join("|"), "la fuente combina material y mano de obra", "pendiente con motivo:");
     /* 6. Únicamente California: una referencia de otro sitio no cuenta. */
-    S.quote.hidroPU[k0] = REF_PRUEBA("USD", { ubicacion: "Phoenix, AZ" }); G("recompute")();
+    S.hidro.hidroPU[k0] = REF_PRUEBA("USD", { ubicacion: "Phoenix, AZ" }); G("recompute")();
     eq(G("hidroPUEntrada")(k0).fueraCA, true, "fuera de California:"); eq((G("QUOTE").porCotizar || []).find((p) => p.clave === k0).motivo, "fuera de California", "Por cotizar:");
     /* 7. USD sin tipo de cambio fechado: no se convierte. */
-    S.quote.hidroPU[k0] = REF_PRUEBA("USD"); S.quote.fxFecha = ""; G("recompute")();
+    S.hidro.hidroPU[k0] = REF_PRUEBA("USD"); S.hidro.fxFecha = ""; G("recompute")();
     eq(G("hidroPUEntrada")(k0).sinFx, true, "sin tipo de cambio fechado:"); eq((G("QUOTE").porCotizar || []).find((p) => p.clave === k0).motivo, "tipo de cambio sin capturar", "Por cotizar:");
     /* H-250: el libro en USD ya no se emite sin fecha; el libro en MXN declara la referencia USD sin convertir. */
     contiene(Buffer.from(G("buildPropuestaXlsx")({ lang: "es", mon: "MXN" })).toString("utf8"), "TIPO DE CAMBIO SIN CAPTURAR", "el Excel lo dice:");
-    S.quote.fxFecha = "2026-09-22"; G("recompute")(); eq(G("hidroPUEntrada")(k0).sinFx, false, "con fecha convierte:");
+    S.hidro.fxFecha = "2026-09-22"; G("recompute")(); eq(G("hidroPUEntrada")(k0).sinFx, false, "con fecha convierte:");
     /* 8. Por cotizar en el Budget con contador; la formal bloqueada. */
     const pdf2 = txtPdf(G("buildPropuestaPdf")({ lang: "es", mon: "MXN" }));
     const nPC = (G("QUOTE").porCotizar || []).length; contiene(pdf2, `PARTIDAS POR COTIZAR: ${nPC}`, "contador en la primera hoja:"); contiene(pdf2, "POR COTIZAR", "renglón por cotizar:");
@@ -7599,9 +10016,9 @@ t("S.41 (rev 2.9.23) referencias de mercado: únicamente California y sólo mate
     S.quote.importacion = { monto: 0, moneda: "MXN", fuente: "", fecha: "" };
     /* 10. Proveedor local (pantalla y CSV) sustituye la referencia con antes/después; CSV rechaza referencia sin fuente o fuera de California. */
     G("recompute")(); const antes = G("hidroPUEntrada")(k0).precioM;
-    G("setPath")(`quote.hidroPU.${k0}`, 250); G("recompute")();
+    G("setPath")(`hidro.hidroPU.${k0}`, 250); G("recompute")();
     const e2 = G("hidroPUEntrada")(k0); eq(e2.origen, "proveedor", "Proveedor local:"); cerca(e2.precioM, 250, 1e-9, "por metro antes de IVA:");
-    const lg = S.quote.hidroPUlog[S.quote.hidroPUlog.length - 1]; eq(lg.via, "pantalla", "bitácora:"); cerca(lg.antes.precioM, +antes.toFixed(2), 1e-9, "antes = referencia:"); cerca(lg.despues.precioM, 250, 1e-9, "después = proveedor:");
+    const lg = S.hidro.hidroPUlog[S.hidro.hidroPUlog.length - 1]; eq(lg.via, "pantalla", "bitácora:"); cerca(lg.antes.precioM, +antes.toFixed(2), 1e-9, "antes = referencia:"); cerca(lg.despues.precioM, 250, 1e-9, "después = proveedor:");
     const k1 = G("claveHidroPU")("cobre", noms[noms.length - 1]);
     const r = G("hidroPUImportarCsv")(["material,clave,diametro,precio,por_tramo_m,iva_incluido,moneda,origen,alcance,fuente,edicion,pagina,ubicacion,lista,url,fecha",
       `cobre,,${noms[noms.length - 1]},1830,6.10,si,MXN,proveedor,,"Proveedor local de prueba",,,,,,2026-09-22`,
@@ -7612,7 +10029,7 @@ t("S.41 (rev 2.9.23) referencias de mercado: únicamente California y sólo mate
     const e3 = G("hidroPUEntrada")(k1); eq(e3.origen, "proveedor", "CSV = Proveedor local:"); cerca(e3.precioM, 1830 / 6.1 / 1.16, 1e-9, "por tramo con IVA → por metro antes de IVA:");
     const e4 = G("hidroPUEntrada")("cobre_1_2_"); eq(e4.iva, null, "CSV «no especificado» → impuestos no especificados:"); eq(e4.lista, "costo de material", "lista tal cual:"); eq(e4.edicion, "2026", "edición:"); eq(e4.pagina, "3", "página:");
     /* 11. Pantalla: cada renglón dice su origen y su alcance. */
-    S.quote.hidroPU[k0] = REF_PRUEBA("USD"); G("recompute")();
+    S.hidro.hidroPU[k0] = REF_PRUEBA("USD"); G("recompute")();
     const html = G("hidroPUHtml")(); contiene(html, "Referencia Budget", "pantalla marca la referencia:"); contiene(html, "sólo material", "y el alcance:"); contiene(html, "Por cotizar", "y explica Por cotizar:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
@@ -7663,10 +10080,10 @@ t("S.44 (H-251) una referencia sólo es de California si su estado es California
     G("importarRespaldo")(REG_PROY); S.quote.fx = 18.5; S.quote.fxFecha = "2026-09-22"; S.quote.fxFuente = "fixture";
     const k = "cobre_2_"; /* diámetro en uso en la red del fixture (AF-GENERAL): así tiene partida y puede quedar «Por cotizar» */
     /* 1. Motor: la referencia de Baja California queda fuera y sale «Por cotizar». */
-    S.quote.hidroPU[k] = REF("Tijuana, Baja California"); G("recompute")();
+    S.hidro.hidroPU[k] = REF("Tijuana, Baja California"); G("recompute")();
     eq(G("hidroPUEntrada")(k).fueraCA, true, "«Tijuana, Baja California» está fuera de California:");
     eq(((G("QUOTE").porCotizar || []).find((p) => p.clave === k) || {}).motivo, "fuera de California", "Por cotizar:");
-    S.quote.hidroPU[k] = REF("San Diego, CA"); G("recompute")();
+    S.hidro.hidroPU[k] = REF("San Diego, CA"); G("recompute")();
     eq(G("hidroPUEntrada")(k).fueraCA, false, "«San Diego, CA» sí es California:");
     /* 2. La regla, caso por caso (ubicación libre y columna estado). */
     const ok = (u, extra) => G("referenciaEnCalifornia")({ ubicacion: u, ...(extra || {}) });
@@ -7677,11 +10094,11 @@ t("S.44 (H-251) una referencia sólo es de California si su estado es California
     eq(ok("Tijuana", { estado: "Baja California" }), false, "estado Baja California:"); eq(ok("Mexicali", { estado: "BC" }), false, "estado BC:");
     eq(ok("Carlsbad", { estado: "CA", pais: "México" }), false, "estado CA con país México:"); eq(ok("Carlsbad, CA", { estado: "Baja California" }), false, "la columna estado manda sobre el texto:");
     /* 3. Al abrir un proyecto guardado con esa referencia, se retira con antes/después. */
-    const sv = G("sanearEstado")(JSON.parse(JSON.stringify({ ...S, quote: { ...S.quote, hidroPU: { [k]: REF("Tijuana, Baja California"), cobre_3_4_: REF("Carlsbad, California") }, hidroPUlog: [] } })));
-    eq(sv.quote.hidroPU[k], undefined, "la de Baja California se retira al abrir:"); eq(sv.quote.hidroPU.cobre_3_4_.origen, "referencia", "la de California se queda:");
-    eq(sv.quote.hidroPUlog.length, 1, "queda en la bitácora:"); eq(sv.quote.hidroPUlog[0].via, "regla California", "vía:"); eq(sv.quote.hidroPU.cobre_3_4_.estado, undefined, "sin columna estado no se inventa:");
-    const sv2 = G("sanearEstado")(JSON.parse(JSON.stringify({ ...S, quote: { ...S.quote, hidroPU: { cobre_3_4_: REF("Carlsbad", { estado: "California", pais: "USA" }) }, hidroPUlog: [] } })));
-    eq(sv2.quote.hidroPU.cobre_3_4_.estado, "California", "la columna estado se conserva al abrir:"); eq(sv2.quote.hidroPU.cobre_3_4_.pais, "USA", "y el país:");
+    const sv = G("sanearEstado")(JSON.parse(JSON.stringify({ ...S, hidro: { ...S.hidro, hidroPU: { [k]: REF("Tijuana, Baja California"), cobre_3_4_: REF("Carlsbad, California") }, hidroPUlog: [] } })));
+    eq(sv.hidro.hidroPU[k], undefined, "la de Baja California se retira al abrir:"); eq(sv.hidro.hidroPU.cobre_3_4_.origen, "referencia", "la de California se queda:");
+    eq(sv.hidro.hidroPUlog.length, 1, "queda en la bitácora:"); eq(sv.hidro.hidroPUlog[0].via, "regla California", "vía:"); eq(sv.hidro.hidroPU.cobre_3_4_.estado, undefined, "sin columna estado no se inventa:");
+    const sv2 = G("sanearEstado")(JSON.parse(JSON.stringify({ ...S, hidro: { ...S.hidro, hidroPU: { cobre_3_4_: REF("Carlsbad", { estado: "California", pais: "USA" }) }, hidroPUlog: [] } })));
+    eq(sv2.hidro.hidroPU.cobre_3_4_.estado, "California", "la columna estado se conserva al abrir:"); eq(sv2.hidro.hidroPU.cobre_3_4_.pais, "USA", "y el país:");
     /* 4. CSV: la plantilla trae estado y país; la importación rechaza Baja California y acepta California por ubicación o por columna estado. */
     contiene(G("hidroPUPlantillaCsv")(), "estado", "la plantilla trae la columna estado:"); contiene(G("hidroPUPlantillaCsv")(), "pais", "y país:");
     const r = G("hidroPUImportarCsv")(["material,clave,diametro,precio,por_tramo_m,iva_incluido,moneda,origen,alcance,fuente,edicion,pagina,ubicacion,estado,pais,lista,url,fecha",
@@ -7699,8 +10116,9 @@ t("S.42 (rev 2.9.23) «Flete local y maniobras en obra»: parámetro comercial, 
   const guardado = JSON.stringify(S);
   const txtPdf = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");
   try {
-    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.42"; Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.42" }; });
-    S.zones[0].area = 100; S.zones[0].height = 3; S.quote.freight = 0.025; G("recompute")();
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.42"; Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.42" }; }); aceptarSitioCarga();   /* H-290 */
+    /* H-300: los difusores ya no salen de la carga térmica; se capturan en Ductos (antes esta zona daba la partida). */
+    S.zones[0].area = 100; S.zones[0].height = 3; S.quote.freight = 0.025; S.duct.difusores = 2; G("recompute")();
     const nota = "NO incluye flete de importacion, aduana ni internacion a Mexico: eso va en la seccion H";
     const prop = txtPdf(G("buildPropuestaPdf")({ lang: "es", mon: "MXN" }));
     contiene(prop, "Flete local y maniobras en obra 2.5 %", "propuesta PDF: nombre nuevo con porcentaje:"); contiene(prop, nota, "propuesta PDF: aclaración de no doble cobro:");
@@ -7924,7 +10342,7 @@ t("GA.4 sin tocar la ayuda de cada campo: con la guía oculta el aviso de precio
   const g0 = S.guia, t0 = S.tab;
   try {
     S.guia = false; S.tab = "seleccion"; G("render")();
-    const campo = w.document.querySelector('#view input[data-path="quote.priceFactor"]');
+    const campo = w.document.querySelector('#view input[data-path="equip.precios.priceFactor"]');
     if (!campo) throw new Error("no está el campo del factor de ajuste de lista");
     const ayuda = campo.closest(".field").textContent;
     contiene(ayuda, "grado cuarto limpio", "ayuda del factor de lista:");
@@ -7989,11 +10407,12 @@ t("GA.6 ventilación no tenía texto de guía repetido y sigue sin él: la vista
        "el pico es la suma de nominales; la demanda de diseño es la mayor entre el consumo medio y el pico con simultaneidad"],
     ],
     civil: [
-      ["Se copian zona por zona, no se recalculan", "ojo", "se copian zona por zona, y si cambias un área allá esta sección se mueve sola"], /* rev 2.9.17 · texto corregido (G4-08) */
-      ["la geometría del proyecto no las toca", "ojo", "la geometría del proyecto no las toca"],
-      ["Cantidades capturadas a mano en esta pestaña", "ojo", "capturarlas a mano en esta pestaña"],
-      /* H-244: la tabiquería ya no se hereda de la geometría (los muros de carga térmica no son tabiquería): se captura por zona. */
-      ["Área, altura y desarrollo de muro heredados de la geometría del proyecto", "ojo", "área y altura se copian zona por zona"],
+      /* H-265: obra civil ya no toma las zonas; la guía dice que es autónoma y cómo se captura (el texto vive sólo en la guía). */
+      ["Se copian zona por zona, no se recalculan", "ojo", "no toma las zonas de Carga térmica ni los Cuartos limpios"],
+      ["la geometría del proyecto no las toca", "ojo", "Obra civil es autónoma"],
+      ["Cantidades capturadas a mano en esta pestaña", "ojo", "Con los totales capturados a mano"],
+      /* H-244: la tabiquería no son los muros de carga térmica: se captura por área (H-265: en la lista de civil). */
+      ["Área, altura y desarrollo de muro heredados de la geometría del proyecto", "ojo", "Cada área de obra se captura aquí"],
     ],
     soporte: [
       ["Baja California es zona sísmica", "ojo", "Baja California, zona sísmica"],
@@ -8022,8 +10441,10 @@ t("GA.6 ventilación no tenía texto de guía repetido y sigue sin él: la vista
     S.aire = { ...G("defaultAire")(), material: "aluminio", Lprincipal: 120, Lramales: 90,
       consumos: [{ id: "gba", tipo: "generico", nombre: "Prueba GB", cant: 12, lmin: 0, bar: 7.7, uso: 1 }] };
     S.civil = G("defaultCivil")(); S.civil.usarZonas = true;
-    S.soporte = G("defaultSoporte")(); S.soporte.usarMotores = true;
-    G("recompute")();
+    /* H-265: obra civil captura sus propias áreas y cuartos. */
+    S.civil.areas = [{ id: "a1", nombre: "Nave", area: 400, altura: 6, perimetro: 0 }]; S.civil.cuartos = [{ id: "k1", nombre: "Cuarto", area: 60, altura: 3, perimetro: 0 }];
+    S.soporte = G("defaultSoporte")();
+    aceptarSoporte();   /* H-266: con la instantánea aceptada */
     return g;
   };
   const gbRestaura = (g) => {
@@ -8106,18 +10527,15 @@ t("GA.6 ventilación no tenía texto de guía repetido y sigue sin él: la vista
       /* aire: la instrucción de uso de las columnas (ayuda del propio campo) */
       S.tab = "aire"; G("render")();
       contiene(gbTexto(false), "Deja L/min y uso en cero para tomar el valor de referencia del tipo.", "aire: uso de las columnas:");
-      /* civil: el banner de herencia se queda con las cifras del proyecto y la memoria con su nota */
+      /* civil (H-265): ya no hay banner de herencia; la pantalla dice que es autónoma y la memoria de dónde salen las cantidades */
       S.tab = "civil"; G("render")();
-      const geo = G("geoProyecto")();
-      const her = w.document.querySelector("#view .her");
-      if (!her) throw new Error("civil: con las cantidades tomadas de las zonas debe haber banner de herencia");
-      contiene(her.textContent, "Heredado", "civil: banner:");
-      contiene(her.textContent, `${S.zones.length} zona(s), ${G("n")(geo.area, 0)} m²`, "civil: cifras del proyecto en el banner:");
-      contiene(gbTexto(false), "Las cantidades salen de la geometría de las zonas", "civil: memoria (rev 2.9.17, G4-09):");
-      /* civil a mano: el menú lo dice y ya no hay banner que repita */
+      eq(w.document.querySelectorAll("#view .her").length, 0, "civil: sin banner de herencia (H-265):");
+      contiene(gbTexto(false), "Obra civil es autónoma", "civil: la pantalla lo dice:");
+      contiene(gbTexto(false), "Las cantidades salen de las áreas de obra", "civil: memoria (rev 2.9.17, G4-09; H-265):");
+      /* civil a mano: el menú lo dice */
       S.civil.usarZonas = false; G("recompute")(); G("render")();
-      eq(w.document.querySelectorAll("#view .her").length, 0, "civil a mano: sin banner (el menú de arriba ya dice «Capturadas a mano aquí»):");
-      contiene(gbTexto(false), "Capturadas a mano aquí", "civil a mano: menú:");
+      eq(w.document.querySelectorAll("#view .her").length, 0, "civil a mano: sin banner:");
+      contiene(gbTexto(false), "Totales capturados a mano", "civil a mano: menú:");
       /* soporte: la opción sí, no explica; el motor avisa cuando se declara exclusión */
       S.tab = "soporte"; S.soporte.sismico = false; G("recompute")(); G("render")();
       contiene(gbTexto(false), "Arriostramiento sísmico DESACTIVADO", "soporte: aviso del motor cuando se declara exclusión:");
@@ -8145,7 +10563,7 @@ const GC_PANT = ["estructural", "cotizacion", "valor", "kaizen"];
 /* Lo que se movió a la guía (o ya estaba) y que la vista dejó de decir. */
 const GC_EN_GUIA = {
   estructural: ["v0.1.2", "StructCalc.html", "sin instalación", "generador de marco a dos aguas", "criterio de liberación", "AISC 360",
-    "memoria firmable", "prueba piloto", "no construcción", "regla 1", "regla 2", "memoria integral"],
+    "memoria firmable", "prueba piloto", "no construcción", "ninguna disciplina hereda", "regla 2", "memoria integral"],   /* H-272d: ya nadie hereda geometría */
   cotizacion: ["propuesta integral", "precio unitario abierto", "esquema de pagos", "matriz de alcance", "quince hojas", "hitos de pago",
     "NO COTIZADA", "cuarto limpio", "por debajo de 1", "tarjeta de análisis", "FASAR", "sobrecosto en cascada", "explosión de insumos",
     "apertura técnica", "lista vigente"],
@@ -8251,6 +10669,371 @@ t("GC.5 Cotización conserva la ayuda propia de sus campos, el aviso de IVA y lo
     S.tab = "valor"; G("render")();
     if (G("VALOR").props.length) contiene(gcTexto(w.document.getElementById("view")), "El orden pesa el ahorro por la tasa histórica", "valor:");
   });
+});
+
+/* ===== H-270 / H-271 · Diagramas unifilar y trifilar del eléctrico (pedido del dueño, 27-sep-2026) =====
+   La prueba verifica la DESCRIPCIÓN (nodos, tramos, pendientes) que sale de computeElec y que la pantalla y la memoria la
+   dibujan; no verifica píxeles. Sin captura no se inventa ningún nodo (regla 6). Los diagramas no mueven cifras. */
+const n = G("n");
+const proyectoUnifilar = () => {
+  const d = G("defaultElec")();
+  S.elec = { ...d, tomarHVAC: false, Ltablero: 40, trafoKVA: 300, trafoZ: 4, cargas: [
+    { ...G("defaultCarga")("Motor de proceso"), tipo: "motor", kW: 15, V: 220, ph: 3, fp: .85, L: 30 },
+    { ...G("defaultCarga")("Tarja de laboratorio"), tipo: "proceso", kW: 2, V: 127, ph: 1, fp: .9, L: 35 },
+    { ...G("defaultCarga")("Horno de curado"), tipo: "resistiva", kW: 12, V: 220, ph: 3, fp: 1, L: 20 }] };
+  G("recompute")();
+  const R = G("ELEC");
+  if (R.calc.length !== 3 || R.calc.some((c) => c.sinI) || R.calc[1].ph !== 1 || Object.keys(R.calc[1].fases || {}).length !== 1) throw new Error("el caso no aísla lo que se prueba: tres circuitos dimensionados, el segundo monofásico en una sola fase");
+  return R;
+};
+const sinTexto = (s, ctx) => { if (/undefined|NaN|\bnull\b|—/.test(String(s))) throw new Error(`${ctx}: imprime un hueco como dato: «${s}»`); };
+t("S.150 (H-270) diagrama unifilar: la descripción sale de computeElec con un nodo «alimentador» por circuito dimensionado (calibre y protección en la etiqueta), el tramo tablero→alimentador y el SVG accesible en la pestaña y en la memoria PDF; sin captura no se inventa ningún nodo y se listan los pendientes", () => {
+  const guardado = JSON.stringify(S.elec), tab0 = S.tab;
+  try {
+    const R = proyectoUnifilar();
+    const fn = w.describirUnifilar;
+    const u = typeof fn === "function" ? fn(R) : { nodos: [], tramos: [], pendientes: [] };
+    const alims = u.nodos.filter((x) => x.tipo === "alimentador");
+    eq(alims.length, R.calc.filter((c) => !c.sinI).length, "un nodo alimentador por circuito dimensionado:");
+    R.calc.forEach((c, i) => {
+      const a = alims[i];
+      contiene(a.etiqueta, c.cond.awg, `alimentador ${i + 1}: calibre en la etiqueta:`);
+      contiene(a.etiqueta, `${c.cond.ocpd} A`, `alimentador ${i + 1}: protección en la etiqueta:`);
+      contiene(a.detalle, c.cond.tierra, `alimentador ${i + 1}: tierra en el detalle:`);
+      contiene(a.detalle, c.cond.tubo.d, `alimentador ${i + 1}: canalización en el detalle:`);
+      contiene(a.detalle, `${c.L} m`, `alimentador ${i + 1}: longitud capturada:`);
+      if (!u.tramos.some((tr) => tr.de === "tablero" && tr.a === a.id)) throw new Error(`falta el tramo tablero→${a.id}`);
+      const tr2 = u.tramos.find((tr) => tr.de === a.id); if (!tr2) throw new Error(`el alimentador ${a.id} no llega a ninguna carga`);
+      const carga = u.nodos.find((x) => x.id === tr2.a && x.tipo === "carga"); if (!carga) throw new Error(`el tramo ${a.id}→${tr2.a} no termina en una carga`);
+      contiene(carga.etiqueta, c.nombre, "la carga lleva su nombre:"); contiene(carga.detalle, `${n(c.I, 1)} A`, "y su corriente:");
+      [a.etiqueta, a.detalle, carga.etiqueta, carga.detalle].forEach((s) => sinTexto(s, `circuito ${i + 1}`));
+    });
+    const tipos = u.nodos.map((x) => x.tipo);
+    ["acometida", "transformador", "proteccion", "tablero"].forEach((tp) => { if (!tipos.includes(tp)) throw new Error(`falta el nodo «${tp}»`); });
+    const trafo = u.nodos.find((x) => x.tipo === "transformador");
+    contiene(trafo.detalle, "300 kVA", "transformador con la placa capturada:"); contiene(trafo.detalle, "Z 4 %", "y su impedancia:");
+    contiene(trafo.detalle, `${n(R.IccTrafo / 1000, 1)} kA`, "corriente de falla del motor:");
+    const gen = u.nodos.find((x) => x.tipo === "proteccion"); contiene(gen.detalle, `${R.principal} A`, "interruptor general con el principal del motor:"); contiene(gen.detalle, `${R.kAIC} kA`, "y la capacidad interruptiva:");
+    const tab = u.nodos.find((x) => x.tipo === "tablero"); contiene(tab.detalle, `${R.principal} A`, "tablero con la capacidad del principal:");
+    const alimG = u.tramos.find((tr) => tr.a === "tablero"); if (!alimG) throw new Error("falta el tramo del alimentador general hacia el tablero");
+    contiene(alimG.etiqueta, R.alim.awg, "alimentador general: calibre:"); contiene(alimG.etiqueta, "40 m", "y la distancia capturada:");
+    if (u.pendientes.some((p) => /transformador|distancia al tablero/i.test(p))) throw new Error("con transformador y distancia capturados no debe haber pendientes de ellos: " + u.pendientes.join(" | "));
+    u.nodos.forEach((x) => sinTexto(x.etiqueta + " " + x.detalle, x.id)); u.pendientes.forEach((p) => sinTexto(p, "pendiente"));
+    eq(String(u.version), String(G("MOTOR_VER").elec), "la descripción declara la versión del motor:");
+    /* Pantalla: SVG en línea, accesible, en currentColor, sin nada externo, que no desborda en celular; con pie de procedencia. */
+    S.tab = "electrico"; G("render")();
+    const v = vista();
+    if (!/<svg[^>]*\brole="img"[^>]*\baria-label="Diagrama unifilar[^"]*"/.test(v)) throw new Error("la pestaña no trae el <svg role=\"img\" aria-label=\"Diagrama unifilar…\">");
+    const ini = v.indexOf('<figure class="uf-fig"'), fin = v.indexOf("</figure>", ini);
+    if (ini < 0 || fin < 0) throw new Error("el diagrama no va en un <figure>");
+    const fig = v.slice(ini, fin);
+    contiene(fig, `<figcaption>Diagrama unifilar · procedencia: computeElec v${G("MOTOR_VER").elec}, capturado en esta pestaña`, "pie de figura con procedencia:");
+    contiene(fig, "max-width:100%", "no desborda en celular:"); contiene(fig, "height:auto", "alto proporcional:");
+    contiene(fig, "<defs><marker", "puntas de flecha con <marker>:");
+    if (/<img|https?:\/\/|<script|@import/.test(fig)) throw new Error("el diagrama carga algo de fuera");
+    if (/(stroke|fill)="#/.test(fig)) throw new Error("el diagrama lleva colores en duro; debe heredar currentColor");
+    if (!/stroke="currentColor"/.test(fig) || !/fill="currentColor"/.test(fig)) throw new Error("trazos y texto deben ir en currentColor");
+    contiene(fig, "Motor de proceso", "la carga está rotulada:"); contiene(fig, "Tablero general", "el tablero está rotulado:");
+    const fs2 = [...fig.matchAll(/font-size="([\d.]+)"/g)].map((m) => Number(m[1]));
+    if (!fs2.length || fs2.some((f) => f < 11 || f > 13)) throw new Error("texto fuera de 11–13 px: " + fs2.join(","));
+    /* Memoria PDF: el mismo diagrama, con las primitivas del PDF propio (rectángulo con contorno y círculo). */
+    const bytes = G("buildElecPdf")(), pdf = txtPdfE(bytes), crudo = Buffer.from(bytes).toString("latin1");
+    contiene(pdf, "Diagrama unifilar", "la memoria PDF trae el diagrama:"); contiene(pdf, "C-01", "con los circuitos numerados:");
+    contiene(pdf, "Motor de proceso", "y las cargas rotuladas:");
+    if (!/ re S\n/.test(crudo)) throw new Error("el PDF no dibuja rectángulos con contorno (re S)");
+    if (!/ c\n/.test(crudo)) throw new Error("el PDF no dibuja círculos (curvas c)");
+    if (/undefined|NaN|\bnull\b/.test(pdf)) throw new Error("el PDF imprime «undefined», «NaN» o «null»");
+    /* Sin captura: ningún nodo inventado, pendientes declarados. */
+    const d = G("defaultElec")();
+    S.elec = { ...d, tomarHVAC: false, cargas: [] }; G("recompute")();
+    const u0 = typeof fn === "function" ? fn(G("ELEC")) : { nodos: [{ tipo: "inventado" }], tramos: [], pendientes: [] };
+    eq(u0.nodos.length, 0, "sin cargas no se inventa ningún nodo:"); eq(u0.tramos.length, 0, "ni tramos:");
+    if (!u0.pendientes.some((p) => /sin cargas/i.test(p))) throw new Error("sin captura debe listar el pendiente: " + u0.pendientes.join(" | "));
+    S.tab = "electrico"; G("render")();
+    if (/aria-label="Diagrama unifilar/.test(vista())) throw new Error("sin cargas no debe dibujarse un unifilar");
+    /* Con cargas pero sin transformador ni distancias: el nodo no aparece y los faltantes se listan; nada supuesto. */
+    S.elec = { ...d, tomarHVAC: false, cargas: [{ ...G("defaultCarga")("Motor sin distancia"), tipo: "motor", kW: 7.5, V: 220, ph: 3, fp: .85, L: 0 }] }; G("recompute")();
+    const u1 = typeof fn === "function" ? fn(G("ELEC")) : { nodos: [{ tipo: "transformador" }], tramos: [], pendientes: [] };
+    if (u1.nodos.some((x) => x.tipo === "transformador")) throw new Error("sin placa capturada no debe aparecer el transformador");
+    ["transformador", "distancia al tablero", "Motor sin distancia"].forEach((k) => { if (!u1.pendientes.some((p) => new RegExp(k, "i").test(p))) throw new Error(`falta el pendiente «${k}»: ` + u1.pendientes.join(" | ")); });
+    const todo = JSON.stringify(u1);
+    if (/150 kVA|Z 4 %|\b30 m\b|\b25 m\b/.test(todo)) throw new Error("el diagrama imprime un valor supuesto: " + todo);
+    const a1 = u1.nodos.find((x) => x.tipo === "alimentador"); contiene(a1.detalle, "pendiente", "sin longitud el alimentador lo dice:");
+    const g1 = u1.nodos.find((x) => x.tipo === "proteccion"); contiene(g1.detalle, "kA pendiente", "sin transformador la capacidad interruptiva queda pendiente:");
+  } finally { S.elec = JSON.parse(guardado); S.tab = tab0; G("recompute")(); }
+});
+
+t("S.151 (H-271) diagrama trifilar: cada circuito baja a las fases que computeElec le asignó (tres en trifásico, una en monofásico) con el calibre del motor, el neutro y la tierra tal como los cuenta, y lo que el motor no distingue (2.º conductor monofásico, neutro en sistema sin neutro) queda «pendiente» declarado; el SVG está en la pestaña y el diagrama en la memoria PDF", () => {
+  const guardado = JSON.stringify(S.elec), tab0 = S.tab, ver = G("MOTOR_VER").elec;
+  try {
+    const R = proyectoUnifilar();
+    const fn = w.describirTrifilar;
+    const tf = typeof fn === "function" ? fn(R) : { circuitos: [], pendientes: [], barras: [] };
+    eq(tf.circuitos.length, R.calc.length, "una columna por circuito:");
+    eq(String(tf.version), String(ver), "la descripción declara la versión del motor:");
+    R.calc.forEach((c, i) => {
+      const k = tf.circuitos[i];
+      eq(k.fases.length, c.ph === 3 ? 3 : 1, `${k.num}: fases según computeElec (${c.ph}F):`);
+      if (c.ph === 3) eq(k.fases.map((f) => f.fase).join(""), "ABC", `${k.num}: trifásico en A, B y C:`);
+      else eq(k.fases[0].fase, c.fase, `${k.num}: monofásico en la fase que le asignó el balanceo:`);
+      k.fases.forEach((f) => {
+        eq(f.awg, c.cond.awg, `${k.num} fase ${f.fase}: calibre = el del motor:`);
+        cerca(f.kVA, c.ph === 3 ? c.kVAtot / 3 : c.fases[f.fase], 1e-9, `${k.num} fase ${f.fase}: kVA = el del balanceo:`);
+        contiene(f.etiqueta, c.cond.awg, `${k.num} fase ${f.fase}: la etiqueta trae el calibre:`);
+      });
+      eq(k.tierra.awg, c.cond.tierra, `${k.num}: tierra = la Tabla 250-122 del motor:`); contiene(k.tierra.nota, "250-122", "y lo dice:");
+      contiene(k.etiqueta, c.nombre, `${k.num}: la columna lleva el nombre de la carga:`);
+      if (c.ph === 3) { if (!k.neutro || k.neutro.awg !== c.cond.awg) throw new Error(`${k.num}: el neutro que cuenta computeElec (calibre de fase) debe aparecer`); if (k.segundo) throw new Error(`${k.num}: un trifásico no tiene «2.º conductor»`); }
+      else {
+        if (k.neutro) throw new Error(`${k.num}: computeElec no cuenta neutro en monofásico; no se supone`);
+        if (!k.segundo || !/pendiente/.test(k.segundo.destino)) throw new Error(`${k.num}: el 2.º conductor debe quedar «pendiente» (el motor no distingue neutro o segunda fase)`);
+        if (!tf.pendientes.some((p) => p.includes(k.num) && /neutro o segunda fase/.test(p))) throw new Error(`${k.num}: falta el pendiente del 2.º conductor: ` + tf.pendientes.join(" | "));
+      }
+    });
+    ["A", "B", "C"].forEach((f) => cerca(tf.circuitos.flatMap((k) => k.fases).filter((x) => x.fase === f).reduce((a, x) => a + x.kVA, 0), R.fases[f], 1e-9, `suma de bajadas en la fase ${f} = balanceo del motor:`));
+    eq(tf.barras.join(","), "A,B,C,N,T", "3F4H-220: barras A, B, C, neutro y tierra:");
+    contiene(tf.balance.texto, `${n(R.desbalance, 1)} %`, "el balance rotula el desbalance del motor:");
+    tf.circuitos.forEach((k) => sinTexto([k.etiqueta, k.sub, k.conductores, ...k.fases.map((f) => f.etiqueta), ...k.pendientes].join(" "), k.num)); tf.pendientes.forEach((p) => sinTexto(p, "pendiente"));
+    /* Pantalla: junto al unifilar, mismas convenciones. */
+    S.tab = "electrico"; G("render")();
+    const v = vista();
+    if (!/<svg[^>]*\brole="img"[^>]*\baria-label="Diagrama trifilar[^"]*"/.test(v)) throw new Error("la pestaña no trae el <svg role=\"img\" aria-label=\"Diagrama trifilar…\">");
+    const at = v.indexOf('aria-label="Diagrama trifilar'), ini = v.lastIndexOf('<figure class="uf-fig"', at), fin = v.indexOf("</figure>", at);
+    if (ini < 0 || fin < 0) throw new Error("el trifilar no va en un <figure>");
+    const fig = v.slice(ini, fin);
+    contiene(fig, `<figcaption>Diagrama trifilar · procedencia: computeElec v${ver}, capturado en esta pestaña`, "pie de figura con procedencia:");
+    [">L1 (A)<", ">L2 (B)<", ">L3 (C)<", ">N<", ">T<"].forEach((b) => contiene(fig, b, "barra rotulada:"));
+    contiene(fig, "C-02", "columna numerada:"); contiene(fig, "Tarja de laboratorio", "carga rotulada:");
+    contiene(fig, "max-width:100%", "no desborda en celular:"); contiene(fig, "<defs><marker", "puntas de flecha con <marker>:");
+    if (/(stroke|fill)="#/.test(fig) || /<img|https?:\/\/|<script/.test(fig)) throw new Error("colores en duro o recursos externos en el trifilar");
+    const fs2 = [...fig.matchAll(/font-size="([\d.]+)"/g)].map((m) => Number(m[1]));
+    if (!fs2.length || fs2.some((f) => f < 11 || f > 13)) throw new Error("texto fuera de 11–13 px: " + fs2.join(","));
+    if (v.indexOf('aria-label="Diagrama unifilar') < 0 || v.indexOf('aria-label="Diagrama unifilar') > at) throw new Error("el trifilar va junto al unifilar, después de él");
+    /* Memoria PDF */
+    const pdf = txtPdfE(G("buildElecPdf")());
+    contiene(pdf, "Diagrama trifilar", "la memoria trae el trifilar:"); contiene(pdf, "L1 (A)", "con sus barras:"); contiene(pdf, "neutro o segunda fase", "y el pendiente del 2.º conductor:");
+    /* Sin cargas: nada dibujado, pendiente declarado. */
+    const d = G("defaultElec")();
+    S.elec = { ...d, tomarHVAC: false, cargas: [] }; G("recompute")();
+    const t0 = typeof fn === "function" ? fn(G("ELEC")) : { circuitos: [{}], pendientes: [] };
+    eq(t0.circuitos.length, 0, "sin cargas no hay columnas:"); if (!t0.pendientes.some((p) => /sin cargas/i.test(p))) throw new Error("sin captura debe listar el pendiente");
+    S.tab = "electrico"; G("render")(); if (/aria-label="Diagrama trifilar/.test(vista())) throw new Error("sin cargas no debe dibujarse un trifilar");
+    /* Sistema 3F3H-440 (sin neutro): no hay barra N; el neutro que computeElec cuenta en la canalización queda declarado como pendiente, no dibujado como si existiera. */
+    S.elec = { ...d, tomarHVAC: false, sistema: "3F3H-440", cargas: [{ ...G("defaultCarga")("Motor a 440"), tipo: "motor", kW: 15, V: 440, ph: 3, fp: .85, L: 20 }] }; G("recompute")();
+    const t3 = typeof fn === "function" ? fn(G("ELEC")) : { circuitos: [], pendientes: [], barras: ["N"] };
+    if (t3.barras.includes("N")) throw new Error("3F3H-440 no tiene neutro: no debe haber barra N");
+    if (!t3.pendientes.some((p) => /no tiene neutro/i.test(p))) throw new Error("debe declarar que el neutro contado por computeElec no existe en el sistema: " + t3.pendientes.join(" | "));
+  } finally { S.elec = JSON.parse(guardado); S.tab = tab0; G("recompute")(); }
+});
+
+/* ===== H-269 · Cuantificación de materiales y consideraciones de cálculo del eléctrico (pedido del dueño, 27-sep-2026) =====
+   La cuantificación sale de computeElec (R), sin precios (eso es de la cotización): metros de conductor = L del circuito ×
+   conductores que el motor cuenta (selConductor: fases, neutro en trifásico, tierra; un juego por canalización), metros de
+   canalización = L por juego, piezas de protección por capacidad. Lo que el motor no da (longitud, número de ramales, función
+   del 2.º conductor monofásico) queda «pendiente», listado aparte, y no suma (regla 6). No mueve cifras. */
+const proyectoMateriales = () => {
+  const d = G("defaultElec")();
+  S.elec = { ...d, tomarHVAC: false, Ltablero: 40, trafoKVA: 300, trafoZ: 4, cargas: [
+    { ...G("defaultCarga")("Motor de proceso"), tipo: "motor", kW: 15, V: 220, ph: 3, fp: .85, L: 30 },
+    { ...G("defaultCarga")("Tarja de laboratorio"), tipo: "proceso", kW: 2, V: 127, ph: 1, fp: .9, L: 35 },
+    { ...G("defaultCarga")("Horno de curado"), tipo: "resistiva", kW: 12, V: 220, ph: 3, fp: 1, L: 20 },
+    { ...G("defaultCarga")("Bomba sin distancia"), tipo: "proceso", kW: 5, V: 220, ph: 3, fp: .85, L: 0 }] };
+  G("recompute")();
+  const R = G("ELEC");
+  if (R.calc.length !== 4 || R.calc.some((c) => c.sinI || c.cant !== 1) || R.calc.slice(0, 3).some((c) => c.sinL || c.Lsin) || !R.calc[3].sinL
+    || Object.keys(R.calc[1].fases || {}).length !== 1 || R.Lalim !== 40 || R.sis.Vf === R.sis.V)
+    throw new Error("el caso no aísla lo que se prueba: tres circuitos con L, uno sin L, el monofásico en una sola fase, sistema con neutro");
+  return R;
+};
+const MAT_VACIO = { conductores: [], canalizaciones: [], protecciones: [], tableros: [], transformadores: [], pendientes: [] };
+const sumaEn = (o, k, v) => { o[k] = (o[k] || 0) + v; };
+const ordenado = (o) => JSON.stringify(Object.keys(o).sort().map((k) => [k, +o[k].toFixed(6)]));
+t("S.152 (H-269) cuantificación de materiales del eléctrico: los metros de conductor por calibre (L × fases, neutro y tierra que cuenta computeElec, alimentador general incluido), los de canalización por diámetro y las piezas de protección por capacidad coinciden con R; un circuito sin L queda en pendientes y no suma metros; tabla en la pestaña, sección en la memoria PDF y en el libro (ES/EN)", () => {
+  const guardado = JSON.stringify(S.elec), tab0 = S.tab;
+  try {
+    const R = proyectoMateriales(), fn = w.materialesElec;
+    const antes = JSON.stringify(R);
+    const M = typeof fn === "function" ? fn(R) : MAT_VACIO;
+    eq(JSON.stringify(R), antes, "la cuantificación no toca el resultado del motor:");
+    /* Esperado, directo de R: conductores que selConductor cuenta en el relleno de cada canalización (trifásico: 3 fases +
+       neutro de calibre de fase + tierra; monofásico: 2 + tierra), por juego en paralelo; sólo los circuitos con L. */
+    const esp = { m: {}, tubo: {}, prot: {} };
+    const circuito = (K, ph, L) => {
+      const P = K.paralelo || 1;
+      sumaEn(esp.m, `${K.awg}|${K.material}`, (ph === 3 ? 4 : 2) * P * L);
+      sumaEn(esp.m, `${K.tierra}|${K.tierraMat}`, P * L);
+      sumaEn(esp.tubo, K.tubo.d, P * L);
+    };
+    circuito(R.alim, R.sis.ph, R.Lalim);
+    R.calc.filter((c) => !c.sinL).forEach((c) => circuito(c.cond, c.ph, c.L));
+    sumaEn(esp.prot, String(R.principal), 1);
+    R.calc.forEach((c) => sumaEn(esp.prot, String(c.cond.ocpd), 1));
+    const obt = { m: {}, tubo: {}, prot: {} };
+    M.conductores.forEach((r) => sumaEn(obt.m, `${r.awg}|${r.material}`, r.cant));
+    M.canalizaciones.forEach((r) => sumaEn(obt.tubo, r.d, r.cant));
+    M.protecciones.forEach((r) => sumaEn(obt.prot, String(r.A), r.cant));
+    eq(ordenado(obt.m), ordenado(esp.m), "metros de conductor por calibre y material = L × conductores que cuenta computeElec (fases, neutro, tierra; alimentador general incluido):");
+    eq(ordenado(obt.tubo), ordenado(esp.tubo), "metros de canalización por diámetro = L por juego:");
+    eq(ordenado(obt.prot), ordenado(esp.prot), "piezas de protección por capacidad = interruptor general + una por circuito:");
+    M.conductores.concat(M.canalizaciones).forEach((r) => eq(r.un, "m", `${r.desc}: unidad`));
+    M.protecciones.concat(M.tableros, M.transformadores).forEach((r) => eq(r.un, "pza", `${r.desc}: unidad`));
+    /* Función de cada conductor: la que computeElec distingue; el 2.º conductor monofásico queda «pendiente». */
+    const [mot, tarja, horno, bomba] = R.calc;
+    const conF = (awg, re) => M.conductores.filter((r) => r.awg === awg && re.test(r.funcion));
+    if (!conF(mot.cond.awg, /^neutro/).length) throw new Error("el neutro que selConductor cuenta en el trifásico debe cuantificarse como neutro");
+    if (!conF(mot.cond.tierra, /^tierra/).length) throw new Error("la tierra de la Tabla 250-122 debe cuantificarse como tierra");
+    const seg = conF(tarja.cond.awg, /pendiente/);
+    if (seg.length !== 1) throw new Error("el 2.º conductor del monofásico (neutro o segunda fase) debe ir en un renglón con función «pendiente»: " + JSON.stringify(M.conductores.map((r) => [r.awg, r.funcion])));
+    cerca(seg[0].cant, (tarja.cond.paralelo || 1) * tarja.L, 1e-9, "sus metros sí cuentan (el conductor existe; sólo su función queda pendiente):");
+    /* Origen: cada renglón dice de qué circuito y de qué campo de computeElec sale. */
+    const fase1 = M.conductores.find((r) => r.awg === mot.cond.awg && /^fase/.test(r.funcion) && r.origen.includes("C-01"));
+    if (!fase1) throw new Error("el renglón de fases del C-01 debe decir su origen");
+    contiene(fase1.origen, "calc[0].cond.awg", "origen con el campo del calibre:"); contiene(fase1.origen, "calc[0].L", "y el de la longitud:");
+    const ag = M.conductores.find((r) => r.awg === R.alim.awg && r.origen.includes("AG"));
+    if (!ag) throw new Error("el alimentador general debe cuantificarse (AG)"); contiene(ag.origen, "Lalim", "con la distancia al tablero de computeElec:");
+    /* Sin L: pendiente con su nombre, sin metros en ningún renglón. */
+    if (!M.pendientes.some((p) => p.includes("C-04") && p.includes("Bomba sin distancia") && /longitud/.test(p))) throw new Error("el circuito sin L debe listarse en pendientes: " + M.pendientes.join(" | "));
+    if (M.conductores.concat(M.canalizaciones).some((r) => r.origen.includes("C-04"))) throw new Error("el circuito sin L no debe sumar metros");
+    /* Protecciones: polos que computeElec distingue (trifásico 3; monofásico pendiente); el general con su capacidad. */
+    const pMot = M.protecciones.find((r) => r.origen.includes("C-01")), pTar = M.protecciones.find((r) => r.origen.includes("C-02"));
+    if (!pMot || pMot.polos !== 3) throw new Error("la protección del trifásico lleva 3 polos");
+    if (!pTar || pTar.polos != null) throw new Error("los polos del monofásico (1 o 2) no los distingue computeElec: pendiente");
+    const gen = M.protecciones.find((r) => r.origen.includes("principal"));
+    if (!gen || gen.A !== R.principal || gen.polos !== 3) throw new Error("el interruptor general = principal de computeElec, 3 polos");
+    eq(M.tableros.length, 1, "un tablero general:"); contiene(M.tableros[0].desc, `${R.principal} A`, "con las barras del principal:");
+    if (!/espacios/.test(M.tableros[0].desc + M.tableros[0].origen) || !M.pendientes.some((p) => /espacios/.test(p))) throw new Error("los espacios del tablero no los calcula computeElec: pendiente declarado");
+    eq(M.transformadores.length, 1, "el transformador capturado:"); contiene(M.transformadores[0].desc, "300 kVA", "con su placa:"); contiene(M.transformadores[0].desc, "Z 4 %", "y su impedancia:");
+    [...M.conductores, ...M.canalizaciones, ...M.protecciones, ...M.tableros, ...M.transformadores].forEach((r) => sinTexto(`${r.desc} ${r.origen}`, r.desc));
+    M.pendientes.forEach((p) => sinTexto(p, "pendiente"));
+    if (/\$|MXN|USD|precio/i.test(JSON.stringify(M.conductores.concat(M.canalizaciones, M.protecciones)))) throw new Error("la cuantificación no lleva precios");
+    /* Pantalla, memoria PDF y libro (ES y EN). */
+    S.tab = "electrico"; G("render")();
+    const v = vista();
+    contiene(v, "Cuantificación de materiales", "pantalla, tarjeta:");
+    const ini = v.indexOf("Cuantificación de materiales"), finT = v.indexOf('<div class="card">', ini), tarj = v.slice(ini, finT > 0 ? finT : undefined);
+    contiene(tarj, `${R.alim.awg} ${Number(R.alim.awg) >= 250 ? "kcmil" : "AWG"}`, "pantalla, conductor del alimentador:");
+    contiene(tarj, "Bomba sin distancia", "pantalla, pendiente del circuito sin L:"); contiene(tarj, "C-01", "pantalla, origen:");
+    const pdf = txtPdfE(G("buildElecPdf")());
+    contiene(pdf, "Cuantificacion de materiales", "PDF, sección:"); contiene(pdf, "Bomba sin distancia", "PDF, pendiente:");
+    if (/undefined|NaN|\bnull\b/.test(pdf)) throw new Error("el PDF imprime «undefined», «NaN» o «null»");
+    const xEs = leerXlsx(G("buildPropuestaXlsx")({ lang: "es", mon: "MXN" })).txt, xEn = leerXlsx(G("buildPropuestaXlsx")({ lang: "en", mon: "MXN" })).txt;
+    contiene(xEs, "CUANTIFICACION DE MATERIALES", "libro ES:"); contiene(xEn, "MATERIALS TAKE-OFF", "libro EN:");
+    const fx = celdasXlsxFila(xEs, "Conductor", /MEMORIA ELECTRICA/);
+    if (!fx || !fx.c.some((c) => /calc\[\d+\]\.cond\.awg|alim\.awg/.test(c))) throw new Error("libro ES: renglón de conductor con su origen: " + (fx && fx.c.join(" | ")));
+    if (!celdasXlsxFila(xEn, "Raceway", /ELECTRICAL CALCULATION/)) throw new Error("libro EN: renglón de canalización en inglés");
+    /* Más de una unidad en un renglón: computeElec dimensiona el ramal con la corriente de UNA unidad y no dice cuántos
+       ramales son: sus metros y su protección quedan pendientes, no se multiplican ni se toman por uno. */
+    S.elec.cargas[0].cant = 2; G("recompute")();
+    const M2 = typeof fn === "function" ? fn(G("ELEC")) : MAT_VACIO;
+    if (M2.conductores.concat(M2.canalizaciones, M2.protecciones).some((r) => r.origen.includes("C-01"))) throw new Error("2 unidades en C-01: sus metros y su protección no se suponen");
+    if (!M2.pendientes.some((p) => p.includes("C-01") && /ramal/.test(p))) throw new Error("2 unidades en C-01: pendiente del número de ramales: " + M2.pendientes.join(" | "));
+    /* Sin transformador capturado no se cuantifica ninguno. */
+    S.elec.cargas[0].cant = 1; S.elec.trafoKVA = null; S.elec.trafoZ = null; G("recompute")();
+    const M3 = typeof fn === "function" ? fn(G("ELEC")) : { ...MAT_VACIO, transformadores: [{}] };
+    eq(M3.transformadores.length, 0, "sin placa capturada no hay transformador:");
+    if (!M3.pendientes.some((p) => /transformador/i.test(p))) throw new Error("sin transformador: pendiente declarado");
+  } finally { S.elec = JSON.parse(guardado); S.tab = tab0; G("recompute")(); }
+});
+
+t("S.153 (H-269) consideraciones de cálculo del eléctrico: los parámetros que gobiernan el cálculo salen con el valor que usó computeElec y de dónde salen (capturado en esta pestaña, valor inicial de la pestaña, pendiente, criterio de la casa); las normas se citan con edición, año, sección y página sólo si su texto está en parches/normas-texto (si no, BLOQUEADO); pantalla, memoria PDF y libro (ES/EN); ninguna cifra se mueve", () => {
+  const guardado = JSON.stringify(S.elec), tab0 = S.tab;
+  const vacio = { parametros: [], normas: [] };
+  try {
+    let R = proyectoMateriales();
+    const fn = w.consideracionesElec, antes = JSON.stringify(R), E0 = JSON.stringify(S.elec);
+    let C = typeof fn === "function" ? fn(R, S.elec) : vacio;
+    eq(JSON.stringify(R), antes, "las consideraciones no tocan el resultado del motor:"); eq(JSON.stringify(S.elec), E0, "ni la captura:");
+    const par = (k) => { const p = C.parametros.find((x) => x.clave === k); if (!p) throw new Error(`falta el parámetro «${k}»: ` + C.parametros.map((x) => x.clave).join(", ")); return p; };
+    /* Los que pide el dueño: tensión y fases, fp, factores de demanda, caídas admisibles, temperatura y agrupamiento,
+       distancia al tablero, kVA y Z del transformador; cada uno con valor y origen, sin huecos. */
+    ["sistema", "fpAlim", "fpCargas", "demanda", "dvRamal", "dvTotal", "tempAmb", "nCond", "Ltablero", "trafoKVA", "trafoZ", "continua", "canalizacion"].forEach((k) => {
+      const p = par(k); if (!p.param || !p.valor || !p.origen) throw new Error(`«${k}» sin nombre, valor u origen`); sinTexto(`${p.param} ${p.valor} ${p.origen}`, k);
+    });
+    contiene(par("sistema").valor, "220/127 V", "sistema con su tensión:"); contiene(par("sistema").valor, "4 hilos", "y sus hilos:");
+    contiene(par("Ltablero").valor, "40 m", "distancia capturada:"); eq(par("Ltablero").tipo, "capturado", "distancia capturada, origen:"); contiene(par("Ltablero").origen, "capturado en esta pestaña", "y lo dice:");
+    contiene(par("trafoKVA").valor, "300 kVA", "kVA capturado:"); contiene(par("trafoZ").valor, "4 %", "Z capturada:"); eq(par("trafoZ").tipo, "capturado", "Z capturada, origen:");
+    /* El valor inicial de la pestaña no se hace pasar por captura: se dice que es el de la casa. */
+    eq(par("tempAmb").tipo, "inicial", "40 °C es el valor inicial de la pestaña:"); contiene(par("tempAmb").origen, "valor inicial", "y lo dice:");
+    contiene(par("tempAmb").valor, `factor ${n(G("fTemp")(40), 2)}`, "con el factor que usó el motor:");
+    eq(par("fpAlim").tipo, "casa", "fp del alimentador sin capturar = criterio de la casa:"); contiene(par("fpAlim").valor, n(R.fpAlim, 2), "con el valor que usó el motor:");
+    contiene(par("demanda").origen, "220-44", "demanda de contactos con su artículo:"); contiene(par("demanda").origen, "430-24", "y el 25 % del motor mayor:");
+    contiene(par("demanda").valor, n(R.fdem, 2), "factor de demanda resultante del motor:");
+    /* Normas: con edición, año, sección y página sólo si su texto está en parches/normas-texto y la página trae la sección. */
+    const paginas = {};
+    const paginaDe = (archivo, p) => {
+      if (!paginas[archivo]) { const txt = fs.readFileSync(`parches/normas-texto/${archivo}`, "utf8"), o = {}; const partes = txt.split(/=====PAG (\d+)=====/); for (let i = 1; i < partes.length; i += 2) o[+partes[i]] = (o[+partes[i]] || "") + partes[i + 1]; paginas[archivo] = o; }
+      const [a, b] = String(p).split("-").map(Number); let s = ""; for (let k = a; k <= (b || a); k++) s += paginas[archivo][k] || ""; return s;
+    };
+    if (C.normas.length < 20) throw new Error(`faltan normas que usa el motor: ${C.normas.length}`);
+    ["Tabla 310-15(b)(16)", "Tabla 310-15(b)(2)(a)", "Tabla 310-15(b)(3)(a)", "220-44", "430-24", "250-122", "240-6(a)", "210-19(a)", "215-2(a)", "Tabla 5"].forEach((sec) => {
+      if (!C.normas.some((x) => (x.seccion || "").includes(sec))) throw new Error(`falta la sección ${sec}`);
+    });
+    const NORMAS = G("NORMAS_ELEC");
+    C.normas.forEach((x, i) => {
+      if (x.estado === "BLOQUEADO") { contiene(x.etiqueta, "BLOQUEADO: falta el texto de la norma", `${x.familia}:`); return; }
+      if (!x.texto || !fs.existsSync(`parches/normas-texto/${x.texto}`)) throw new Error(`${x.etiqueta}: se cita sin su texto en parches/normas-texto`);
+      [x.norma, x.edicion, String(x.anio), x.seccion, `p. ${x.pagina}`].forEach((k) => contiene(x.etiqueta, k, "etiqueta con edición, año, sección y página:"));
+      contiene(x.norma, String(x.anio), "el año va en la norma:");
+      contiene(paginaDe(x.texto, x.pagina), NORMAS[i].ancla, `${x.etiqueta}: la página citada trae la sección:`);
+      if (typeof x.aplica !== "boolean" || !x.uso) throw new Error(`${x.etiqueta}: sin uso o sin «interviene»`);
+    });
+    if (!C.normas.find((x) => x.seccion === "220-44") || C.normas.find((x) => x.seccion === "220-44").aplica) throw new Error("sin contactos, 220-44 no interviene en este proyecto");
+    if (!C.normas.find((x) => x.seccion === "430-24").aplica) throw new Error("con motor, 430-24 interviene");
+    /* Regla 4: una norma sin texto no se cita con edición ni sección. */
+    const tx0 = NORMAS[0].texto;
+    try {
+      NORMAS[0].texto = null;
+      const Cb = fn(R, S.elec), b = Cb.normas[0];
+      eq(b.estado, "BLOQUEADO", "sin texto, BLOQUEADO:"); contiene(b.etiqueta, "BLOQUEADO: falta el texto de la norma", "etiqueta:");
+      if (b.etiqueta.includes(NORMAS[0].seccion) || /p\. \d/.test(b.etiqueta) || b.etiqueta.includes("DOF")) throw new Error("una norma sin texto no se cita con edición, sección ni página: " + b.etiqueta);
+    } finally { NORMAS[0].texto = tx0; }
+    /* Pantalla, memoria PDF y libro. */
+    S.tab = "electrico"; G("render")();
+    const v = vista();
+    contiene(v, "Consideraciones de cálculo", "pantalla, tarjeta:");
+    const ini = v.indexOf("Consideraciones de cálculo"), finT = v.indexOf('<div class="card">', ini), tarj = v.slice(ini, finT > 0 ? finT : undefined);
+    ["Temperatura ambiente", "valor inicial", "NOM-001-SEDE-2012 (DOF 29-nov-2012)", "Tabla 310-15(b)(16), p. 190", "capturado en esta pestaña"].forEach((k) => contiene(tarj, k, "pantalla:"));
+    const pdf = txtPdfE(G("buildElecPdf")());
+    ["Consideraciones de calculo", "NOM-001-SEDE-2012 (DOF 29-nov-2012), Tabla 310-15(b)(16), p. 190", "valor inicial"].forEach((k) => contiene(pdf, k, "PDF:"));
+    if (/undefined|NaN|\bnull\b/.test(pdf)) throw new Error("el PDF imprime «undefined», «NaN» o «null»");
+    const xEs = leerXlsx(G("buildPropuestaXlsx")({ lang: "es", mon: "MXN" })).txt, xEn = leerXlsx(G("buildPropuestaXlsx")({ lang: "en", mon: "MXN" })).txt;
+    contiene(xEs, "CONSIDERACIONES DE CALCULO", "libro ES:"); contiene(xEn, "CALCULATION CONSIDERATIONS", "libro EN:");
+    const fT = celdasXlsxFila(xEs, "Temperatura ambiente", /MEMORIA ELECTRICA/);
+    if (!fT || !fT.c.some((c) => /valor inicial/.test(c))) throw new Error("libro ES: temperatura con su origen: " + (fT && fT.c.join(" | ")));
+    const fN = celdasXlsxFila(xEn, "NOM-001-SEDE-2012 (DOF 29-nov-2012), Table", /ELECTRICAL CALCULATION/) || celdasXlsxFila(xEn, "NOM-001-SEDE-2012 (DOF 29-nov-2012)", /ELECTRICAL CALCULATION/);
+    if (!fN || !fN.c.some((c) => /conductor ampacity|ampacity/.test(c))) throw new Error("libro EN: norma con su uso en inglés: " + (fN && fN.c.join(" | ")));
+    /* Captura distinta del valor inicial = capturado; sin distancia ni transformador = pendiente (no se supone). */
+    Object.assign(S.elec, { tempAmb: 35, fpObjetivo: .9, Ltablero: null, trafoKVA: null, trafoZ: null }); G("recompute")(); R = G("ELEC");
+    C = typeof fn === "function" ? fn(R, S.elec) : vacio;
+    eq(par("tempAmb").tipo, "capturado", "35 °C capturado:"); contiene(par("tempAmb").valor, "35 °C", "con su valor:"); contiene(par("tempAmb").valor, `factor ${n(G("fTemp")(35), 2)}`, "y el factor que usó el motor:");
+    eq(par("fpAlim").tipo, "capturado", "fp del alimentador capturado:"); contiene(par("fpAlim").valor, "0.9", "con su valor:");
+    ["Ltablero", "trafoKVA", "trafoZ"].forEach((k) => { eq(par(k).tipo, "pendiente", `${k} sin capturar:`); contiene(par(k).origen, "pendiente", `${k}:`); if (/\d/.test(par(k).valor)) throw new Error(`${k}: sin captura no lleva número: ${par(k).valor}`); });
+  } finally { S.elec = JSON.parse(guardado); S.tab = tab0; G("recompute")(); }
+});
+
+/* ===== S.154 (H-277) · la temperatura ambiente que declaran la memoria, el PDF y el libro es la que usó el cálculo =====
+   Con el campo vacío, fTemp calcula con 30 °C (factor de la tabla a 30 °C), pero la memoria del motor, el PDF (2. Bases de
+   cálculo) y el libro (MEMORIA_ELECTRICA, ES/EN) imprimían 40 °C junto al factor de 30 °C: el documento no decía lo que se
+   calculó (regla 8). Con captura, los cuatro dicen la capturada. */
+t("S.154 (H-277) eléctrico: con la temperatura ambiente sin capturar, la memoria del motor, el PDF y el libro (ES/EN) dicen la temperatura con la que calculó (30 °C), no 40 °C; con captura, la capturada", () => {
+  const guardado = JSON.stringify(S.elec), tab0 = S.tab;
+  try {
+    proyectoMateriales();
+    S.elec.tempAmb = ""; G("recompute")();
+    const fT = G("fTemp");
+    eq(fT(""), fT(30), "sin captura el motor calcula con el factor de 30 °C:");
+    const revisa = (grados, que) => {
+      const memo = G("ELEC").memo.join(" "), pdf = txtPdfE(G("buildElecPdf")());
+      const es = leerXlsx(G("buildPropuestaXlsx")({ lang: "es", mon: "MXN" })).txt, en = leerXlsx(G("buildPropuestaXlsx")({ lang: "en", mon: "USD" })).txt;
+      contiene(memo, `temperatura ambiente de diseño ${grados} °C`, `${que} memoria del motor:`);
+      contiene(pdf, `Temperatura ambiente ${grados} C`, `${que} PDF:`);
+      contiene(es, `${grados} °C ambiente`, `${que} libro ES:`);
+      contiene(en, `${grados} °C ambient`, `${que} libro EN:`);
+    };
+    revisa(30, "sin captura:");
+    S.elec.tempAmb = 45; G("recompute")();
+    revisa(45, "capturada 45 °C:");
+  } finally { S.elec = JSON.parse(guardado); S.tab = tab0; G("recompute")(); }
 });
 
 /* ===== CM · casos calculados a mano por motor (Fase 1, rev 2.9.24) =====

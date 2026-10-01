@@ -106,3 +106,17 @@ Los dos deben quedar en verde antes de cada commit. Con rojo no se avanza. `prue
   (QMX, VANTIVE, Nordson, Quasar) a pantalla ni documentos.
 - No tocar la lógica de un motor que no es el tuyo; si hace falta, se registra como dependencia para el integrador.
 - No usar `Date.now()` ni azar en fixtures o esperados.
+
+## Relación con el CLAUDE.md global (decisión del dueño, 2026-09-29)
+Principio: cada motor (`load`, `vent`, `duct`) es independiente. Nada de lo que pase en uno detiene, cambia ni
+versiona a otro.
+- Norma sin texto: manda la regla 4. Si la norma no está en `parches/normas-texto/` ni en fuente pública con URL, el
+  hallazgo queda `BLOQUEADO` sólo en su motor; los demás motores siguen. «Supuesto propio» / «criterio de la casa»
+  sólo aplica a supuestos que no se presentan como norma.
+- Subagentes: la exploración (sólo lectura) va con subagentes en paralelo, máximo cinco por motor, cada uno acotado a
+  un motor. Toda edición sigue el esquema `crit/<motor>` en su worktree; ningún agente edita fuera de su región.
+- Lo compartido (captura de proyecto, unidades, catálogos, entregables) no lo toca ningún motor: se registra como
+  dependencia y lo resuelve el integrador en `master`.
+- Versión y esperados por motor: sólo sube `MOTOR_VER` del motor que movió números y sólo se regenera su esperado.
+  Un rojo en el bloque `CM.<motor>` detiene ese motor; un rojo en lo común detiene la integración de todos.
+- Firma de commits: `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`, como indica la sección Git.

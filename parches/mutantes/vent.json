@@ -100,5 +100,6 @@
     "reemplazar": "((e.cfmMin * .95 <= target && e.cfmMax >= target * .95) ? 5 :", "estado": "vigente" },
   { "id": "vent.m34", "que": "modo general: sólo cambios/h, sin el aire exterior de 62.1", "logica": true,
     "buscar": "demand = Math.max(achCfm, oa);",
-    "reemplazar": "demand = achCfm;", "estado": "vigente" }
+    "reemplazar": "demand = achCfm;", "estado": "vigente" },
+  { "id": "vent.m35", "que": "H-291: la huella de Ventilación vuelve a llevar el sitio de Proyecto (cambiarlo marcaría el sello sin que cambie nada)", "logica": true, "buscar": "  vent: () => ({ vent: sinClaves(S.vent, [\"seleccion\"]) }),   /* H-263: la selección no la lee computeVent. H-291: el sitio de Proyecto tampoco: fuera de la huella */", "reemplazar": "  vent: () => ({ vent: sinClaves(S.vent, [\"seleccion\"]), site: S.site }),   /* H-263: la selección no la lee computeVent */", "estado": "vigente" }
 ]

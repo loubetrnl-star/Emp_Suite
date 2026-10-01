@@ -1,0 +1,348 @@
+From a380a970be63b9ea251ea7ce4ae69bea29b7d32d Mon Sep 17 00:00:00 2001
+From: EMP Suite <suite@emdelpacifico.local>
+Date: Mon, 28 Sep 2026 22:02:02 +0000
+Subject: [PATCH 2/3] =?UTF-8?q?H-278=20=C2=B7=20quote=20=C2=B7=20complemen?=
+ =?UTF-8?q?to:=20las=20partidas=20de=20equipo=20del=20sistema=20integrado?=
+ =?UTF-8?q?=20entran=20como=20propuesta=20equip>quote=20aceptada=20(=C2=AB?=
+ =?UTF-8?q?Traer=20el=20sistema=20integrado=C2=BB=20es=20su=20aceptar),=20?=
+ =?UTF-8?q?con=20origen,=20fecha=20y=20firma;=20=C2=ABSeleccionar=C2=BB=20?=
+ =?UTF-8?q?agrega=20la=20partida=20con=20origen=20y=20fecha?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Decisión del dueño (28-sep-2026, regla de arquitectura): lo de otro motor entra sólo como propuesta aceptada, copia con origen y
+fecha que no se actualiza sola. Norma: no aplica.
+
+Antes → después:
+- «Traer el sistema integrado» (q-fromsys) copiaba SYS.chosen a S.quote.items sin origen, fecha ni firma, fuera de PROPUESTAS; si
+  la selección cambiaba, nada lo decía. Ahora es aceptar la propuesta equip>quote (PROPUESTAS, origen Selección de equipo, permiso
+  equip>quote): concede el cruce, copia modelos y cantidades a las partidas (cada una con copiaDe {motor, vía, fecha}) y deja en
+  S.quote.entradas["equip>quote"] la copia con origen, fecha y firma de la selección. Si la selección cambia, la propuesta sale
+  desactualizada y las partidas y el directo no se mueven. «Aceptar» en la tarjeta pregunta igual que el botón antes de reemplazar
+  partidas capturadas; «Capturo lo mío» deja las partidas como están.
+- «Seleccionar» un modelo en Selección agrega su partida con origen y fecha (antes sin ellos).
+- La cotización vacía ya no lee SYS.blockTons en vivo en el botón; la pestaña y el PDF de cotización (§6) muestran la propuesta de
+  Selección y su copia. La partida dice «copia de Selección de equipo (vía), fecha». La cotización de Selección por disciplina
+  sigue pidiendo el cruce autorizado (sus partidas pueden ser captura a mano).
+- Selección no tiene ningún vínculo con Ductos: esta propuesta sólo lee el sistema integrado de Selección.
+Sin cambio de cifras: mismas partidas y precios (computeQuote no lee SYS); proyecto fijo sin cambio (quote sigue en v25, esperado igual;
+MOTOR_CAMBIOS y CHANGELOG lo anotan en la v25 de esta rama).
+
+Prueba: S.143 (en 407acb0 falla por la conducta: el botón lee las toneladas del sistema en vivo y traer el sistema no deja copia
+con origen, fecha ni firma). Mutantes nuevos quote.m29–m32 (copia sin origen, firma constante, «Seleccionar» sin origen, botón con
+toneladas en vivo).
+Bancos: node pruebas.mjs index.html 537/537; con --base respaldo-rev-2.9.8/… 543/543.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01VqGDLbvsYVpR5UZKnMQ2jZ
+---
+ CHANGELOG-motores.md        |   2 +-
+ index.html                  | 117 +++++++++++++++++++++++++-----------
+ parches/mutantes/quote.json |  10 ++-
+ pruebas.mjs                 |  41 +++++++++++++
+ 4 files changed, 134 insertions(+), 36 deletions(-)
+
+diff --git a/CHANGELOG-motores.md b/CHANGELOG-motores.md
+index 99eac47..497211f 100644
+--- a/CHANGELOG-motores.md
++++ b/CHANGELOG-motores.md
+@@ -67,7 +67,7 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
+ | 22 | 2.9.24 | H-167 (dependencia de ductos): cada tramo de ducto sin longitud capturada queda pendiente de longitud (ES/EN) en la cotización; no lleva lámina. Proyecto fijo: cifras sin cambio |
+ | 23 | 2.9.24 | H-165 (dependencia de ductos): los kilos del ducto de grasa ya no entran a la partida de «lámina galvanizada»; salen «Por cotizar» (sección B) como ducto soldado de acero al carbón 16 MSG o inoxidable 18 MSG con su cita UMC 2018 §510.5 (ES/EN). Proyecto fijo: cifras sin cambio |
+ | 24 | 2.9.24 | H-181 (regla de precios del 22-sep-2026): la cotización eléctrica sigue al cálculo. Alimentador por calibre: fase y neutro = juegos en paralelo × hilos del sistema (3F4H 4, 3F3H 3, 1F3H 3) × metros; tierra = una por canalización (NOM-001-SEDE-2012 250-122(f), p. 150) × metros; tubo = uno por juego × metros. Tablero por capacidad (A del principal, kA si hay transformador) y circuitos dimensionados. Sin precio con fuente y fecha para calibre o capacidad: «Por cotizar» (sección C). Sin distancia al tablero: alimentador pendiente de longitud (antes 30 m supuestos); ramal con corriente pendiente: fuera del conteo y pendiente con su nombre. Antes: 1 juego a 1,350 MXN/m (400 kW = 4 × 600 kcmil cotizado como 1) y tablero 68,000 + 4,200 por circuito sin importar la capacidad; `QUOTE_SEED.tablero/circuito` retirados (`alimM` queda sólo para el estimado de Kaizen, dependencia registrada). Proyecto fijo: el importe eléctrico sale de los directos y pasa a «Por cotizar» |
+-| 25 | 2.9.24 | H-278 (decisión del dueño, 28-sep-2026): la cotización es autónoma. Calcula sólo con su captura (precios, plaza, partidas de equipo, difusores) y con la COPIA ACEPTADA de cada disciplina: una propuesta por origen (`duct>quote` nueva, también en LINKS; `load>quote`, `vent>quote`, `clean>quote`, `elec>quote`, `hidro>quote`, `fuego>quote`, `civil>quote`, `soporte>quote`, `aire>quote`), guardada en `S.quote.entradas` con origen, fecha y firma. Ya no lee en vivo DUCT, carga térmica, VENT, CLEAN, ELEC, HIDRO, FUEGO, CIVIL, SOPORTE ni AIRE, ni `S.duct.meta.material`, `S.elec.sistema` o `S.fuego.fuente`: sin copia aceptada esa partida no entra y se declara (pantalla y PDF: «falta aceptar la propuesta»); si el origen cambia, la propuesta sale desactualizada y la cotización no se mueve. D4 (decisión del dueño): los difusores y rejillas se capturan en Cotización; sin captura, pendiente de cantidad (antes 1 por 400 CFM de carga térmica). Sin la copia de Carga térmica, los indicadores por TR y por m² y la carga de la pantalla, del PDF de cotización y del libro de la propuesta (PDF y Excel, ES/EN) dicen «pendiente» (antes la carga en vivo, «$ 0 / TR» y, en la carta del libro, la hora pico de Selección de equipo). La huella (`ENTRADAS.quote`) es sólo su captura. Un proyecto anterior abre con las mismas cifras: la migración toma una vez la copia de cada cruce que tenía autorizado y la de ductos (entraba sin permiso), con origen «(migración H-278)», y copia los difusores a la captura «sin confirmar»; una referencia interna no guarda las copias (traen etiquetas libres) y las vuelve a tomar al abrirse de su ingeniería genérica. Proyecto fijo: directo 11,289,059.63, subtotal 17,064,542.54 y total 19,794,869.34 sin cambio; sólo cambia el texto de la partida de difusores. Pruebas S.139–S.142 |
++| 25 | 2.9.24 | H-278 (decisión del dueño, 28-sep-2026): la cotización es autónoma. Calcula sólo con su captura (precios, plaza, partidas de equipo, difusores) y con la COPIA ACEPTADA de cada disciplina: una propuesta por origen (`duct>quote` nueva, también en LINKS; `load>quote`, `vent>quote`, `clean>quote`, `elec>quote`, `hidro>quote`, `fuego>quote`, `civil>quote`, `soporte>quote`, `aire>quote`), guardada en `S.quote.entradas` con origen, fecha y firma. Las partidas de equipo del sistema integrado son la propuesta `equip>quote`: «Traer el sistema integrado» es su aceptar (partidas con origen y fecha; si la selección cambia, sale desactualizada y no se mueven) y «Seleccionar» agrega la partida con origen y fecha. Ya no lee en vivo DUCT, carga térmica, VENT, CLEAN, ELEC, HIDRO, FUEGO, CIVIL, SOPORTE ni AIRE, ni `S.duct.meta.material`, `S.elec.sistema` o `S.fuego.fuente`: sin copia aceptada esa partida no entra y se declara (pantalla y PDF: «falta aceptar la propuesta»); si el origen cambia, la propuesta sale desactualizada y la cotización no se mueve. D4 (decisión del dueño): los difusores y rejillas se capturan en Cotización; sin captura, pendiente de cantidad (antes 1 por 400 CFM de carga térmica). Sin la copia de Carga térmica, los indicadores por TR y por m² y la carga de la pantalla, del PDF de cotización y del libro de la propuesta (PDF y Excel, ES/EN) dicen «pendiente» (antes la carga en vivo, «$ 0 / TR» y, en la carta del libro, la hora pico de Selección de equipo). La huella (`ENTRADAS.quote`) es sólo su captura. Un proyecto anterior abre con las mismas cifras: la migración toma una vez la copia de cada cruce que tenía autorizado y la de ductos (entraba sin permiso), con origen «(migración H-278)», y copia los difusores a la captura «sin confirmar»; una referencia interna no guarda las copias (traen etiquetas libres) y las vuelve a tomar al abrirse de su ingeniería genérica. Proyecto fijo: directo 11,289,059.63, subtotal 17,064,542.54 y total 19,794,869.34 sin cambio; sólo cambia el texto de la partida de difusores. Pruebas S.139–S.142 |
+ | 14 | 2.9.24 | dependencia de soporte v6 (H-226): el anclaje va Por cotizar mientras no haya SDS con fuente, estructura y f'c |
+ | 13 | 2.9.24 | dependencia de soporte v5 (H-225): sin altura de colgado la varilla sale pendiente, no cotizada |
+ | 12 | 2.9.24 | dependencia de vent v2 (H-154): la partida de ventilación nombra el modelo que cubre de verdad, o ninguno |
+diff --git a/index.html b/index.html
+index 45f686e..85c2f27 100644
+--- a/index.html
++++ b/index.html
+@@ -1636,9 +1636,10 @@ function buildCotizacionPdf() {
+ }
+ /* H-278: una fila por disciplina con algo que proponer o con copia aceptada: qué se aceptó, de dónde, cuándo y su estado. */
+ function filasEntradasCot() {
+-  const f = CRUCES_COT.map((id) => {
++  const f = ["equip>quote", ...CRUCES_COT].map((id) => {
+     const r = entradaCotReg(id), e = estadoPropuesta(id);
+     if (!r && e.nivel === "sin-datos") return null;
++    if (id === "equip>quote" && !r) return [PROPUESTAS[id].titulo, `${(S.quote.items || []).length} partida(s) de equipo capturadas en Cotizacion (sin copia del sistema integrado)`];
+     return [PROPUESTAS[id].titulo, r ? `${RESUMEN_COT[id](r.datos)} · ${r.origen} · ${fechaCorta(r.ts)}${e.nivel === "desactualizado" ? " · desactualizada: el origen cambio, sigue lo aceptado" : ""}`
+       : e.nivel === "propio" ? "fuera de la cotizacion por decision del usuario" : "sin aceptar: no entra a esta cotizacion"];
+   }).filter(Boolean);
+@@ -8763,6 +8764,7 @@ const DATOS_COT = {
+ };
+ /* Resumen de una copia (la que se propone hoy o la aceptada), en español o en inglés (regla 7: llega al libro de la propuesta). */
+ const RESUMEN_COT = {
++  "equip>quote": (d, en) => resumenEquipCot(d, en),
+   "duct>quote": (d, en) => { const kg = Math.max(0, num(d.kg) - num(d.kgGrasa)), p = (d.sinMedida || []).length + (d.sinLongitud || []).length;
+     return en ? `${n(kg, 0)} kg of sheet metal${num(d.kgGrasa) > 0 ? ` + ${n(num(d.kgGrasa), 0)} kg of welded grease duct` : ""}${p ? ` · ${p} run(s) pending` : ""}`
+       : `${n(kg, 0)} kg de lámina${num(d.kgGrasa) > 0 ? ` + ${n(num(d.kgGrasa), 0)} kg de ducto de grasa soldado` : ""}${p ? ` · ${p} tramo(s) pendientes` : ""}`; },
+@@ -8883,6 +8885,45 @@ function marcaCotReferencia(q) {
+   const scNum = Object.fromEntries(["difusores", "difusoresCfm"].filter((k) => k in sc && Number.isFinite(Number(sc[k]))).map((k) => [k, Number(sc[k])]));
+   return { ...(cruces.length || difusores ? { tomarEntradas: { cruces, difusores } } : {}), ...(Object.keys(scNum).length ? { sinConfirmar: scNum } : {}) };
+ }
++/* H-278 (complemento): las partidas de equipo del sistema integrado de Selección de equipo son una propuesta más hacia la cotización
++   (equip>quote). «Traer el sistema integrado» es su aceptar: copia modelos y cantidades a las partidas de la cotización (que aquí se
++   editan) y deja en Cotización la copia con origen, fecha y firma de la selección; si la selección cambia después, la propuesta sale
++   desactualizada y las partidas no se mueven solas. «Seleccionar» un modelo en Selección agrega su partida con su origen y su fecha.
++   La cotización no lee SYS: sólo sus partidas. Esta propuesta no toca Ductos (Selección no tiene ningún vínculo con Ductos). */
++function datosEquipCot() {
++  const c = typeof SYS !== "undefined" && SYS ? SYS.chosen : null;
++  if (!c || c.id === "none") return null;
++  const items = [...(c.plant || []), ...(c.groups || [])].filter((p) => p && p.model)
++    .map((p) => ({ id: p.model.id, fam: (famOfModel(p.model) || {}).id || null, qty: p.qty, modelo: p.model.model, TR: num(p.model.TR) }));
++  const f0 = famOfModel((c.plant && c.plant[0] && c.plant[0].model) || (c.groups && c.groups[0] && c.groups[0].model));
++  return items.length ? { sistema: c.label, fam0: f0 ? f0.id : null, items } : null;
++}
++function resumenEquipCot(d, en) {
++  if (!d || !Array.isArray(d.items)) return en ? "no integrated system" : "sin sistema integrado";
++  const u = d.items.reduce((a, x) => a + num(x.qty), 0), tr = d.items.reduce((a, x) => a + num(x.TR) * num(x.qty), 0);
++  return en ? `${d.sistema}: ${d.items.length} item(s), ${n(u, 0)} unit(s), ${n(tr, 1)} nominal TR` : `${d.sistema}: ${d.items.length} partida(s), ${n(u, 0)} unidad(es), ${n(tr, 1)} TR nominales`;
++}
++function aplicarEquipCot(ts) {
++  const d = datosEquipCot();
++  if (!d) return null;
++  S.quote.items = d.items.map((x) => ({ id: x.id, fam: x.fam, qty: x.qty, unit: null, copiaDe: { motor: "equip", via: "sistema integrado", ts } }));
++  if (d.fam0) S.qfam = d.fam0;
++  if (!S.quote.entradas || typeof S.quote.entradas !== "object" || Array.isArray(S.quote.entradas)) S.quote.entradas = {};
++  const datos = JSON.parse(JSON.stringify(d));
++  S.quote.entradas["equip>quote"] = { ts, rev: REV, origen: (DOMAINS.equip || {}).label || "equip", firma: JSON.stringify(datos.items), datos };
++  return S.quote.entradas["equip>quote"];
++}
++function propuestaEquipCot() {
++  const EST_EN = { "sin-datos": "No data at the source", pendiente: "Proposal available", aceptado: "Accepted · current", desactualizado: "Out of date · the source changed", propio: "Items entered by hand", vivo: "Live (previous mode)" };
++  return { destino: "quote", origen: "equip", permisos: ["equip>quote"], titulo: "Partidas de equipo del sistema integrado",
++    que: "Los modelos y las cantidades del sistema integrado que eligió Selección de equipo. Al aceptar (o con «Traer el sistema integrado») reemplazan las partidas de equipo de la cotización, que aquí se editan, y queda en Cotización una copia con origen, fecha y firma: si después cambia la selección, la propuesta sale desactualizada y las partidas no se mueven solas (H-278).",
++    disponible: () => !!datosEquipCot(), firma: () => JSON.stringify((datosEquipCot() || { items: [] }).items), resumen: () => resumenEquipCot(datosEquipCot()),
++    actual: () => { const e = entradaCotReg("equip>quote"); return e ? `copia aceptada ${fechaCorta(e.ts)} · ${resumenEquipCot(e.datos)}` : `${(S.quote.items || []).length} partida(s) de equipo capturadas en Cotización`; },
++    enVivo: () => false, aplicar: () => aplicarEquipCot(Date.now()), propio: () => {},   /* las partidas capturadas se quedan como están */
++    en: (e) => { const r = entradaCotReg("equip>quote"); return { destino: "Quotation", campo: "Equipment items of the integrated system",
++      valor: e.rec ? (e.rec.estado === "aceptado" ? (r ? resumenEquipCot(r.datos, true) : "accepted copy not found") : "equipment items entered by hand") : "not decided",
++      origen: "Equipment selection", estado: EST_EN[e.nivel] || e.nivel }; } };
++}
+ function computeQuote() {
+   /* Factor de plaza del noroeste. Multiplica todo precio unitario antes de
+      armar el renglón, para que el catálogo, el resumen y el Excel muestren el
+@@ -8914,7 +8955,10 @@ function computeQuote() {
+     const unit = it.unit != null ? it.unit : listPrice(fam?.price, e.TR, q);
+     lines.push({ ix, kind: "equip", key: `${fam?.id || "eq"}-${ix + 1}`, model: e, fam,
+       desc: `${e.model} · ${e.productLine} · ${e.TR} TR`, descEn: `${e.model} · ${e.productLine} · ${e.TR} TR`,
+-      qty: it.qty, unit, total: unit * it.qty, tons: e.TR * it.qty, sec: "B", un: "PIEZA", mot: "equip" });
++      qty: it.qty, unit, total: unit * it.qty, tons: e.TR * it.qty, sec: "B", un: "PIEZA", mot: "equip",
++      /* H-278: la partida que vino de Selección de equipo (sistema integrado o «Seleccionar») dice de dónde y cuándo; es captura de
++         la cotización y no se mueve sola. */
++      copiaDe: "copiaDe" in it && it.copiaDe && typeof it.copiaDe === "object" && it.copiaDe.motor === "equip" ? { via: String(it.copiaDe.via || ""), ts: num(it.copiaDe.ts, 0) } : null });
+   });
+   const equipTotal = lines.reduce((a, l) => a + l.total, 0);
+   const equipTons = lines.reduce((a, l) => a + l.tons, 0);
+@@ -18976,6 +19020,8 @@ function propConservar(id) {
+    soporte contado (tubería sin diámetro o sin tabla de claros), que capturaReal no cuenta. */
+ Object.assign(PROPUESTAS, propuestasCot());
+ CRUCES_COT.forEach((id) => { if (id !== "soporte>quote") REQUIERE_CAPTURA_PROP[id] = [PROPUESTAS[id].origen]; });
++PROPUESTAS["equip>quote"] = propuestaEquipCot();   /* H-278: «Traer el sistema integrado» es su aceptar */
++REQUIERE_CAPTURA_PROP["equip>quote"] = ["equip"];
+ 
+ /* ---------- Trazado de origen: lo que se imprime en la memoria ---------- */
+ function trazaHerencia() {
+@@ -19531,7 +19577,7 @@ const MOTOR_CAMBIOS = {
+   clean: [{ ver: "2", rev: "2.9.16", que: "sin pisos de 1 m² ni 2.2 m; 5 Pa de ISO 14644-4 con aviso; ceros capturados respetados" },
+     { ver: "3", rev: "2.9.24", que: "H-127: se respeta el signo de la presión diferencial capturada (contención en negativa, EU GMP Anexo 1 (2022) §4.14); piso de 5 Pa y fuga por rendijas sobre |ΔP|; el signo sale en memoria, PDF y Excel; aviso con los 10 Pa guía del Anexo 1" }],
+   quote: [{ ver: "2", rev: "2.9.16", que: "red hidráulica por diámetro con precio capturado; sin 50 m supuestos; partidas pendientes" }, { ver: "3", rev: "2.9.19", que: "tramo con longitud y sin unidades mueble queda pendiente" }, { ver: "4", rev: "2.9.23", que: "precio de tubería por renglón con origen (referencia de mercado o proveedor local), IVA desglosado y por metro; sin precio: partida Por cotizar en el Budget, bloqueo sólo en la formal" }, { ver: "5", rev: "2.9.23", que: "precios en USD sólo se convierten con tipo de cambio capturado con fecha; sin fecha salen Por cotizar y bloquean la formal (nada se estima)" }, { ver: "6", rev: "2.9.23", que: "referencias sólo de California y sólo material (mano de obra por capturar; combinados → Por cotizar); referencias IUSA retiradas; flete, aduana e importación como renglón propio siempre Por cotizar hasta capturarlo" }, { ver: "7", rev: "2.9.24", que: "H-198: un tramo de agua sin diámetro verificado (fuera del catálogo del material, o PEAD sin SDR ni fuente) va Por cotizar con sus metros; ya no se cotiza con el precio del mayor diámetro ni pide precio de un diámetro que no le corresponde" }, { ver: "8", rev: "2.9.24", que: "H-196: cisterna y equipo de bombeo sin precio semilla (9,500 MXN/m³ y 14,500 MXN/HP sin fuente): van Por cotizar con su volumen y su potencia; la bomba sólo cuando la presión de la red no alcanza; cisterna en 0 queda pendiente de volumen, nunca cisterna de 0 m³" }, { ver: "9", rev: "2.9.24", que: "H-206: bomba contra incendio y reserva sin precio fijo (385,000 MXN + 9,500 MXN/m³ sin fuente): Por cotizar con capacidad (gpm y L/min), presión, potencia y volumen declarados" }, { ver: "10", rev: "2.9.24", que: "dependencia de aire v3 (H-215): la partida del secador lleva la capacidad nominal de ISO 7183 A1 y declara si la corrección del fabricante está pendiente" }, { ver: "11", rev: "2.9.24", que: "dependencia de aire v5 (H-218): la partida de la red declara «diámetros indicativos: DI del fabricante pendiente» en aluminio e inoxidable" }, { ver: "12", rev: "2.9.24", que: "dependencia de vent v2 (H-154): la partida de ventilación nombra el modelo que cubre de verdad (o ninguno)" }, { ver: "13", rev: "2.9.24", que: "dependencia de soporte v5 (H-225): sin altura de colgado la varilla sale pendiente, no cotizada" }, { ver: "14", rev: "2.9.24", que: "dependencia de soporte v6 (H-226): el anclaje va Por cotizar (sección G) mientras no haya SDS con fuente, estructura y f'c" }, { ver: "15", rev: "2.9.24", que: "dependencia de soporte v8 (H-229): más soportes de cobre con los claros MSS/IPC" }, { ver: "16", rev: "2.9.24", que: "dependencia de civil v4 (H-243): muro clasificado y media caña por cuarto limpio" }, { ver: "17", rev: "2.9.24", que: "dependencia de civil v5 (H-244): tabiquería por zona, sin los muros de carga térmica" }, { ver: "18", rev: "2.9.24", que: "H-254: el factor de plaza no toca la sección H ni los precios con origen declarado (referencia o proveedor): tal cual (antes la importación de 18,500 salía 19,980 en Mexicali)" }, { ver: "19", rev: "2.9.24", que: "H-253: la formal (licitación) no sale con referencias de mercado, mano de obra por capturar, importación sin capturar o USD sin tipo de cambio fechado; cada bloqueo se nombra en pantalla y en el error" }, { ver: "20", rev: "2.9.24", que: "H-252 (decisión 6, opción a): cada precio semilla sin fuente sale en el Budget con «SEMILLA · SIN FUENTE» (EN «SEED · NO SOURCE») y bloquea la formal; sólo los renglones con origen declarado y la importación capturada quedan sin marca" }, { ver: "21", rev: "2.9.24", que: "H-166 (dependencia de ductos): la lámina de un tramo sin sección queda pendiente con su razón (ES/EN) y fuera de los kilos de la partida" }, { ver: "22", rev: "2.9.24", que: "H-167 (dependencia de ductos): cada tramo de ducto sin longitud capturada queda pendiente de longitud (ES/EN), sin lámina" }, { ver: "23", rev: "2.9.24", que: "H-165 (dependencia de ductos): los kilos del ducto de grasa salen de la partida de lámina galvanizada y quedan Por cotizar como ducto soldado (UMC 2018 §510.5)" }, { ver: "24", rev: "2.9.24", que: "H-181: el alimentador se cuantifica por calibre (juegos × hilos × m de fase y neutro, tierra por canalización 250-122(f), tubo por juego) y el tablero por capacidad y circuitos dimensionados, «Por cotizar» sin precio con fuente (antes 1 juego a 1,350 MXN/m y tablero de 68,000 + 4,200 por circuito); sin distancia, pendiente de longitud; ramal sin corriente, pendiente" },
+-    { ver: "25", rev: "2.9.24", que: "H-278 (decisión del dueño, 28-sep-2026): la cotización es autónoma: calcula sólo con su captura y con la copia aceptada de cada disciplina (propuestas x>quote con origen, fecha y firma; duct>quote nueva). Ya no lee en vivo ductos, carga térmica, ventilación, cuartos limpios, eléctrico, hidrosanitario, contra incendio, obra civil, soportería ni aire: sin copia aceptada la partida no entra y se declara; si el origen cambia, la propuesta sale desactualizada y la cotización no se mueve. D4: los difusores se capturan en Cotización (sin captura, pendiente de cantidad; antes 1 por 400 CFM de carga térmica). Sin la copia de Carga térmica, los indicadores por TR y por m² (pantalla, PDF y libro de la propuesta) quedan pendientes. Un proyecto anterior abre con las mismas cifras: la migración toma la copia de lo que entraba y copia los difusores «sin confirmar». Proyecto fijo: directo 11,289,059.63 y total 19,794,869.34 sin cambio" }],
++    { ver: "25", rev: "2.9.24", que: "H-278 (decisión del dueño, 28-sep-2026): la cotización es autónoma: calcula sólo con su captura y con la copia aceptada de cada disciplina (propuestas x>quote con origen, fecha y firma; duct>quote nueva; «Traer el sistema integrado» es aceptar equip>quote). Ya no lee en vivo ductos, carga térmica, ventilación, cuartos limpios, eléctrico, hidrosanitario, contra incendio, obra civil, soportería ni aire: sin copia aceptada la partida no entra y se declara; si el origen cambia, la propuesta sale desactualizada y la cotización no se mueve. D4: los difusores se capturan en Cotización (sin captura, pendiente de cantidad; antes 1 por 400 CFM de carga térmica). Sin la copia de Carga térmica, los indicadores por TR y por m² (pantalla, PDF y libro de la propuesta) quedan pendientes. Un proyecto anterior abre con las mismas cifras: la migración toma la copia de lo que entraba y copia los difusores «sin confirmar». Proyecto fijo: directo 11,289,059.63 y total 19,794,869.34 sin cambio" }],
+   elec: [{ ver: "2", rev: "2.9.16", que: "canalización con las áreas del conductor de la memoria (THW-LS por omisión, NOM-001-SEDE Cap. 10 Tabla 5)" }, { ver: "3", rev: "2.9.18", que: "siete áreas THHN/THWN-2 corregidas a la Tabla 5" }, { ver: "4", rev: "2.9.19", que: "sin compresor de aire cuando no hay demanda" },
+     { ver: "5", rev: "2.9.24", que: "H-183: conductor de puesta a tierra con la Tabla 250-122 de la NOM-001-SEDE-2012 (p. 151): 400 A → 2 AWG (antes 3 AWG, valor del NEC), renglones hasta 6000 A y columna de aluminio (hasta 100 A la tabla sólo da cobre)" },
+     { ver: "6", rev: "2.9.24", que: "H-177: equipo con motocompresor hermético con MCA y MOP por el art. 440: conductor por la MCA de placa (440-4(b), 440-35; una MCA estimada por la suite no lo baja del 125 %) y protección igual al MOP o al valor inmediato inferior de 240-6(a) completo (16, 32, 63 A; abajo de 15 A sólo fusibles de 1, 3, 6, 10 A), sin el 250 % de la Tabla 430-52 (40VMA-240: 150 → 90 A; 40MBC-24: 25 → 15 A). Aceptar la cédula conserva MCA y MOP (marcados estimados); una carga sin kW no fija el principal" },
+@@ -20821,8 +20867,9 @@ function difusoresCampoHtml() {
+ }
+ /* H-278: las propuestas de las demás disciplinas hacia la cotización, con su estado; aceptar deja la copia con origen y fecha. */
+ function entradasCotHtml() {
+-  const ids = CRUCES_COT.filter((id) => estadoPropuesta(id).nivel !== "sin-datos" || !!entradaCotReg(id));
+-  const nAc = CRUCES_COT.filter((id) => !!entradaCotReg(id)).length;
++  const todas = ["equip>quote", ...CRUCES_COT];
++  const ids = todas.filter((id) => estadoPropuesta(id).nivel !== "sin-datos" || !!entradaCotReg(id));
++  const nAc = todas.filter((id) => !!entradaCotReg(id)).length;
+   return `<div class="card"><h3>Entradas de otras disciplinas<span class="tag">${nAc} copia(s) aceptada(s)</span></h3><div class="body">
+     <div class="sub" style="margin-bottom:10px">La cotización calcula sólo con lo que se captura aquí y con la copia aceptada de cada disciplina (origen, fecha y firma). Si el origen cambia, su propuesta sale «desactualizada» y la cotización sigue con lo aceptado hasta que decidas.</div>
+     ${ids.length ? ids.map((id) => propuestaHtml(id)).join("") : `<div class="hint">Todavía ninguna disciplina tiene algo que proponer a la cotización.</div>`}
+@@ -20846,7 +20893,7 @@ function viewCotizacion() {
+       </div>
+       <div class="sub" style="margin-bottom:14px">Trae de un golpe el chiller y las manejadoras que ya seleccionó el proyecto, o ve a <b>Selección de equipo</b> y agrégalos uno por uno.</div>
+       <div class="row">
+-        <button class="btn-primary" data-act="q-fromsys">Traer el sistema integrado (${n(SYS ? SYS.blockTons : 0, 1)} TR)</button>
++        <button class="btn-primary" data-act="q-fromsys">Traer el sistema integrado</button>
+         <button class="btn-ghost" data-act="go-sel">Ir a Selección de equipo</button>
+       </div>
+       <div style="margin-top:14px">${difusoresCampoHtml()}</div>
+@@ -20911,7 +20958,7 @@ function viewCotizacion() {
+             ${imgOf(l.model.id) ? `<img class="thumb" src="${imgOf(l.model.id)}" alt="" loading="lazy" />` : ""}
+             <div class="nm">
+               <div class="m">${esc(l.model.model)}</div>
+-              <div class="sb">${esc(l.model.productLine)} · ${l.model.TR} TR · ${esc(l.key.toUpperCase())}</div>
++              <div class="sb">${esc(l.model.productLine)} · ${l.model.TR} TR · ${esc(l.key.toUpperCase())}${l.copiaDe ? ` · copia de Selección de equipo (${esc(l.copiaDe.via)}), ${esc(fechaCorta(l.copiaDe.ts))}` : ""}</div>
+               <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+                 <span class="sub" style="font-size:12px">Cant.</span>
+                 <input class="mini-in" type="number" min="1" step="1" data-qty="${l.ix}" value="${l.qty}" />
+@@ -23987,7 +24034,8 @@ document.addEventListener("click", (e) => {
+       const r = selPorFamilia(famId, requisitoFam(famId));
+       S.sel.modelos[famId] = { id, rec: r.recomendado ? r.recomendado.model.id : null, ts: Date.now() };
+       const e = CARRIER.find((x) => x.id === id);
+-      if (e) { S.quote.items.push({ id, fam: famId, qty: 1, unit: null }); }
++      /* H-278: la partida que se agrega a la cotización es una copia con origen y fecha (Selección de equipo, «Seleccionar»). */
++      if (e) { S.quote.items.push({ id, fam: famId, qty: 1, unit: null, copiaDe: { motor: "equip", via: "Seleccionar", ts: Date.now() } }); }
+       projAutosave(); render();
+       toast(S.sel.modelos[famId].rec && S.sel.modelos[famId].rec !== id
+         ? `${e ? e.model : id} seleccionado y agregado. La app recomendaba otro modelo: queda registrado.`
+@@ -24001,7 +24049,10 @@ document.addEventListener("click", (e) => {
+     case "go-quote": irATab("cotizacion"); break;
+     case "go-tab": irATab(b.dataset.tab); break;
+     /* rev 2.7.0 · Decisiones sobre las propuestas entre disciplinas. */
+-    case "prop-aceptar": histSnap("aceptar propuesta"); propAceptar(b.dataset.id); break;   /* H-267: se puede deshacer */
++    case "prop-aceptar":
++      /* H-278: aceptar las partidas de equipo del sistema reemplaza las capturadas: pregunta antes, como «Traer el sistema integrado». */
++      if (b.dataset.id === "equip>quote") { traerSistemaConConfirmacion(); break; }
++      histSnap("aceptar propuesta"); propAceptar(b.dataset.id); break;   /* H-267: se puede deshacer */
+     /* rev 2.9.0 · Decisiones sobre las medidas de ingenieria de valor. Cada
+        una se anota en el historial de la casa, que reordena las siguientes. */
+     case "ve-aceptar": veDecidir(b.dataset.id, "aceptada"); break;
+@@ -24108,24 +24159,7 @@ document.addEventListener("click", (e) => {
+       break;
+     }
+     case "go-sel": irATab("seleccion"); break;
+-    case "q-fromsys": {
+-      /* H-267: sin zonas de selección no hay sistema que traer; no se vacían las partidas capturadas. */
+-      if (!SYS || !SYS.chosen || SYS.chosen.id === "none") { toast("Sin sistema integrado: acepta en Selección de equipo la propuesta de Carga térmica o captura ahí las zonas de selección"); break; }
+-      if ((S.quote.items || []).length) {
+-        const items = S.quote.items.slice();
+-        confirmarSiHayDatos({
+-          titulo: "Traer el sistema borra las partidas de equipo",
+-          detalle: "La cotización va a quedar con los equipos de la cédula. Las partidas de equipo que tengas capturadas o editadas se reemplazan; los precios unitarios que hayas escrito a mano se pierden.",
+-          lista: items.slice(0, 6).map((it) => { const e = CARRIER.find((x) => x.id === it.id); return [e ? e.model : it.id, `${it.qty} pz${it.unit ? " · precio editado" : ""}`]; }),
+-          boton: "Reemplazar las partidas", etiqueta: "traer el sistema a la cotización",
+-          onOk: () => { traerSistemaACotizacion(); },
+-        });
+-        break;
+-      }
+-      histSnap("traer el sistema a la cotización");
+-      traerSistemaACotizacion();
+-      break;
+-    }
++    case "q-fromsys": traerSistemaConConfirmacion(); break;   /* H-278: es aceptar la propuesta equip>quote */
+     case "q-xlsx": deliverXlsx(buildPropuestaXlsx(), `Propuesta-${pdfName((S.quote.prop||{}).no || S.meta.name || "proyecto")}.xlsx`); break;
+     case "sys-pdf": deliverPdf(buildCedulaEquiposPdf(), `Cedula-equipos-${pdfName(S.meta.name || "proyecto")}.pdf`); break;
+     case "proj-new": {
+@@ -24198,15 +24232,30 @@ document.addEventListener("change", (e) => {
+ /* Pasa el sistema elegido a la cotización. Vive en su propia función porque
+    ahora la llaman dos caminos: directo cuando no hay nada que perder, y desde el
+    aviso de confirmación cuando sí lo hay. */
++function traerSistemaConConfirmacion() {
++  /* H-267: sin zonas de selección no hay sistema que traer; no se vacían las partidas capturadas. */
++  if (!SYS || !SYS.chosen || SYS.chosen.id === "none") { toast("Sin sistema integrado: acepta en Selección de equipo la propuesta de Carga térmica o captura ahí las zonas de selección"); return; }
++  if ((S.quote.items || []).length) {
++    const items = S.quote.items.slice();
++    confirmarSiHayDatos({
++      titulo: "Traer el sistema borra las partidas de equipo",
++      detalle: "La cotización va a quedar con los equipos de la cédula. Las partidas de equipo que tengas capturadas o editadas se reemplazan; los precios unitarios que hayas escrito a mano se pierden.",
++      lista: items.slice(0, 6).map((it) => { const e = CARRIER.find((x) => x.id === it.id); return [e ? e.model : it.id, `${it.qty} pz${it.unit ? " · precio editado" : ""}`]; }),
++      boton: "Reemplazar las partidas", etiqueta: "traer el sistema a la cotización",
++      onOk: () => { traerSistemaACotizacion(); },
++    });
++    return;
++  }
++  histSnap("traer el sistema a la cotización");
++  traerSistemaACotizacion();
++}
+ function traerSistemaACotizacion() {
++  /* H-278: traer el sistema es ACEPTAR la propuesta equip>quote: concede el cruce, copia modelos y cantidades a las partidas (con su
++     origen y su fecha) y deja en Cotización la copia con la firma de la selección; si la selección cambia, la propuesta sale
++     desactualizada y las partidas no se mueven solas. */
+   const c = SYS.chosen;
+-  S.quote.items = [];
+-  c.plant.filter((p) => p.model).forEach((p) => S.quote.items.push({ id: p.model.id, fam: (famOfModel(p.model) || {}).id, qty: p.qty, unit: null }));
+-  c.groups.filter((g) => g.model).forEach((g) => S.quote.items.push({ id: g.model.id, fam: (famOfModel(g.model) || {}).id, qty: g.qty, unit: null }));
+-  const f0 = famOfModel(c.plant[0]?.model || c.groups[0]?.model);
+-  if (f0) S.qfam = f0.id;
+-  projAutosave(); render();
+-  toast(`${c.label} cargado: ${S.quote.items.length} partida(s)`);
++  propAceptar("equip>quote");
++  toast(`${c.label} cargado: ${S.quote.items.length} partida(s) · copia de Selección de equipo del ${fechaCorta(Date.now())}`);
+ }
+ function chainToDuct(silencioso) {
+   if (!linkAllowed("load>duct")) { requestLink("load>duct", chainToDuct); return; }
+diff --git a/parches/mutantes/quote.json b/parches/mutantes/quote.json
+index 8027200..605192b 100644
+--- a/parches/mutantes/quote.json
++++ b/parches/mutantes/quote.json
+@@ -54,5 +54,13 @@
+   { "id": "quote.m27", "que": "el libro de la propuesta (Excel) vuelve a tomar la carga y el área de la carga térmica en vivo (carta e indicadores)", "logica": true, "estado": "vigente",
+     "buscar": "const LOx = entradaCotReg(\"load>quote\"), loTons = LOx ? num(LOx.datos.tons) : 0, loArea = LOx ? num(LOx.datos.area) : 0;", "reemplazar": "const LOx = { ts: 1, datos: totals() }, loTons = totals().tons, loArea = totals().area;" },
+   { "id": "quote.m28", "que": "la referencia interna pierde la marca para volver a tomar las copias: abre sin lámina, difusores ni ventilación", "logica": true, "estado": "vigente",
+-    "buscar": "    quote: { ...cotizacionTecnica(d.quote), ...marcaCotReferencia(d.quote) },", "reemplazar": "    quote: cotizacionTecnica(d.quote)," }
++    "buscar": "    quote: { ...cotizacionTecnica(d.quote), ...marcaCotReferencia(d.quote) },", "reemplazar": "    quote: cotizacionTecnica(d.quote)," },
++  { "id": "quote.m29", "que": "traer el sistema vuelve a copiar las partidas de equipo sin dejar en Cotización la copia con origen, fecha y firma de la selección", "logica": true, "estado": "vigente",
++    "buscar": "  S.quote.entradas[\"equip>quote\"] = { ts, rev: REV, origen: (DOMAINS.equip || {}).label || \"equip\", firma: JSON.stringify(datos.items), datos };", "reemplazar": "  void datos;" },
++  { "id": "quote.m30", "que": "firma constante en equip>quote: si la selección cambia, la propuesta de partidas de equipo nunca sale desactualizada", "logica": true, "estado": "vigente",
++    "buscar": "disponible: () => !!datosEquipCot(), firma: () => JSON.stringify((datosEquipCot() || { items: [] }).items),", "reemplazar": "disponible: () => !!datosEquipCot(), firma: () => \"sin firma\"," },
++  { "id": "quote.m31", "que": "«Seleccionar» en Selección vuelve a agregar la partida a la cotización sin origen ni fecha", "logica": true, "estado": "vigente",
++    "buscar": "      if (e) { S.quote.items.push({ id, fam: famId, qty: 1, unit: null, copiaDe: { motor: \"equip\", via: \"Seleccionar\", ts: Date.now() } }); }", "reemplazar": "      if (e) { S.quote.items.push({ id, fam: famId, qty: 1, unit: null }); }" },
++  { "id": "quote.m32", "que": "el botón «Traer el sistema integrado» de la cotización vacía vuelve a leer las toneladas del sistema en vivo", "logica": true, "estado": "vigente",
++    "buscar": "\n        <button class=\"btn-primary\" data-act=\"q-fromsys\">Traer el sistema integrado</button>", "reemplazar": "\n        <button class=\"btn-primary\" data-act=\"q-fromsys\">Traer el sistema integrado (${n(SYS ? SYS.blockTons : 0, 1)} TR)</button>" }
+ ]
+diff --git a/pruebas.mjs b/pruebas.mjs
+index abf695a..32fbf91 100644
+--- a/pruebas.mjs
++++ b/pruebas.mjs
+@@ -7770,6 +7770,47 @@ t("S.142 (H-278) la huella y los entregables de la cotización sólo dicen lo qu
+     eq(G("accEstado")("vent").cot.ok, true, "con la copia aceptada la cotización de la disciplina sale:");
+   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+ });
++t("S.143 (H-278) las partidas de equipo del sistema integrado entran como propuesta equip>quote aceptada: «Traer el sistema integrado» es su aceptar y deja en Cotización la copia con origen, fecha y firma de la selección; si la selección cambia después, la propuesta sale desactualizada y las partidas no se mueven solas; «Seleccionar» un modelo agrega su partida con origen y fecha; la pantalla ya no lee las toneladas del sistema en vivo", () => {
++  const guardado = JSON.stringify(S);
++  const R = () => G("recompute")(), el = (sel) => { const b = w.document.querySelector(sel); if (!b) throw new Error("no está " + sel); return b; };
++  try {
++    S.quote.items = []; S.quote.entradas = {}; S.quote.difusores = 0; if (S.vinculos) delete S.vinculos["equip>quote"]; R();
++    const SY = G("SYS");
++    if (!SY || !SY.chosen || SY.chosen.id === "none") throw new Error("el caso no aísla lo que se quiere probar: debe haber sistema integrado");
++    if (G("QUOTE").lines.length || G("QUOTE").auxTotal) throw new Error("el caso no aísla lo que se quiere probar: la cotización debe estar vacía");
++    /* 1) Con la cotización vacía, la pestaña ofrece traer el sistema sin leer sus toneladas en vivo. */
++    S.tab = "cotizacion"; G("render")();
++    if (/Traer el sistema integrado \(/.test(w.document.getElementById("view").textContent)) throw new Error("el botón ya no lee las toneladas del sistema en vivo");
++    clicS(el('#view [data-act="q-fromsys"]'));
++    const e = (S.quote.entradas || {})["equip>quote"], v = (S.vinculos || {})["equip>quote"];
++    if (!e || !(e.ts > 0) || !e.firma || !/Selecci/.test(e.origen || "") || !e.datos) throw new Error("traer el sistema no deja en Cotización la copia con origen, fecha y firma: " + JSON.stringify(e));
++    if (!v || v.estado !== "aceptado") throw new Error("traer el sistema no registra la propuesta aceptada: " + JSON.stringify(v));
++    if (!S.quote.items.length || !S.quote.items.every((it) => it.copiaDe && it.copiaDe.motor === "equip" && it.copiaDe.ts > 0)) throw new Error("cada partida traída dice de dónde y cuándo: " + JSON.stringify(S.quote.items));
++    eq(G("estadoPropuesta")("equip>quote").nivel, "aceptado", "la propuesta queda vigente:");
++    /* 2) La selección cambia (otro sistema): las partidas y el directo no se mueven; la propuesta sale desactualizada. */
++    const items0 = JSON.stringify(S.quote.items), d0 = G("QUOTE").direct, firma0 = e.firma;
++    const otra = SY.opts.find((x) => x.id !== SY.chosen.id && x.id !== "none" && (x.plant || []).concat(x.groups || []).some((p) => p && p.model));
++    if (!otra) throw new Error("el caso no aísla lo que se quiere probar: debe haber otro sistema con equipo");
++    S.sysForce = otra.id; R();
++    if (G("PROPUESTAS")["equip>quote"].firma() === firma0) throw new Error("el caso no aísla lo que se quiere probar: el otro sistema debe proponer otras partidas");
++    eq(JSON.stringify(S.quote.items), items0, "la selección cambió y las partidas no se movieron:");
++    eq(G("QUOTE").direct, d0, "ni el directo:");
++    eq(G("estadoPropuesta")("equip>quote").nivel, "desactualizado", "la propuesta sale desactualizada:");
++    S.tab = "cotizacion"; G("render")();
++    contiene(w.document.getElementById("view").textContent, "Partidas de equipo del sistema integrado", "la pestaña muestra la propuesta de Selección con su estado:");
++    /* 3) «Seleccionar» un modelo en Selección agrega su partida con origen y fecha. */
++    S.tab = "seleccion"; G("render")();
++    const n0 = S.quote.items.length;
++    clicS(el('#view button.minipdf[data-act="sel-modelo"]'));
++    eq(S.quote.items.length, n0 + 1, "«Seleccionar» agrega una partida:");
++    const ult = S.quote.items[S.quote.items.length - 1];
++    if (!ult.copiaDe || ult.copiaDe.motor !== "equip" || !(ult.copiaDe.ts > 0)) throw new Error("la partida de «Seleccionar» no dice de dónde ni cuándo: " + JSON.stringify(ult));
++    /* 4) La cotización de Selección sigue pidiendo el cruce autorizado (sus partidas pueden ser captura a mano). */
++    delete S.perms["equip>quote"]; R();
++    const A = G("accEstado")("equip");
++    eq(A.cot.ok, false, "sin el cruce autorizado la cotización de Selección se apaga:"); eq(A.cot.autorizar, "equip>quote", "y ofrece autorizarlo:");
++  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
++});
+ 
+ t("S.87 (H-224, parte no bloqueada) la soportería de la red contra incendio usa el material de la red: acero como acero, cobre con MSS SP-58 (el mismo camino que la hidráulica de cobre) y CPVC «pendiente de tabla NFPA 13», nunca soportado como acero (motores, instantánea y captura a mano)", () => {
+   const guardado = JSON.stringify(S);
+-- 
+2.43.0
+

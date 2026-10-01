@@ -1,0 +1,167 @@
+diff --git a/pruebas.mjs b/pruebas.mjs
+index 5dc2a16..07c5142 100644
+--- a/pruebas.mjs
++++ b/pruebas.mjs
+@@ -8007,6 +8007,162 @@ t("S.104 (H-267) selección de equipo es autónoma: sin aceptar la propuesta, ca
+   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+ });
+ 
++/* ===== S.126–S.128 (H-274) selección de equipo: la presión de ductos entra sólo como propuesta duct>equip aceptada; huella y memoria sin lecturas vivas =====
++   Decisión del dueño (27-sep-2026): todos los motores independientes; lo de otra disciplina entra sólo como propuesta aceptada
++   (instantánea con origen y fecha) y ya aceptada no se mueve sola. requisitoFam leía DUCT.path EN VIVO con el permiso duct>equip
++   (presión, ajuste y «limita» se movían solos al cambiar ductos); ENTRADAS.equip anidaba ENTRADAS.duct() (renombrar un tramo
++   marcaba «desactualizada» la selección); la memoria de selección imprimía la preselección de carga térmica (LOADS en vivo) y su
++   trazabilidad, la norma de carga térmica. */
++const proyectoH274 = (nombre) => {
++  G("reemplazarEstado")(G("defaultState")()); S.meta.name = nombre;
++  S.zones = [
++    { ...G("defaultZone")("Producción"), area: 400, height: 6, occ: 30, lights: 1200, equip: 1440, ach: .4,
++      walls: { N: 28, NE: 0, E: 18, SE: 0, S: 28, SW: 0, W: 18, NW: 0 }, glass: { N: 4, NE: 0, E: 6, SE: 0, S: 12, SW: 0, W: 8, NW: 0 } },
++    { ...G("defaultZone")("Oficinas"), area: 100, height: 3, occ: 10, lights: 400, equip: 500, ach: .4,
++      walls: { N: 10, NE: 0, E: 8, SE: 0, S: 10, SW: 0, W: 8, NW: 0 }, glass: { N: 3, NE: 0, E: 2, SE: 0, S: 4, SW: 0, W: 2, NW: 0 } },
++  ];
++  aceptarEquip();
++  const seg = G("defaultSegment");
++  S.duct.segments = [{ ...seg("SA-PRINCIPAL", 1500), id: "h274p", length: 20 }, { ...seg("SA-RAMAL-1", 750), id: "h274r", length: 10 },
++    { ...seg("RA-RETORNO", 1500), id: "h274t", service: "return", length: 15 }];
++  G("recompute")();
++};
++const fotoSelH274 = (f) => { const r = G("requisitoFam")(f), s = G("selPorFamilia")(f, r);
++  return { esp: r.esp, rec: s.recomendado.model.id, fit: s.recomendado.fit, limita: s.recomendado.limita, marcas: s.recomendado.marcas }; };
++t("S.126 (H-274) la selección de equipo no se mueve sola con ductos: con el cruce duct>equip autorizado y la propuesta aceptada, alargar el troncal de 20 a 400 m no cambia la presión estática ni el ajuste del rooftop (antes 0.246 → 1.703 in.wg y 100 → 94 %); la propuesta sale «desactualizada» y al volver a aceptarla toma la presión nueva; la captura propia de la pestaña manda; sin instantánea ni captura la presión queda pendiente y no castiga; con duct>equip negado, renombrar, alargar o cambiar el material de un tramo no cambia la huella de selección", () => {
++  const guardado = JSON.stringify(S);
++  try {
++    proyectoH274("S.126");
++    const huellaE = () => G("huellaMotor")("equip");
++    /* 1) Cruce autorizado y propuesta aceptada: la instantánea es la suma de tramos con 15 % de margen, en in.wg. */
++    S.perms["duct>equip"] = { ts: 1, via: "S.126" };
++    const t0 = Date.now();
++    G("propAceptar")("duct>equip");
++    const D0 = G("DUCT").path, a = fotoSelH274("rtu"), aS = fotoSelH274("split_duct"), ha = huellaE();
++    cerca(a.esp, D0 * 1.15 / 249.089, 1e-9, "la presión aceptada es la suma de tramos con 15 % de margen, en in.wg:");
++    /* 2) Regla 3: el troncal pasa de 20 a 400 m con 12 codos; la selección no se mueve. */
++    S.duct.segments[0].length = 400; S.duct.segments[0].fittings = [{ type: "elbow_90_miter", qty: 12, C: .42 }]; G("recompute")();
++    if (!(G("DUCT").path > D0 * 5)) throw new Error("el caso no aísla lo que se quiere probar: los ductos alargados deben pedir mucha más presión");
++    const b = fotoSelH274("rtu");
++    cerca(b.esp, a.esp, 1e-12, "ya aceptada, la presión estática de la selección no se mueve sola aunque cambien los ductos:");
++    eq(b.fit, a.fit, "ni el ajuste del recomendado:"); eq(b.limita, a.limita, "ni lo que lo limita:"); eq(b.rec, a.rec, "ni el recomendado:");
++    eq(JSON.stringify(fotoSelH274("split_duct")), JSON.stringify(aS), "el split ducteado tampoco:");
++    eq(huellaE(), ha, "ni la huella de selección:");
++    const sn = S.equip.espDucto;
++    if (!sn || !(sn.ts >= t0)) throw new Error("la instantánea aceptada debe llevar fecha");
++    cerca(sn.inwg, a.esp, 1e-12, "la instantánea guarda la presión aceptada:"); cerca(sn.pathPa, D0, 1e-9, "y la suma de tramos en Pa:");
++    eq(G("estadoPropuesta")("duct>equip").nivel, "desactualizado", "la propuesta avisa que ductos cambió:");
++    eq(G("semaforoSuite")().find((x) => x.id === "equip").nivel, "desactualizada", "el semáforo de selección lo dice:");
++    /* 3) Volver a aceptar toma la presión nueva, y con ella el rooftop sí pierde ajuste por presión (el caso aísla la presión). */
++    G("propAceptar")("duct>equip");
++    const c = fotoSelH274("rtu");
++    cerca(c.esp, G("DUCT").path * 1.15 / 249.089, 1e-9, "al volver a aceptar toma la presión nueva:");
++    if (!(c.fit < a.fit)) throw new Error("el caso no aísla lo que se quiere probar: con 400 m el rooftop debe perder ajuste por presión");
++    eq(c.limita, "presión estática", "lo limita la presión estática:");
++    contiene(c.marcas.join(" "), "in.wg (suma de tramos; ", "la marca dice de dónde sale la presión:");
++    contiene(c.marcas.join(" "), "Ductos", "y que es la instantánea de Ductos:");
++    eq(G("estadoPropuesta")("duct>equip").nivel, "aceptado", "aceptada y vigente:");
++    /* 4) Pantalla: la tarjeta de la propuesta sustituye al aviso de permiso. */
++    S.qfam = "rtu";
++    const v = G("viewSeleccion")();
++    if (/Autorizar ductos/.test(v)) throw new Error("la pestaña sigue ofreciendo autorizar el cruce en lugar de la propuesta");
++    contiene(v, "Presión estática externa desde ductos", "tarjeta de la propuesta:");
++    /* 5) Captura propia en la pestaña: manda sobre la instantánea; vaciarla vuelve a la instantánea. */
++    G("capturarEspEquip")("0.5"); G("recompute")();
++    const d = fotoSelH274("rtu");
++    cerca(d.esp, 0.5, 1e-12, "la presión capturada en la pestaña manda:"); eq(G("requisitoFam")("rtu").espFuente, "captura", "y se dice de dónde sale:");
++    eq(d.limita === "presión estática", false, "0.5 in.wg no castiga al rooftop:");
++    G("capturarEspEquip")(""); G("recompute")();
++    cerca(fotoSelH274("rtu").esp, c.esp, 1e-12, "sin captura vuelve a la instantánea aceptada:");
++    /* 6) «Capturo lo mío» sin capturar: la presión queda pendiente; no castiga ni se supone. */
++    G("propPropio")("duct>equip");
++    const r = G("requisitoFam")("rtu"), e = fotoSelH274("rtu");
++    eq(S.equip.espDucto, null, "«Capturo lo mío» retira la instantánea:");
++    eq(r.espPendiente, true, "sin instantánea ni captura la presión queda pendiente:"); eq(r.esp, 0, "y no se supone:");
++    eq(e.limita === "presión estática", false, "sin presión no hay castigo por presión:");
++    if (!/<div class="k">Presión estática<\/div><div class="v">pendiente/.test(G("viewSeleccion")())) throw new Error("la pantalla debe decir que la presión estática está pendiente");
++    /* 7) Con duct>equip negado: renombrar, acortar o cambiar el material de un tramo no toca la huella ni la selección. */
++    delete S.perms["duct>equip"]; G("recompute")();
++    const h0 = huellaE(), f0 = JSON.stringify(fotoSelH274("rtu"));
++    S.duct.segments[0].tag = "SA-TRONCAL"; G("recompute")(); eq(huellaE(), h0, "con duct>equip negado, renombrar un tramo no cambia la huella de selección:");
++    S.duct.segments[0].length = 20; G("recompute")(); eq(huellaE(), h0, "ni acortarlo:");
++    S.duct.meta.material = "aluminum"; G("recompute")(); eq(huellaE(), h0, "ni cambiar el material:");
++    eq(JSON.stringify(fotoSelH274("rtu")), f0, "ni la selección:");
++  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
++});
++t("S.127 (H-274) la memoria de selección ya no imprime la preselección por zona de carga térmica leída en vivo (LOADS): su §8 lista lo que entró de otras disciplinas como instantánea aceptada —zonas de carga térmica y presión de ductos, con origen y fecha— y sus cifras no se mueven si la carga o los ductos cambian sin aceptar; la trazabilidad de la memoria y de la cédula imprime el sello de selección y la fecha de cada instantánea, no la norma de carga térmica", () => {
++  const guardado = JSON.stringify(S);
++  const txt = (u8) => [...Buffer.from(u8).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ").replace(/\s+/g, " ");
++  const dia = (ts) => String(G("fechaCorta")(ts)).replace(/\s+/g, " ").split(",")[0];
++  try {
++    proyectoH274("S.127");
++    S.perms["duct>equip"] = { ts: 1, via: "S.127" }; G("propAceptar")("duct>equip");
++    const mem = txt(G("buildSeleccionPdf")());
++    if (mem.includes("Preseleccion por zona (motor de carga")) throw new Error("la memoria de selección sigue imprimiendo la preselección por zona de carga térmica (LOADS en vivo)");
++    const sec8 = (t) => { const i = t.indexOf("8. Datos de otras disciplinas"), j = t.indexOf("9. Memoria"); if (i < 0 || j < i) throw new Error("no encontré la sección 8 de la memoria"); return t.slice(i, j); };
++    const s8 = sec8(mem), Z = S.equip.zonas, esp = S.equip.espDucto, n = G("n");
++    Z.forEach((z) => { contiene(s8, `Zona ${z.name}`, "zona aceptada:"); contiene(s8, `${n(z.tons, 2)} TR`, `${z.name} con su TR aceptada:`); });
++    contiene(s8, "Carga termica", "origen de las zonas:"); contiene(s8, dia(Z[0].origen.fecha), "fecha de la instantánea de carga:");
++    contiene(s8, "Presion estatica externa", "la presión:"); contiene(s8, `${n(esp.inwg, 2)} in.wg`, "con su valor:");
++    contiene(s8, "Ductos", "y su origen:"); contiene(s8, dia(esp.ts), "y su fecha:");
++    if (/desactualizada/.test(s8)) throw new Error("recién aceptadas, las instantáneas están vigentes");
++    /* Sin aceptar nada, la carga y los ductos cambian: la §8 conserva lo aceptado y avisa que el origen cambió. */
++    const tons0 = G("LOADS")[0].tons;
++    S.zones[0].area = 800; S.duct.segments[0].length = 400; G("recompute")();
++    if (!(G("LOADS")[0].tons > tons0 * 1.2)) throw new Error("el caso no aísla lo que se quiere probar: la carga de la zona debe crecer");
++    const s8b = sec8(txt(G("buildSeleccionPdf")()));
++    Z.forEach((z) => contiene(s8b, `${n(z.tons, 2)} TR`, `${z.name} sigue con la TR aceptada:`));
++    if (s8b.includes(`${n(G("LOADS")[0].tons, 2)} TR`)) throw new Error("la §8 imprime la carga de hoy, no la aceptada");
++    contiene(s8b, `${n(esp.inwg, 2)} in.wg`, "la presión sigue la aceptada:");
++    contiene(s8b, "desactualizada", "y dice que el origen cambió:");
++    /* Trazabilidad de la memoria y de la cédula: sello de selección y fecha de cada instantánea; sin la norma de carga térmica. */
++    [["memoria de selección", txt(G("buildSeleccionPdf")())], ["cédula de equipos", txt(G("buildCedulaEquiposPdf")())]].forEach(([nom, x]) => {
++      const tz = x.slice(x.lastIndexOf("Trazabilidad"));
++      if (/Norma · Carga t/.test(tz)) throw new Error(`${nom}: la trazabilidad sigue imprimiendo la norma de carga térmica`);
++      contiene(tz, "Norma · Selección de equipo", `${nom} · norma de selección:`);
++      contiene(tz, "Sello de calculo · Seleccion de equipo", `${nom} · sello de selección:`);
++      contiene(tz, "Zonas de seleccion", `${nom} · instantánea de carga:`); contiene(tz, dia(Z[0].origen.fecha), `${nom} · su fecha:`);
++      contiene(tz, "Presion estatica externa", `${nom} · instantánea de ductos:`); contiene(tz, dia(esp.ts), `${nom} · su fecha:`);
++    });
++  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
++});
++t("S.128 (H-274) un proyecto guardado con el cruce duct>equip autorizado (que leía la presión de ductos en vivo) abre con la misma presión estática, el mismo ajuste y el mismo recomendado por familia, tomados UNA vez al abrir como instantánea aceptada con vínculo «(migración H-274)»; desde ahí no se mueve sola y reabrirlo no la vuelve a tomar; sin el cruce no había nada que migrar", () => {
++  const guardado = JSON.stringify(S);
++  try {
++    const fixture = JSON.parse(fs.readFileSync("parches/regresion-motores/regresion-motores.emp.json", "utf8"));
++    if (!(fixture.perms && fixture.perms["duct>equip"])) throw new Error("el caso no aísla lo que se quiere probar: el fixture debe traer autorizado duct>equip");
++    if (fixture.equip && "espDucto" in fixture.equip) throw new Error("el caso no aísla lo que se quiere probar: el fixture debe ser de antes de H-274");
++    /* Troncal de 400 m: con la lectura en vivo el split ducteado ya perdía ajuste por presión. Cifras medidas en b186ac8 (en vivo). */
++    const p = JSON.parse(JSON.stringify(fixture)); p.duct.segments[0].length = 400;
++    const ANTES = { rtu: { esp: 1.2415, rec: "rt-50TC-A20", fit: 54, limita: "caudal corto" },
++      split_duct: { esp: 1.2415, rec: "duct-40RUA-180", fit: 2, limita: "presión estática" }, ahu: { esp: 1.2415, rec: "ahu-39M-12", fit: 100, limita: "capacidad" } };
++    const foto = () => JSON.stringify(Object.keys(ANTES).map((f) => { const x = fotoSelH274(f); return [x.esp, x.rec, x.fit, x.limita]; }));
++    G("importarRespaldo")(JSON.stringify(p)); G("recompute")();
++    Object.entries(ANTES).forEach(([f, x]) => { const y = fotoSelH274(f);
++      cerca(y.esp, x.esp, 5e-4, `${f} abre con la misma presión:`); eq(y.rec, x.rec, `${f} mismo recomendado:`); eq(y.fit, x.fit, `${f} mismo ajuste:`); eq(y.limita, x.limita, `${f} misma limitante:`); });
++    cerca(G("requisitoFam")("split_duct").esp, G("DUCT").path * 1.15 / 249.089, 1e-9, "la presión migrada es la que se leía en vivo al abrir:");
++    const m0 = foto();
++    /* Desde ahí no se mueve sola: el troncal vuelve a 18 m y la selección sigue con lo migrado. */
++    S.duct.segments[0].length = 18; G("recompute")();
++    eq(foto(), m0, "ya migrado, la selección no lee los ductos en vivo:");
++    const vc = G("vinculoDe")("duct>equip") || {};
++    eq(vc.estado, "aceptado", "queda registrada como propuesta aceptada:"); contiene(vc.origen || "", "(migración H-274)", "con origen de migración:");
++    if (!(S.equip.espDucto && S.equip.espDucto.ts > 0)) throw new Error("la instantánea migrada debe llevar fecha");
++    eq(S.equip.tomarEspDucto, null, "la marca se consume una sola vez:");
++    if (S.perms["load>equip"]) throw new Error("la migración no concede cruces nuevos");
++    eq(G("estadoPropuesta")("duct>equip").nivel, "desactualizado", "los ductos cambiaron después de migrar: la propuesta lo avisa:");
++    /* Reabrir el proyecto ya migrado (con los ductos cambiados) no vuelve a tomar la instantánea. */
++    const ts0 = S.equip.espDucto.ts;
++    G("importarRespaldo")(JSON.stringify({ v: G("FORMATO_GUARDADO"), ...JSON.parse(JSON.stringify(S)) })); G("recompute")();
++    eq(S.equip.espDucto.ts, ts0, "reabrir no vuelve a migrar:"); eq(foto(), m0, "y abre con lo mismo:");
++    /* Sin el cruce autorizado la presión nunca entraba: nada que migrar; sigue sin castigo por presión, como antes. */
++    const sin = JSON.parse(JSON.stringify(p)); delete sin.perms["duct>equip"];
++    G("importarRespaldo")(JSON.stringify(sin)); G("recompute")();
++    eq(S.equip.espDucto, null, "sin el cruce no se toma instantánea:"); eq(G("vinculoDe")("duct>equip"), null, "ni se registra vínculo:");
++    eq(G("requisitoFam")("split_duct").esp, 0, "la presión no entra:"); eq(fotoSelH274("split_duct").limita, "caudal corto", "sin castigo por presión, como antes:");
++  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
++});
++
+ /* ===== S.120–S.125 (H-272) · la carga de archivos alimenta la CAPTURA PROPIA de cada disciplina independiente =====
+    Decisión del dueño (27-sep-2026): todos los motores independientes; «al insertar los archivos con el levantamiento
+    (planos, información, Excel, bases de datos de planos o dibujos, y catálogos) utiliza la metadata para iniciar con el

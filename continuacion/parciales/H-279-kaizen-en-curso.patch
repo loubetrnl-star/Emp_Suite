@@ -1,0 +1,1655 @@
+diff --git a/CHANGELOG-motores.md b/CHANGELOG-motores.md
+index f56e4c8..1f89927 100644
+--- a/CHANGELOG-motores.md
++++ b/CHANGELOG-motores.md
+@@ -78,18 +78,20 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
+ | 7 | 2.9.24 | H-198: un tramo de agua sin diámetro verificado (fuera del catálogo del material, o PEAD sin SDR ni fuente) va «Por cotizar» con sus metros; ya no se cotiza con el precio del mayor diámetro ni se pide precio de un diámetro que no le corresponde. Proyecto fijo: sin cambio de cifras (cobre) |
+ | 6 | 2.9.23 | referencias sólo de California y sólo material (mano de obra por capturar; combinados → Por cotizar); referencias IUSA retiradas; flete, aduana e importación como renglón propio siempre Por cotizar hasta capturarlo |
+ 
+-## Ingeniería de valor (`valor`) · v2
++## Ingeniería de valor (`valor`) · v3
+ 
+ | Versión | Rev | Hallazgo / cambio de lógica |
+ |---|---|---|
+ | 1 | 2.9.15 | lógica de partida |
+ | 2 | 2.9.24 | H-286 (X-3, decisión del dueño D5, 28-sep-2026): `kwTRde` le pasaba el **nombre** del modelo a `corrKeyOf`, que espera la ficha: siempre resolvía split DX y el ahorro de kW de las alternativas de sistema (fuente a) valía 0. Ahora la eficiencia sale de la ficha de la planta o, sin planta, de sus terminales (`EFF_EST`, estimación por familia, con su fuente en la justificación); sin ficha no se compara consumo. En la fuente b, el equipo alterno sin `kWe` de catálogo usa la eficiencia de su familia (antes la de split DX). Caso de S.156 (agua helada contra VRF, split y rooftop, 24.8 TR de bloque): 0 → 4.96, 2.48 y 1.24 kW menos. Proyecto fijo (R.1): mismas cifras. Prueba S.156. |
++| 3 | 2.9.24 | H-279 (dependencia de Kaizen v2): la lógica de Valor no cambió; sus medidas de la fuente c siguen a las oportunidades de Kaizen, que ahora salen sólo de las instantáneas aceptadas. Los hallazgos críticos de la validación ya no llegan como medida «Kaizen · Validación»: el proyecto fijo pierde `kz-2-defecto` y renumera `kz-2-espera` y `kz-3-transp`; el total (112,807.95 MXN) no cambia. Prueba R.1 (esperado regenerado). |
+ 
+-## Kaizen (`kaizen`) · v1
++## Kaizen (`kaizen`) · v2
+ 
+ | Versión | Rev | Hallazgo / cambio de lógica |
+ |---|---|---|
+ | 1 | 2.9.15 | lógica de partida |
++| 2 | 2.9.24 | H-279 (decisiones del dueño D1, D2 y D3, 28-sep-2026): Kaizen es autónomo. Calcula sólo con las instantáneas aceptadas de cada disciplina —propuestas `load>kaizen` (zonas y sitio de diseño con que se calcularon, barrido horario y materiales faltantes), `equip>kaizen` (planta, TR instalados, bloque, suma de picos, diversidad, factor del edificio y consumo por TR con su fuente), `duct>kaizen` (tramos), `quote>kaizen` (precio por TR de equipo), `elec>kaizen` (alimentador y distancia al tablero), `hidro>kaizen` (tramos de agua) y `fuego>kaizen` (área de diseño)— con origen, fecha y firma: si el origen cambia, la propuesta sale desactualizada y Kaizen no se mueve solo; las zonas vuelven a correr con el sitio con que se aceptaron (`corridaKz`). Su captura propia: tarifa, horas y precio del alimentador `{ valor, fuente, fecha }`. Sin la instantánea de una disciplina, lo que depende de ella queda «pendiente» con qué falta; sin tarifa u horas, la operación queda pendiente; sin distancia al tablero, «pendiente de longitud» (antes 2.85 MXN/kWh, 3500 h/año, 1350 MXN/m y 30 m supuestos, y lecturas en vivo de carga, selección, ductos, cotización, eléctrico, hidrosanitario y contra incendio, algunas sin permiso). Los hallazgos críticos de la validación ya no son oportunidades de Kaizen (son del semáforo): el proyecto fijo pierde «Validación»; las otras cuatro oportunidades (planta sobrada 2.18 TR y 106,469.98 MXN, cambios de aire ISO 7 0.60 TR y 5,671.39 MXN/año, equipo único en operación continua, calibre económico del alimentador 0.067 kW, 666.58 MXN/año, retorno 6.6 años) salen iguales. Migración: un proyecto anterior toma una vez la instantánea de lo que entraba (las de permiso concedido; eléctrico, hidrosanitario y contra incendio, que entraban sin permiso; la selección, junto con la carga) con origen «(migración H-279)», y conserva tarifa, horas y precio del alimentador con la misma cifra, rotulados «semilla sin fuente (migración)»; sin permiso previo no gana nada (si no valuaba la operación en pesos, sigue sin valuarla hasta que se confirmen tarifa y horas). Pruebas S.159 a S.165. |
+ 
+ ## Eléctrico (`elec`) · v9
+ 
+diff --git a/index.html b/index.html
+index 7c7db64..8a40e4f 100644
+--- a/index.html
++++ b/index.html
+@@ -2395,12 +2395,16 @@ function buildValorPdf() {
+ /* ---------- Memoria Kaizen (PDCA · 7 desperdicios) ---------- */
+ function buildKaizenPdf() {
+   recompute();
+-  /* KAIZEN es un cascaron vacio si la pestana activa no es de Kaizen (kaizenLazy), asi que se
+-     corre el motor real. recompute() ya dejo listos SYS, QUOTE y LOADS que computeKaizen lee. */
++  /* KAIZEN es un cascaron vacio si la pestana activa no es de Kaizen (kaizenLazy), asi que se corre el motor real. H-279:
++     computeKaizen solo lee la captura de Kaizen (instantaneas aceptadas, tarifa, horas y precio del alimentador), y esta
++     memoria dice de donde sale cada valor: la instantanea con su fecha, la captura con su fuente o la semilla migrada. */
+   const K = computeKaizen(), d = PdfDoc("Memoria de Kaizen");
+-  const M = (v) => money(v, QUOTE ? QUOTE.div : 1, QUOTE ? QUOTE.cur : "MXN");
+-  const precioTR = K.verDinero && QUOTE && QUOTE.mxnTRequipo > 0;
+-  const SI = (b) => (b ? "Autorizado" : "Sin autorizar");
++  const M = (v) => money(v, 1, "MXN");   /* H-279: Kaizen calcula en MXN; no toma en vivo la moneda de la cotizacion */
++  const ent = K.entradas || {}, datosDe = (id) => { const e = entradaKaizen(id); return e ? e.datos : null; };
++  const fechaDe = (id) => (ent[id] ? fechaCorta(ent[id].ts) : "");
++  const origenDe = (id) => (DOMAINS[(PROPUESTAS[id] || {}).origen] || {}).label || id;
++  const supTxt = (s, u, dec) => !s ? "pendiente: no capturada (no se supone)"
++    : `${n(s.valor, dec)} ${u} · ${s.semilla ? `${KZ_SEMILLA}: la cifra que usaba el proyecto guardado, sin fuente; confirmala en Kaizen` : `capturada en Kaizen · fuente: ${s.fuente} · fecha: ${s.fecha}`}`;
+   pdfTitle(d, "Memoria de Kaizen", `${S.meta.name} · PDCA · 7 desperdicios`);
+   pdfHeading(d, "1. Datos del proyecto");
+   pdfDocHeaderMeta(d);
+@@ -2408,16 +2412,23 @@ function buildKaizenPdf() {
+   pdfRows(d, [
+     ["Metodo", "PDCA · 7 desperdicios (planear, hacer, verificar, actuar; los siete desperdicios traducidos a un proyecto de aire acondicionado)"],
+     ["Norma", "Ninguna norma externa declarada para esta disciplina: es un metodo de mejora continua de la casa"],
+-    ["Deteccion", "Cada oportunidad se detecta sobre el proyecto real. Las de aire exterior, cambios de aire, muros, vidrio e iluminacion se cuantifican volviendo a correr la zona con el cambio aplicado; las demas se leen del resultado ya calculado, y algunas, como los defectos de captura, se enlistan sin ahorro cuantificado."],
+-    ["Ahorro de inversion", "TR que se dejan de instalar por el precio por tonelada de EQUIPO de la cotizacion (no del sistema completo). Es un ahorro unico."],
+-    ["Ahorro de operacion", "kW por horas al ano por tarifa electrica. Es un ahorro anual."],
++    ["Deteccion", "Cada oportunidad se detecta sobre lo que cada disciplina propuso y se acepto en Kaizen (instantanea con fecha; si la disciplina cambia despues, Kaizen no se mueve solo). Las de aire exterior, cambios de aire, muros, vidrio e iluminacion se cuantifican volviendo a correr la zona aceptada, con su sitio, con el cambio aplicado; las demas se leen de lo aceptado, y algunas, como los defectos de captura, se enlistan sin ahorro cuantificado."],
++    ["Ahorro de inversion", "TR que se dejan de instalar por el precio por tonelada de EQUIPO de la cotizacion aceptada (no del sistema completo). Es un ahorro unico."],
++    ["Ahorro de operacion", "kW por horas al ano por tarifa electrica, capturadas en Kaizen con su fuente y su fecha. Es un ahorro anual."],
+     ["Ahorro verificado", "Solo cuenta la mejora que llega a Actuar con su medicion hecha. Se mide en TR."],
+-    ["Carga termica (enlace load>kaizen)", SI(K.verLoad) + (K.verLoad ? "" : " · sin este acceso no se revisan planta, terminales, diversidad, zonas ni defectos de captura")],
+-    ["Ductos (enlace duct>kaizen)", SI(K.verDuct) + (K.verDuct ? "" : " · sin este acceso no se revisan friccion ni kilos de lamina")],
+-    ["Cotizacion (enlace quote>kaizen)", SI(K.verDinero) + (K.verDinero ? "" : " · sin este acceso las oportunidades no se convierten a dinero")],
++    ["Umbrales de deteccion", "Criterio de la casa (sin norma externa): planta mas de 15 % sobre la carga de bloque; terminales mas de 25 % sobre la suma de picos; ahorro minimo por zona de 0.15 a 0.4 TR segun la medida; ductos arriba de 1.2 Pa/m (meta 0.8 Pa/m, ventilador al 60 %); ductos con lados de mas de 3 a 1; alimentador que se paga en 8 anos o menos, con 60 % del precio por metro como conductor; tuberia de agua abajo de 0.6 m/s; area de diseno mas de 15 % sobre el minimo de la clase."],
+   ]);
+ 
+-  pdfHeading(d, "3. Los siete desperdicios");
++  pdfHeading(d, "3. Entradas de Kaizen (instantaneas aceptadas)");
++  pdfTable(d, ["Entrada", "Origen", "Estado", "Aceptada", "Que deja revisar"],
++    ENTRADAS_KAIZEN.map((id) => {
++      const e = seguro(() => estadoPropuesta(id), { nivel: "sin-datos" });
++      const est = ent[id] ? (e.nivel === "desactualizado" ? "instantanea aceptada; el origen cambio despues (desactualizada: se usa lo aceptado)" : "instantanea aceptada, vigente")
++        : e.nivel === "pendiente" ? "pendiente: hay propuesta sin aceptar" : "pendiente: el origen no tiene nada que proponer";
++      return [String((PROPUESTAS[id] || {}).titulo || id), ent[id] && ent[id].origen ? ent[id].origen : origenDe(id), est, ent[id] ? fechaDe(id) : "-", KZ_REVISA[id] || ""];
++    }), [118, 74, 120, 64, 130]);
++
++  pdfHeading(d, "4. Los siete desperdicios");
+   const DESC = {
+     sobre: "Equipo mas grande del que pide la carga. Se paga de inicio y cada arranque.",
+     espera: "Un solo equipo alimentando proceso continuo: cuando falla, el proceso para.",
+@@ -2432,45 +2443,55 @@ function buildKaizenPdf() {
+       .concat([["TOTAL", "", String(K.ops.length)]]),
+     [86, 360, 60]);
+ 
+-  pdfHeading(d, "4. Supuestos");
+-  pdfRows(d, [
+-    ["Tarifa electrica", `${n(K.tarifa, 2)} MXN/kWh`],
+-    ["Horas de operacion", `${n(K.horas, 0)} h/ano`],
+-    ["Consumo de la planta elegida", `${n(K.kwPorTR, 2)} kW por TR`],
+-    ["Precio por TR de equipo", precioTR ? `${M(QUOTE.mxnTRequipo)} por TR (de la cotizacion)` : K.verDinero ? "sin valuar: la cotizacion no tiene equipo con precio" : "sin valuar: la cotizacion no esta autorizada para Kaizen"],
+-  ]);
++  pdfHeading(d, "5. Supuestos y de donde sale cada uno");
++  const DQ = datosDe("equip>kaizen"), DL = datosDe("load>kaizen"), DE = datosDe("elec>kaizen");
++  const filasSup = [
++    ["Tarifa electrica", supTxt(K.supuestos && K.supuestos.tarifa, "MXN/kWh", 2)],
++    ["Horas de operacion", supTxt(K.supuestos && K.supuestos.horas, "h/ano", 0)],
++    ["Precio del alimentador", supTxt(K.supuestos && K.supuestos.alimM, "MXN/m", 0)],
++    ["Consumo de la planta elegida", K.kwPorTR != null ? `${n(K.kwPorTR, 2)} kW por TR · estimacion por familia (${K.kwFuente ? K.kwFuente.src : ""}) · instantanea de Seleccion de equipo del ${fechaDe("equip>kaizen")}${DQ && DQ.sistema ? ` (${DQ.sistema})` : ""}` : "pendiente: falta la instantanea de Seleccion de equipo (sin ella, los kW y la operacion de las oportunidades de zona quedan pendientes)"],
++    ["Precio por TR de equipo", K.verDinero ? `${M(K.mxnTR)} por TR · instantanea de Cotizacion del ${fechaDe("quote>kaizen")}` : K.faltaCapex],
++    ["Sitio con que corren las zonas", DL && DL.sitio ? `${DL.sitio.label || DL.sitio.key} · ${n(num(DL.sitio.db), 1)} C BS / ${n(num(DL.sitio.wb), 1)} C BH · ${n(num(DL.sitio.alt), 0)} m · instantanea de Carga termica del ${fechaDe("load>kaizen")}` : "pendiente: falta la instantanea de Carga termica"],
++    ["Distancia al tablero", DE ? (DE.Ltablero != null ? `${n(num(DE.Ltablero), 0)} m · ${DE.LtableroFuente || "de Electrico"} · instantanea de Electrico del ${fechaDe("elec>kaizen")}` : "pendiente de longitud: la instantanea de Electrico no la trae (no se supone)") : "pendiente: falta la instantanea de Electrico"],
++  ];
++  if (K.opexSinValuar) filasSup.push(["Operacion en pesos", "sin valuar: el proyecto se guardo sin valuar la operacion en pesos (antes pedia el permiso de Cotizacion); se valua cuando se confirman la tarifa y las horas en Kaizen"]);
++  pdfRows(d, filasSup);
+ 
+-  pdfHeading(d, "5. Oportunidades detectadas");
++  pdfHeading(d, "6. Oportunidades detectadas");
+   if (K.ops.length) {
+     const ahorroTxt = (o) => o.tipo === "opex"
+-      ? (o.mxnOpex > 0 ? `${M(o.mxnOpex)} / ano` : "sin valuar")
+-      : (o.mxnCapex > 0 ? M(o.mxnCapex) : "sin valuar");
++      ? (o.mxnOpex > 0 ? `${M(o.mxnOpex)} / ano` : o.mxnOpex == null ? "pendiente" : "sin valuar")
++      : (o.mxnCapex > 0 ? M(o.mxnCapex) : o.mxnCapex == null ? "pendiente" : "sin valuar");
+     d.space(80);
+     pdfTable(d, ["Zona", "Desperdicio", "Oportunidad", "Tipo", "TR", "kW", "Ahorro", "Esf."],
+       K.ops.map((o) => [String(o.zona || ""), MUDA[o.muda] || String(o.muda || ""), String(o.titulo || ""),
+-        o.tipo === "opex" ? "opex" : "capex", o.tr > 0 ? n(o.tr, 2) : "-", o.kW ? n(o.kW, 2) : "-", ahorroTxt(o), ESF[o.esfuerzo] || String(o.esfuerzo || "")]),
++        o.tipo === "opex" ? "opex" : "capex", o.tr > 0 ? n(o.tr, 2) : "-", o.kW ? n(o.kW, 2) : o.kW == null ? "pend." : "-", ahorroTxt(o), ESF[o.esfuerzo] || String(o.esfuerzo || "")]),
+       [62, 62, 136, 34, 32, 34, 70, 36]);
+     K.ops.forEach((o, i) => {
+       pdfParagraph(d, `${i + 1}. ${o.zona || ""} · ${o.titulo || ""}`, { size: 8.5, color: [0.2, 0.2, 0.2] });
+       pdfParagraph(d, `Hoy: ${o.ahora || "-"}`);
+       pdfParagraph(d, `Propuesta: ${o.cambio || "-"}`);
++      pdfParagraph(d, `Sale de: ${(o.fuentes || []).map((id) => `${origenDe(id)} (instantanea aceptada el ${fechaDe(id)})`).join("; ") || "captura de Kaizen"}${(o.pendiente || []).length ? `. ${o.pendiente.join("; ")}` : ""}`);
+     });
+   } else {
+-    pdfRows(d, [["Oportunidades", K.verLoad
+-      ? "Sin datos: no hay desperdicio medible en el proyecto actual (o el proyecto aun no tiene zonas capturadas)."
+-      : "Sin datos: Kaizen no tiene autorizado el acceso a la carga termica, asi que no reviso el proyecto."]]);
++    pdfRows(d, [["Oportunidades", Object.values(ent).some(Boolean)
++      ? "Sin datos: no hay desperdicio medible en lo aceptado de cada disciplina."
++      : "Sin datos: Kaizen todavia no tiene ninguna instantanea aceptada, asi que no reviso el proyecto."]]);
+   }
+ 
+-  pdfHeading(d, "6. Ahorros detectados (cada especie por separado)");
++  pdfHeading(d, "7. Revision pendiente");
++  pdfRows(d, (K.pendientes || []).length ? K.pendientes.map((p) => [String(p.que || ""), String(p.falta || "")]) : [["Pendientes", "Ninguno: todas las entradas estan aceptadas y los supuestos capturados."]]);
++
++  pdfHeading(d, "8. Ahorros detectados (cada especie por separado)");
+   pdfRows(d, [
+     ["Ahorro de capacidad", `${n(K.ahorroTR, 2)} TR`],
+-    ["Ahorro de inversion (unico)", !K.verDinero ? "sin valuar: la cotizacion no esta autorizada para Kaizen" : (!precioTR && K.ops.some((o) => o.tipo === "capex" && o.tr > 0)) ? "sin valuar: la cotizacion no tiene equipo con precio para convertir los TR" : M(K.ahorroCapex)],
+-    ["Ahorro de operacion (anual)", K.verDinero ? `${M(K.ahorroOpex)} al ano · ${n(K.ahorroKW, 2)} kW x ${n(K.horas, 0)} h x ${n(K.tarifa, 2)} MXN/kWh` : `${n(K.ahorroKW, 2)} kW · sin valuar: la cotizacion no esta autorizada para Kaizen`],
++    ["Ahorro de inversion (unico)", K.verDinero ? M(K.ahorroCapex) : K.faltaCapex],
++    ["Ahorro de operacion (anual)", K.valuaOpex ? `${M(K.ahorroOpex)} al ano · ${n(K.ahorroKW, 2)} kW x ${n(K.horas, 0)} h x ${n(K.tarifa, 2)} MXN/kWh${K.ops.some((o) => o.tipo === "opex" && o.mxnOpex == null) ? " · sin las oportunidades con kW pendiente" : ""}` : `${n(K.ahorroKW, 2)} kW · ${K.faltaOpex}`],
+     ["Ahorro verificado", `${n(K.verificado, 2)} TR medidos en ${K.cerradas.length} mejora(s) cerrada(s)`],
+   ]);
+   pdfParagraph(d, "Inversion y operacion no se suman: la primera se deja de gastar una sola vez y la segunda se deja de pagar cada ano.");
+ 
+-  pdfHeading(d, "7. Ciclo PDCA del equipo");
++  pdfHeading(d, "9. Ciclo PDCA del equipo");
+   if (K.items.length) {
+     pdfTable(d, ["Mejora", "Estado", "Responsable", "Ahorro TR", "Nota"],
+       K.items.map((k) => [String(k.titulo || "Sin titulo"), (PDCA.find((p) => p[0] === k.estado) || PDCA[0])[1], String(k.owner || "-"), n(num(k.ahorro), 2), String(k.nota || "")]),
+@@ -2485,16 +2506,18 @@ function buildKaizenPdf() {
+   }
+ 
+   const avisos = [];
+-  if (!K.verLoad) avisos.push(["warn", "Sin el enlace load>kaizen no se revisaron planta, terminales, diversidad, zonas ni defectos de captura: esas oportunidades faltan por falta de acceso, no porque el proyecto no tenga desperdicio. Alimentador, tuberia de agua y contra incendio si se revisan sin este enlace."]);
+-  if (!K.verDuct) avisos.push(["warn", "Sin el enlace duct>kaizen no se revisaron friccion de ducto ni kilos de lamina."]);
+-  if (!K.verDinero) avisos.push(["warn", "Sin el enlace quote>kaizen las oportunidades se detectan pero no se convierten a dinero."]);
++  ENTRADAS_KAIZEN.forEach((id) => {
++    if (!ent[id]) avisos.push(["warn", `Sin la instantanea de ${origenDe(id)} no se revisaron ${KZ_REVISA[id]}: faltan por falta de dato aceptado, no porque el proyecto no tenga desperdicio.`]);
++    else if (seguro(() => estadoPropuesta(id).nivel, "") === "desactualizado") avisos.push(["warn", `${(PROPUESTAS[id] || {}).titulo || id}: ${origenDe(id)} cambio desde que se acepto (${fechaDe(id)}); esta memoria usa lo aceptado. Acepta de nuevo la propuesta para actualizarla.`]);
++  });
++  Object.keys(KZ_SUPUESTOS).forEach((k) => { const s = supuestoKaizen(k); if (s && s.semilla) avisos.push(["warn", `${KZ_SUPUESTOS[k].pdf}: ${KZ_SEMILLA}. Es la cifra que usaba el proyecto guardado; captura su fuente y su fecha en Kaizen.`]); });
+   K.cerradas.filter((k) => !(num(k.ahorro) > 0)).forEach((k) => avisos.push(["info", `La mejora "${k.titulo || "Sin titulo"}" esta en Actuar sin ahorro medido: no aporta al ahorro verificado.`]));
+   if (avisos.length) {
+-    pdfHeading(d, "8. Observaciones");
++    pdfHeading(d, "10. Observaciones");
+     avisos.forEach(([lvl, msg]) => pdfParagraph(d, `[${lvl === "err" ? "CRITICO" : lvl === "warn" ? "AVISO" : "NOTA"}] ${msg}`));
+   }
+-  pdfHeading(d, `${avisos.length ? 9 : 8}. Alcance de este calculo`);
+-  pdfParagraph(d, "Lista las oportunidades que el proyecto capturado permite medir, sus ahorros de capacidad, de inversion y de operacion por separado, y el seguimiento PDCA de las mejoras del equipo. NO es una lista de buenas intenciones ni un estudio de retorno de inversion: el ahorro de inversion usa el precio por tonelada de equipo de la cotizacion y el de operacion usa la tarifa y las horas declaradas en los supuestos, no un contrato ni un perfil de consumo medido. Algunas oportunidades, como los defectos de captura, se enlistan aunque no traigan ahorro cuantificado. El ahorro verificado es el que el equipo capturo al cerrar cada mejora, no lo mide este documento.");
++  pdfHeading(d, `${avisos.length ? 11 : 10}. Alcance de este calculo`);
++  pdfParagraph(d, "Lista las oportunidades que lo aceptado de cada disciplina permite medir, sus ahorros de capacidad, de inversion y de operacion por separado, y el seguimiento PDCA de las mejoras del equipo. NO es una lista de buenas intenciones ni un estudio de retorno de inversion: el ahorro de inversion usa el precio por tonelada de equipo de la cotizacion aceptada y el de operacion la tarifa y las horas capturadas en Kaizen, no un contrato ni un perfil de consumo medido. Lo que falta se declara pendiente; nada se supone. Algunas oportunidades, como los defectos de captura, se enlistan aunque no traigan ahorro cuantificado. El ahorro verificado es el que el equipo capturo al cerrar cada mejora, no lo mide este documento.");
+   pdfFirmas(d);
+   pdfTrazabilidad(d, ["kaizen"]);
+   return d.end();
+@@ -4245,21 +4268,21 @@ const LINKS = {
+   },
+   "load>kaizen": {
+     from: "load", to: "kaizen",
+-    what: "Zonas, materiales de envolvente, cargas internas, aire exterior y el resultado de cada corrida.",
+-    why: "Kaizen no calcula carga: para medir cuánto ahorra una mejora necesita volver a correr la zona con el cambio aplicado y comparar contra el estado actual. Sin eso solo podría enlistar ideas sin número.",
+-    cost: "Si lo niegas, Kaizen queda solo como bitácora: capturas tus propias mejoras y su ahorro estimado a mano, sin detección automática.",
++    what: "Zonas, materiales de envolvente, cargas internas, aire exterior y sitio de diseño, como instantánea con fecha que se acepta en Kaizen (H-279).",
++    why: "Kaizen no calcula carga: para medir cuánto ahorra una mejora necesita volver a correr la zona con el cambio aplicado y comparar contra lo aceptado. Sin eso solo podría enlistar ideas sin número.",
++    cost: "Si lo niegas (o no aceptas la propuesta), Kaizen no revisa zonas, envolvente, aire exterior ni defectos de captura: queda pendiente, y sigue con lo demás que se le acepte y con tus propias mejoras.",
+   },
+   "duct>kaizen": {
+     from: "duct", to: "kaizen",
+-    what: "Velocidad, fricción y caída de presión de cada tramo, más los kilos de lámina.",
++    what: "Caudal, longitud, forma, medidas y fricción de cada tramo, como instantánea con fecha que se acepta en Kaizen (H-279).",
+     why: "Para detectar tramos donde el ventilador paga de más toda la vida del edificio por ahorrarse lámina una sola vez.",
+-    cost: "Si lo niegas, Kaizen no revisa la red de ductos.",
++    cost: "Si lo niegas (o no aceptas la propuesta), Kaizen no revisa la red de ductos: queda pendiente.",
+   },
+   "quote>kaizen": {
+     from: "quote", to: "kaizen",
+-    what: "Precio por tonelada y por partida de la cotización vigente.",
+-    why: "Para poner el ahorro en pesos y no solo en toneladas, que es lo que decide si una mejora se hace o no.",
+-    cost: "Si lo niegas, el ahorro se reporta en TR, kW y kg, sin convertir a dinero.",
++    what: "Precio por tonelada de equipo de la cotización, como instantánea con fecha que se acepta en Kaizen (H-279).",
++    why: "Para poner en pesos el ahorro de inversión y no solo en toneladas, que es lo que decide si una mejora se hace o no.",
++    cost: "Si lo niegas (o no aceptas la propuesta), el ahorro de inversión queda en TR, pendiente de precio; la operación se valúa con la tarifa y las horas que captures en Kaizen.",
+   },
+   /* H-17 · Los dos cruces que faltaban para que la cotización deje de ignorar
+      partidas que la propia suite ya calculó. */
+@@ -11409,7 +11432,9 @@ function defaultState() { return {
+      valor y `desv` las desviaciones entre lo que la suite recomendo y lo que
+      se eligio. Viajan con el proyecto; el historial acumulado de la casa vive
+      aparte, fuera del proyecto, en la base de conocimiento. */
+-  kaizen: { items: [], ve: {}, desv: [] },
++  /* H-279 · Kaizen autónomo: además de las mejoras y las decisiones de valor, sus entradas (instantáneas aceptadas) y su captura
++     de tarifa, horas y precio del alimentador; h279 marca el formato (un proyecto sin ella se migra al abrir). */
++  kaizen: defaultKaizen(),
+   site: { key: "tijuana", db: 32.8, wb: 17.5, alt: 149, range: 9.2 },
+   /* Arranque en ceros (decisión del dueño, 17-sep-2026): area/height/ach/occ/
+      hoodL/hoodW/processCFM/louverW/louverH/freeArea eran un local de ejemplo
+@@ -11698,6 +11723,22 @@ function recompute() {
+   /* Kaizen simula cada zona con el cambio aplicado: es el motor más caro de la
+      suite. Solo corre cuando alguien lo va a ver, y se memoriza mientras el
+      proyecto no cambie, para no pagarlo en cada tecla de otra pestaña. */
++  /* H-279 (decisión del dueño D2, 28-sep-2026): Kaizen calcula sólo con instantáneas aceptadas. Un proyecto anterior que las leía
++     EN VIVO toma aquí, UNA vez y después de que corrieron todos los orígenes, la instantánea de cada fuente que tenía (la marca la
++     deja sanearEstado): queda como propuesta aceptada con fecha y origen «(migración H-279)», abre con las mismas oportunidades y
++     desde ahí no se mueve sola. No concede cruces. */
++  if (S.kaizen && "tomarEntradas" in S.kaizen && Array.isArray(S.kaizen.tomarEntradas)) {
++    const ids = S.kaizen.tomarEntradas.filter((id) => ENTRADAS_KAIZEN.includes(id));
++    delete S.kaizen.tomarEntradas;
++    const ts = Date.now();
++    ids.forEach((id) => {
++      if (!seguro(() => PROPUESTAS[id].disponible(), false)) return;
++      tomarEntradaKaizen(id, ts, true);
++      registrarVinculo(id, "aceptado");
++      S.vinculos[id].origen += " (migración H-279)";
++    });
++    PROP_CACHE.clear();
++  }
+   KAIZEN = kaizenLazy();
+   /* rev 2.9.0 · La ingenieria de valor cierra la corrida: necesita el equipo
+      seleccionado, el precio por tonelada de la cotizacion y lo que Kaizen
+@@ -11729,6 +11770,9 @@ function setPath(path, val) {
+   const parts = path.split("."); let o = S;
+   /* rev 2.9.14 · En una sesión nueva quote.prop es nulo hasta que se abre un proyecto: se crea completo al primer dato. */
+   if (parts[0] === "quote" && parts[1] === "prop" && S.quote && !S.quote.prop) S.quote.prop = defaultPropuesta();
++  /* H-279: la captura de Kaizen (tarifa, horas y precio del alimentador) es { valor, fuente, fecha }; tocar una semilla migrada
++     la vuelve captura del usuario. */
++  if (parts[0] === "kaizen" && KZ_SUPUESTOS[parts[1]] && parts.length === 3) { capturarSupuestoKaizen(parts[1], parts[2], val); return; }
+   /* rev 2.9.23 · quote.hidroPU.<clave> capturado en pantalla = Proveedor local (sustituye a la referencia, con bitácora). */
+   if (parts[0] === "quote" && parts[1] === "hidroPU" && parts.length === 3) {
+     const v = num(val, 0);
+@@ -17344,32 +17388,41 @@ const MUDA = {
+   defecto: "Defecto",
+ };
+ 
+-/* Corre una zona con un cambio aplicado, sin tocar el proyecto */
+-function simZone(z, cambios) {
++/* H-279 (decisiones del dueño D1 y D2, 28-sep-2026) · Corre una zona de la INSTANTÁNEA load>kaizen, con o sin un cambio
++   aplicado, sin tocar el proyecto: con el sitio, el barrido horario y la tecnología con que se aceptó (no con los de hoy). Es la
++   misma corrida de Carga térmica (computeLoad o peakLoad y, sin cambio, los dos casos ASHRAE de una zona con control de
++   humedad, como loadOf): el sitio vivo se sustituye sólo durante la corrida y se restaura; los materiales faltantes que avise
++   la corrida no se quedan en los de la carga. Dependencia registrada: usa las funciones de cálculo de Carga térmica sin
++   cambiar lo que calcula Carga térmica. */
++function corridaKz(z, D, cambios) {
+   const copia = JSON.parse(JSON.stringify(z));
+-  Object.assign(copia, cambios);
+-  return S.peakScan === false ? computeLoad(copia, S.bldDiv, S.forceTech) : peakLoad(copia, S.bldDiv, S.forceTech);
++  if (cambios) Object.assign(copia, cambios);
++  const sitioVivo = SITE, faltanVivos = [...MISSING_MATS];
++  SITE = D && D.sitio && typeof D.sitio === "object" ? D.sitio : sitioVivo;
++  try {
++    const calc = () => D.peakScan === false ? computeLoad(copia, D.bldDiv, D.forceTech) : peakLoad(copia, D.bldDiv, D.forceTech);
++    let r = calc();
++    if (!cambios && requiereHR(copia) && SITE.deshum) {
++      const base = SITE;
++      let r2;
++      SITE = sitioDeshum(base);
++      try { r2 = calc(); } finally { SITE = base; }
++      r = combinarCasos(r, r2, copia);
++    }
++    return r;
++  } finally {
++    SITE = sitioVivo;
++    MISSING_MATS.clear(); faltanVivos.forEach(([k, v]) => MISSING_MATS.set(k, v));
++  }
+ }
+ 
+-/* Memoria de Kaizen: firma del proyecto y de los permisos que lo alimentan. */
++/* Memoria de Kaizen. H-279: Kaizen calcula sólo con su captura (instantáneas aceptadas, tarifa, horas, precio del alimentador y
++   mejoras), así que la firma de la caché es esa captura y nada más; antes firmaba lecturas vivas de otros motores (y de los
++   ductos sólo cuántos tramos había: editar uno dejaba un Kaizen viejo). */
+ let KZ_CACHE = { key: null, val: null };
+ function kaizenLazy() {
+-  if (!["kaizen", "inicio", "tablero", "valor", "cotizacion"].includes(S.tab)) return KZ_CACHE.val || { ops: [], items: (S.kaizen && S.kaizen.items) || [], cerradas: [], ahorroTR: 0, ahorroMXN: 0, verificado: 0, verLoad: false, verDuct: false, verDinero: false, porMuda: [] };
+-  const key = JSON.stringify(S.zones) + "|" + JSON.stringify(S.perms) + "|" + JSON.stringify(S.kaizen) +
+-    "|" + JSON.stringify(S.elec) + "|" + JSON.stringify(S.hidro) + "|" + JSON.stringify(S.fuego) +
+-    "|" + S.duct.segments.length + "|" + (QUOTE ? Math.round(QUOTE.sub) : 0) +
+-    /* H-XX (15-sep-2026) · La firma seguía leyendo SYS.chosen.installed, que
+-       no existe (el campo real es instPlant/instTerm, ya corregido en el
+-       detector de sobreproducción más abajo, pero se quedó aquí). Con
+-       "undefined" siempre igual a sí mismo, la caché de Kaizen no se
+-       invalidaba cuando cambiaba la capacidad instalada sin cambiar de
+-       arquitectura: podía mostrar un Kaizen viejo tras aceptar otro sistema
+-       del mismo tipo con distinto tonelaje. */
+-    "|" + S.site.key + "|" + S.bldDiv + "|" + (SYS && SYS.chosen ? SYS.chosen.key + "|" + num(SYS.chosen.instPlant) + "|" + num(SYS.chosen.instTerm) : "") +
+-    /* H-267: el sistema integrado ya no sigue a las zonas de carga: sale de las zonas de selección (capturadas o aceptadas). Sin
+-       ellas en la firma, aceptar otra instantánea o editar una zona de selección con la misma capacidad instalada dejaba un Kaizen
+-       calculado con la carga de bloque anterior. */
+-    "|" + JSON.stringify(S.equip ? S.equip.zonas : null);
++  if (!["kaizen", "inicio", "tablero", "valor", "cotizacion"].includes(S.tab)) return KZ_CACHE.val || { ops: [], items: (S.kaizen && S.kaizen.items) || [], cerradas: [], ahorroTR: 0, ahorroMXN: 0, verificado: 0, verLoad: false, verDuct: false, verDinero: false, porMuda: [], pendientes: [], entradas: {} };
++  const key = JSON.stringify(sinClaves(S.kaizen || {}, ["tomarEntradas"]));
+   if (KZ_CACHE.key === key && KZ_CACHE.val) return KZ_CACHE.val;
+   const val = computeKaizen();
+   KZ_CACHE = { key, val };
+@@ -17392,61 +17445,192 @@ function kaizenLazy() {
+      opex  → ahorro de OPERACIÓN, convertido con ΔkW × horas/año × tarifa CFE.
+    El ciclo PDCA no cambia: lo que cambia es que el número que verifica es ahora
+    de la misma especie que el que prometió.
++   H-279 (decisiones del dueño D1, D2 y D3, 28-sep-2026): Kaizen es autónomo. Cada disciplina le PROPONE lo suyo y Kaizen
++   calcula sólo con las instantáneas aceptadas (S.kaizen.entradas: origen, fecha, revisión y firma), que no se mueven solas, y
++   con su captura propia de tarifa, horas y precio del alimentador ({ valor, fuente, fecha }). Sin la instantánea de una
++   disciplina, lo que depende de ella queda «pendiente» con qué falta (nunca un cero que parezca cálculo); sin tarifa u horas, la
++   operación queda pendiente; ya no hay respaldos 2.85 MXN/kWh, 3500 h/año, 1350 MXN/m ni 30 m. Ya no lee los hallazgos de la
++   validación (VALID.rows: es trabajo del semáforo) ni ningún permiso.
+    ========================================================================= */
++/* H-279 · Las siete entradas de Kaizen: una propuesta por disciplina de origen (PROPUESTAS[id], destino kaizen). */
++const ENTRADAS_KAIZEN = ["load>kaizen", "equip>kaizen", "duct>kaizen", "quote>kaizen", "elec>kaizen", "hidro>kaizen", "fuego>kaizen"];
++/* Captura propia de Kaizen (D3): cada una es { valor, fuente, fecha }. Un proyecto guardado antes de H-279 conserva la cifra que
++   usaba, rotulada «semilla sin fuente (migración)»; uno nuevo nace sin ellas (pendiente). */
++const KZ_SUPUESTOS = {
++  tarifaKWh: { et: "Tarifa eléctrica", u: "MXN/kWh", step: "0.01", pdf: "Tarifa electrica" },
++  horasAno: { et: "Horas de operación al año", u: "h/año", step: "10", pdf: "Horas de operacion" },
++  alimM: { et: "Precio del alimentador por metro (conductor, canalización y mano de obra)", u: "MXN/m", step: "10", pdf: "Precio del alimentador" },
++};
++const KZ_SEMILLA = "semilla sin fuente (migración)";
++function defaultKaizen() { return { items: [], ve: {}, desv: [], entradas: {}, tarifaKWh: null, horasAno: null, alimM: null, h279: true }; }
++/* La instantánea aceptada de una entrada, o null. Se pregunta con «in»: leer una llave ausente la reporta la comprobación de
++   contratos, y una entrada que no se ha aceptado es justo eso, una llave ausente. */
++function entradaKaizen(id) {
++  const E = S.kaizen && typeof S.kaizen === "object" && "entradas" in S.kaizen ? S.kaizen.entradas : null;
++  const e = E && typeof E === "object" && id in E ? E[id] : null;
++  return e && typeof e === "object" && e.datos && typeof e.datos === "object" ? e : null;
++}
++const esSemillaKz = (v) => !!(v && typeof v === "object" && "semilla" in v && v.semilla === true);
++function supuestoKaizenSano(v) {
++  if (!v || typeof v !== "object" || Array.isArray(v)) return null;
++  const o = { valor: Math.max(0, num(v.valor, 0)), fuente: String(v.fuente || "").slice(0, 200), fecha: /^\d{4}-\d{2}-\d{2}$/.test(String(v.fecha || "")) ? String(v.fecha) : "" };
++  if (v.semilla === true) o.semilla = true;
++  return o;
++}
++/* Vigente sólo con valor y con su fuente y su fecha (regla 6: sin fuente y fecha no hay precio), o como semilla migrada. */
++function supuestoKaizen(k) {
++  const v = S.kaizen && S.kaizen[k];
++  if (!v || typeof v !== "object" || !(num(v.valor, 0) > 0)) return null;
++  if (esSemillaKz(v)) return { valor: num(v.valor), fuente: KZ_SEMILLA, fecha: "", semilla: true };
++  const fuente = String(v.fuente || "").trim(), fecha = String(v.fecha || "").trim();
++  return fuente && fecha ? { valor: num(v.valor), fuente, fecha, semilla: false } : null;
++}
++/* Captura en pantalla: al tocar una semilla migrada deja de serlo (su rótulo no es una fuente) y la operación vuelve a valuarse
++   con lo que capture el usuario. */
++function capturarSupuestoKaizen(k, campo, val) {
++  if (!S.kaizen || typeof S.kaizen !== "object") S.kaizen = defaultKaizen();
++  const prev = S.kaizen[k] && typeof S.kaizen[k] === "object" ? S.kaizen[k] : {};
++  const o = esSemillaKz(prev) ? { valor: num(prev.valor, 0), fuente: "", fecha: "" } : { valor: num(prev.valor, 0), fuente: String(prev.fuente || ""), fecha: String(prev.fecha || "") };
++  if (campo === "valor") o.valor = Math.max(0, num(val, 0));
++  else if (campo === "fuente") o.fuente = String(val ?? "").slice(0, 200);
++  else if (campo === "fecha") o.fecha = String(val ?? "").slice(0, 10);
++  else return;
++  S.kaizen[k] = o;
++  if (k !== "alimM") delete S.kaizen.opexSinValuar;
++}
++/* Lo que cada disciplina de origen PROPONE a Kaizen: la instantánea que se guarda al aceptar. En la migración de un proyecto
++   anterior, la distancia al tablero vacía conserva los 30 m que se usaban, rotulados como semilla (D3). */
++function kzDatosDe(id, migracion) {
++  switch (id) {
++    case "load>kaizen": return {
++      zonas: (S.zones || []).filter((z) => z && typeof z === "object").map((z) => JSON.parse(JSON.stringify(z))),
++      sitio: JSON.parse(JSON.stringify(siteOf(S.site))),
++      peakScan: S.peakScan !== false, forceTech: S.forceTech ?? null, bldDiv: S.bldDiv ?? 1,
++      faltanMat: [...MISSING_MATS.keys()].map(String) };
++    case "equip>kaizen": {
++      const ch = SYS && SYS.chosen ? SYS.chosen : {};
++      const m = ch.plant && ch.plant[0] && ch.plant[0].model;
++      const k = m ? corrKeyOf(m) : "DX_split", ef = EFF_EST[k] || EFF_EST.DX_split;
++      const fam = ef.kWTR ? (EFF_EST[k] ? k : "DX_split") : "DX_split";
++      return { sistema: String(ch.label || ch.id || ""),
++        plant: (ch.plant || []).map((p) => ({ modelo: String(p && p.model && typeof p.model === "object" ? p.model.model : (p && p.model) || ""), qty: p ? p.qty : null })),
++        kwPorTR: ef.kWTR || EFF_EST.DX_split.kWTR, kwFamilia: fam, kwFuente: (EFF_EST[fam] || EFF_EST.DX_split).src,
++        instPlant: num(ch.instPlant), instTerm: num(ch.instTerm), blockTons: SYS ? SYS.blockTons : 0, sumPeaks: SYS ? SYS.sumPeaks : 0,
++        diversity: SYS ? SYS.diversity : 1, blockHour: SYS ? SYS.blockHour ?? null : null, bldDiv: S.bldDiv ?? 1 };
++    }
++    case "duct>kaizen": return { segs: (DUCT && Array.isArray(DUCT.segs) ? DUCT.segs : []).map((s) => ({ tag: s.tag, shape: s.shape, flow: s.flow, L: s.L, Pam: s.Pam, w: s.w, h: s.h })) };
++    case "quote>kaizen": return { mxnTR: QUOTE ? num(QUOTE.mxnTRequipo) : 0, equipTotal: QUOTE ? num(QUOTE.equipTotal) : 0, equipTons: QUOTE ? num(QUOTE.equipTons) : 0 };
++    case "elec>kaizen": {
++      const a = ELEC && ELEC.alim ? ELEC.alim : {};
++      const Lcap = S.elec ? S.elec.Ltablero : null, vacia = Lcap == null || String(Lcap).trim() === "";
++      const Ltablero = migracion ? (vacia ? 30 : Math.max(1, num(Lcap))) : (ELEC && num(ELEC.Lalim, 0) > 0 ? num(ELEC.Lalim) : null);
++      return { awg: a.awg || "", paralelo: a.paralelo || 1, mat: ELEC ? ELEC.mat : "", Itab: ELEC ? ELEC.Itab : 0, kVAdemanda: ELEC ? ELEC.kVAdemanda : 0,
++        ph: ELEC && ELEC.sis ? ELEC.sis.ph : null, Ltablero,
++        LtableroFuente: Ltablero == null ? "" : migracion && vacia ? KZ_SEMILLA : ELEC && ELEC.sinConf && ELEC.sinConf.Ltablero ? "capturada en Eléctrico en una revisión anterior, sin confirmar" : "capturada en Eléctrico" };
++    }
++    case "hidro>kaizen": return { tramos: (HIDRO && Array.isArray(HIDRO.tramos) ? HIDRO.tramos : []).map((t) => ({ tag: t.tag, nom: t.nom, V: t.V })) };
++    case "fuego>kaizen": return { areaDis: FUEGO ? FUEGO.areaDis : 0, areaMin: FUEGO && FUEGO.r ? FUEGO.r.areaMin : 0, qTotal: FUEGO ? FUEGO.qTotal : 0, clase: FUEGO && FUEGO.r ? FUEGO.r.label : "" };
++  }
++  return {};
++}
++/* Aceptar: la instantánea queda en la captura de Kaizen con fecha, revisión, origen y firma, y desde ahí no se mueve sola. */
++function tomarEntradaKaizen(id, ts, migracion) {
++  if (!S.kaizen || typeof S.kaizen !== "object") S.kaizen = defaultKaizen();
++  if (!S.kaizen.entradas || typeof S.kaizen.entradas !== "object" || Array.isArray(S.kaizen.entradas)) S.kaizen.entradas = {};
++  const datos = kzDatosDe(id, migracion), P = PROPUESTAS[id] || {};
++  S.kaizen.entradas[id] = { ts: ts || Date.now(), rev: REV, origen: ((DOMAINS[P.origen] || {}).label || P.origen || "") + (migracion ? " (migración H-279)" : ""),
++    firma: huellaTexto(estable(datos)), datos };
++  /* Aceptar el precio de Cotización es aceptar valuar en pesos, que es lo que antes concedía el permiso quote>kaizen. */
++  if (id === "quote>kaizen" && !migracion) delete S.kaizen.opexSinValuar;
++  return true;
++}
++/* Lo que cada instantánea deja revisar a Kaizen, para decir qué queda pendiente sin ella. */
++const KZ_REVISA = {
++  "load>kaizen": "aire exterior, cambios de aire, muros, vidrio e iluminación de cada zona, zonas con ADP crítico y materiales que no están en el catálogo",
++  "equip>kaizen": "planta y terminales por encima de la carga, diversidad sin aprovechar, el consumo por TR de la planta (kW y operación de las oportunidades de zona) y el equipo único en operación continua",
++  "duct>kaizen": "fricción de ducto y ductos aplanados",
++  "quote>kaizen": "el ahorro de inversión en pesos (precio por TR de equipo)",
++  "elec>kaizen": "el calibre económico del alimentador",
++  "hidro>kaizen": "la tubería de agua sobrada",
++  "fuego>kaizen": "el área de diseño contra incendio por encima del mínimo de la clase",
++};
+ function computeKaizen() {
+-  const ops = [];
+-  const verLoad = linkAllowed("load>kaizen");
+-  const verDuct = linkAllowed("duct>kaizen");
+-  const verDinero = linkAllowed("quote>kaizen");
+-  const q = S.quote || QUOTE_SEED;
+-  const tarifa = Math.max(0, num(q.tarifaKWh, 2.85)), horas = Math.max(0, num(q.horasAno, 3500));
+-  /* $/TR de EQUIPO para la inversión (H-08), no el costo instalado del proyecto entero */
+-  const mxnTR = verDinero && QUOTE && QUOTE.mxnTRequipo > 0 ? QUOTE.mxnTRequipo : 0;
+-  /* kW eléctricos por TR de la planta elegida, para el ahorro de operación */
+-  const kwPorTR = (() => {
+-    const m = SYS && SYS.chosen && SYS.chosen.plant && SYS.chosen.plant[0] && SYS.chosen.plant[0].model;
+-    const k = m ? corrKeyOf(m) : "DX_split";
+-    return (EFF_EST[k] || EFF_EST.DX_split).kWTR || EFF_EST.DX_split.kWTR;
+-  })();
++  const ops = [], pendientes = [];
++  const KZ = S.kaizen && typeof S.kaizen === "object" ? S.kaizen : {};
++  const ent = entradaKaizen;
++  const eLoad = ent("load>kaizen"), eEquip = ent("equip>kaizen"), eDuct = ent("duct>kaizen"), eQuote = ent("quote>kaizen"),
++    eElec = ent("elec>kaizen"), eHidro = ent("hidro>kaizen"), eFuego = ent("fuego>kaizen");
++  /* Captura de Kaizen (D3): sin valor con fuente y fecha, pendiente; la semilla de un proyecto anterior se conserva rotulada. */
++  const sup = { tarifa: supuestoKaizen("tarifaKWh"), horas: supuestoKaizen("horasAno"), alimM: supuestoKaizen("alimM") };
++  const tarifa = sup.tarifa ? sup.tarifa.valor : null, horas = sup.horas ? sup.horas.valor : null;
++  /* Un proyecto anterior que no valuaba la operación en pesos (sin el permiso de Cotización) sigue igual hasta que el usuario
++     confirme tarifa y horas: la migración no gana cifras. */
++  const opexSinValuar = "opexSinValuar" in KZ && KZ.opexSinValuar === true;
++  const valuaOpex = tarifa != null && horas != null && !opexSinValuar;
++  const faltanSup = [!sup.tarifa ? "la tarifa eléctrica" : "", !sup.horas ? "las horas de operación" : ""].filter(Boolean).join(" y ");
++  const faltaOpex = opexSinValuar ? "sin valuar: el proyecto se guardó sin valuar la operación en pesos; confirma la tarifa y las horas en Kaizen"
++    : `pendiente: falta capturar en Kaizen ${faltanSup} con su fuente y fecha`;
++  /* $/TR de EQUIPO para la inversión (H-08), no el costo instalado del proyecto entero: sólo de la instantánea de Cotización */
++  const mxnTR = eQuote && num(eQuote.datos.mxnTR) > 0 ? num(eQuote.datos.mxnTR) : 0;
++  const faltaCapex = !eQuote ? "pendiente: falta el precio por TR de equipo (acepta la propuesta de Cotización)" : "sin valuar: la cotización aceptada no tiene equipo con precio";
++  /* kW eléctricos por TR de la planta elegida, para el ahorro de operación: sólo de la instantánea de Selección */
++  const kwPorTR = eEquip && num(eEquip.datos.kwPorTR) > 0 ? num(eEquip.datos.kwPorTR) : null;
++  let fuentes = [];
+   const push = (o) => {
+-    const tipo = o.tipo || "capex";
+-    const kW = o.kW != null ? o.kW : (o.tr > 0 ? o.tr * kwPorTR : 0);
+-    const capex = tipo === "capex" && o.tr > 0 && mxnTR > 0 ? o.tr * mxnTR : 0;
+-    const opex = tipo === "opex" && kW > 0 && verDinero ? kW * horas * tarifa : 0;
+-    ops.push({ ...o, tipo, kW, mxnCapex: capex, mxnOpex: opex, mxn: capex });
++    const tipo = o.tipo || "capex", pendiente = [];
++    const kW = o.kW != null ? o.kW : (o.tr > 0 ? (kwPorTR != null ? o.tr * kwPorTR : null) : 0);
++    let capex = 0, opex = 0;
++    if (tipo === "capex" && o.tr > 0) { if (mxnTR > 0) capex = o.tr * mxnTR; else { capex = null; pendiente.push(faltaCapex); } }
++    if (tipo === "opex" && kW == null) { opex = null; pendiente.push("pendiente: falta el consumo por TR de la planta (acepta la propuesta de Selección de equipo)"); }
++    else if (tipo === "opex" && kW > 0) { if (valuaOpex) opex = kW * horas * tarifa; else { opex = null; pendiente.push(faltaOpex); } }
++    ops.push({ ...o, tipo, kW, mxnCapex: capex, mxnOpex: opex, mxn: capex, fuentes: fuentes.slice(), pendiente });
+   };
++  /* Lo que Kaizen lee de los materiales (matById) no se queda en los faltantes de Carga térmica. */
++  const faltanVivos = [...MISSING_MATS];
++  try {
+ 
+-  if (verLoad) {
++  if (eEquip) {
++    const DQ = eEquip.datos;
++    fuentes = ["equip>kaizen"];
+     /* 1. Sobreproducción: equipo instalado por encima de la carga de bloque.
+        El campo de la planta es instPlant y el de los terminales instTerm; antes se
+        leía SYS.chosen.installed, que no existe, así que este detector —el del
+        desperdicio más caro de todos— nunca disparó una sola vez. */
+-    const instPlant = SYS && SYS.chosen ? num(SYS.chosen.instPlant) : 0;
+-    if (instPlant > 0 && SYS.blockTons > 0) {
+-      const exceso = instPlant / SYS.blockTons - 1;
++    const instPlant = num(DQ.instPlant);
++    if (instPlant > 0 && DQ.blockTons > 0) {
++      const exceso = instPlant / DQ.blockTons - 1;
+       /* 15 % es margen sano de selección. Arriba de eso ya es capacidad que se paga
+          de inicio, ocupa espacio y opera a carga parcial toda su vida. */
+       if (exceso > 0.15) push({
+-        muda: "sobre", zona: "Planta", tipo: "capex", tr: instPlant - SYS.blockTons * 1.15,
++        muda: "sobre", zona: "Planta", tipo: "capex", tr: instPlant - DQ.blockTons * 1.15,
+         titulo: "La planta quedó por encima de la carga de bloque",
+-        ahora: `${n(instPlant, 1)} TR instalados contra ${n(SYS.blockTons, 1)} TR de bloque: ${n(exceso * 100, 0)} % arriba`,
++        ahora: `${n(instPlant, 1)} TR instalados contra ${n(DQ.blockTons, 1)} TR de bloque: ${n(exceso * 100, 0)} % arriba`,
+         cambio: `Revisar si el salto de modelo se justifica. Un equipo sobrado opera a carga parcial casi siempre, cicla más y no rinde lo que dice su placa. Repartir en dos equipos más chicos cuesta parecido y da escalonamiento.`,
+         esfuerzo: "medio",
+       });
+     }
+     /* 1b. Sobreproducción en terminales: cada zona pide su pico, pero si la suma de
+        terminales se dispara frente a la planta, alguien se está pasando dos veces. */
+-    const instTerm = SYS && SYS.chosen ? num(SYS.chosen.instTerm) : 0;
+-    if (instTerm > 0 && SYS.sumPeaks > 0 && instTerm / SYS.sumPeaks - 1 > 0.25) push({
+-      muda: "sobre", zona: "Terminales", tipo: "capex", tr: instTerm - SYS.sumPeaks * 1.15,
++    const instTerm = num(DQ.instTerm);
++    if (instTerm > 0 && DQ.sumPeaks > 0 && instTerm / DQ.sumPeaks - 1 > 0.25) push({
++      muda: "sobre", zona: "Terminales", tipo: "capex", tr: instTerm - DQ.sumPeaks * 1.15,
+       titulo: "Los terminales suman mucho más que la suma de picos de zona",
+-      ahora: `${n(instTerm, 1)} TR en terminales contra ${n(SYS.sumPeaks, 1)} TR de suma de picos`,
++      ahora: `${n(instTerm, 1)} TR en terminales contra ${n(DQ.sumPeaks, 1)} TR de suma de picos`,
+       cambio: "Revisar zona por zona: el salto al siguiente modelo se acumula. En equipos chicos suele haber una talla intermedia que evita pagar 30 % de más.",
+       esfuerzo: "bajo",
+     });
++  }
++  /* Las zonas son las de la instantánea de Carga térmica y corren con el sitio con que se aceptó (D1): nada de S.zones, LOADS
++     ni del sitio vivo. La corrida sin cambio es la base de cada comparación, igual que antes lo era LOADS[i]. */
++  const DL = eLoad ? eLoad.datos : null;
++  const zonasKz = DL && Array.isArray(DL.zonas) ? DL.zonas : [];
++  const cargasKz = zonasKz.map((z) => seguro(() => corridaKz(z, DL), null));
++  const simZone = (z, cambios) => corridaKz(z, DL, cambios);
++  if (eLoad) {
++    fuentes = ["load>kaizen"].concat(eEquip ? ["equip>kaizen"] : []);
+     /* 2. Sobreproceso: aire exterior muy por encima de lo que pide ASHRAE 62.1 */
+-    S.zones.forEach((z, i) => {
+-      const r = LOADS[i]; if (!r) return;
++    zonasKz.forEach((z, i) => {
++      const r = cargasKz[i]; if (!r) return;
+       if (num(z.oaFixed) > 0 && r.oa > 0) {
+         const base = simZone(z, { oaFixed: 0 });
+         const ahorro = r.tons - base.tons;
+@@ -17524,7 +17708,8 @@ function computeKaizen() {
+     /* 7. Defecto: datos que arrastran la memoria, la cédula y la cotización.
+        Se agrupan en una sola entrada por tipo: nueve zonas con el mismo problema son
+        un problema, no nueve, y nueve renglones iguales hacen que se dejen de leer. */
+-    const zAdp = S.zones.filter((z, i) => LOADS[i] && LOADS[i].adpLevel === "critico");
++    fuentes = ["load>kaizen"];
++    const zAdp = zonasKz.filter((z, i) => cargasKz[i] && cargasKz[i].adpLevel === "critico");
+     if (zAdp.length) push({
+       muda: "defecto", zona: zAdp.length === 1 ? zAdp[0].name : `${zAdp.length} zonas`, tr: 0,
+       titulo: "Hay zonas cuyo resultado no es válido con enfriamiento simple",
+@@ -17533,56 +17718,60 @@ function computeKaizen() {
+       esfuerzo: "alto",
+     });
+     /* Materiales que el proyecto pide y el catálogo no tiene: el K aplicado no es el
+-       que el proyectista cree, y el error viaja a la memoria, la cédula y el precio. */
+-    if (MISSING_MATS.size) push({
+-      muda: "defecto", zona: `${MISSING_MATS.size} material(es)`, tr: 0,
++       que el proyectista cree, y el error viaja a la memoria, la cédula y el precio.
++       H-279: la lista es la de la instantánea (la que Carga térmica avisaba al aceptarla). */
++    const faltanKz = Array.isArray(DL.faltanMat) ? DL.faltanMat.map(String) : [];
++    if (faltanKz.length) push({
++      muda: "defecto", zona: `${faltanKz.length} material(es)`, tr: 0,
+       titulo: "El proyecto pide materiales que no están en el catálogo",
+-      ahora: `${[...MISSING_MATS.keys()].slice(0, 3).join(", ")}${MISSING_MATS.size > 3 ? " y más" : ""}`,
++      ahora: `${faltanKz.slice(0, 3).join(", ")}${faltanKz.length > 3 ? " y más" : ""}`,
+       cambio: "Se sustituyeron por equivalentes del mismo tipo, así que el cálculo corre, pero el K aplicado no es el que esperabas. Corregir el material en cada zona antes de emitir la memoria.",
+       esfuerzo: "bajo",
+     });
+-    /* Datos fuera de rango que la validación ya marcó como críticos */
+-    const errsVal = (VALID ? VALID.rows : []).filter((v) => v.lvl === "err" && !/no existe en el catálogo/.test(v.msg));
+-    if (errsVal.length) push({
+-      muda: "defecto", zona: "Validación", tr: 0,
+-      titulo: `${errsVal.length} hallazgo(s) críticos sin resolver`,
+-      ahora: errsVal[0].msg.slice(0, 130),
+-      cambio: "Un crítico invalida lo que sale de ese motor. Resolverlo antes de mandar la cotización sale mucho más barato que corregirlo en obra.",
+-      esfuerzo: "medio",
+-    });
++    /* H-279: los hallazgos críticos de la validación ya no entran aquí: son trabajo del semáforo de cada disciplina. */
++  }
+ 
+-    /* 8. Espera: sistema único sin escalonamiento en proceso continuo */
+-    if (SYS && SYS.chosen && SYS.chosen.plant && SYS.chosen.plant.length === 1 &&
+-        SYS.chosen.plant[0].qty === 1 && S.zones.some((z) => z.runHours === 24)) push({
++  if (eEquip && eLoad) {
++    const DQ = eEquip.datos, planta = Array.isArray(DQ.plant) ? DQ.plant : [];
++    fuentes = ["equip>kaizen", "load>kaizen"];
++    /* 8. Espera: sistema único sin escalonamiento en proceso continuo (el equipo de Selección, las horas de las zonas de Carga) */
++    if (planta.length === 1 && planta[0].qty === 1 && zonasKz.some((z) => z.runHours === 24)) push({
+       muda: "espera", zona: "Planta", tr: 0,
+       titulo: "Un solo equipo alimentando zonas que operan 24 horas",
+-      ahora: `${esc(SYS.chosen.plant[0].model.model)} único para ${S.zones.filter((z) => z.runHours === 24).length} zona(s) de operación continua`,
++      ahora: `${esc(planta[0].modelo)} único para ${zonasKz.filter((z) => z.runHours === 24).length} zona(s) de operación continua`,
+       cambio: "Con un equipo fuera, el proceso para. Evaluar dos equipos al 60 % cada uno: cuesta más de inicio y elimina el paro por mantenimiento.",
+       esfuerzo: "alto",
+     });
++  }
++  if (eEquip) {
++    const DQ = eEquip.datos;
++    fuentes = ["equip>kaizen"];
+     /* 9. Inventario: diversidad real que no se está aprovechando.
+        La condición anterior exigía que lo instalado alcanzara la suma de picos, cosa
+        que no ocurre nunca porque la planta se dimensiona con el bloque: el detector
+        estaba muerto por construcción. Lo que de verdad es desperdicio es tener
+-       diversidad natural y no usarla, o usar un factor más conservador que la real. */
+-    if (SYS && SYS.sumPeaks > 0 && SYS.diversity < 0.92) {
+-      const desaprovechada = num(S.bldDiv, 1) > SYS.diversity + 0.03;
++       diversidad natural y no usarla, o usar un factor más conservador que la real.
++       H-279: la diversidad y el factor del edificio son los de la instantánea de Selección (al aceptarla). */
++    if (DQ.sumPeaks > 0 && DQ.diversity < 0.92) {
++      const desaprovechada = num(DQ.bldDiv, 1) > DQ.diversity + 0.03;
+       if (desaprovechada) push({
+-        muda: "inv", zona: "Planta", tipo: "capex", tr: (num(S.bldDiv, 1) - SYS.diversity) * SYS.sumPeaks,
++        muda: "inv", zona: "Planta", tipo: "capex", tr: (num(DQ.bldDiv, 1) - DQ.diversity) * DQ.sumPeaks,
+         titulo: "Hay diversidad real que el factor capturado no está usando",
+-        ahora: `Diversidad natural ${n(SYS.diversity * 100, 0)} % (bloque ${n(SYS.blockTons, 1)} TR a las ${SYS.blockHour}:00 contra ${n(SYS.sumPeaks, 1)} TR de suma de picos), pero el factor capturado es ${n(num(S.bldDiv, 1) * 100, 0)} %`,
++        ahora: `Diversidad natural ${n(DQ.diversity * 100, 0)} % (bloque ${n(DQ.blockTons, 1)} TR a las ${DQ.blockHour}:00 contra ${n(DQ.sumPeaks, 1)} TR de suma de picos), pero el factor capturado es ${n(num(DQ.bldDiv, 1) * 100, 0)} %`,
+         cambio: "Las zonas no pican a la misma hora y el barrido ya lo demostró. Bajar el factor hasta la diversidad medida deja de comprar toneladas que nunca coinciden. Los terminales no se tocan: cada uno sigue con su propio pico.",
+         esfuerzo: "bajo",
+       });
+     }
+   }
+ 
+-  if (verDuct && DUCT && DUCT.segs) {
++  if (eDuct) {
++    const segsKz = Array.isArray(eDuct.datos.segs) ? eDuct.datos.segs : [];
++    fuentes = ["duct>kaizen"];
+     /* 10. Transporte: fricción alta que el ventilador paga toda la vida del edificio */
+-    const caros = DUCT.segs.filter((s) => (s.Pam || 0) > 1.2 && s.flow >= 250);
++    const caros = segsKz.filter((s) => (s.Pam || 0) > 1.2 && s.flow >= 250);
+     if (caros.length) {
+       const paDemas = caros.reduce((a, s) => a + (s.Pam - 0.8) * s.L, 0);
+-      const kW = paDemas * (DUCT.segs.reduce((a, s) => a + s.flow, 0) / 1000) / (1000 * 0.6);
++      const kW = paDemas * (segsKz.reduce((a, s) => a + s.flow, 0) / 1000) / (1000 * 0.6);
+       push({
+         muda: "transp", zona: `${caros.length} tramo(s)`, tipo: "opex", tr: 0, kW,
+         titulo: "Ductos estrechos que el ventilador paga cada hora",
+@@ -17592,7 +17781,7 @@ function computeKaizen() {
+       });
+     }
+     /* 11. Inventario: lámina de más por relación de lados */
+-    const planos = DUCT.segs.filter((s) => s.shape === "rect" && s.w && s.h && Math.max(s.w, s.h) / Math.min(s.w, s.h) > 3);
++    const planos = segsKz.filter((s) => s.shape === "rect" && s.w && s.h && Math.max(s.w, s.h) / Math.min(s.w, s.h) > 3);
+     if (planos.length) push({
+       muda: "inv", zona: `${planos.length} tramo(s)`, tr: 0,
+       titulo: "Ductos muy aplanados: más lámina para el mismo aire",
+@@ -17612,48 +17801,63 @@ function computeKaizen() {
+      cada hora que el tablero está energizado, y el cobre se paga una sola vez.
+      Es el mismo cálculo del apéndice D de la NOM y de la IEEE 241: se compara el
+      ahorro anual de energía contra el sobrecosto del cobre, y se reporta el
+-     tiempo de recuperación. Se enlista solo si se paga solo en pocos años. */
+-  if (ELEC && ELEC.alim && ELEC.Itab > 0 && ELEC.kVAdemanda > 0) {
+-    const ix = AWG_ORD.indexOf(ELEC.alim.awg);
+-    const par = Math.max(1, ELEC.alim.paralelo || 1);
++     tiempo de recuperación. Se enlista solo si se paga solo en pocos años.
++     H-279: el alimentador, la corriente, el material y la distancia al tablero son los de la instantánea de Eléctrico; sin
++     distancia, «pendiente de longitud» (H-179, antes 30 m supuestos). La tarifa, las horas y el precio del alimentador son la
++     captura de Kaizen; sin ellos no se puede decir si se paga solo: la oportunidad queda pendiente con lo que falta. */
++  const DE = eElec ? eElec.datos : null;
++  if (DE && DE.awg && DE.Itab > 0 && DE.kVAdemanda > 0) {
++    fuentes = ["elec>kaizen"];
++    const ix = AWG_ORD.indexOf(DE.awg);
++    const par = Math.max(1, DE.paralelo || 1);
+     /* Si ya va en paralelo, el paso siguiente es un conductor más por fase; si
+        no, el calibre que sigue en la tabla. */
+     const enParalelo = par > 1;
+-    const mayor = enParalelo ? ELEC.alim.awg : AWG_ORD[Math.min(AWG_ORD.length - 1, ix + 1)];
++    const mayor = enParalelo ? DE.awg : AWG_ORD[Math.min(AWG_ORD.length - 1, ix + 1)];
+     const parNuevo = enParalelo ? par + 1 : par;
+-    const R1 = R_KM[ELEC.mat][ELEC.alim.awg] / par;
+-    const R2 = (R_KM[ELEC.mat][mayor] || 0) / parNuevo;
+-    if (R1 && R2 && R2 < R1 - 1e-9) {
+-      const L = Math.max(1, num(S.elec.Ltablero, 30)) / 1000;   // km
+-      const nc = ELEC.sis.ph === 3 ? 3 : 2;                     // conductores que llevan corriente
+-      const kWperdida = nc * ELEC.Itab * ELEC.Itab * (R1 - R2) * L / 1000;
++    const R1 = (R_KM[DE.mat] || {})[DE.awg] / par;
++    const R2 = ((R_KM[DE.mat] || {})[mayor] || 0) / parNuevo;
++    const Lm = num(DE.Ltablero, 0) > 0 ? num(DE.Ltablero) : null;
++    if (R1 && R2 && R2 < R1 - 1e-9 && Lm == null) {
++      pendientes.push({ id: "elec>kaizen", que: "Calibre económico del alimentador", falta: "pendiente de longitud: la instantánea de Eléctrico no trae la distancia al tablero (no se supone)" });
++    } else if (R1 && R2 && R2 < R1 - 1e-9) {
++      const L = Math.max(1, Lm) / 1000;   // km
++      const nc = DE.ph === 3 ? 3 : 2;                     // conductores que llevan corriente
++      const kWperdida = nc * DE.Itab * DE.Itab * (R1 - R2) * L / 1000;
+       /* Sobrecosto del cobre: la sección crece con el inverso de la resistencia,
+          y del precio por metro del alimentador se supone que 60 % es conductor y
+          el resto canalización y mano de obra, que no cambian al subir de calibre.
+          Es un supuesto declarado, no un dato de lista. */
+       const razonSeccion = R1 / R2;
+-      const extra = num(q.alimM, 1350) * (L * 1000) * 0.6 * (razonSeccion - 1);
+-      const ahorroAnual = kWperdida * horas * tarifa;
+-      const retorno = ahorroAnual > 0 ? extra / ahorroAnual : 99;
+-      /* Umbral de ocho años. Una instalación eléctrica dura veinticinco o más,
+-         así que recuperar el cobre extra en ocho sigue siendo buen negocio; más
+-         allá de eso el dinero rinde mejor en otro lado y no vale la pena
+-         enlistarlo como oportunidad. El tiempo de recuperación se reporta para
+-         que la decisión la tome quien firma, no el detector. */
+-      if (kWperdida > 0.05 && retorno <= 8) push({
+-        muda: "transp", zona: "Alimentador", tipo: "opex", tr: 0, kW: kWperdida,
+-        titulo: "El alimentador cumple, pero un calibre más se paga solo",
+-        ahora: `${par > 1 ? `${par} × ` : ""}${ELEC.alim.awg} ${ELEC.mat} llevando ${n(ELEC.Itab, 0)} A en ${n(num(S.elec.Ltablero, 30), 0)} m: ${n(kWperdida, 2)} kW se van en calor, ${n(kWperdida * horas, 0)} kWh al año`,
+-        cambio: `${enParalelo ? `Poner ${parNuevo} conductores por fase` : `Subir a ${mayor}`} cuesta del orden de ${money(extra, QUOTE ? QUOTE.div : 1, QUOTE ? QUOTE.cur : "MXN")} más de cobre y ahorra ${money(ahorroAnual, QUOTE ? QUOTE.div : 1, QUOTE ? QUOTE.cur : "MXN")} al año: se recupera en ${n(retorno, 1)} año(s) y sigue ahorrando los veinte siguientes. La norma no lo pide; la factura sí.`,
+-        esfuerzo: "bajo",
+-      });
++      if (kWperdida > 0.05 && !(sup.alimM && tarifa != null && horas != null)) {
++        pendientes.push({ id: "elec>kaizen", que: `Calibre económico del alimentador (${n(kWperdida, 2)} kW se van en calor)`,
++          falta: `pendiente: falta capturar en Kaizen ${[!sup.tarifa ? "la tarifa eléctrica" : "", !sup.horas ? "las horas de operación" : "", !sup.alimM ? "el precio por metro del alimentador" : ""].filter(Boolean).join(", ")} con su fuente y fecha para saber si se paga solo` });
++      } else if (kWperdida > 0.05) {
++        const extra = sup.alimM.valor * (L * 1000) * 0.6 * (razonSeccion - 1);
++        const ahorroAnual = kWperdida * horas * tarifa;
++        const retorno = ahorroAnual > 0 ? extra / ahorroAnual : 99;
++        /* Umbral de ocho años. Una instalación eléctrica dura veinticinco o más,
++           así que recuperar el cobre extra en ocho sigue siendo buen negocio; más
++           allá de eso el dinero rinde mejor en otro lado y no vale la pena
++           enlistarlo como oportunidad. El tiempo de recuperación se reporta para
++           que la decisión la tome quien firma, no el detector. */
++        if (retorno <= 8) push({
++          muda: "transp", zona: "Alimentador", tipo: "opex", tr: 0, kW: kWperdida, retorno,
++          titulo: "El alimentador cumple, pero un calibre más se paga solo",
++          ahora: `${par > 1 ? `${par} × ` : ""}${DE.awg} ${DE.mat} llevando ${n(DE.Itab, 0)} A en ${n(Lm, 0)} m: ${n(kWperdida, 2)} kW se van en calor, ${n(kWperdida * horas, 0)} kWh al año`,
++          cambio: `${enParalelo ? `Poner ${parNuevo} conductores por fase` : `Subir a ${mayor}`} cuesta del orden de ${money(extra, 1, "MXN")} más de cobre y ahorra ${money(ahorroAnual, 1, "MXN")} al año: se recupera en ${n(retorno, 1)} año(s) y sigue ahorrando los veinte siguientes. La norma no lo pide; la factura sí.`,
++          esfuerzo: "bajo",
++        });
++      }
+     }
+   }
+   /* 13. Sobreproceso hidráulico: tubería sobrada. Un diámetro de más no ahorra
+      energía —el agua no se bombea sola— pero cuesta material y, en agua
+-     caliente, favorece el estancamiento y la Legionella. */
+-  if (HIDRO && HIDRO.tramos && HIDRO.tramos.length) {
+-    const sobrados = HIDRO.tramos.filter((t) => t.V > 0 && t.V < .6);
++     caliente, favorece el estancamiento y la Legionella. H-279: los tramos son los de la instantánea de Hidrosanitario. */
++  const tramosKz = eHidro && Array.isArray(eHidro.datos.tramos) ? eHidro.datos.tramos : [];
++  if (tramosKz.length) {
++    fuentes = ["hidro>kaizen"];
++    const sobrados = tramosKz.filter((t) => t.V > 0 && t.V < .6);
+     if (sobrados.length) push({
+       muda: "inv", zona: `${sobrados.length} tramo(s)`, tipo: "capex", tr: 0,
+       titulo: "Tubería de agua sobrada para el gasto que lleva",
+@@ -17664,19 +17868,31 @@ function computeKaizen() {
+   }
+   /* 14. Sobreproducción contra incendio: área de diseño por encima del mínimo
+      de la clase. Cada metro cuadrado de más en el área de operación se paga en
+-     bomba, cisterna y diámetro de montante, para siempre. */
+-  if (FUEGO && FUEGO.areaDis > FUEGO.r.areaMin * 1.15 && FUEGO.qTotal > 0) {
+-    const base = FUEGO.r.areaMin / FUEGO.areaDis;
++     bomba, cisterna y diámetro de montante, para siempre. H-279: el área, la clase y el caudal son los de la instantánea de
++     Contra incendio. */
++  const DF = eFuego ? eFuego.datos : null;
++  if (DF && DF.areaMin > 0 && DF.areaDis > DF.areaMin * 1.15 && DF.qTotal > 0) {
++    fuentes = ["fuego>kaizen"];
++    const base = DF.areaMin / DF.areaDis;
+     push({
+       muda: "sobre", zona: "Contra incendio", tipo: "capex", tr: 0,
+       mxn: 0,
+       titulo: "El área de diseño está por encima del mínimo de la clase",
+-      ahora: `${n(FUEGO.areaDis, 0)} m² de área de operación contra ${FUEGO.r.areaMin} m² que pide ${FUEGO.r.label.toLowerCase()}`,
++      ahora: `${n(DF.areaDis, 0)} m² de área de operación contra ${DF.areaMin} m² que pide ${String(DF.clase || "").toLowerCase()}`,
+       cambio: `Volver al área mínima de la clase baja la demanda cerca de ${n((1 - base) * 100, 0)} % y con ella la bomba, la reserva y el diámetro del montante. Solo tiene sentido subirla si la aseguradora o el cuerpo de bomberos lo exigen por escrito.`,
+       esfuerzo: "bajo",
+     });
+   }
+ 
++  } finally { MISSING_MATS.clear(); faltanVivos.forEach(([k, v]) => MISSING_MATS.set(k, v)); }
++
++  /* Sin la instantánea de una disciplina, lo que depende de ella queda pendiente con qué falta (regla 6: no se supone). */
++  ENTRADAS_KAIZEN.forEach((id) => {
++    if (ent(id)) return;
++    const P = PROPUESTAS[id];
++    pendientes.push({ id, que: KZ_REVISA[id], falta: `falta aceptar la propuesta de ${(DOMAINS[P.origen] || {}).label || P.origen}` });
++  });
++
+   /* Mejoras capturadas por el equipo, con su ciclo PDCA */
+   const items = (S.kaizen && Array.isArray(S.kaizen.items)) ? S.kaizen.items : [];
+   const cerradas = items.filter((k) => k.estado === "actuar");
+@@ -17686,9 +17902,12 @@ function computeKaizen() {
+   const ahorroKW = ops.reduce((a, o) => a + (o.tipo === "opex" ? (o.kW || 0) : 0), 0);
+   const ahorroMXN = ahorroCapex;   // inversión; la operación va aparte y es anual
+   const verificado = cerradas.reduce((a, k) => a + num(k.ahorro), 0);
++  const entradas = Object.fromEntries(ENTRADAS_KAIZEN.map((id) => { const e = ent(id); return [id, e ? { ts: num(e.ts), rev: String(e.rev || ""), origen: String(e.origen || "") } : null]; }));
+ 
+   return { ops, items, cerradas, ahorroTR, ahorroMXN, ahorroCapex, ahorroOpex, ahorroKW,
+-    tarifa, horas, kwPorTR, verificado, verLoad, verDuct, verDinero,
++    tarifa, horas, kwPorTR, verificado, verLoad: !!eLoad, verDuct: !!eDuct, verDinero: mxnTR > 0, mxnTR,
++    valuaOpex, opexSinValuar, faltaCapex, faltaOpex, supuestos: sup, entradas, pendientes,
++    kwFuente: eEquip ? { familia: String(eEquip.datos.kwFamilia || ""), src: String(eEquip.datos.kwFuente || "") } : null,
+     porMuda: Object.keys(MUDA).map((m) => ({ m, n: ops.filter((o) => o.muda === m).length })) };
+ }
+ 
+@@ -17699,12 +17918,28 @@ const ESF = { bajo: "Bajo", medio: "Medio", alto: "Alto" };
+ /* rev 2.9.14 · Guías repetidas: el subtítulo de la tarjeta principal (repetía «Qué calcula» y «Ojo» de GUIA.kaizen) se quitó de la vista. */
+ function viewKaizen() {
+   const K = KAIZEN;
+-  const M = (v) => money(v, QUOTE ? QUOTE.div : 1, QUOTE ? QUOTE.cur : "MXN");
+-
+-  const permiso = (id, texto) => `<div class="list-item" style="align-items:center">
+-    <span class="badge">sin autorizar</span>
+-    <div style="flex:1;min-width:0;font-size:14px">${esc(texto)}</div>
+-    <button class="toolbtn" data-act="ask-link" data-id="${id}">Ver motivo</button></div>`;
++  /* H-279: Kaizen valúa en MXN con lo que se le aceptó y con su propia captura (precio por TR, tarifa y precio del alimentador,
++     todos en MXN): ya no toma en vivo la moneda ni el tipo de cambio de la cotización. */
++  const M = (v) => money(v, 1, "MXN");
++  const ent = K.entradas || {}, nAcept = ENTRADAS_KAIZEN.filter((id) => ent[id]).length;
++  const pend = Array.isArray(K.pendientes) ? K.pendientes : [];
++  /* De dónde sale cada supuesto de operación (regla 8): capturado con su fuente y fecha, semilla migrada o pendiente. */
++  const origenSup = (k) => {
++    const v = S.kaizen && S.kaizen[k], ok = supuestoKaizen(k);
++    if (ok && ok.semilla) return `<span class="badge warn">${esc(KZ_SEMILLA)}</span>`;
++    if (ok) return `<span class="badge ok">capturado</span> <span class="sub">${esc(ok.fuente)} · ${esc(ok.fecha)}</span>`;
++    return `<span class="badge warn">pendiente</span> <span class="sub">${!(v && num(v.valor, 0) > 0) ? "falta el valor" : "falta su fuente y su fecha"}</span>`;
++  };
++  const campoSup = (k) => {
++    const D = KZ_SUPUESTOS[k], v = (S.kaizen && S.kaizen[k]) || {}, sem = esSemillaKz(v);
++    return `<div class="list-item" style="flex-direction:column;align-items:stretch;gap:6px">
++      <div><b>${esc(D.et)}</b> <span class="sub">(${esc(D.u)})</span> · ${origenSup(k)}</div>
++      <div class="row">
++        <div class="field"><label>Valor (${esc(D.u)})</label><input type="number" step="${D.step}" data-path="kaizen.${k}.valor" value="${num(v.valor, 0) > 0 ? esc(v.valor) : ""}" /></div>
++        <div class="field"><label>Fuente</label><input type="text" data-path="kaizen.${k}.fuente" value="${sem ? "" : esc(v.fuente || "")}" placeholder="${sem ? esc(KZ_SEMILLA) : "de dónde sale (recibo, tarifa publicada, cotización del proveedor…)"}" /></div>
++        <div class="field"><label>Fecha</label><input type="date" data-path="kaizen.${k}.fecha" value="${sem ? "" : esc(v.fecha || "")}" /></div>
++      </div></div>`;
++  };
+ 
+   return `<div class="grid" style="gap:16px">
+ 
+@@ -17713,20 +17948,19 @@ function viewKaizen() {
+     <div class="card"><h3>Kaizen<span class="tag">${K.ops.length} oportunidad(es)</span></h3><div class="body">
+       <div class="qhero">
+         <div class="qbig"><div class="k">Ahorro detectado</div><div class="v">${n(K.ahorroTR, 1)} <small>TR</small></div>
+-          <div class="s">sobre la carga actual del proyecto</div></div>
+-        ${K.verDinero ? `<div class="qbig total"><div class="k">Ahorro de inversión</div><div class="v">${M(K.ahorroCapex)}</div>
+-          <div class="s">al precio por tonelada de EQUIPO de la cotización</div></div>
+-          <div class="qbig"><div class="k">Ahorro de operación</div><div class="v">${M(K.ahorroOpex)}</div>
+-          <div class="s">al año · ${n(K.ahorroKW, 1)} kW × ${n(K.horas, 0)} h × $${n(K.tarifa, 2)}/kWh</div></div>`
+-        : `<div class="qbig"><div class="k">En dinero</div><div class="v" style="font-size:17.5px;line-height:1.4">Requiere<br>autorización</div>
+-          <div class="s"><button class="qchip" data-act="ask-link" data-id="quote>kaizen">Ver por qué</button></div></div>`}
++          <div class="s">sobre lo aceptado de cada disciplina (${nAcept} de ${ENTRADAS_KAIZEN.length} instantáneas)</div></div>
++        <div class="qbig total"><div class="k">Ahorro de inversión</div><div class="v">${K.verDinero ? M(K.ahorroCapex) : "Pendiente"}</div>
++          <div class="s">${K.verDinero ? `al precio por tonelada de EQUIPO de la cotización aceptada el ${esc(fechaCorta(ent["quote>kaizen"] && ent["quote>kaizen"].ts))}` : esc(K.faltaCapex || "")}</div></div>
++        <div class="qbig"><div class="k">Ahorro de operación</div><div class="v">${K.valuaOpex ? M(K.ahorroOpex) : "Pendiente"}</div>
++          <div class="s">${K.valuaOpex ? `al año · ${n(K.ahorroKW, 1)} kW × ${n(K.horas, 0)} h × $${n(K.tarifa, 2)}/kWh` : esc(K.faltaOpex || "")}</div></div>
+         <div class="qbig"><div class="k">Mejoras en curso</div><div class="v">${K.items.length - K.cerradas.length}</div>
+           <div class="s">${K.cerradas.length} cerrada(s)</div></div>
+         <div class="qbig"><div class="k">Ahorro verificado</div><div class="v">${n(K.verificado, 1)} <small>TR</small></div>
+           <div class="s">medido después del cambio</div></div>
+       </div>
+-      ${!K.verLoad ? `<div style="margin-top:12px">${permiso("load>kaizen", "Sin la carga térmica Kaizen no revisa planta, terminales, diversidad, zonas ni defectos de captura. Alimentador, tubería de agua y contra incendio se siguen revisando; los ductos dependen de su propio enlace.")}</div>` : ""}
+-      ${!K.verDuct ? `<div style="margin-top:8px">${permiso("duct>kaizen", "Sin acceso a los ductos no se revisan fricción ni kilos de lámina.")}</div>` : ""}
++      ${pend.length ? `<div style="margin-top:12px"><div class="sub" style="margin-bottom:6px"><b>Revisión pendiente</b> · nada se supone: lo que falta se acepta o se captura aquí mismo</div>
++        ${pend.map((p) => `<div class="list-item" style="align-items:center"><span class="badge warn">pendiente</span>
++          <div style="flex:1;min-width:0;font-size:14px">${esc(p.que)}: ${esc(p.falta)}</div></div>`).join("")}</div>` : ""}
+     </div></div>
+ 
+     ${K.ops.length ? `<div class="card"><h3>Oportunidades detectadas</h3><div class="body">
+@@ -17743,19 +17977,33 @@ function viewKaizen() {
+           <div class="m" style="font-size:16.5px">${esc(o.titulo)}</div>
+           <div class="sb" style="margin-top:4px"><b>Hoy:</b> ${esc(o.ahora)}</div>
+           <div class="sb" style="margin-top:3px;color:var(--text)"><b>Propuesta:</b> ${esc(o.cambio)}</div>
++          <div class="sb" style="margin-top:3px"><b>Sale de:</b> ${esc((o.fuentes || []).map((id) => `${(DOMAINS[(PROPUESTAS[id] || {}).origen] || {}).label || id}${ent[id] ? `, aceptada el ${fechaCorta(ent[id].ts)}` : ""}`).join(" · ") || "captura de Kaizen")}${(o.pendiente || []).length ? ` · ${esc(o.pendiente.join(" · "))}` : ""}</div>
+           <div style="margin-top:8px"><button class="toolbtn" data-act="kz-adopt" data-i="${i}">Adoptar como mejora</button></div>
+         </div>
+         <div class="amt">${o.tr > 0 ? `${n(o.tr, 2)} <small style="font-size:12px">TR</small>` : o.kW ? `${n(o.kW, 2)} <small style="font-size:12px">kW</small>` : "—"}
+-          ${/* H-08 · Cada oportunidad dice de qué especie es su ahorro: inversión que se deja de gastar una vez, u operación que se deja de pagar cada año. */
++          ${/* H-08 · Cada oportunidad dice de qué especie es su ahorro: inversión que se deja de gastar una vez, u operación que se deja de pagar cada año. H-279: sin dato, «pendiente», nunca un cero que parezca cálculo. */
+             o.tipo === "opex"
+-              ? `<span class="pc">${o.mxnOpex > 0 ? M(o.mxnOpex) + " / año" : "ahorro de operación"}</span><span class="pc" style="opacity:.75">${o.kW ? n(o.kW, 2) + " kW × " + n(K.horas, 0) + " h/año" : "energía"}</span>`
+-              : `<span class="pc">${o.mxnCapex > 0 ? M(o.mxnCapex) : "ahorro de inversión"}</span><span class="pc" style="opacity:.75">costo de equipo</span>`}</div>
++              ? `<span class="pc">${o.mxnOpex > 0 ? M(o.mxnOpex) + " / año" : o.mxnOpex == null ? "operación pendiente" : "ahorro de operación"}</span><span class="pc" style="opacity:.75">${o.kW ? n(o.kW, 2) + " kW × " + (K.horas != null ? n(K.horas, 0) : "— ") + " h/año" : o.kW == null ? "kW pendiente" : "energía"}</span>`
++              : `<span class="pc">${o.mxnCapex > 0 ? M(o.mxnCapex) : o.mxnCapex == null ? "inversión pendiente" : "ahorro de inversión"}</span><span class="pc" style="opacity:.75">costo de equipo</span>`}</div>
+       </div>`).join("")}
+     </div></div>`
+     : `<div class="card"><h3>Oportunidades detectadas</h3><div class="body">
+-      <div class="sub">${K.verLoad ? "No hay desperdicio medible en el proyecto actual. Es buena señal, pero conviene volver a revisar cada vez que cambie el alcance." : "Autoriza el acceso a la carga térmica para que Kaizen pueda revisar el proyecto."}</div>
++      <div class="sub">${nAcept ? "No hay desperdicio medible en lo aceptado. Es buena señal, pero conviene volver a revisar cada vez que cambie el alcance y aceptar de nuevo lo que se haya desactualizado." : "Kaizen todavía no tiene nada aceptado que revisar: acepta abajo las propuestas de las disciplinas."}</div>
+     </div></div>`}
+ 
++    <div class="card"><h3>Entradas de Kaizen<span class="tag">${nAcept} de ${ENTRADAS_KAIZEN.length} aceptada(s)</span></h3><div class="body">
++      <div class="sub" style="margin-bottom:10px">Cada disciplina propone lo suyo como instantánea con fecha. Kaizen calcula sólo con lo aceptado: si la disciplina cambia, su propuesta sale desactualizada y aquí decides; sin aceptarla, lo que depende de ella queda pendiente.</div>
++      ${ENTRADAS_KAIZEN.map((id) => propuestaHtml(id)).join("")}
++    </div></div>
++
++    <div class="card"><h3>Supuestos de operación<span class="tag">captura de Kaizen</span></h3><div class="body">
++      <div class="sub" style="margin-bottom:10px">Con su fuente y su fecha; sin ellas, la operación y el calibre económico del alimentador quedan pendientes.</div>
++      ${K.opexSinValuar ? `<div class="list-item" style="align-items:center"><span class="badge warn">sin valuar</span>
++        <div style="flex:1;min-width:0;font-size:14px">Este proyecto se guardó sin valuar la operación en pesos (antes pedía el permiso de Cotización). Sigue así hasta que confirmes la tarifa y las horas.</div>
++        <button class="toolbtn" data-act="kz-valuar-opex">Valuar con la tarifa y las horas</button></div>` : ""}
++      ${Object.keys(KZ_SUPUESTOS).map(campoSup).join("")}
++    </div></div>
++
+     <div class="card"><h3>Ciclo PDCA<span class="tag">${K.items.length} mejora(s)</span></h3><div class="body">
+       <div class="sub" style="margin-bottom:12px">Una mejora adoptada avanza de Planear a Actuar. Solo cuenta como ahorro verificado cuando llega a Actuar con su medición hecha.</div>
+       ${K.items.length ? K.items.map((k, i) => `<div class="list-item" style="align-items:flex-start;flex-direction:column;gap:8px">
+@@ -18525,7 +18773,73 @@ const PROPUESTAS = {
+       valor: e.rec ? (e.rec.estado === "aceptado" ? resumenZonasEquip(zonasSel().filter((z) => z.origen && z.origen.motor === "load"), true) : "captured by the user") : "not decided",
+       origen: "Thermal load", estado: { "sin-datos": "No data at the source", pendiente: "Proposal available", aceptado: "Accepted · current", desactualizado: "Out of date · the source changed", propio: "Captured by hand", vivo: "Live (previous mode)" }[e.nivel] || e.nivel }),
+   },
++  /* H-279 (decisión del dueño D2, 28-sep-2026): Kaizen es autónomo. Cada disciplina le propone lo suyo como instantánea; al
++     aceptarla se guarda en su captura con origen, fecha y firma, y si el origen cambia la propuesta sale desactualizada y Kaizen
++     no se mueve solo. Carga, ductos y cotización conservan su cruce como permiso para proponer (aceptar lo concede); las demás no
++     necesitan cruce. Selección de equipo propone a Kaizen, pero ni Kaizen ni esta propuesta la vinculan con Ductos. */
++  "load>kaizen": propuestaKaizen("load>kaizen", { origen: "load", permisos: ["load>kaizen"],
++    titulo: "Zonas de carga térmica para Kaizen", tituloEn: "Thermal-load zones for Kaizen", origenEn: "Thermal load",
++    que: "Copia de cada zona de Carga térmica (envolvente, cargas internas, aire exterior, cambios de aire y horario) con el sitio de diseño, el barrido horario y los materiales que faltan en el catálogo al aceptar. Kaizen vuelve a correr cada zona con el cambio aplicado sobre esa copia y con ese sitio: si después cambian la carga o el sitio, la propuesta sale desactualizada y Kaizen no se mueve solo.",
++    disponible: () => (S.zones || []).some((z) => z && num(z.area) > 0),
++    resumen: (d) => `${(d.zonas || []).length} zona(s) · sitio ${(d.sitio || {}).label || "sin sitio"}${(d.faltanMat || []).length ? ` · ${d.faltanMat.length} material(es) fuera del catálogo` : ""}`,
++    resumenEn: (d) => `${(d.zonas || []).length} zone(s) · site ${(d.sitio || {}).label || "no site"}${(d.faltanMat || []).length ? ` · ${d.faltanMat.length} material(s) not in the catalog` : ""}` }),
++  "equip>kaizen": propuestaKaizen("equip>kaizen", { origen: "equip", permisos: [],
++    titulo: "Sistema seleccionado para Kaizen", tituloEn: "Selected system for Kaizen", origenEn: "Equipment selection",
++    que: "El sistema elegido en Selección de equipo: modelos y cantidades de la planta, TR instalados de planta y terminales, carga de bloque, suma de picos, diversidad calculada y factor del edificio, y el consumo por TR de su tecnología (estimación por familia, con su fuente). Si después cambia la selección, la propuesta sale desactualizada y Kaizen no se mueve solo.",
++    disponible: () => !!(SYS && SYS.chosen && SYS.chosen.id !== "none" && capturaReal("equip")),
++    resumen: (d) => `${d.sistema || "sistema"} · ${(d.plant || []).length ? (d.plant || []).map((p) => `${p.qty ?? 1} × ${p.modelo}`).join(", ") : "sin planta central"} · ${n(num(d.instPlant), 1)} TR de planta · bloque ${n(num(d.blockTons), 1)} TR · ${n(num(d.kwPorTR), 2)} kW/TR`,
++    resumenEn: (d) => `${d.sistema || "system"} · ${(d.plant || []).length ? (d.plant || []).map((p) => `${p.qty ?? 1} × ${p.modelo}`).join(", ") : "no central plant"} · ${n(num(d.instPlant), 1)} TR of plant · block ${n(num(d.blockTons), 1)} TR · ${n(num(d.kwPorTR), 2)} kW/TR` }),
++  "duct>kaizen": propuestaKaizen("duct>kaizen", { origen: "duct", permisos: ["duct>kaizen"],
++    titulo: "Tramos de ducto para Kaizen", tituloEn: "Duct runs for Kaizen", origenEn: "Ductwork and gauges",
++    que: "Cada tramo de Ductos con su caudal, longitud, forma, medidas y fricción. Si después cambian los tramos, la propuesta sale desactualizada y Kaizen no se mueve solo.",
++    disponible: () => !!(DUCT && Array.isArray(DUCT.segs) && DUCT.segs.length && capturaReal("duct")),
++    resumen: (d) => `${(d.segs || []).length} tramo(s)${(d.segs || []).length ? `: ${(d.segs || []).slice(0, 4).map((s) => s.tag).join(", ")}${(d.segs || []).length > 4 ? " y más" : ""}` : ""}`,
++    resumenEn: (d) => `${(d.segs || []).length} run(s)${(d.segs || []).length ? `: ${(d.segs || []).slice(0, 4).map((s) => s.tag).join(", ")}${(d.segs || []).length > 4 ? " and more" : ""}` : ""}` }),
++  "quote>kaizen": propuestaKaizen("quote>kaizen", { origen: "quote", permisos: ["quote>kaizen"],
++    titulo: "Precio por TR de equipo para Kaizen", tituloEn: "Equipment price per TR for Kaizen", origenEn: "Quote",
++    que: "El precio por tonelada de EQUIPO de la cotización (partidas de equipo entre sus TR), para poner en pesos el ahorro de inversión. Si después cambia la cotización, la propuesta sale desactualizada y Kaizen no se mueve solo.",
++    disponible: () => !!(QUOTE && QUOTE.mxnTRequipo > 0),
++    resumen: (d) => `${money(num(d.mxnTR), 1, "MXN")} por TR de equipo (${money(num(d.equipTotal), 1, "MXN")} en ${n(num(d.equipTons), 1)} TR)`,
++    resumenEn: (d) => `MXN ${n(num(d.mxnTR), 0)} per TR of equipment (MXN ${n(num(d.equipTotal), 0)} over ${n(num(d.equipTons), 1)} TR)` }),
++  "elec>kaizen": propuestaKaizen("elec>kaizen", { origen: "elec", permisos: [],
++    titulo: "Alimentador general para Kaizen", tituloEn: "Main feeder for Kaizen", origenEn: "Electrical",
++    que: "El alimentador general de Eléctrico: calibre, conductores por fase, material, corriente, demanda, fases y la distancia al tablero capturada (sin distancia, Kaizen deja el calibre económico «pendiente de longitud»). Si después cambia el eléctrico, la propuesta sale desactualizada y Kaizen no se mueve solo.",
++    disponible: () => !!(ELEC && ELEC.alim && ELEC.alim.awg && ELEC.Itab > 0 && ELEC.kVAdemanda > 0),
++    resumen: (d) => `alimentador ${num(d.paralelo, 1) > 1 ? `${d.paralelo} × ` : ""}${d.awg} ${d.mat} · ${n(num(d.Itab), 0)} A · ${d.Ltablero != null ? `${n(num(d.Ltablero), 0)} m al tablero` : "sin distancia al tablero"}`,
++    resumenEn: (d) => `feeder ${num(d.paralelo, 1) > 1 ? `${d.paralelo} × ` : ""}${d.awg} ${d.mat} · ${n(num(d.Itab), 0)} A · ${d.Ltablero != null ? `${n(num(d.Ltablero), 0)} m to the panel` : "no distance to the panel"}` }),
++  "hidro>kaizen": propuestaKaizen("hidro>kaizen", { origen: "hidro", permisos: [],
++    titulo: "Tramos de agua para Kaizen", tituloEn: "Water piping runs for Kaizen", origenEn: "Plumbing",
++    que: "Cada tramo de Hidrosanitario con su diámetro y su velocidad. Si después cambia la red, la propuesta sale desactualizada y Kaizen no se mueve solo.",
++    disponible: () => !!(HIDRO && Array.isArray(HIDRO.tramos) && HIDRO.tramos.length && capturaReal("hidro")),
++    resumen: (d) => `${(d.tramos || []).length} tramo(s) con su diámetro y su velocidad`,
++    resumenEn: (d) => `${(d.tramos || []).length} run(s) with their diameter and velocity` }),
++  "fuego>kaizen": propuestaKaizen("fuego>kaizen", { origen: "fuego", permisos: [],
++    titulo: "Área de diseño contra incendio para Kaizen", tituloEn: "Fire-protection design area for Kaizen", origenEn: "Fire protection",
++    que: "El área de diseño, el mínimo de su clase de riesgo y el caudal de Contra incendio. Si después cambia, la propuesta sale desactualizada y Kaizen no se mueve solo.",
++    disponible: () => !!(FUEGO && FUEGO.r && FUEGO.qTotal > 0 && FUEGO.areaDis > 0),
++    resumen: (d) => `${n(num(d.areaDis), 0)} m² de área de diseño · mínimo de ${String(d.clase || "la clase").toLowerCase()} ${n(num(d.areaMin), 0)} m² · ${n(num(d.qTotal), 0)} L/min`,
++    resumenEn: (d) => `${n(num(d.areaDis), 0)} m² design area · class minimum ${n(num(d.areaMin), 0)} m² · ${n(num(d.qTotal), 0)} L/min` }),
+ };
++/* H-279 · Una propuesta hacia Kaizen: la arma el origen con lo que calculó (kzDatosDe); aceptarla guarda la instantánea
++   (tomarEntradaKaizen). No hay «capturo lo mío»: Kaizen no captura esos datos; sin aceptar, lo que dependa de esa disciplina
++   queda pendiente. */
++function propuestaKaizen(id, def) {
++  const aceptada = () => entradaKaizen(id);
++  return {
++    destino: "kaizen", origen: def.origen, permisos: def.permisos, titulo: def.titulo, que: def.que, sinPropio: true,
++    disponible: def.disponible,
++    firma: () => huellaTexto(estable(kzDatosDe(id))),
++    resumen: () => def.resumen(kzDatosDe(id)),
++    actual: () => { const e = aceptada(); return e ? `instantánea aceptada el ${fechaCorta(e.ts)} · ${def.resumen(e.datos)}` : `sin instantánea: Kaizen no revisa ${KZ_REVISA[id]}`; },
++    enVivo: () => false,
++    aplicar: (ts) => tomarEntradaKaizen(id, ts),
++    propio: () => {},
++    /* Regla 7: la fila llega al libro de la propuesta con su espejo en inglés. */
++    en: (e) => ({ destino: "Kaizen", campo: def.tituloEn,
++      valor: e.rec ? (e.rec.estado === "aceptado" ? (aceptada() ? def.resumenEn(aceptada().datos) : "accepted, no snapshot") : "not used") : "not decided",
++      origen: def.origenEn, estado: { "sin-datos": "No data at the source", pendiente: "Proposal available", aceptado: "Accepted · current", desactualizado: "Out of date · the source changed", propio: "Not used", vivo: "Live (previous mode)" }[e.nivel] || e.nivel }),
++  };
++}
+ /* H-263 · El ventilador que se ofrece para seleccionar: el modelo que cubre el caudal, con los HP de su submittal. */
+ function ventSeleccionable() {
+   const p = VENT && VENT.eq && VENT.eq.primary; if (!p) return null;
+@@ -18624,13 +18938,15 @@ function propuestaHtml(id) {
+   const actual = seguro(() => P.actual(), "");
+   const rec = e.rec;
+   let cuerpo = "", botones = "";
++  /* H-279: en las propuestas hacia Kaizen no hay «capturo lo mío» (Kaizen no captura esos datos: sin aceptar, queda pendiente). */
++  const propioBtn = (clase) => P.sinPropio ? "" : `<button class="${clase}" data-act="prop-propio" data-id="${id}">Capturo lo mío</button>`;
+   switch (e.nivel) {
+     case "sin-datos":
+       cuerpo = `<div class="sub">Todavía no hay nada que proponer: captura primero en <b>${esc(origen)}</b>.</div>`;
+       break;
+     case "pendiente":
+       cuerpo = `<div class="prow"><span class="pk">Propone</span><span>${esc(resumen)}</span></div><div class="prow"><span class="pk">Ahora hay</span><span>${esc(actual)}</span></div>`;
+-      botones = `<button class="btn-primary" data-act="prop-aceptar" data-id="${id}">Aceptar la propuesta</button><button class="btn-ghost" data-act="prop-propio" data-id="${id}">Capturo lo mío</button>`;
++      botones = `<button class="btn-primary" data-act="prop-aceptar" data-id="${id}">Aceptar la propuesta</button>${propioBtn("btn-ghost")}`;
+       break;
+     case "vivo":
+       cuerpo = `<div class="prow"><span class="pk">Entra en vivo</span><span>${esc(resumen)}</span></div>
+@@ -18639,13 +18955,13 @@ function propuestaHtml(id) {
+       break;
+     case "aceptado":
+       cuerpo = `<div class="prow"><span class="pk">Aceptada</span><span>${esc(rec.resumen || "")} · <b>${esc(rec.origen)}</b> · ${fechaCorta(rec.ts)}</span></div><div class="prow"><span class="pk">Ahora hay</span><span>${esc(actual)}</span></div>`;
+-      botones = `<button class="btn-ghost" data-act="prop-aceptar" data-id="${id}">Volver a aplicar</button><button class="btn-ghost" data-act="prop-propio" data-id="${id}">Capturo lo mío</button>`;
++      botones = `<button class="btn-ghost" data-act="prop-aceptar" data-id="${id}">Volver a aplicar</button>${propioBtn("btn-ghost")}`;
+       break;
+     case "desactualizado":
+       cuerpo = `<div class="prow"><span class="pk">Se aceptó</span><span>${esc(rec.resumen || "")} · ${fechaCorta(rec.ts)}</span></div>
+         <div class="prow"><span class="pk">Hoy propone</span><span>${e.disponible ? esc(resumen) : "el origen ya no tiene datos"}</span></div>
+         <div class="sub"><b>El origen cambió</b> desde que se aceptó. Esta disciplina sigue con lo aceptado: no se recalcula sola.</div>`;
+-      botones = `<button class="btn-primary" data-act="prop-aceptar" data-id="${id}">Actualizar con la propuesta</button><button class="btn-ghost" data-act="prop-conservar" data-id="${id}">Conservar lo aceptado</button><button class="btn-ghost" data-act="prop-propio" data-id="${id}">Capturo lo mío</button>`;
++      botones = `<button class="btn-primary" data-act="prop-aceptar" data-id="${id}">Actualizar con la propuesta</button><button class="btn-ghost" data-act="prop-conservar" data-id="${id}">Conservar lo aceptado</button>${propioBtn("btn-ghost")}`;
+       break;
+     case "propio":
+       cuerpo = `<div class="prow"><span class="pk">Capturado</span><span>a mano · ${fechaCorta(rec.ts)}${e.cambio ? " · desde entonces el origen cambió" : ""}</span></div>${e.disponible ? `<div class="prow"><span class="pk">Propone</span><span>${esc(resumen)}</span></div>` : ""}`;
+@@ -19107,9 +19423,10 @@ const MOTOR_ACC = {
+   valor: { donde: "Carga térmica › zonas y Selección de equipo", archivo: "Memoria-ingenieria-valor", memoria: () => buildValorPdf(),
+     sinCot: "Ingeniería de valor compara alternativas: no genera partidas de cotización",
+     falta: () => (capturaReal("valor") && totals().area > 0 && SYS && SYS.chosen && SYS.chosen.id !== "none" ? "" : "Falta el sistema seleccionado") },
+-  kaizen: { donde: "Carga térmica › zonas", archivo: "Memoria-kaizen", memoria: () => buildKaizenPdf(),
++  /* H-279: Kaizen revisa lo que se le acepta de cada disciplina; se puede calcular en cuanto hay algo que aceptar o aceptado. */
++  kaizen: { donde: "las demás disciplinas (sus propuestas se aceptan en Kaizen)", archivo: "Memoria-kaizen", memoria: () => buildKaizenPdf(),
+     sinCot: "Kaizen mide oportunidades de mejora: no genera partidas de cotización",
+-    falta: () => (S.zones.length > 0 && totals().area > 0 ? "" : "Faltan zonas con área para revisar") },
++    falta: () => (Object.keys(((S.kaizen || {}).entradas) || {}).length || capturaReal("kaizen") ? "" : "Faltan datos: ninguna disciplina tiene todavía algo que proponer a Kaizen y no hay mejoras capturadas") },
+   elec: { donde: "Eléctrico", archivo: "Cuadro-de-cargas", memoria: () => buildElecPdf(), cot: "elec",
+     falta: () => (capturaReal("elec") ? "" : "Faltan cargas eléctricas con kW capturados") },
+   hidro: { donde: "Hidrosanitario", archivo: "Hidrosanitario", memoria: () => buildHidroPdf(), cot: "hidro",
+@@ -19202,8 +19519,10 @@ const ENTRADAS = {
+   quote: () => ({ quote: sinClaves(S.quote, ["prop"]), qfam: S.qfam, perms: ePerms(),
+     /* H-267: la cotización lee la carga (caudal de difusores, cruce load>quote); antes le llegaba anidada en la de selección. */
+     motores: ["load", "equip", "duct", "vent", "clean", "elec", "hidro", "fuego", "aire", "civil", "soporte"].map((k) => ENTRADAS[k]()) }),
+-  kaizen: () => ({ kaizen: S.kaizen, load: ENTRADAS.load(), duct: ENTRADAS.duct(), equip: ENTRADAS.equip(), quote: ENTRADAS.quote(),
+-    elec: ENTRADAS.elec(), hidro: ENTRADAS.hidro(), fuego: ENTRADAS.fuego(), perms: ePerms() }),
++  /* H-279: sólo su captura: las instantáneas aceptadas (con su fecha), la tarifa, las horas y el precio del alimentador, y las
++     mejoras. Ya no anida la carga, los ductos, la selección, la cotización, el eléctrico, el hidráulico, contra incendio ni los
++     permisos: cambiar una disciplina no marca a Kaizen hasta que se acepte su propuesta. La marca de migración es pasajera. */
++  kaizen: () => ({ kaizen: sinClaves(S.kaizen, ["tomarEntradas"]) }),
+   valor: () => ({ kaizen: S.kaizen, vinculos: eVinc(), her: eHer(), equip: ENTRADAS.equip(), quote: ENTRADAS.quote() }),
+ };
+ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(estable(f())) : ""; }
+@@ -19211,7 +19530,7 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
+    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
+    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
+    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
+-const MOTOR_VER = { load: "6", clean: "3", equip: "3", duct: "4", vent: "4", quote: "24", valor: "2", kaizen: "1", elec: "9", hidro: "8", fuego: "6", aire: "5", civil: "8", soporte: "12" };
++const MOTOR_VER = { load: "6", clean: "3", equip: "3", duct: "4", vent: "4", quote: "24", valor: "3", kaizen: "2", elec: "9", hidro: "8", fuego: "6", aire: "5", civil: "8", soporte: "12" };
+ const MOTOR_CAMBIOS = {
+   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
+     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
+@@ -19221,7 +19540,9 @@ const MOTOR_CAMBIOS = {
+     { ver: "6", rev: "2.9.24", que: "H-263 (decisión del dueño, 27-sep-2026): el ventilador SELECCIONADO en Ventilación entra a la zona elegida como misceláneos, HP de referencia del submittal Greenheck (ESTIMADO por la casa en el punto medio del catálogo: rendimiento 0.65, +15 %, ¼ HP; ratificar con placa) × 745.7 W sensibles, como instantánea (si ventilación cambia después, la carga no se mueve sola; se vuelve a seleccionar). Sin selección la carga no cambia" }],
+   equip: [{ ver: "2", rev: "2.9.24", que: "H-267 (decisión del dueño, 27-sep-2026): la selección de equipo es autónoma: calcula sólo con sus zonas de selección (capturadas en su pestaña o aceptadas de carga térmica como propuesta load>equip, instantánea con origen y fecha; nombre, TR, CFM, aire exterior, área, sensible y latente, hora pico y perfil horario). Ya no lee la carga EN VIVO (salió del núcleo térmico); ya aceptada no se mueve sola (si la carga cambia sale «desactualizada»). Una zona sin perfil horario deja la simultaneidad por hora pendiente (bloque = suma de picos, sin diversidad supuesta) y sin hora pico no cuenta en la ventana ni en la dispersión. Un proyecto guardado toma una vez la instantánea al abrir: mismas cifras (proyecto fijo: VRF, 16.8989 / 19.8518 TR)" },
+     { ver: "3", rev: "2.9.24", que: "H-274 (decisión del dueño, 28-sep-2026): Selección no tiene ningún vínculo con Ductos, ni lectura en vivo ni propuesta aceptada, en ninguna dirección. La presión estática externa que debe vencer el equipo se captura en la pestaña de Selección (S.equip.espCaptura, in.wg); sin captura queda «pendiente» y el criterio de presión no se evalúa (antes, con el permiso duct>equip, se tomaba en vivo la suma de tramos de ductos con 15 % de margen y castigaba el ajuste). Salió el cruce duct>equip, la huella ya no anida la de ductos y la memoria ya no imprime la preselección por zona leída en vivo de Carga térmica. Sin migración: sin captura, el criterio queda pendiente (proyecto fijo: mismas cifras de sistema; esp 0)" }],
+-  valor: [{ ver: "2", rev: "2.9.24", que: "H-286 (X-3, decisión del dueño D5, 28-sep-2026): el consumo por TR de cada sistema alterno sale de su tecnología (la ficha de la planta o, sin planta, de sus terminales, con la eficiencia estimada por familia de EFF_EST y su fuente); antes corrKeyOf recibía el nombre y siempre resolvía split DX, así que el ahorro de kW de las alternativas de sistema valía 0. Sin ficha no se compara consumo (no se supone). El equipo alterno de la misma familia sin kWe de catálogo usa la eficiencia de su familia (antes la de split DX)" }],
++  valor: [{ ver: "2", rev: "2.9.24", que: "H-286 (X-3, decisión del dueño D5, 28-sep-2026): el consumo por TR de cada sistema alterno sale de su tecnología (la ficha de la planta o, sin planta, de sus terminales, con la eficiencia estimada por familia de EFF_EST y su fuente); antes corrKeyOf recibía el nombre y siempre resolvía split DX, así que el ahorro de kW de las alternativas de sistema valía 0. Sin ficha no se compara consumo (no se supone). El equipo alterno de la misma familia sin kWe de catálogo usa la eficiencia de su familia (antes la de split DX)" },
++    { ver: "3", rev: "2.9.24", que: "H-279 (dependencia de Kaizen v2): las medidas que vienen de Kaizen siguen a sus oportunidades, que ahora salen sólo de las instantáneas aceptadas; los hallazgos críticos de la validación ya no llegan como medida de Kaizen (el proyecto fijo pierde kz-2-defecto y las demás se renumeran). La lógica de Valor no cambió" }],
++  kaizen: [{ ver: "2", rev: "2.9.24", que: "H-279 (decisiones del dueño D1, D2 y D3, 28-sep-2026): Kaizen es autónomo. Calcula sólo con las instantáneas aceptadas de cada disciplina (propuestas load>, equip>, duct>, quote>, elec>, hidro> y fuego>kaizen, con origen, fecha y firma: si el origen cambia, sale desactualizada y Kaizen no se mueve solo) y con su captura de tarifa, horas y precio del alimentador ({ valor, fuente, fecha }); las zonas vuelven a correr con el sitio con que se aceptaron. Sin la instantánea de una disciplina, lo que depende de ella queda pendiente; sin tarifa u horas, la operación queda pendiente; sin distancia al tablero, «pendiente de longitud» (antes 2.85 MXN/kWh, 3500 h/año, 1350 MXN/m y 30 m supuestos, y lecturas en vivo de carga, selección, ductos, cotización, eléctrico, hidráulico y contra incendio). Los hallazgos críticos de la validación ya no son oportunidades de Kaizen (son del semáforo): el proyecto fijo pierde «Validación». Un proyecto anterior abre con las mismas oportunidades, TR, kW, inversión, operación y retornos (migración: instantáneas de lo que entraba y semillas rotuladas «semilla sin fuente (migración)»)" }],
+   vent: [{ ver: "2", rev: "2.9.24", que: "H-154 + H-156: la cobertura real manda en la selección Greenheck (cfmMin ≤ objetivo ≤ cfmMax, sin tolerancia ×0.9); la familia del modo sólo ordena entre los que cubren; si nadie cubre no hay modelo (proyecto fijo: GB-360 → CSW-30 para 11,643 CFM)" },
+     { ver: "3", rev: "2.9.24", que: "H-155: sin medidas no hay caudal: campana sin largo o fondo y rejilla sin ancho, alto, área libre o velocidad dan demanda 0 con aviso (antes pisos de 0.1 ft, 5 % y 100 fpm fabricaban 30 y 258 CFM y sus partidas)" },
+     { ver: "4", rev: "2.9.24", que: "H-262 (decisión del dueño, 27-sep-2026): ventilación calcula sólo con sus propios datos: el área, la altura y los ocupantes ya no se copian de carga térmica (se capturan en su pestaña; un proyecto guardado conserva los valores que ya tenía copiados). Se retira la propuesta load>vent (aire exterior de carga térmica como reposición: con el local sin capturar fabricaba cambios/h sobre 1 m² × 0.1 m). Sin área o altura capturadas, el caudal por cambios de aire queda pendiente de captura, con aviso. La relación con carga térmica va al revés: el ventilador seleccionado entrega el calor de su motor a una zona (H-263)" }],
+@@ -23046,9 +23367,9 @@ const GUIA = {
+   valor: { que: "Compara lo calculado contra alternativas equivalentes del catálogo y contra lo que Kaizen detecta, y arma cada medida con su ahorro estimado y su justificación técnica.",
+     cuando: "Antes de emitir la propuesta, para llevar a la junta de aclaraciones lo que se puede mejorar sin bajar el alcance.",
+     ojo: "Aceptar una medida no cambia el cálculo: registra la decisión y deja constancia. El cambio lo haces tú en la pestaña de la disciplina, con tu firma." },
+-  kaizen: { que: "Detecta desperdicio medible sobre el proyecto real y lo separa en ahorro de inversión y de operación.",
++  kaizen: { que: "Detecta desperdicio medible sobre el proyecto real, tal como lo aceptaste de cada disciplina (instantánea con fecha), y lo separa en ahorro de inversión y de operación. La tarifa eléctrica, las horas de operación y el precio del alimentador se capturan aquí con su fuente y su fecha.",
+     cuando: "Antes de cerrar el alcance, cuando todavía se puede cambiar algo.",
+-    ojo: "Las oportunidades de aire exterior, cambios de aire, muros, vidrio e iluminación se miden volviendo a correr la zona con el cambio aplicado; las demás se leen del resultado ya calculado, y algunas, como los defectos de captura, se enlistan sin ahorro cuantificado." },
++    ojo: "Las oportunidades de aire exterior, cambios de aire, muros, vidrio e iluminación se miden volviendo a correr la zona con el cambio aplicado, sobre la copia aceptada de Carga térmica y con su sitio; las demás se leen de lo aceptado de cada disciplina, y algunas, como los defectos de captura, se enlistan sin ahorro cuantificado. Nada entra solo: si una disciplina cambia, su propuesta sale desactualizada y Kaizen sigue con lo aceptado; sin aceptarla, lo que depende de ella queda pendiente, y sin tarifa u horas la operación no se valúa." },
+   /* rev 2.9.14 · Estructural no tenía guía: su vista repetía en dos párrafos lo que aquí queda, y el modbar y la barra de
+      acciones ya dicen que corre como archivo aparte. Nada se perdió: presentación y aviso de liberación viven ahora aquí. */
+   estructural: { que: "El motor estructural de la casa es EMP StructCalc v0.1.2 (solver 3D, P-Delta, análisis modal, pandeo, generador de marco a dos aguas). Corre como archivo aparte, StructCalc.html, sin instalación.",
+@@ -23743,6 +24064,8 @@ document.addEventListener("click", (e) => {
+     }
+     case "kz-state": { S.kaizen.items[+b.dataset.i].estado = b.dataset.v; projAutosave(); render(); break; }
+     case "kz-del": { S.kaizen.items.splice(+b.dataset.i, 1); projAutosave(); render(); break; }
++    /* H-279: un proyecto anterior que no valuaba la operación en pesos sigue así hasta que el usuario decide valuarla con su tarifa y sus horas. */
++    case "kz-valuar-opex": { histSnap("valuar la operación en Kaizen"); if (S.kaizen) delete S.kaizen.opexSinValuar; projAutosave(); recompute(); render(); toast("La operación se valúa con la tarifa y las horas de Kaizen (revisa su fuente y su fecha)"); break; }
+     case "open-projects": openModal(projectsModal()); break;
+     case "ask-link": requestLink(b.dataset.id, () => { recompute(); render(); }); break;
+     case "link-grant": {
+@@ -23993,6 +24316,9 @@ function sanearEstado(d) {
+   /* rev 2.9.14 · El formato se lee del archivo ANTES de mezclarlo con los valores por omisión (que traen formato 2): sólo un
+      proyecto anterior al formato 2 pasa por las migraciones de una sola vez. */
+   const formatoAnterior = num(d && typeof d === "object" ? d.formato : undefined, 1);
++  /* H-279: un proyecto guardado antes de que Kaizen fuera autónomo (trae zonas y su Kaizen no trae la marca h279) se migra al
++     abrir; uno nuevo (el estado inicial, una plantilla o un proyecto en blanco) nace con la marca y no se migra. */
++  const kzAnterior = !!(d && typeof d === "object" && Array.isArray(d.zones) && !(d.kaizen && typeof d.kaizen === "object" && d.kaizen.h279 === true));
+   const s = { ...base, ...(d && typeof d === "object" ? d : {}) };
+   if (!Array.isArray(s.zones) || !s.zones.length) s.zones = [defaultZone()];
+   s.zones = s.zones.map((z) => (z && typeof z === "object" ? { ...defaultZone(z.name || "Zona"), ...z } : defaultZone("Zona")));
+@@ -24202,6 +24528,28 @@ function sanearEstado(d) {
+   if (!Array.isArray(s.kaizen.items)) s.kaizen.items = [];
+   if (!s.kaizen.ve || typeof s.kaizen.ve !== "object") s.kaizen.ve = {};
+   if (!Array.isArray(s.kaizen.desv)) s.kaizen.desv = [];
++  /* H-279 (decisiones del dueño D2 y D3, 28-sep-2026): Kaizen calcula sólo con instantáneas aceptadas y con su captura propia de
++     tarifa, horas y precio del alimentador. Un proyecto guardado antes se marca para tomar UNA vez, al abrir, la instantánea de
++     cada fuente que entraba (las de permiso concedido; eléctrico, hidrosanitario y contra incendio, que entraban sin permiso; y
++     la selección de equipo, que entraba junto con la carga): la consume recompute después de calcular los orígenes. Sin permiso
++     previo no se toma nada. La tarifa, las horas y el precio del alimentador que usaba (de la cotización, sin campo de captura) se
++     conservan con la MISMA cifra, rotulados «semilla sin fuente (migración)»; si no valuaba la operación en pesos (sin el permiso
++     de Cotización), sigue sin valuarla hasta que el usuario confirme tarifa y horas. */
++  s.kaizen.entradas = s.kaizen.entradas && typeof s.kaizen.entradas === "object" && !Array.isArray(s.kaizen.entradas)
++    ? Object.fromEntries(Object.entries(s.kaizen.entradas).filter(([k, v]) => ENTRADAS_KAIZEN.includes(k) && v && typeof v === "object" && v.datos && typeof v.datos === "object" && !Array.isArray(v.datos))) : {};
++  Object.keys(KZ_SUPUESTOS).forEach((k) => { s.kaizen[k] = supuestoKaizenSano(s.kaizen[k]); });
++  if (s.kaizen.opexSinValuar !== true) delete s.kaizen.opexSinValuar;
++  if (Array.isArray(s.kaizen.tomarEntradas)) s.kaizen.tomarEntradas = s.kaizen.tomarEntradas.filter((k) => ENTRADAS_KAIZEN.includes(k)); else delete s.kaizen.tomarEntradas;
++  if (kzAnterior) {
++    const pm = s.perms || {}, q = s.quote && typeof s.quote === "object" ? s.quote : {};
++    s.kaizen.tomarEntradas = [...(pm["load>kaizen"] ? ["load>kaizen", "equip>kaizen"] : []), ...(pm["duct>kaizen"] ? ["duct>kaizen"] : []),
++      ...(pm["quote>kaizen"] ? ["quote>kaizen"] : []), "elec>kaizen", "hidro>kaizen", "fuego>kaizen"];
++    /* La misma cifra que usaba Kaizen: la del archivo o, si el archivo no la trae, la que tomaba por omisión. */
++    const semilla = (v, antes) => ({ valor: Math.max(0, num(v, antes)), fuente: KZ_SEMILLA, fecha: "", semilla: true });
++    s.kaizen.tarifaKWh = semilla(q.tarifaKWh, 2.85); s.kaizen.horasAno = semilla(q.horasAno, 3500); s.kaizen.alimM = semilla(q.alimM, 1350);
++    if (!pm["quote>kaizen"]) s.kaizen.opexSinValuar = true;
++  }
++  s.kaizen.h279 = true;
+   const nuevo = !s.her || typeof s.her !== "object";
+   if (nuevo) s.her = {};
+   /* Migracion de un proyecto anterior a la regla 1: si el valor guardado
+diff --git a/parches/mutantes/kaizen.json b/parches/mutantes/kaizen.json
+new file mode 100644
+index 0000000..afd397a
+--- /dev/null
++++ b/parches/mutantes/kaizen.json
+@@ -0,0 +1,130 @@
++[
++ {
++  "id": "kaizen.m1",
++  "que": "H-279 (D1): las zonas de la instantánea corren con el sitio vivo y no con el de la instantánea",
++  "logica": true,
++  "buscar": "  SITE = D && D.sitio && typeof D.sitio === \"object\" ? D.sitio : sitioVivo;",
++  "reemplazar": "  SITE = sitioVivo;",
++  "estado": "vigente"
++ },
++ {
++  "id": "kaizen.m2",
++  "que": "H-279: las oportunidades de zona leen las zonas vivas de Carga térmica en vez de la instantánea aceptada",
++  "logica": true,
++  "buscar": "  const zonasKz = DL && Array.isArray(DL.zonas) ? DL.zonas : [];",
++  "reemplazar": "  const zonasKz = DL ? S.zones : [];",
++  "estado": "vigente"
++ },
++ {
++  "id": "kaizen.m3",
++  "que": "H-279 (D3): sin tarifa ni horas capturadas vuelven las semillas 2.85 MXN/kWh y 3500 h/año",
++  "logica": true,
++  "buscar": "  const tarifa = sup.tarifa ? sup.tarifa.valor : null, horas = sup.horas ? sup.horas.valor : null;",
++  "reemplazar": "  const tarifa = sup.tarifa ? sup.tarifa.valor : 2.85, horas = sup.horas ? sup.horas.valor : 3500;",
++  "estado": "vigente"
++ },
++ {
++  "id": "kaizen.m4",
++  "que": "H-279 (D3, regla 6): una tarifa sin fuente ni fecha cuenta como capturada",
++  "logica": true,
++  "buscar": "  return fuente && fecha ? { valor: num(v.valor), fuente, fecha, semilla: false } : null;",
++  "reemplazar": "  return { valor: num(v.valor), fuente, fecha, semilla: false };",
++  "estado": "vigente"
++ },
++ {
++  "id": "kaizen.m5",
++  "que": "H-279: contra incendio vuelve a leerse en vivo, sin propuesta aceptada",
++  "logica": true,
++  "buscar": "  const DF = eFuego ? eFuego.datos : null;",
++  "reemplazar": "  const DF = FUEGO && FUEGO.r ? { areaDis: FUEGO.areaDis, areaMin: FUEGO.r.areaMin, qTotal: FUEGO.qTotal, clase: FUEGO.r.label } : null;",
++  "estado": "vigente"
++ },
++ {
++  "id": "kaizen.m6",
++  "que": "H-279 (D3): la migración no conserva tarifa, horas ni precio del alimentador de un proyecto guardado",
++  "logica": true,
++  "buscar": "    s.kaizen.tarifaKWh = semilla(q.tarifaKWh, 2.85); s.kaizen.horasAno = semilla(q.horasAno, 3500); s.kaizen.alimM = semilla(q.alimM, 1350);",
++  "reemplazar": "    /* sin semillas */",
++  "estado": "vigente"
++ },
++ {
++  "id": "kaizen.m7",
++  "que": "H-279: la migración toma la carga y la selección aunque el proyecto no tuviera el permiso (gana cifras)",
++  "logica": true,
++  "buscar": "    s.kaizen.tomarEntradas = [...(pm[\"load>kaizen\"] ? [\"load>kaizen\", \"equip>kaizen\"] : []), ...(pm[\"duct>kaizen\"] ? [\"duct>kaizen\"] : []),",
++  "reemplazar": "    s.kaizen.tomarEntradas = [...[\"load>kaizen\", \"equip>kaizen\"], ...(pm[\"duct>kaizen\"] ? [\"duct>kaizen\"] : []),",
++  "estado": "vigente"
++ },
++ {
++  "id": "kaizen.m8",
++  "que": "H-279: un proyecto que no valuaba la operación en pesos (sin permiso de Cotización) la valúa al abrir con la semilla",
++  "logica": true,
++  "buscar": "    if (!pm[\"quote>kaizen\"]) s.kaizen.opexSinValuar = true;",
++  "reemplazar": "    /* siempre valúa */",
++  "estado": "vigente"
++ },
++ {
++  "id": "kaizen.m9",
++  "que": "H-179/H-279: sin distancia al tablero en la instantánea vuelven los 30 m supuestos",
++  "logica": true,
++  "buscar": "    const Lm = num(DE.Ltablero, 0) > 0 ? num(DE.Ltablero) : null;",
++  "reemplazar": "    const Lm = num(DE.Ltablero, 0) > 0 ? num(DE.Ltablero) : 30;",
++  "estado": "vigente"
++ },
++ {
++  "id": "kaizen.m10",
++  "que": "H-279: la caché de Kaizen firma sólo las mejoras y no las instantáneas aceptadas (aceptar deja un Kaizen viejo)",
++  "logica": true,
++  "buscar": "  const key = JSON.stringify(sinClaves(S.kaizen || {}, [\"tomarEntradas\"]));",
++  "reemplazar": "  const key = JSON.stringify((S.kaizen || {}).items);",
++  "estado": "vigente"
++ },
++ {
++  "id": "kaizen.m11",
++  "que": "H-279: la huella de Kaizen vuelve a anidar los ductos en vivo (renombrar un tramo lo marca desactualizado)",
++  "logica": true,
++  "buscar": "  kaizen: () => ({ kaizen: sinClaves(S.kaizen, [\"tomarEntradas\"]) }),",
++  "reemplazar": "  kaizen: () => ({ kaizen: sinClaves(S.kaizen, [\"tomarEntradas\"]), duct: ENTRADAS.duct() }),",
++  "estado": "vigente"
++ },
++ {
++  "id": "kaizen.m12",
++  "que": "H-279 (regla 8): la memoria ya no dice que la entrada es una instantánea aceptada vigente",
++  "logica": false,
++  "buscar": "? \"instantanea aceptada; el origen cambio despues (desactualizada: se usa lo aceptado)\" : \"instantanea aceptada, vigente\")",
++  "reemplazar": "? \"instantanea aceptada; el origen cambio despues (desactualizada: se usa lo aceptado)\" : \"Autorizado\")",
++  "estado": "vigente"
++ },
++ {
++  "id": "kaizen.m13",
++  "que": "H-279: la planta instalada de la oportunidad de sobreproducción sale de la selección viva y no de la instantánea",
++  "logica": true,
++  "buscar": "    const instPlant = num(DQ.instPlant);",
++  "reemplazar": "    const instPlant = SYS && SYS.chosen ? num(SYS.chosen.instPlant) : 0;",
++  "estado": "vigente"
++ },
++ {
++  "id": "kaizen.m14",
++  "que": "H-279: el precio por TR de equipo vuelve a leerse en vivo de la cotización, sin propuesta aceptada",
++  "logica": true,
++  "buscar": "  const mxnTR = eQuote && num(eQuote.datos.mxnTR) > 0 ? num(eQuote.datos.mxnTR) : 0;",
++  "reemplazar": "  const mxnTR = QUOTE && QUOTE.mxnTRequipo > 0 ? QUOTE.mxnTRequipo : 0;",
++  "estado": "vigente"
++ },
++ {
++  "id": "kaizen.m15",
++  "que": "H-279: los tramos de ducto vuelven a leerse en vivo, sin propuesta aceptada",
++  "logica": true,
++  "buscar": "    const segsKz = Array.isArray(eDuct.datos.segs) ? eDuct.datos.segs : [];",
++  "reemplazar": "    const segsKz = DUCT && Array.isArray(DUCT.segs) ? DUCT.segs : [];",
++  "estado": "vigente"
++ },
++ {
++  "id": "kaizen.m16",
++  "que": "H-279: la corrida base de una zona con control de humedad ya no combina los dos casos ASHRAE (no es la misma corrida que Carga térmica: cambia la cifra al abrir)",
++  "logica": true,
++  "buscar": "    if (!cambios && requiereHR(copia) && SITE.deshum) {",
++  "reemplazar": "    if (false) {",
++  "estado": "vigente"
++ }
++]
+diff --git a/parches/regresion-motores/genera.mjs b/parches/regresion-motores/genera.mjs
+index 4b3b364..af2813f 100644
+--- a/parches/regresion-motores/genera.mjs
++++ b/parches/regresion-motores/genera.mjs
+@@ -71,6 +71,15 @@ w.eval(String.raw`
+   aceptarZonasEquip(zonasPropuestasEquip(), Date.UTC(2026, 8, 21, 12)); registrarVinculo("load>equip", "aceptado"); recompute();
+   /* H-268: el eléctrico es autónomo. El proyecto fijo nunca estuvo en modo en vivo (tomarHVAC false: sólo sus dos cargas
+      capturadas), así que no hay propuesta que aceptar y sus cifras no cambian; el esperado de elec sube sólo de versión (v9). */
++  /* H-279: Kaizen es autónomo: el proyecto fijo acepta, al final y con fecha fija, las propuestas hacia Kaizen que hay (carga,
++     selección, ductos, cotización, eléctrico, hidrosanitario y contra incendio) y captura la tarifa, las horas y el precio del
++     alimentador con las mismas cifras que antes eran semilla. El fixture guardado sigue siendo de antes (sin la marca h279) y se
++     migra al abrirlo: R.1 comprueba que la migración da lo mismo que aceptar (sin la oportunidad «Validación», que salió de Kaizen). */
++  ENTRADAS_KAIZEN.forEach((id) => { if (PROPUESTAS[id].disponible()) { tomarEntradaKaizen(id, Date.UTC(2026, 8, 28, 12)); registrarVinculo(id, "aceptado"); } });
++  S.kaizen.tarifaKWh = { valor: 2.85, fuente: "fixture de regresión", fecha: "2026-09-28" };
++  S.kaizen.horasAno = { valor: 3500, fuente: "fixture de regresión", fecha: "2026-09-28" };
++  S.kaizen.alimM = { valor: 1350, fuente: "fixture de regresión", fecha: "2026-09-28" };
++  recompute();
+ `);
+ const MV = G("MOTOR_VER"), REV = G("REV");
+ const cifras = {}; Object.keys(MV).forEach((id) => { cifras[id] = G(`cifrasMotor(${JSON.stringify(id)})`); });
+diff --git a/parches/regresion-motores/regresion-motores.esperado.json b/parches/regresion-motores/regresion-motores.esperado.json
+index dfef3fb..3eefa11 100644
+--- a/parches/regresion-motores/regresion-motores.esperado.json
++++ b/parches/regresion-motores/regresion-motores.esperado.json
+@@ -311,7 +311,7 @@
+    }
+   },
+   "valor": {
+-   "ver": "2",
++   "ver": "3",
+    "cifras": {
+     "total": 112807.95117428822,
+     "props": [
+@@ -324,22 +324,18 @@
+       0
+      ],
+      [
+-      "kz-4-transp",
+-      0
+-     ],
+-     [
+-      "kz-2-defecto",
++      "kz-3-transp",
+       0
+      ],
+      [
+-      "kz-3-espera",
++      "kz-2-espera",
+       0
+      ]
+     ]
+    }
+   },
+   "kaizen": {
+-   "ver": "1",
++   "ver": "2",
+    "cifras": {
+     "ops": [
+      [
+@@ -354,12 +350,6 @@
+       0.5984844863925605,
+       0
+      ],
+-     [
+-      "Validación",
+-      "defecto",
+-      0,
+-      0
+-     ],
+      [
+       "Planta",
+       "espera",
+diff --git a/pruebas.mjs b/pruebas.mjs
+index a63499d..26b7f81 100644
+--- a/pruebas.mjs
++++ b/pruebas.mjs
+@@ -62,6 +62,26 @@ const aceptarSoporte = () => { G("recompute")(); S.soporte.snap = G("snapshotSop
+    instantánea). Las pruebas que arman zonas y miran el sistema integrado aceptan la propuesta load>equip después de calcular, como
+    lo haría el usuario (sin autoguardar ni pintar: lo mismo que hace aceptar, con su vínculo y su fecha). */
+ const aceptarEquip = () => { G("recompute")(); G("aceptarZonasEquip")(G("zonasPropuestasEquip")(), Date.now()); G("registrarVinculo")("load>equip", "aceptado"); G("recompute")(); };
++/* H-279: Kaizen calcula sólo con las instantáneas aceptadas (propuestas x>kaizen) y con su captura de tarifa, horas y precio del
++   alimentador. Las pruebas que miran oportunidades de Kaizen CONCEDEN el cruce (donde lo hay) y además ACEPTAN la propuesta, como el
++   usuario (sin autoguardar ni pintar: lo mismo que hace aceptar, con su vínculo y su fecha), y capturan con fuente y fecha las mismas
++   cifras que antes eran semilla (2.85 MXN/kWh, 3500 h/año, 1350 MXN/m), salvo que la prueba las quiera sin capturar. */
++const KZ_IDS = ["load>kaizen", "equip>kaizen", "duct>kaizen", "quote>kaizen", "elec>kaizen", "hidro>kaizen", "fuego>kaizen"];
++const aceptarKaizen = (ids, opc) => {
++  const lista = ids || KZ_IDS, o = opc || {};
++  lista.forEach((id) => { if (G("LINKS")[id]) S.perms[id] = { ts: 1, via: "banco: cruce concedido" }; });
++  G("recompute")();
++  lista.forEach((id) => {
++    const P = G("PROPUESTAS")[id];
++    if (!P || !G("estadoPropuesta")(id).disponible) return;
++    P.permisos.forEach((k) => { S.perms[k] = { ts: 1, via: "banco: propuesta aceptada" }; });
++    P.aplicar(Date.now()); G("registrarVinculo")(id, "aceptado");
++  });
++  if (!o.sinSupuestos) [["tarifaKWh", 2.85], ["horasAno", 3500], ["alimM", 1350]].forEach(([k, v]) => {
++    if (!(S.kaizen[k] && Number(S.kaizen[k].valor) > 0 && S.kaizen[k].fuente)) S.kaizen[k] = { valor: v, fuente: "banco de pruebas (la cifra que antes era semilla)", fecha: "2026-09-28" };
++  });
++  G("KZ_CACHE").key = null; G("VZ_CACHE").key = null; G("recompute")();
++};
+ 
+ /* --------------------------------------------------- proyecto de prueba */
+ function proyectoDePrueba() {
+@@ -1328,7 +1348,8 @@ t("12.2.1 la consolidación genera las medidas sola, comparando contra el catál
+   const rec = G("SYS").recomendado;
+   const otra = G("SYS").opts.find((x) => x.id !== rec.id && (x.instPlant || x.instTerm) > (rec.instPlant || rec.instTerm) + 0.5);
+   if (otra) S.sysForce = otra.id;
+-  S.tab = "valor"; G("VZ_CACHE").key = null; G("recompute")();
++  /* H-279: Kaizen ya no lee en vivo con el permiso: se acepta cada propuesta hacia Kaizen (instantánea con fecha). */
++  S.tab = "valor"; aceptarKaizen();
+   const V = G("VALOR");
+   if (!V.props.length) throw new Error("no generó ninguna medida sobre un proyecto con equipo seleccionado");
+   V.props.forEach((p) => {
+@@ -3969,6 +3990,7 @@ t("22.11 3.3 (rev 2.9.16, decisión del dueño) la red hidráulica se cotiza por
+ t("22.12 3.4 Kaizen lee la clase ISO del cuarto limpio: propone el mínimo de su clase y no cita ISO 8 en otra clase", () => {
+   /* Parcial: ISO 8 conserva el piso de 15 (mínimo URS típico) mientras se decide si baja a ach[0] = 10. */
+   const zonas0 = S.zones, zi0 = S.zi, tab0 = S.tab, perms0 = JSON.parse(JSON.stringify(S.perms ?? null));
++  const kz0 = JSON.stringify(S.kaizen), vinc0 = JSON.stringify(S.vinculos);   /* H-279: lo aceptado en Kaizen también se restaura */
+   const dz = G("defaultZone");
+   const limpio = (nombre, iso, ach) => ({ ...dz(nombre), spaceType: "cleanroom", iso, achClean: ach,
+     area: 120, height: 3, occ: 2, lights: 720, equip: 2400, ach: 0.05, runHours: 24 });
+@@ -3982,8 +4004,8 @@ t("22.12 3.4 Kaizen lee la clase ISO del cuarto limpio: propone el mínimo de su
+     S.zi = 0;
+     S.perms = { ...(S.perms || {}) };
+     Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "prueba 22.12" }; });
+-    S.tab = "valor"; G("KZ_CACHE").key = null; G("VZ_CACHE").key = null;
+-    G("recompute")();
++    /* H-279: Kaizen revisa las zonas de la propuesta de carga térmica aceptada (instantánea), no las de la pestaña en vivo. */
++    S.tab = "valor"; aceptarKaizen(["load>kaizen", "equip>kaizen"]);
+     const mov = G("KAIZEN").ops.filter((o) => o.muda === "mov");
+     const de = (nombre) => mov.find((o) => o.zona === nombre);
+     [
+@@ -4007,6 +4029,7 @@ t("22.12 3.4 Kaizen lee la clase ISO del cuarto limpio: propone el mínimo de su
+   } finally {
+     S.zones = zonas0; S.zi = zi0; S.tab = tab0;
+     if (perms0 === null) delete S.perms; else S.perms = perms0;
++    S.kaizen = JSON.parse(kz0); S.vinculos = JSON.parse(vinc0);
+     G("KZ_CACHE").key = null; G("VZ_CACHE").key = null;
+     G("recompute")();
+   }
+@@ -4731,10 +4754,11 @@ t("P.6 la base de formación del precio se declara honesta: la interfaz dice que
+ });
+ 
+ t("P.7 el libro de la propuesta separa inversión y ahorro anual en la ingeniería de valor, no las suma en una sola columna", () => {
+-  const g = { perms: JSON.parse(JSON.stringify(S.perms)) };
++  const g = { perms: JSON.parse(JSON.stringify(S.perms)), kaizen: JSON.stringify(S.kaizen), vinculos: JSON.stringify(S.vinculos), tab: S.tab };
+   try {
+     Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "prueba P.7" }; });
+-    G("recompute")();
++    /* H-279: las oportunidades de Kaizen que llegan a Valor salen de las propuestas aceptadas. */
++    S.tab = "valor"; aceptarKaizen();
+     const V = G("computeIngValor")();
+     if (!(V.props && V.props.length)) throw new Error("el caso no aísla lo que se quiere probar: debe haber al menos una medida de ingeniería de valor detectada");
+     const buf = G("buildPropuestaXlsx")({ lang: "es", mon: "MXN" });
+@@ -4745,7 +4769,7 @@ t("P.7 el libro de la propuesta separa inversión y ahorro anual en la ingenier
+     if (!fTot) throw new Error("no se encontró el renglón de TOTAL de la hoja de ingeniería de valor");
+     const sums = fTot.c.filter((c) => /^=SUM\(/.test(c));
+     if (sums.length < 4) throw new Error(`se esperaban al menos 4 fórmulas SUM en el total (TR, kW, inversión, ahorro anual); hay ${sums.length}: ${sums.join(" | ")}`);
+-  } finally { Object.keys(S.perms).forEach((k) => delete S.perms[k]); Object.assign(S.perms, g.perms); G("recompute")(); }
++  } finally { Object.keys(S.perms).forEach((k) => delete S.perms[k]); Object.assign(S.perms, g.perms); S.kaizen = JSON.parse(g.kaizen); S.vinculos = JSON.parse(g.vinculos); S.tab = g.tab; G("KZ_CACHE").key = null; G("VZ_CACHE").key = null; G("recompute")(); }
+ });
+ 
+ t("P.8 el comparativo de revisiones ve un cambio de cantidad como PRECIO del mismo concepto, no como baja más alta", () => {
+@@ -5489,7 +5513,8 @@ t("S.14 Calcular desde una pantalla de motor no deja a Kaizen ni a Ingeniería d
+   const z = S.zones[0], luz = z.lightType, oa = z.oaFixed;
+   try {
+     z.lightType = "fluorescent"; z.oaFixed = 3000; G("recompute")();
+-    S.tab = "kaizen"; G("render")();
++    /* H-279: Kaizen calcula con lo aceptado: se aceptan sus propuestas (con la zona ya cambiada) antes de mirarlo. */
++    S.tab = "kaizen"; aceptarKaizen(); G("render")();
+     const k0 = G("KAIZEN").ops.length, v0 = G("VALOR").props.length;
+     if (!k0) throw new Error("la prueba no ejercitó Kaizen (0 oportunidades)");
+     clicS(boton("carga", "calc-motor"));
+@@ -6321,14 +6346,14 @@ t("S.36 (rev 2.9.20, decisión del dueño) versión por motor en el sello: sólo
+      H-194: hidro v5 = presión mínima por mueble de la Tabla 604.3 del IPC 2015 y CDT con máx(residual, mínima); H-195: v6 = equipo de emergencia fuera de Hunter; H-197: v7 = sin pisos sin norma (días, ΔT, pendiente 704.1); H-198: v8 = CPVC sólo hasta 2" CTS, fuera de catálogo y PEAD sin SDR como error.
+      H-263: carga v6 = calor del motor del ventilador seleccionado en Ventilación como misceláneos de la zona elegida; H-262: ventilación v4 = ya no hereda de carga térmica;
+      H-268: eléctrico v9 = autónomo (las cargas de otros motores sólo como propuesta aceptada). */
+-  eq(MV.elec, "9", "eléctrico v9 (H-268):"); eq(MV.hidro, "8", "hidro v8 (H-198):"); eq(MV.load, "6", "carga v6 (H-263):"); eq(MV.duct, "4", "ductos v4 (H-165):"); eq(MV.equip, "3", "selección v3 (H-274):"); eq(MV.kaizen, "1", "Kaizen sin cambio de lógica: v1:");
++  eq(MV.elec, "9", "eléctrico v9 (H-268):"); eq(MV.hidro, "8", "hidro v8 (H-198):"); eq(MV.load, "6", "carga v6 (H-263):"); eq(MV.duct, "4", "ductos v4 (H-165):"); eq(MV.equip, "3", "selección v3 (H-274):"); eq(MV.kaizen, "2", "Kaizen v2 (H-279):"); eq(MV.valor, "3", "valor v3 (H-279, dependencia):");
+   Object.keys(MV).forEach((id) => { const c = G("MOTOR_CAMBIOS")[id] || []; if (MV[id] !== "1" && !c.some((x) => x.ver === MV[id])) throw new Error(`${id}: la versión ${MV[id]} no tiene hallazgo registrado`); });
+   const s0 = JSON.stringify(S.sellos || {});
+   try {
+-    /* Sello de la 2.9.15 (sin versión = v1) en Kaizen y en hidro: sólo hidro se desactualiza (H-166 subió ductos a v2 y H-267 selección
+-       a v2: el ejemplo sin cambio pasa a Kaizen, que sigue en v1). */
+-    S.sellos = { kaizen: { ts: 5, huella: G("huellaMotor")("kaizen") }, hidro: { ts: 5, huella: G("huellaMotor")("hidro") } }; G("recompute")();
+-    eq(G("selloDe")("kaizen").estado, "calculado", "Kaizen (motor v1, sin cambio):");
++    /* Sello de la 2.9.15 (sin versión = v1) en hidro y sello con la versión vigente en Kaizen: sólo hidro se desactualiza. H-279 subió
++       Kaizen a v2, así que ya ningún motor sigue en v1: el ejemplo «sin cambio» es Kaizen sellado con su versión vigente. */
++    S.sellos = { kaizen: { ts: 5, huella: G("huellaMotor")("kaizen"), ver: MV.kaizen }, hidro: { ts: 5, huella: G("huellaMotor")("hidro") } }; G("recompute")();
++    eq(G("selloDe")("kaizen").estado, "calculado", "Kaizen (sellado con su versión vigente, sin cambio):");
+     const sh = G("selloDe")("hidro");
+     eq(sh.estado, "desactualizado", "hidro (motor v1 → v8):"); contiene(sh.texto, "v1 → v8", "texto:"); contiene(sh.texto, "Hunter", "nombra el hallazgo:"); contiene(sh.texto, "604.3", "nombra H-194:"); contiene(sh.texto, "Z358.1", "nombra H-195:"); contiene(sh.texto, "704.1", "nombra H-197:"); contiene(sh.texto, "catálogo", "nombra H-198:");
+     const m = G("motoresCambiados")();
+@@ -8696,6 +8721,218 @@ t("S.157 (H-287, X-1) un material que no existe en el catálogo se avisa mientra
+     eq(G("MISSING_MATS").size, 0, "ya no quedan materiales faltantes:");
+   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+ });
++/* ===== H-279 · Kaizen autónomo (decisiones del dueño D1, D2 y D3, 28-sep-2026) =====
++   Kaizen calcula sólo con las instantáneas aceptadas de cada disciplina (propuestas x>kaizen, con origen, fecha y firma) y con su
++   captura propia de tarifa, horas y precio del alimentador ({ valor, fuente, fecha }). Nada entra solo, nada se supone. */
++/* Cada prueba parte de un Kaizen sin nada aceptado (lo que otras pruebas aceptaron no cuenta aquí). */
++const kaizenEnBlanco = () => { S.kaizen = { items: [], ve: {}, desv: [], entradas: {}, tarifaKWh: null, horasAno: null, alimM: null, h279: true }; KZ_IDS.forEach((id) => { if (S.vinculos) delete S.vinculos[id]; }); };
++const txtKz = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ").replace(/\s+/g, " ");
++t("S.159 (H-279) Kaizen no se mueve solo: con la propuesta de carga térmica concedida y aceptada, subir el vidrio sur de Producción de 12 a 24 m² no cambia la oportunidad de vidrio (antes 1.03 → 1.46 TR); la propuesta sale desactualizada y al aceptarla de nuevo sí cambia", () => {
++  const guardado = JSON.stringify(S);
++  try {
++    proyectoDePrueba(); kaizenEnBlanco(); S.tab = "kaizen";
++    aceptarKaizen(["load>kaizen", "equip>kaizen"]);
++    const vidrio = () => { const o = G("KAIZEN").ops.find((x) => x.zona === "Producción" && x.titulo === "Vidrio sin control solar"); return o ? o.tr : null; };
++    const v0 = vidrio();
++    if (!(v0 > 0)) throw new Error("el caso no aísla lo que se quiere probar: debe haber oportunidad de vidrio en Producción");
++    const z = S.zones.find((q) => q.name === "Producción");
++    eq(z.glass.S, 12, "el caso parte de 12 m² de vidrio sur:");
++    z.glass.S = 24; G("recompute")();
++    eq(vidrio(), v0, "la oportunidad de vidrio no se mueve sola al cambiar la zona:");
++    eq(G("estadoPropuesta")("load>kaizen").nivel, "desactualizado", "la propuesta de carga térmica sale desactualizada:");
++    aceptarKaizen(["load>kaizen"]);
++    if (!(vidrio() > v0 + 0.1)) throw new Error(`al aceptar de nuevo la propuesta, la oportunidad de vidrio debía crecer (${v0} → ${vidrio()})`);
++    eq(G("estadoPropuesta")("load>kaizen").nivel, "aceptado", "aceptada otra vez, vigente:");
++  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("KZ_CACHE").key = null; G("recompute")(); }
++});
++t("S.160 (H-279) sin propuesta aceptada no entra nada: con los cruces revocados, un área de diseño contra incendio de 400 m² no hace aparecer «Contra incendio» (antes la leía en vivo, sin permiso); lo que falta queda «pendiente» con qué falta, y los hallazgos de la validación ya no son oportunidades de Kaizen", () => {
++  const guardado = JSON.stringify(S);
++  try {
++    proyectoDePrueba(); kaizenEnBlanco(); S.perms = {}; S.tab = "kaizen";
++    S.fuego.areaDiseno = 400; G("KZ_CACHE").key = null; G("recompute")();
++    const F = G("FUEGO");
++    if (!(F.areaDis > F.r.areaMin * 1.15 && F.qTotal > 0)) throw new Error("el caso no aísla lo que se quiere probar: el área de diseño debe quedar arriba del mínimo de la clase");
++    let K = G("KAIZEN");
++    if (K.ops.some((o) => o.zona === "Contra incendio")) throw new Error("apareció «Contra incendio» sin ninguna propuesta aceptada");
++    if (K.ops.some((o) => o.zona === "Validación")) throw new Error("los hallazgos de la validación no son oportunidades de Kaizen (son del semáforo)");
++    eq(K.ops.length, 0, "sin nada aceptado no hay oportunidades:");
++    const pend = (K.pendientes || []).map((p) => p.id);
++    KZ_IDS.forEach((id) => { if (!pend.includes(id)) throw new Error(`falta decir que ${id} queda pendiente`); });
++    (K.pendientes || []).forEach((p) => { if (!/falta/.test(p.falta)) throw new Error(`el pendiente de ${p.id} no dice qué falta: ${p.falta}`); });
++    S.tab = "kaizen"; G("render")();
++    const vista = w.document.getElementById("view").textContent;
++    contiene(vista, "Revisión pendiente", "la pantalla lo dice:");
++    if (/Requiere\s*autorización|sin autorizar/.test(vista)) throw new Error("la pantalla de Kaizen sigue hablando de permisos, no de propuestas");
++    /* Al aceptar la propuesta de contra incendio sí aparece, con su origen. */
++    aceptarKaizen(["fuego>kaizen"]);
++    K = G("KAIZEN");
++    const inc = K.ops.find((o) => o.zona === "Contra incendio");
++    if (!inc) throw new Error("con la propuesta de contra incendio aceptada debía aparecer la oportunidad");
++    eq((inc.fuentes || []).join(","), "fuego>kaizen", "la oportunidad dice de qué instantánea sale:");
++    S.fuego.areaDiseno = 0; G("recompute")();
++    if (!G("KAIZEN").ops.some((o) => o.zona === "Contra incendio")) throw new Error("Kaizen se movió solo al volver el área de diseño al mínimo");
++    eq(G("estadoPropuesta")("fuego>kaizen").nivel, "desactualizado", "la propuesta de contra incendio sale desactualizada:");
++  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("KZ_CACHE").key = null; G("recompute")(); }
++});
++t("S.161 (H-279, D3) en un proyecto nuevo sin tarifa ni horas capturadas la operación queda pendiente (antes 2.85 MXN/kWh × 3500 h supuestos); sin fuente y fecha no cuentan; capturadas, valúan; el alimentador sin su precio o sin distancia al tablero queda pendiente (antes 1350 MXN/m y 30 m)", () => {
++  const guardado = JSON.stringify(S);
++  try {
++    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.161"; S.tab = "kaizen";
++    const dz = G("defaultZone");
++    S.zones = [{ ...dz("Producción"), area: 400, height: 6, occ: 30, walls: { N: 28, NE: 0, E: 18, SE: 0, S: 28, SW: 0, W: 18, NW: 0 },
++      glass: { N: 4, NE: 0, E: 6, SE: 0, S: 12, SW: 0, W: 8, NW: 0 }, lights: 1200, equip: 1440, ach: .4 }];
++    S.elec.cargas = [{ ...G("defaultCarga")("Compresor de proceso"), tipo: "motor", kW: 15, V: 220, ph: 3, cant: 1, L: 30, fp: .85 },
++      { ...G("defaultCarga")("Alumbrado"), tipo: "alumbrado", kW: 9.5, V: 127, ph: 1, cant: 1, L: 40, fp: .95 }];
++    Object.assign(S.elec, { trafoKVA: 300, trafoZ: 4, Ltablero: 30, fpObjetivo: .95 });
++    Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "prueba S.161" }; });
++    aceptarEquip();
++    aceptarKaizen(["load>kaizen", "equip>kaizen", "elec>kaizen"], { sinSupuestos: true });
++    ["tarifaKWh", "horasAno", "alimM"].forEach((k) => { if (S.kaizen[k] != null) throw new Error(`un proyecto nuevo nace sin ${k} (pendiente), no con una semilla`); });
++    const opex = () => G("KAIZEN").ops.filter((o) => o.tipo === "opex" && o.kW > 0 && o.zona !== "Alimentador");
++    if (!opex().length) throw new Error("el caso no aísla lo que se quiere probar: debe haber oportunidades de operación con kW");
++    opex().forEach((o) => {
++      eq(o.mxnOpex, null, `${o.zona} · ${o.titulo}: sin tarifa ni horas la operación no es un número:`);
++      if (!(o.pendiente || []).some((p) => /tarifa/.test(p))) throw new Error(`${o.titulo}: no dice que falta la tarifa`);
++    });
++    eq(G("KAIZEN").valuaOpex, false, "la operación no se valúa:");
++    /* Sin fuente ni fecha no es captura (regla 6). */
++    S.kaizen.tarifaKWh = { valor: 3.1, fuente: "", fecha: "" }; S.kaizen.horasAno = { valor: 4000, fuente: "", fecha: "" }; G("recompute")();
++    opex().forEach((o) => eq(o.mxnOpex, null, `${o.titulo}: una tarifa sin fuente ni fecha no valúa:`));
++    S.kaizen.tarifaKWh = { valor: 3.1, fuente: "tarifa publicada del suministrador (prueba)", fecha: "2026-09-01" };
++    S.kaizen.horasAno = { valor: 4000, fuente: "horario de operación del cliente (prueba)", fecha: "2026-09-01" }; G("recompute")();
++    opex().forEach((o) => cerca(o.mxnOpex, o.kW * 4000 * 3.1, 1e-6, `${o.titulo}: kW × horas × tarifa capturadas:`));
++    /* Calibre económico del alimentador: sin su precio por metro no se sabe si se paga solo. */
++    let K = G("KAIZEN");
++    if (K.ops.some((o) => o.zona === "Alimentador")) throw new Error("sin precio del alimentador no se puede enlistar el calibre económico (antes 1350 MXN/m)");
++    const pAl = (K.pendientes || []).find((p) => p.id === "elec>kaizen");
++    if (!pAl || !/precio por metro del alimentador/.test(pAl.falta)) throw new Error(`el alimentador debe quedar pendiente de su precio: ${JSON.stringify(pAl)}`);
++    S.kaizen.alimM = { valor: 1350, fuente: "cotización del proveedor (prueba)", fecha: "2026-09-01" }; G("recompute")();
++    const al = G("KAIZEN").ops.find((o) => o.zona === "Alimentador");
++    if (!al) throw new Error("con tarifa, horas y precio capturados el calibre económico debía evaluarse");
++    cerca(al.mxnOpex, al.kW * 4000 * 3.1, 1e-6, "alimentador valuado con lo capturado:");
++    /* Sin distancia al tablero: pendiente de longitud (H-179), nunca 30 m supuestos. */
++    S.elec.Ltablero = null; aceptarKaizen(["elec>kaizen"], { sinSupuestos: true });
++    K = G("KAIZEN");
++    if (K.ops.some((o) => o.zona === "Alimentador")) throw new Error("sin distancia al tablero no se evalúa el alimentador (antes 30 m supuestos)");
++    const pL = (K.pendientes || []).find((p) => p.id === "elec>kaizen");
++    if (!pL || !/pendiente de longitud/.test(pL.falta)) throw new Error(`sin distancia debe quedar «pendiente de longitud»: ${JSON.stringify(pL)}`);
++  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("KZ_CACHE").key = null; G("recompute")(); }
++});
++t("S.162 (H-279) un proyecto guardado abre con las mismas oportunidades, TR, kW, inversión, operación y retornos de Kaizen (menos «Validación», que salió por decisión del dueño): toma una vez la instantánea de lo que entraba, con origen «(migración H-279)», y conserva tarifa, horas y precio del alimentador rotulados «semilla sin fuente (migración)»; sin permiso previo no gana nada", () => {
++  const guardado = JSON.stringify(S);
++  try {
++    G("importarRespaldo")(REG_PROY); S.tab = "kaizen"; G("KZ_CACHE").key = null; G("recompute")();
++    [["tarifaKWh", 2.85], ["horasAno", 3500], ["alimM", 1350]].forEach(([k, v]) => {
++      eq(S.kaizen[k] && S.kaizen[k].valor, v, `${k} conserva la cifra que usaba:`);
++      eq(S.kaizen[k].fuente, "semilla sin fuente (migración)", `${k} rotulada:`);
++    });
++    /* Las cifras de Kaizen con el código anterior (4832cb4) sobre este mismo archivo. */
++    const ANTES = [["Planta", "sobre", 2.184781852765912, 2.0755427601276164, 106469.98058755984, 0],
++      ["Limpio ISO 7", "mov", 0.5984844863925605, 0.5685602620729324, 0, 5671.388614177501],
++      ["Planta", "espera", 0, 0, 0, 0],
++      ["Alimentador", "transp", 0, 0.06682526040610264, 0, 666.5819725508738]];
++    const K = G("KAIZEN");
++    eq(K.ops.length, ANTES.length, "las mismas oportunidades:");
++    ANTES.forEach(([zona, muda, tr, kW, capex, opex], i) => {
++      const o = K.ops[i];
++      eq(`${o.zona}|${o.muda}`, `${zona}|${muda}`, `oportunidad ${i + 1}:`);
++      cerca(o.tr, tr, 1e-9, `${zona} TR:`); cerca(o.kW, kW, 1e-9, `${zona} kW:`);
++      cerca(Number(o.mxnCapex) || 0, capex, 1e-6, `${zona} inversión:`); cerca(Number(o.mxnOpex) || 0, opex, 1e-6, `${zona} operación:`);
++    });
++    contiene(K.ops[3].cambio, "cuesta del orden de $ 4,418 más de cobre y ahorra $ 667 al año: se recupera en 6.6 año(s)", "el mismo retorno del alimentador:");
++    KZ_IDS.forEach((id) => {
++      eq(G("estadoPropuesta")(id).nivel, "aceptado", `${id} migrada como aceptada:`);
++      contiene(S.vinculos[id].origen, "(migración H-279)", `${id} con su origen:`);
++    });
++    if ("tomarEntradas" in S.kaizen) throw new Error("la marca de migración se consume una sola vez");
++    /* Sin permiso previo no se gana nada: sólo entra lo que entraba sin permiso y la operación sigue sin valuarse en pesos. */
++    const p = JSON.parse(REG_PROY); p.perms = {};
++    G("importarRespaldo")(JSON.stringify(p)); S.tab = "kaizen"; G("KZ_CACHE").key = null; G("recompute")();
++    eq(Object.keys(S.kaizen.entradas).sort().join(","), "elec>kaizen,fuego>kaizen,hidro>kaizen", "sin permisos sólo entran eléctrico, hidráulico y contra incendio (antes entraban sin permiso):");
++    const K2 = G("KAIZEN");
++    eq(K2.ops.map((o) => o.zona).join(","), "Alimentador", "la misma única oportunidad que antes:");
++    eq(K2.ops[0].mxnOpex, null, "la operación sigue sin valuarse en pesos (antes 0, sin permiso de cotización):");
++    cerca(K2.ops[0].kW, 0.06682526040610264, 1e-9, "mismos kW:");
++  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("KZ_CACHE").key = null; G("recompute")(); }
++});
++t("S.163 (H-279, D1) Kaizen corre las zonas con el sitio con que se aceptaron: cambiar el sitio de Tijuana a Mexicali no mueve sus oportunidades (la propuesta sale desactualizada) y la memoria dice con qué sitio corrió", () => {
++  const guardado = JSON.stringify(S);
++  try {
++    proyectoDePrueba(); kaizenEnBlanco(); S.site = { key: "tijuana" }; S.tab = "kaizen";
++    aceptarKaizen(["load>kaizen", "equip>kaizen"]);
++    const firma = () => JSON.stringify(G("KAIZEN").ops.map((o) => [o.zona, o.muda, +(o.tr || 0).toFixed(6), +(o.kW || 0).toFixed(6)]));
++    const f0 = firma();
++    if (!G("KAIZEN").ops.some((o) => o.tr > 0)) throw new Error("el caso no aísla lo que se quiere probar: debe haber oportunidades de zona con TR");
++    S.site = { key: "mexicali" }; G("recompute")();
++    eq(G("SITE").key, "mexicali", "el sitio del proyecto cambió:");
++    eq(firma(), f0, "las oportunidades no se mueven con el sitio vivo:");
++    eq(G("estadoPropuesta")("load>kaizen").nivel, "desactualizado", "la propuesta de carga térmica sale desactualizada:");
++    const pdf = txtKz(G("buildKaizenPdf")());
++    contiene(pdf, "Sitio con que corren las zonas Tijuana", "la memoria dice el sitio de la instantánea:");
++    eq(G("SITE").key, "mexicali", "correr Kaizen no toca el sitio vivo:");
++  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("KZ_CACHE").key = null; G("recompute")(); }
++});
++t("S.164 (H-279) la huella y la caché de Kaizen firman lo aceptado: con la propuesta de ductos aceptada, renombrar un tramo no cambia la huella de Kaizen (antes anidaba los ductos en vivo) y alargarlo no mueve su oportunidad; al aceptar de nuevo, Kaizen se recalcula (antes la caché sólo firmaba cuántos tramos había)", () => {
++  const guardado = JSON.stringify(S);
++  try {
++    proyectoDePrueba(); kaizenEnBlanco(); S.tab = "kaizen";
++    S.duct.segments = [{ ...G("defaultSegment")("TR-K", 1500), length: 30, targetF: 2 }];
++    aceptarKaizen(["duct>kaizen"]);
++    const kW = () => { const o = G("KAIZEN").ops.find((x) => x.muda === "transp" && /tramo/.test(x.zona)); return o ? o.kW : null; };
++    const k0 = kW();
++    if (!(k0 > 0)) throw new Error("el caso no aísla lo que se quiere probar: debe haber un tramo con fricción alta");
++    const h0 = G("huellaMotor")("kaizen");
++    S.duct.segments[0].tag = "TR-K2"; G("recompute")();
++    eq(G("huellaMotor")("kaizen"), h0, "renombrar un tramo no cambia la huella de Kaizen:");
++    S.duct.segments[0].length = 90; G("recompute")();
++    eq(kW(), k0, "alargar el tramo no mueve la oportunidad (sigue lo aceptado):");
++    eq(G("huellaMotor")("kaizen"), h0, "ni su huella:");
++    eq(G("estadoPropuesta")("duct>kaizen").nivel, "desactualizado", "la propuesta de ductos sale desactualizada:");
++    aceptarKaizen(["duct>kaizen"]);
++    cerca(kW(), k0 * 3, k0 * 1e-6, "al aceptar de nuevo, la oportunidad sigue al tramo de 90 m:");
++    if (G("huellaMotor")("kaizen") === h0) throw new Error("aceptar otra instantánea sí cambia la huella de Kaizen");
++    /* Por el botón (propAceptar), sin tocar la caché a mano: la firma de la caché es la captura de Kaizen, así que aceptar la recalcula. */
++    S.duct.segments[0].length = 60; G("recompute")();
++    cerca(kW(), k0 * 3, k0 * 1e-6, "sin aceptar sigue lo aceptado:");
++    G("propAceptar")("duct>kaizen");
++    cerca(kW(), k0 * 2, k0 * 1e-6, "aceptar desde la propuesta recalcula Kaizen (la caché firma la instantánea):");
++  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("KZ_CACHE").key = null; G("recompute")(); }
++});
++t("S.165 (H-279, reglas 7 y 8) la memoria de Kaizen dice de dónde sale cada valor —cada entrada con su fecha o «pendiente», la tarifa con su fuente y su fecha, el consumo por TR con su fuente— y ya no habla de permisos; la pantalla captura tarifa, horas y precio con fuente y fecha; las propuestas hacia Kaizen llegan al trazado del libro con su espejo en inglés", () => {
++  const guardado = JSON.stringify(S);
++  try {
++    proyectoDePrueba(); kaizenEnBlanco(); S.tab = "kaizen";
++    /* Una cotización con equipo con precio: hay propuesta de precio por TR, pero sin aceptarla la inversión queda pendiente. */
++    const fam = G("FAMILIES")[0], m = G("familyPool")(fam.id)[0];
++    S.quote.items = [{ id: m.id, fam: fam.id, qty: 2, unit: null }];
++    aceptarKaizen(["load>kaizen", "equip>kaizen"], { sinSupuestos: true });
++    ["tarifaKWh", "horasAno", "alimM"].forEach((k) => { S.kaizen[k] = null; }); G("recompute")();
++    if (!(G("QUOTE").mxnTRequipo > 0)) throw new Error("el caso no aísla lo que se quiere probar: la cotización debe tener equipo con precio");
++    eq(G("KAIZEN").verDinero, false, "sin aceptar la propuesta de Cotización no hay precio por TR (antes lo leía en vivo):");
++    let pdf = txtKz(G("buildKaizenPdf")());
++    contiene(pdf, "Precio por TR de equipo pendiente: falta el precio por TR de equipo", "la inversión sin precio aceptado queda pendiente:");
++    if (/Autorizado|Sin autorizar|enlace load>kaizen/.test(pdf)) throw new Error("la memoria sigue hablando de permisos y no de lo aceptado");
++    contiene(pdf, "Entradas de Kaizen (instantaneas aceptadas)", "la memoria lista sus entradas:");
++    contiene(pdf, "instantanea aceptada, vigente", "cada entrada aceptada dice que es instantánea vigente:");
++    contiene(pdf, "Tarifa electrica pendiente: no capturada (no se supone)", "la tarifa sin capturar queda pendiente:");
++    contiene(pdf, "kW por TR · estimacion por familia", "el consumo por TR dice de dónde sale:");
++    contiene(pdf, "falta aceptar la propuesta de Cotizaci", "lo que falta se nombra:");
++    S.kaizen.tarifaKWh = { valor: 3.1, fuente: "tarifa GDMTH publicada (prueba)", fecha: "2026-09-01" }; G("recompute")();
++    pdf = txtKz(G("buildKaizenPdf")());
++    contiene(pdf, "capturada en Kaizen · fuente: tarifa GDMTH publicada (prueba) · fecha: 2026-09-01", "la tarifa capturada con su fuente y su fecha:");
++    /* La pantalla captura los tres supuestos con valor, fuente y fecha. */
++    S.tab = "kaizen"; G("render")();
++    ["tarifaKWh", "horasAno", "alimM"].forEach((k) => ["valor", "fuente", "fecha"].forEach((c) => {
++      if (!w.document.querySelector(`#view [data-path="kaizen.${k}.${c}"]`)) throw new Error(`la pantalla no captura kaizen.${k}.${c}`);
++    }));
++    /* El libro de la propuesta trae las propuestas hacia Kaizen en el trazado de origen, en español y en inglés. */
++    const es = Buffer.from(G("buildPropuestaXlsx")({ lang: "es", mon: "MXN" })).toString("utf8");
++    contiene(es, "Zonas de carga térmica para Kaizen", "trazado del libro en español:");
++    const en = Buffer.from(G("buildPropuestaXlsx")({ lang: "en", mon: "MXN" })).toString("utf8");
++    contiene(en, "Thermal-load zones for Kaizen", "trazado del libro en inglés:");
++    if (en.includes("Zonas de carga térmica para Kaizen")) throw new Error("el libro en inglés trae la fila de Kaizen en español");
++  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("KZ_CACHE").key = null; G("recompute")(); }
++});
+ t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {
+   const guardado = JSON.stringify(S);
+   try {

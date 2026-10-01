@@ -1,0 +1,18 @@
+[
+ {
+  "id": "valor.m1",
+  "que": "H-286: la eficiencia vuelve a resolverse con el nombre del modelo (corrKeyOf espera la ficha): siempre split DX y el ahorro de kW de los sistemas alternos vale 0",
+  "logica": true,
+  "buscar": "return f ? EFF_EST[corrKeyOf(f)] || null : null; };",
+  "reemplazar": "return f ? EFF_EST[corrKeyOf(f.model)] || null : null; };",
+  "estado": "vigente"
+ },
+ {
+  "id": "valor.m2",
+  "que": "H-286: un sistema sin planta ya no toma la tecnología de sus terminales (rooftop y split sin consumo que comparar)",
+  "logica": true,
+  "buscar": "const modeloSis = (o) => (o.plant && o.plant[0] ? o.plant[0].model : o.terms && o.terms[0] ? o.terms[0].model : null);",
+  "reemplazar": "const modeloSis = (o) => (o.plant && o.plant[0] ? o.plant[0].model : null);",
+  "estado": "vigente"
+ }
+]
