@@ -9214,11 +9214,27 @@ function levelFromAch(isoKey, ach) {
 }
 /* H-126 (rev 2.9.24): ids estables de zona ("z1", "z2", …) con un contador guardado en el estado: deterministas (sin reloj ni azar),
    sobreviven a borrar o reordenar zonas y son el único vínculo que usa el traspaso de la reposición de cascada. */
-function asegurarIdsZona(s = S) {
+/* AUD-09: al abrir (alAbrir) la zona que no traía id lo recibe marcado idAlAbrir: ese id no es captura y no entra a la huella de
+   carga (ENTRADAS.load), así un proyecto sellado con zonas sin id abre con la misma huella y su sello vigente (no hay re-sello
+   solo; decisión del dueño, 28-sep-2026). Ninguna pantalla lo llama al pintarse. */
+function asegurarIdsZona(s = S, alAbrir = false) {
   if (!Array.isArray(s.zones)) return;
   if (!Number.isFinite(s.zoneSeq)) s.zoneSeq = 0;
   const usados = new Set(s.zones.map((z) => z && z.id).filter(Boolean));
-  s.zones.forEach((z) => { if (!z || typeof z !== "object") return; if (!z.id || typeof z.id !== "string") { do { z.id = "z" + (++s.zoneSeq); } while (usados.has(z.id)); usados.add(z.id); } });
+  s.zones.forEach((z) => { if (!z || typeof z !== "object") return; if (!z.id || typeof z.id !== "string") { do { z.id = "z" + (++s.zoneSeq); } while (usados.has(z.id)); usados.add(z.id); if (alAbrir) z.idAlAbrir = true; } });
+}
+/* AUD-09: único punto donde nace una zona del proyecto («+ Zona», carga de archivos, «Traer zonas», «Crear zona con este cuarto»,
+   proyecto nuevo): recibe en ese momento un id nuevo del contador del proyecto (S.zoneSeq). Un id que trae de otro proyecto no
+   se conserva: podría repetir el de una zona de este proyecto y robarle el vínculo cuarto ↔ zona (H-126); lo que en este
+   proyecto ya apunta a un id sigue apuntando a su zona. */
+function agregarZona(z, s = S) {
+  if (!Array.isArray(s.zones)) s.zones = [];
+  if (!Number.isFinite(s.zoneSeq)) s.zoneSeq = 0;
+  const usados = new Set(s.zones.map((q) => q && q.id).filter(Boolean));
+  delete z.idAlAbrir;
+  do { z.id = "z" + (++s.zoneSeq); } while (usados.has(z.id));
+  s.zones.push(z);
+  return z;
 }
 function defaultRoom(name = "Cuarto limpio 1") {
   /* Arranque en ceros (decisión del dueño, 17-sep-2026): area/height/occ/procW
@@ -11703,7 +11719,7 @@ function requisitoFam(famId) {
 function defaultState() { return {
   units: "SI", tab: "tablero",
   meta: { name: "Proyecto sin nombre", client: "", location: "Tijuana, B.C.", engineer: "", date: new Date().toISOString().slice(0, 10) },
-  zones: [defaultZone()], zi: 0, forceTech: null, peakScan: true, perms: {},
+  zones: [{ ...defaultZone(), id: "z1" }], zi: 0, forceTech: null, peakScan: true, perms: {},   /* AUD-09: la zona nace con su id */
   /* H-290: sitio de diseño de Carga térmica (copia aceptada de Proyecto o captura propia); sin él, la carga queda pendiente. */
   sitioCarga: null, tomarSitioCarga: null,
   /* rev 2.9.14 · formato 2: sellos de cálculo por motor (S.sellos[id] = { ts, huella }). */
@@ -15552,9 +15568,10 @@ function cxAplicar(lote, modo, opts) {
   });
   /* Colecciones: en proyecto nuevo reemplazan al renglón de ejemplo; en el
      proyecto abierto se agregan, salvo que lo que haya sea el ejemplo intacto. */
-  const intacto = (arr, fab) => arr.length === 1 && JSON.stringify({ ...arr[0], id: 0 }) === JSON.stringify({ ...fab(), id: 0 });
+  const intacto = (arr, fab) => arr.length === 1 && JSON.stringify({ ...arr[0], id: 0, idAlAbrir: 0 }) === JSON.stringify({ ...fab(), id: 0, idAlAbrir: 0 });
   if (zonas.length) {
-    if (modo === "nuevo" || intacto(S.zones, () => defaultZone())) S.zones = zonas; else S.zones.push(...zonas);
+    if (modo === "nuevo" || intacto(S.zones, () => defaultZone())) S.zones = [];
+    zonas.forEach((z) => agregarZona(z));   /* AUD-09: cada zona del archivo nace con su id */
     S.zi = S.zones.length - zonas.length;
   }
   if (cuartos.length) {
@@ -19716,7 +19733,7 @@ const ENTRADAS = {
   /* H-263: la fecha de la instantánea del ventilador (miscVent.ts) no cambia el cálculo: fuera de la huella. Una zona sin
      ventilador (miscVent null, que sanearEstado agrega a los proyectos anteriores) pesa lo mismo que una sin el campo: así
      un proyecto sellado con la versión anterior no sale «la captura cambió» sin haber cambiado nada. */
-  load: () => ({ zones: (S.zones || []).map((z) => z && "origenOA" in z ? sinClaves(z, ["origenOA"]) : z).map((z) => !z || !("miscVent" in z) ? z : z.miscVent ? { ...z, miscVent: sinClaves(z.miscVent, ["ts"]) } : sinClaves(z, ["miscVent"])),   /* H-281: el origen del aire exterior no es captura */ sitio: S.sitioCarga && typeof S.sitioCarga === "object" ? sinClaves(S.sitioCarga, ["origen", "ts", "label"]) : null, forceTech: S.forceTech, peakScan: S.peakScan }),   /* H-289: sin la diversidad del edificio, que Carga no usa. H-290: su sitio, no el de Proyecto */
+  load: () => ({ zones: (S.zones || []).map((z) => z && "origenOA" in z ? sinClaves(z, ["origenOA"]) : z).map((z) => z && z.idAlAbrir ? sinClaves(z, ["id", "idAlAbrir"]) : z).map((z) => !z || !("miscVent" in z) ? z : z.miscVent ? { ...z, miscVent: sinClaves(z.miscVent, ["ts"]) } : sinClaves(z, ["miscVent"])),   /* H-281: el origen del aire exterior no es captura. AUD-09: el id que la zona recibió al abrir tampoco */ sitio: S.sitioCarga && typeof S.sitioCarga === "object" ? sinClaves(S.sitioCarga, ["origen", "ts", "label"]) : null, forceTech: S.forceTech, peakScan: S.peakScan }),   /* H-289: sin la diversidad del edificio, que Carga no usa. H-290: su sitio, no el de Proyecto */
   clean: () => ({ rooms: cleanRooms(), precios: S.clean.precios || null, comercial: S.clean.comercial || null }),   /* H-295: sus precios son de su cotización */   /* H-283: el sitio de Proyecto no entra al cálculo de cuartos limpios: fuera de la huella */
   /* H-267: sólo lo que la selección calcula: sus zonas de selección (la instantánea aceptada va dentro, sin id, origen, fecha ni
      marca de edición, que no cambian el cálculo), la diversidad del edificio, el sitio (capacidad en sitio), la tecnología elegida,
@@ -21416,7 +21433,7 @@ function viewLimpio() {
       <div class="row">${inp("Presión diferencial (Pa)", `clean.rooms.${i}.dp`, "number", "2.5", `clean.rooms.${i}.dp`, c, "clean_dp")}${inp("Rendijas de puertas (m)", `clean.rooms.${i}.crackLen`, "number", "0.5", "clean.crackLen", c)}</div>
       ${inp("Fracción mínima de aire exterior", `clean.rooms.${i}.oaFrac`, "number", "0.05", `clean.rooms.${i}.oaFrac`, c, "clean_oa")}
       </details>
-      ${(asegurarIdsZona(), sel("Zona de carga térmica vinculada (recibe la reposición al traspasar; H-126)", `clean.rooms.${i}.zonaId`, [["", "— sin vínculo —"]].concat(S.zones.map((z) => [z.id, z.name || z.id]))))}
+      ${sel("Zona de carga térmica vinculada (recibe la reposición al traspasar; H-126)", `clean.rooms.${i}.zonaId`, [["", "— sin vínculo —"]].concat(S.zones.filter((z) => z && z.id).map((z) => [z.id, z.name || z.id])))}
       <div style="height:12px"></div>
       <button class="btn-primary" data-act="clean-pdf">Memoria del cuarto limpio en PDF</button>
       <div style="height:8px"></div>
@@ -21510,7 +21527,7 @@ function viewVent() {
       <details><summary>Avanzado: pérdidas de presión</summary>
       <div class="row">${inp("Pérdida en ductos (in.w.g.)", "vent.ductLoss", "number", "0.05", "vent.ductLoss", S.vent)}${inp("Pérdida en filtros (in.w.g.)", "vent.filterLoss", "number", "0.05", "vent.filterLoss", S.vent)}</details>
       <div class="row">${inp("Ventilador o extractor instalado con arrancador (MXN por CFM · semilla de la casa sin fuente)", "vent.precioCFM", "number", "5")}</div>
-      ${(asegurarIdsZona(), seleccionVentHtml())}
+      ${seleccionVentHtml()}
       ${VENT.eq && VENT.eq.primary ? `<button class="btn-primary" data-act="pdf-sub" data-kind="green" data-id="${VENT.eq.primary.id}">Submittal del ventilador en PDF</button>` : `<div class="hint">${VENT.demand > 0 ? "Ningún modelo del catálogo cubre el caudal: no se propone modelo ni submittal (H-154)." : "Sin caudal: sin modelo."}</div>`}
     </div></div>
     <div class="grid" style="gap:14px">
@@ -24063,7 +24080,7 @@ document.addEventListener("click", (e) => {
     case "confirmar-si": { const f = CONFIRMA; CONFIRMA = null; closeModal(); if (f) f(); break; }
     case "zone": S.zi = +b.dataset.i; render(); break;
     case "go-zona": S.zi = +b.dataset.i; irATab("carga"); break;
-    case "zone-add": S.zones.push(defaultZone(`Zona ${S.zones.length + 1}`)); S.zi = S.zones.length - 1; render(); break;
+    case "zone-add": agregarZona(defaultZone(`Zona ${S.zones.length + 1}`)); S.zi = S.zones.length - 1; render(); break;   /* AUD-09: nace con su id */
     case "zone-del": {
       const k = +b.dataset.i, z = S.zones[k];
       confirmarSiHayDatos({
@@ -24226,7 +24243,7 @@ document.addEventListener("click", (e) => {
       z.oaFraction = 0;
       z.walls = { N: 0, S: 0, E: 0, W: 0, NE: 0, SE: 0, SW: 0, NW: 0 }; z.glass = { ...z.walls }; z.roof = 0;
       z.origenOA = { motor: "clean", cuarto: c.name || "Cuarto", makeup: z.oaFixed, ts: Date.now() };   /* H-281: de dónde sale su aire exterior */
-      S.zones.push(z); asegurarIdsZona(); c.zonaId = z.id; /* H-126: queda vinculada al cuarto */
+      agregarZona(z); c.zonaId = z.id; /* H-126: queda vinculada al cuarto; AUD-09: nace con su id */
       if (repCuartosLoad().every((x) => { const q = S.zones.find((y) => y.id === x.zonaId); return q && num(q.oaFixed) === x.makeup; })) registrarVinculo("clean>load", "aceptado");
       S.zi = S.zones.length - 1; S.tab = "carga";
       render(); toast(`Zona creada como cuarto limpio ${r.cls.label.split(" · ")[0]} a ${r.ach} cambios/h, vinculada al cuarto; iluminación e infiltración pendientes de captura`); break;
@@ -24431,7 +24448,7 @@ document.addEventListener("click", (e) => {
       const p = projList().find((x) => x.id === b.dataset.id);
       if (p?.data?.zones?.length) {
         histSnap("traer zonas");
-        p.data.zones.forEach((z) => { const c = sanearEstado({ zones: [JSON.parse(JSON.stringify(z))] }).zones[0]; c.name = etiquetaGenerica(c, S.zones.length); S.zones.push(c); });
+        p.data.zones.forEach((z) => { const c = sanearEstado({ zones: [JSON.parse(JSON.stringify(z))] }).zones[0]; c.name = etiquetaGenerica(c, S.zones.length); agregarZona(c); });   /* AUD-09: id nuevo de este proyecto, nunca el del otro */
         S.zi = S.zones.length - 1; S.tab = "carga"; closeModal(); render();
         toast(`${p.data.zones.length} zona(s) agregadas desde un proyecto guardado`);
       } else toast("Ese proyecto no tiene zonas");
@@ -24586,9 +24603,9 @@ function sanearEstado(d) {
      proyecto anterior al formato 2 pasa por las migraciones de una sola vez. */
   const formatoAnterior = num(d && typeof d === "object" ? d.formato : undefined, 1);
   const s = { ...base, ...(d && typeof d === "object" ? d : {}) };
-  if (!Array.isArray(s.zones) || !s.zones.length) s.zones = [defaultZone()];
+  if (!Array.isArray(s.zones) || !s.zones.length) { s.zones = []; agregarZona(defaultZone(), s); }   /* AUD-09: nace con su id */
   s.zones = s.zones.map((z) => (z && typeof z === "object" ? { ...defaultZone(z.name || "Zona"), ...z } : defaultZone("Zona")));
-  asegurarIdsZona(s); /* H-126: cada zona lleva un id estable (contador, no reloj) para vincularla con los cuartos limpios */
+  asegurarIdsZona(s, true); /* H-126: cada zona lleva un id estable (contador, no reloj) para vincularla con los cuartos limpios; AUD-09: el que se pone al abrir no entra a la huella */
   /* rev 2.9.2 · Un proyecto guardado por una revisión anterior trae muros y
      vidrio con las cuatro cardinales nada más. Se reconstruyen las OCHO en el
      orden de la rosa, copiando tal cual lo que venga capturado y poniendo en

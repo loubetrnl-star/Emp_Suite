@@ -7019,6 +7019,93 @@ t("S.138 (H-281) la reposición de los cuartos limpios entra a carga térmica s�
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+t("S.202 (AUD-09, H-126) el id de cada zona nace con la zona (contador del proyecto, S.zoneSeq), no al pintar la pantalla de otro motor ni al abrir: «+ Zona», carga de archivos y «Traer zonas» no mueven la huella de carga térmica al abrir Cuartos limpios o Ventilación; «Traer zonas» no repite ids ni roba el vínculo cuarto ↔ zona; un proyecto guardado y sellado con zonas sin id abre con la misma huella de carga y su sello vigente", () => {
+  const guardado = JSON.stringify(S), lista0 = JSON.stringify(G("projList")());
+  const act = (a, id) => { const b = w.document.createElement("button"); b.dataset.act = a; if (id) b.dataset.id = id; w.document.body.appendChild(b); b.dispatchEvent(new w.MouseEvent("click", { bubbles: true })); b.remove(); };
+  const ids = () => JSON.stringify(S.zones.map((z) => (z && z.id) || null));
+  const cuarto = (extra) => ({ ...G("defaultRoom")("Sala de llenado"), iso: "iso5", area: 40, height: 3, occ: 2, ...(extra || {}) });
+  const nuevo = (nombre) => { G("reemplazarEstado")(G("defaultState")()); S.meta.name = nombre; S.tab = "carga"; G("render")(); };
+  const fallas = [];
+  /* Pinta Cuartos limpios y Ventilación y dice si la huella de carga se movió. */
+  const pintarOtros = (ruta) => {
+    G("recompute")();
+    const h0 = G("huellaMotor")("load"), ids0 = ids();
+    if (S.zones.some((z) => !z || !z.id)) fallas.push(`${ruta}: hay zonas sin id al crearlas ${ids0}`);
+    for (const tab of ["limpios", "ventilacion"]) {
+      S.tab = tab; G("render")(); G("recompute")();
+      const h1 = G("huellaMotor")("load");
+      if (h1 !== h0) fallas.push(`${ruta}: pintar «${tab}» cambió la huella de carga ${h0} → ${h1} (ids antes ${ids0}, después ${ids()})`);
+    }
+  };
+  const num0 = (v) => +v || 0;
+  const parte = (ruta, fn) => { try { fn(); } catch (e) { fallas.push(`${ruta}: ERROR DEL CASO (no de la conducta): ${e.message}`); } };
+  try {
+    /* 1. «+ Zona» en Carga térmica. */
+    parte("«+ Zona»", () => {
+      nuevo("S.202 · + Zona");
+      act("zone-add"); Object.assign(S.zones[S.zones.length - 1], { area: 40, height: 3 });
+      S.clean = { ci: 0, rooms: [cuarto()] };
+      pintarOtros("«+ Zona»");
+    });
+    /* 2. Zonas que entran por carga de archivos (levantamiento) a un proyecto abierto. */
+    parte("carga de archivos", () => {
+      nuevo("S.202 · archivos");
+      Object.assign(S.zones[0], { area: 30, height: 3 });
+      S.clean = { ci: 0, rooms: [cuarto()] };
+      const lote = { id: "s202-lote", tab: "carga", fuentes: [{ nombre: "s202.csv", avisos: [] }], analisis: { normas: [] },
+        propuestas: [{ marcado: true, grupo: "carga", archivo: "s202.csv", destino: "zones", etiqueta: "Nave del plano", valor: 40, unidad: "m²", texto: "Nave 40 m²",
+          fn: () => ({ zona: G("cxZonaDesde")("Nave del plano", 40, 3, 0, null, null) }) }] };
+      G("cxAplicar")(lote, "abierto", { quedarse: true });
+      if (S.zones.length !== 2) throw new Error(`la zona del archivo no entró (zonas: ${S.zones.length})`);
+      pintarOtros("carga de archivos");
+    });
+    /* 3. «Traer zonas» de un proyecto guardado: una trae el mismo id que una zona de este proyecto y otra no trae id. Los ids
+       quedan únicos, la zona de este proyecto conserva el suyo y el cuarto vinculado (H-126) sigue apuntando a ella. */
+    parte("«Traer zonas»", () => {
+      nuevo("S.202 · traer zonas");
+      Object.assign(S.zones[0], { name: "Oficina del proyecto", area: 30, height: 3 });
+      const idOrig = S.zones[0].id;
+      if (!idOrig) throw new Error("la zona del proyecto nuevo no tiene id");
+      S.clean = { ci: 0, rooms: [cuarto({ zonaId: idOrig })] };
+      G("recompute")();
+      const otro = { id: "ps202", name: "Otro", ts: 1, rev: "2.9.24", data: { zones: [
+        { ...G("defaultZone")("Importada con id"), id: idOrig, area: 10, height: 3 },
+        { ...G("defaultZone")("Importada sin id"), area: 12, height: 3 }] } };
+      G("projPersist")(G("projList")().concat([otro]));
+      act("proj-zones", "ps202");
+      if (S.zones.length !== 3) throw new Error(`no se trajeron las dos zonas (zonas: ${S.zones.length})`);
+      const lista = S.zones.map((z) => z && z.id);
+      if (lista.some((x) => !x) || new Set(lista).size !== lista.length) fallas.push(`«Traer zonas»: ids vacíos o repetidos ${ids()}`);
+      const orig = S.zones.find((z) => z.name === "Oficina del proyecto");
+      if (!orig || orig.id !== idOrig) fallas.push(`«Traer zonas»: la zona de este proyecto cambió de id (${idOrig} → ${orig && orig.id})`);
+      const apuntadas = S.zones.filter((z) => z.id === S.clean.rooms[0].zonaId);
+      if (apuntadas.length !== 1 || apuntadas[0] !== orig) fallas.push(`«Traer zonas»: el vínculo del cuarto (${S.clean.rooms[0].zonaId}) apunta a ${apuntadas.map((z) => z.name).join(" y ") || "ninguna zona"}, no sólo a «Oficina del proyecto»`);
+      G("recompute")(); act("cl-handoff");
+      const mk = Math.round(G("CLEAN").cur.makeup);
+      if (!(mk > 0)) throw new Error("el cuarto no trae reposición");
+      S.zones.forEach((z) => { const esperado = z === orig ? mk : 0; if (num0(z.oaFixed) !== esperado) fallas.push(`«Traer zonas»: el traspaso dejó ${num0(z.oaFixed)} en «${z.name}» (${z.id}); esperado ${esperado}`); });
+      pintarOtros("«Traer zonas»");
+    });
+    /* 4. Proyecto guardado y sellado antes del cambio, con una zona sin id (así lo dejaba «+ Zona»): abre con la misma huella de
+       carga y su sello sigue «calculado» (no hay re-sello solo; decisión del dueño, 28-sep-2026). Control: con id, igual. */
+    for (const conId of [false, true]) parte(`proyecto sellado ${conId ? "con" : "sin"} id de zona`, () => {
+      nuevo("S.202 · sellado");
+      Object.assign(S.zones[0], { name: "Nave", area: 40, height: 3 });
+      if (!conId) { S.zones.forEach((z) => { delete z.id; delete z.idAlAbrir; }); delete S.zoneSeq; }
+      G("recompute")();
+      const hViejo = G("huellaMotor")("load");
+      const viejo = JSON.parse(JSON.stringify(S));
+      viejo.sellos = { load: { ts: 1790553600000, huella: hViejo, ver: G("motorVer")("load"), hf: G("formaHuella")("load") } };
+      G("reemplazarEstado")(viejo); G("recompute")();
+      const ruta = `proyecto sellado ${conId ? "con" : "sin"} id de zona`;
+      if (G("huellaMotor")("load") !== hViejo) fallas.push(`${ruta}: al abrir la huella de carga cambió ${hViejo} → ${G("huellaMotor")("load")} (ids ${ids()})`);
+      if (G("selloDe")("load").estado !== "calculado") fallas.push(`${ruta}: al abrir el sello de carga dice «${G("selloDe")("load").texto}»`);
+      if (S.zones.some((z) => !z || !z.id)) fallas.push(`${ruta}: al abrir quedan zonas sin id ${ids()} (el vínculo de H-126 las necesita)`);
+    });
+  } finally { G("projPersist")(JSON.parse(lista0)); G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+  if (fallas.length) throw new Error(fallas.join(" | "));
+});
+
 t("S.69 (H-141, decisión (a) del dueño) la diversidad del edificio se aplica UNA sola vez, en la planta: las ganancias internas y el pico de cada zona no la llevan; el objetivo de planta sí (×0.8), y la memoria lo declara como criterio Carrier por ratificar", () => {
   const guardado = JSON.stringify(S);
   const pdfTxt = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");
