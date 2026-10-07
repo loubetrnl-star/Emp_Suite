@@ -7415,6 +7415,29 @@ t("S.218 (AUD-14, aprobada por el dueño el 7-oct-2026) sin sistema eléctrico v
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+t("S.219 (AUD-14, aprobada por el dueño el 7-oct-2026) sin longitud de troncal o de ramales capturada no se suponen 120 m ni 90 m: ese tramo queda «dato pendiente» visible (error en avisos y memoria), no se dimensiona ni se cotiza, la caída total queda pendiente y el aire queda incompleto; una longitud de 0 capturada se respeta", () => {
+  const guardado = JSON.stringify(S);
+  const consumos = [{ id: "s219", tipo: "generico", nombre: "Carga", cant: 1, lmin: 600, bar: 6, uso: 1 }];
+  try {
+    for (const vacio of [null, ""]) {
+      G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.219";
+      S.aire = { ...G("defaultAire")(), material: "cobre", Lprincipal: vacio, Lramales: 40, consumos };
+      G("recompute")();
+      const A = G("AIRE"), t0 = A.tramos[0];
+      if (!t0.pendiente || t0.L != null) throw new Error(`troncal sin longitud (${JSON.stringify(vacio)}): el tramo debe quedar pendiente sin longitud supuesta (L ${t0.L}, ${t0.nom})`);
+      if (A.tramos[1].pendiente) throw new Error("los ramales con 40 m capturados sí se dimensionan");
+      if (!A.avisos.some((a) => a.lvl === "err" && /longitud/i.test(a.msg) && /dato pendiente/.test(a.msg))) throw new Error("no hay aviso de error «dato pendiente» por la longitud");
+      if (!A.memo.some((m) => /longitud/i.test(m) && /dato pendiente/.test(m))) throw new Error("la memoria no dice que la longitud es dato pendiente");
+      if (A.dPtotal != null) throw new Error("la caída total no puede darse con un tramo pendiente");
+      const cot = G("cotizacionAire")(A);
+      if (!cot.pendientes.some((p) => /longitud/i.test(p.motivo))) throw new Error("la cotización no deja la red pendiente de longitud");
+      eq(G("semaforoDisciplina")(G("DISCIPLINAS").find((d) => d.id === "aire")).nivel, "incompleta", "semáforo de aire:");
+    }
+    S.aire = { ...S.aire, Lprincipal: 0 }; G("recompute")();
+    if (G("AIRE").tramos[0].pendiente || G("AIRE").avisos.some((a) => /longitud/i.test(a.msg) && /dato pendiente/.test(a.msg))) throw new Error("una longitud de 0 capturada se respeta: no es dato pendiente");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 t("S.69 (H-141, decisión (a) del dueño) la diversidad del edificio se aplica UNA sola vez, en la planta: las ganancias internas y el pico de cada zona no la llevan; el objetivo de planta sí (×0.8), y la memoria lo declara como criterio Carrier por ratificar", () => {
   const guardado = JSON.stringify(S);
   const pdfTxt = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");
