@@ -118,10 +118,12 @@ dónde me quedé, lo que quedó a medias, los pendientes en orden y el siguiente
 5. **Pregunta abierta al dueño (no tocar hasta que conteste):** la propuesta existente hacia Soportería, `motores>soporte`, trae
    los metros de ducto desde Ductos (además de hidráulica, incendio y aire). Su regla dice «siempre que ninguna venga de Ductos».
    ¿Se quitan de esa propuesta los metros de ducto (Soportería los captura a mano) o se queda como está?
-6. Cruces de pantalla por revisar, sin esperar a H-278 (Selección y Soportería no están congeladas). Lo anotado al corte del
-   28-sep, por verificar contra el código actual: Selección muestra precios de Cotización (`listPrice`, tarjeta «Bases de precio» y
-   «Resumen de cotización» en `viewSeleccion`); Soportería cuenta partidas de la cotización. Si corregirlo obliga a tocar la
-   Cotización general, se detiene ahí y se registra como dependencia en la bitácora (CLAUDE.md, «Congelados»).
+6. Cruces de pantalla (verificado contra el código el 6-oct-2026): resuelto. Selección cotiza con sus propios precios
+   (`preciosEquip(S.equip)`, H-301): `listPrice` ya no lee la Cotización y la tarjeta «Resumen de cotización» es la cotización
+   propia de Selección (`SYS.cot`). Soportería ya no cuenta partidas de la cotización: sus bases salen de lo capturado o de la
+   instantánea, que cuenta las partidas de Selección (`equiposCotizados`, `S.equip.items`; H-301 y H-266). El único resto, los
+   8 campos `quote.*` de la tarjeta «Bases de precio» de Selección, se quitó por decisión del dueño del 6-oct-2026 (commit
+   a993b7a, prueba S.203); siguen en la pestaña Cotización.
 7. Soportería: con «metros a mano guardados» la tarjeta dice «Desactualizada · el origen cambió» sin que cambie el origen (así
    era en `d8f8b5e`); corregirlo toca `estadoPropuestaCalc` (todas las propuestas).
 8. H-273 mutantes de ventilación (PAUSADA; `continuacion/parciales/H-273-vent-mutantes.patch`). Mutantes rotos de antes:
