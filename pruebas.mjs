@@ -6867,6 +6867,11 @@ t("S.64 (H-154 + H-156) selección Greenheck: la cobertura real manda (cfmMin �
     let V = armar({ mode: "general", spaceType: "office", area: 700, height: 4.71, occ: 46, ach: 6, ductLoss: .5, filterLoss: .25 });
     eq(V.eq.cubre, true, "hay modelo que cubre:"); eq(V.eq.primary.model, "CSW-30", "el que cubre (antes GB-360 por la familia preferida):");
     if (!(V.eq.primary.cfmMin <= V.eq.target && V.eq.target <= V.eq.primary.cfmMax)) throw new Error("el objetivo no cae dentro del rango del modelo elegido");
+    /* H-273 (mutante vent.m33): en la lista de candidatos (pantalla y PDF) el elegido va primero y todo modelo que cubre va antes que cualquiera que no cubre. */
+    const ordenCandidatos = (V) => { eq(V.eq.candidates[0].model.model, V.eq.primary.model, "el primer candidato es el elegido:");
+      const cubreIdx = V.eq.candidates.map((c) => c.model.cfmMin <= V.eq.target && V.eq.target <= c.model.cfmMax);
+      if (cubreIdx.some((c, i) => c && cubreIdx.slice(0, i).some((x) => !x))) throw new Error("un modelo que cubre quedó después de uno que no cubre"); };
+    ordenCandidatos(V);
     if (G("validateAll")().rows.some((r) => r.lvl === "err" && /ningún modelo/.test(r.msg))) throw new Error("no debe haber aviso de «ningún modelo cubre»");
     if (!G("propuestaElecFilas")().some((c) => /CSW-30/.test(c.nombre))) throw new Error("el eléctrico debe traer el CSW-30 como carga");
     /* 2) Familia del modo dentro de los que cubren: oficina chica → un roof exhauster (G-099), no un centrífugo. */
@@ -6875,6 +6880,7 @@ t("S.64 (H-154 + H-156) selección Greenheck: la cobertura real manda (cfmMin �
     /* 2b) Con 1,907 CFM (objetivo 2,098) cubren G-140 (1,233–2,115, nominal 1,674) y CSW-12 (800–2,500, nominal 1,650): manda la familia, no el menor nominal. */
     V = armar({ mode: "general", spaceType: "office", area: 180, height: 3, occ: 10, ach: 6 });
     eq(V.eq.primary.tech, "roof_exhauster", "entre los que cubren manda la familia del modo aunque otro tenga menor nominal:"); contiene(V.eq.primary.model, "G-140", "modelo:");
+    ordenCandidatos(V);
     /* 3) H-156: 9,945 CFM de objetivo no lo cubre el GB-360 (máx 9,000) aunque 9,000 ≥ 0.9 × 9,945: rige la cobertura real → CSW-22 (4,000–10,000). */
     V = armar({ mode: "general", spaceType: "office", area: 400, height: 6, occ: 30, ach: 6.4 });
     eq(V.eq.primary.model, "CSW-22", "sin tolerancia ×0.9 el GB-360 no cubre 9,945:"); eq(V.eq.cubre, true);
