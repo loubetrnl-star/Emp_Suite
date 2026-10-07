@@ -7175,6 +7175,30 @@ t("S.205 (AUD-11, H-180) el cambio de H-180 que mueve resultados está declarado
   if (!/\|\s*8 \(sin cambio\)\s*\|[^\n]*H-180[^\n]*0\.5/.test(sec)) throw new Error("CHANGELOG-motores.md (Eléctrico) no declara H-180 como cambio sin subir versión");
 });
 
+t("S.206 (AUD-09, H-126 y H-128) traspasar la reposición por vínculo y «Crear zona con este cuarto» son acciones de captura, no lógica de cálculo: un proyecto guardado antes (zona creada con 12 W/m² y 0.05 1/h, reposición traspasada por nombre, zonas sin id) abre con las mismas cifras de carga y de cuartos limpios, la misma huella de carga y su sello vigente; el CHANGELOG lo declara sin subir versión", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.206"; aceptarSitioCarga();
+    S.zones = [{ ...G("defaultZone")("Sala de juntas"), area: 30, height: 3 },
+      { ...G("defaultZone")("Sala de llenado"), area: 40, height: 3, lights: 40 * 12, ach: 0.05, spaceType: "cleanroom", equip: 1000, oaFixed: 500 }];
+    S.clean = { ci: 0, rooms: [{ ...G("defaultRoom")("Sala de llenado"), iso: "iso7", area: 40, height: 3, occ: 2 }] };
+    delete S.zoneSeq; G("recompute")();
+    if (!(G("totals")().tons > 0)) throw new Error("el caso no aísla lo que se quiere probar: la carga quedó en cero");
+    const cL = JSON.stringify(G("cifrasMotor")("load")), cC = JSON.stringify(G("cifrasMotor")("clean")), h0 = G("huellaMotor")("load");
+    const viejo = JSON.parse(JSON.stringify(S));
+    viejo.sellos = { load: { ts: 1790553600000, huella: h0, ver: G("motorVer")("load"), hf: G("formaHuella")("load") } };
+    G("reemplazarEstado")(viejo); G("recompute")();
+    eq(JSON.stringify(G("cifrasMotor")("load")), cL, "cifras de carga al abrir:");
+    eq(JSON.stringify(G("cifrasMotor")("clean")), cC, "cifras de cuartos limpios al abrir:");
+    eq(G("huellaMotor")("load"), h0, "huella de carga al abrir:");
+    eq(G("selloDe")("load").estado, "calculado", "sello de carga al abrir:");
+    eq(S.zones[1].lights, 480, "la iluminación capturada por la acción vieja se conserva (no se migra):"); eq(S.zones[1].oaFixed, 500, "la reposición traspasada se conserva:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+  const chl = fs.readFileSync("CHANGELOG-motores.md", "utf8");
+  const sec = chl.slice(chl.indexOf("## Cuartos limpios"), chl.indexOf("\n## ", chl.indexOf("## Cuartos limpios") + 5));
+  for (const h of ["H-126", "H-128"]) if (!new RegExp(String.raw`\|\s*3 \(sin cambio\)\s*\|[^\n]*` + h).test(sec)) throw new Error(`CHANGELOG-motores.md (Cuartos limpios) no declara ${h} como cambio sin subir versión`);
+});
+
 t("S.69 (H-141, decisión (a) del dueño) la diversidad del edificio se aplica UNA sola vez, en la planta: las ganancias internas y el pico de cada zona no la llevan; el objetivo de planta sí (×0.8), y la memoria lo declara como criterio Carrier por ratificar", () => {
   const guardado = JSON.stringify(S);
   const pdfTxt = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");

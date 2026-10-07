@@ -24,6 +24,8 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 | 1 | 2.9.15 | lógica de partida |
 | 2 | 2.9.16 | sin pisos de 1 m² ni 2.2 m; 5 Pa de ISO 14644-4 con aviso; ceros capturados respetados |
 | 3 | 2.9.24 | H-127: se respeta el signo de la presión diferencial capturada (un cuarto de contención va en negativa: EU GMP Anexo 1 (2022) §4.14, texto en parches/normas-texto); antes −10 Pa se volvían +5 Pa y el Excel imprimía «5 · Capturado». Piso de 5 Pa y fuga por rendijas sobre \|ΔP\|; `dPcap`, `dPneg`, `dPsigno` en el resultado; memoria, PDF y Excel imprimen el signo y citan los 10 Pa guía del Anexo 1. Proyecto fijo (positiva): sin cambio de cifras |
+| 3 (sin cambio) | 2.9.24 | H-126 (declarado por AUD-09, auditoría externa del 28-sep-2026): el traspaso de la reposición a carga térmica va por el vínculo cuarto ↔ zona (id), no por la primera palabra del nombre. Es una acción de captura: `computeClean` y `computeLoad` no cambian y un proyecto guardado abre con las mismas cifras, huella y sello (S.206; desde AUD-09 el id que la zona recibe al abrir no entra a la huella) |
+| 3 (sin cambio) | 2.9.24 | H-128 (declarado por AUD-09): «Crear zona de carga con este cuarto» deja la iluminación y la infiltración en 0, pendientes de captura (antes 12 W/m² y 0.05 1/h). Es una acción de captura: sólo cambia lo que crea esa acción desde ahora; una zona ya creada conserva lo que tenía y el proyecto abre con las mismas cifras (S.206) |
 
 ## Selección de equipo (`equip`) · v4
 
