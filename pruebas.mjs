@@ -7253,6 +7253,21 @@ t("S.209 (AUD-12, H-48/H-52) un error de soportería llega a validateAll por su 
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+t("S.210 (AUD-19, H-205) la estática al rociador más alto más 1 m es regla del dueño sin fuente normativa (NFPA 13 no está en parches/normas-texto): la memoria y el PDF de contra incendio lo declaran, como H-217", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.210";
+    S.fuego = { ...G("defaultFuego")(), area: 500, altura: 6 };
+    G("recompute")();
+    const F = G("FUEGO");
+    if (!(F.hAlt > 0)) throw new Error("el caso no aísla lo que se quiere probar: sin altura al rociador");
+    const linea = F.memo.find((m) => /^Estática /.test(m) || /Estática \S+ m al rociador/.test(m)) || F.memo.find((m) => /Estática/.test(m)) || "";
+    if (!/sin fuente normativa/.test(linea)) throw new Error(`la memoria no declara la regla de la estática como del dueño sin fuente normativa: ${linea.slice(0, 200)}`);
+    const pdf = txtPdfE(G("buildFuegoPdf")());
+    if (!/estatica[^|]{0,160}sin fuente normativa/i.test(pdf)) throw new Error("el PDF de contra incendio no declara la regla de la estática sin fuente normativa");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 t("S.69 (H-141, decisión (a) del dueño) la diversidad del edificio se aplica UNA sola vez, en la planta: las ganancias internas y el pico de cada zona no la llevan; el objetivo de planta sí (×0.8), y la memoria lo declara como criterio Carrier por ratificar", () => {
   const guardado = JSON.stringify(S);
   const pdfTxt = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");

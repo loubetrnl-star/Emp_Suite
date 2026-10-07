@@ -60,3 +60,8 @@ Ninguna mueve una cifra del cálculo: amplían lo que R.1 y R.4 vigilan, y eso o
 - `S.site` y `S.sitioCarga` iguales en el fijo 2: un retroceso a leer el sitio de Proyecto no movería carga (H-290).
 - Red contra incendio en cobre o CPVC para H-224 (el fijo 2 es acero).
 - Quitar de R.4 la aserción vacía `!c.mcaEst && !c.mopEst` (desde AUD-14 siempre son falsos) o cambiarla por `placaRef`.
+
+## AUD-19 · fuego (texto relacionado, no aplicado por alcance)
+- El aviso «Con más de 12 m de altura hay que revisar si aplica protección en rack…» y la guía del campo (`fuego.altura`) usan
+  el umbral de 12 m sin cita. Igual que la estática, NFPA 13 no está en `parches/normas-texto`: propuesta de declararlo
+  «criterio de la casa sin fuente normativa» o pasar el texto de NFPA 13 al repositorio. No mueve números.
