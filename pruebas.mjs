@@ -7167,6 +7167,14 @@ t("S.204 (AUD-02(a), ratificada por el dueño el 6-oct-2026; H-272b) la carga de
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+t("S.205 (AUD-11, H-180) el cambio de H-180 que mueve resultados está declarado: con fp capturado fuera de [0.5, 1] o en 0 el eléctrico usa el fp de la casa del tipo (antes lo limitaba a 0.5–1); MOTOR_CAMBIOS.elec y CHANGELOG-motores.md lo dicen (sin subir versión: entró con elec v8, rev 2.9.24)", () => {
+  const v8 = (G("MOTOR_CAMBIOS").elec || []).find((c) => c.ver === "8");
+  if (!v8 || !/H-180/.test(v8.que) || !/0\.5/.test(v8.que)) throw new Error(`MOTOR_CAMBIOS.elec no declara H-180 (fp fuera de [0.5, 1]): ${v8 ? v8.que.slice(0, 120) : "sin v8"}`);
+  const chl = fs.readFileSync("CHANGELOG-motores.md", "utf8");
+  const sec = chl.slice(chl.indexOf("## Eléctrico"), chl.indexOf("\n## ", chl.indexOf("## Eléctrico") + 5));
+  if (!/\|\s*8 \(sin cambio\)\s*\|[^\n]*H-180[^\n]*0\.5/.test(sec)) throw new Error("CHANGELOG-motores.md (Eléctrico) no declara H-180 como cambio sin subir versión");
+});
+
 t("S.69 (H-141, decisión (a) del dueño) la diversidad del edificio se aplica UNA sola vez, en la planta: las ganancias internas y el pico de cada zona no la llevan; el objetivo de planta sí (×0.8), y la memoria lo declara como criterio Carrier por ratificar", () => {
   const guardado = JSON.stringify(S);
   const pdfTxt = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");
