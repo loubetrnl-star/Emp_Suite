@@ -9373,6 +9373,24 @@ const ROUND_G = [
   { c: "6", b: [[6, 28], [10, 26], [14, 24], [26, 22], [50, 20], [60, 18], [84, 16]], j: "Brida companion", col: "10" },
   { c: "10", b: [[6, 28], [10, 26], [14, 24], [26, 22], [50, 20], [60, 18], [84, 16]], j: "Soldado", col: "10" },
 ];
+/* H-311 (duct v6; decisión del dueño, 2026-10-07): el ducto redondo de RETORNO y de EXTRACCIÓN trabaja a presión negativa
+   (el signo sale del servicio; el suministro sigue con ROUND_G, la grasa con UMC 2018). Calibre según SMACNA HVAC Duct
+   Construction Standards, 2nd Ed. 1995 + Addendum No. 1 (1997), TABLE 3-2B «Round duct gage negative pressure», pág. 3.5
+   (normas/smacna1995_tabla3-2B.json; texto público en law.resource.org, normas/FUENTE.md), costura LONGITUDINAL como en
+   H-310, columnas -2, -4 y -10 in w.g. (las clases ½, 1, 3 y 6 toman la inmediata superior: supuesto propio).
+   b = [diámetro máximo en in, calibre, refuerzo]; el refuerzo «A6» = ángulo A cada 6 ft (nota de la tabla). La tabla no da
+   calibre longitudinal en 37-60" a -10" ni en 61-72", y no pasa de 72": ahí el calibre queda PENDIENTE (regla 6: sin kilos;
+   no se toma la costura espiral ni otra tabla). */
+const ROUND_G_NEG = [
+  { c: "0.5", b: [[10, 28, null], [13, 26, null], [17, 24, null], [20, 22, null], [26, 20, null], [34, 18, null], [42, 16, null], [48, 18, "A6"], [60, 18, "B4"], [72, null, null]], col: "2" },
+  { c: "1", b: [[10, 28, null], [13, 26, null], [17, 24, null], [20, 22, null], [26, 20, null], [34, 18, null], [42, 16, null], [48, 18, "A6"], [60, 18, "B4"], [72, null, null]], col: "2" },
+  { c: "2", b: [[10, 28, null], [13, 26, null], [17, 24, null], [20, 22, null], [26, 20, null], [34, 18, null], [42, 16, null], [48, 18, "A6"], [60, 18, "B4"], [72, null, null]], col: "2" },
+  { c: "3", b: [[8, 28, null], [10, 26, null], [13, 24, null], [16, 22, null], [20, 20, null], [26, 18, null], [33, 16, null], [36, 20, "A6"], [48, 18, "B6"], [60, 16, "B4"], [72, null, null]], col: "4" },
+  { c: "4", b: [[8, 28, null], [10, 26, null], [13, 24, null], [16, 22, null], [20, 20, null], [26, 18, null], [33, 16, null], [36, 20, "A6"], [48, 18, "B6"], [60, 16, "B4"], [72, null, null]], col: "4" },
+  { c: "6", b: [[8, 26, null], [9, 24, null], [12, 22, null], [15, 20, null], [21, 18, null], [24, 16, null], [26, 18, "A4"], [29, 16, "A4"], [36, 16, "B4"], [72, null, null]], col: "10" },
+  { c: "10", b: [[8, 26, null], [9, 24, null], [12, 22, null], [15, 20, null], [21, 18, null], [24, 16, null], [26, 18, "A4"], [29, 16, "A4"], [36, 16, "B4"], [72, null, null]], col: "10" },
+];
+const ANGULO_SMACNA = { A: '1 × 1 × 1/8"', B: '1-1/4 × 1-1/4 × 3/16"', C: '1-1/2 × 1-1/2 × 3/16"', D: '1-1/2 × 1-1/2 × 1/4"', E: '2 × 2 × 3/16"', F: '2 × 2 × 1/4"' };
 const PRESSURE_CLASSES = [["0.5", '½" w.g. · 125 Pa'], ["1", '1" w.g. · 250 Pa'], ["2", '2" w.g. · 500 Pa'], ["3", '3" w.g. · 750 Pa'], ["4", '4" w.g. · 1000 Pa'], ["6", '6" w.g. · 1500 Pa'], ["10", '10" w.g. · 2500 Pa']];
 const FITTINGS = [
   ["elbow_90_smooth", "Codo 90° radio largo R/D 1,5", .21], ["elbow_90_miter", "Codo 90° inglete 3 secciones", .42],
@@ -9427,6 +9445,7 @@ const GRASA_UMC = {
 };
 function selectGauge(shape, longMm, pc, material, service) {
   const side = longMm / 25.4;
+  if (shape === "round" && (service === "return" || service === "exhaust")) return calibreRedondoNegativo(side, pc, material);
   const t = (shape === "round" ? ROUND_G : RECT_G).find((x) => x.c === pc) || RECT_G[2];
   let g = t.b[t.b.length - 1][1];
   for (const [max, gauge] of t.b) if (side <= max) { g = gauge; break; }
@@ -9449,6 +9468,30 @@ function selectGauge(shape, longMm, pc, material, service) {
     ? `SMACNA HVAC-DCS 2.ª ed. 1995, Tabla 3-2A · costura longitudinal · columna +${t.col}" w.g.${t.col !== pc ? ` (clase ${pc}" sin columna propia: supuesto propio, la inmediata superior)` : ""} · ${note}`
     : `SMACNA · ${shape === "round" ? "circular" : "rectangular"} · ${pc}" w.g. · ${note}`;
   return { gauge: g, th_in: th, th_mm: th * 25.4, joint: t.j, ref, material: note };
+}
+/* H-311: retorno y extracción redondos por la TABLE 3-2B (presión negativa). Sin celda: calibre pendiente, sin kilos. */
+function calibreRedondoNegativo(side, pc, material) {
+  const t = ROUND_G_NEG.find((x) => x.c === pc) || ROUND_G_NEG[2];
+  const fila = t.b.find(([max]) => side <= max) || null;
+  const cita = `SMACNA HVAC-DCS 2.ª ed. 1995, Tabla 3-2B (presión negativa) · costura longitudinal · columna -${t.col}" w.g.${t.col !== pc ? ` (clase ${pc}" sin columna propia: supuesto propio, la inmediata superior)` : ""}`;
+  const citaEn = `SMACNA HVAC-DCS 2nd Ed. 1995, Table 3-2B (negative pressure) · longitudinal seam · -${t.col}" w.g. column${t.col !== pc ? ` (class ${pc}" has no column of its own: own assumption, next higher)` : ""}`;
+  if (!fila || fila[1] === null) {
+    const fuera = !fila;
+    const sinCalibre = fuera ? `Calibre pendiente: la Tabla 3-2B de SMACNA 1995 (presión negativa) llega a Ø72"; este retorno o extracción de Ø${side.toFixed(1)}" queda sin calibre, kilos ni importe (H-311)`
+      : `Calibre pendiente: la Tabla 3-2B de SMACNA 1995 no da calibre de costura longitudinal a Ø${side.toFixed(1)}" en -${t.col}" w.g.; sin calibre, kilos ni importe (H-311)`;
+    const sinCalibreEn = fuera ? `Gauge pending: SMACNA 1995 Table 3-2B (negative pressure) stops at Ø72"; this Ø${side.toFixed(1)}" return or exhaust run has no gauge, weight or cost (H-311)`
+      : `Gauge pending: SMACNA 1995 Table 3-2B gives no longitudinal-seam gauge at Ø${side.toFixed(1)}" for -${t.col}" w.g.; no gauge, weight or cost (H-311)`;
+    return { gauge: "—", th_in: 0, th_mm: 0, joint: "—", ref: `${cita} · calibre pendiente`, refEn: `${citaEn} · gauge pending`, material: "", negativa: true, sinCalibre, sinCalibreEn };
+  }
+  let g = fila[1], note = "Galvanizado G60/G90";
+  if (material === "aluminum") { g = GAUGE_ORDER[Math.min(GAUGE_ORDER.length - 1, GAUGE_ORDER.indexOf(g) + 2)]; note = "Aluminio +2 calibres"; }
+  if (material === "stainless") note = "Inoxidable 304/316";
+  const th = GAUGE_T[g] ?? .0359;
+  const ref = fila[2] ? fila[2].match(/^([A-F])(\d+)$/) : null;
+  const refuerzo = ref ? { codigo: fila[2], angulo: ref[1], cadaFt: Number(ref[2]), medida: ANGULO_SMACNA[ref[1]] } : null;
+  const aviso = refuerzo ? `Retorno/extracción Ø${side.toFixed(1)}": la Tabla 3-2B de SMACNA 1995 pide ángulo de refuerzo ${refuerzo.angulo} (${refuerzo.medida}) cada ${refuerzo.cadaFt} ft con el calibre ${g} (H-311)` : null;
+  return { gauge: g, th_in: th, th_mm: th * 25.4, joint: "Costura longitudinal" + (refuerzo ? ` · ángulo ${refuerzo.angulo} cada ${refuerzo.cadaFt} ft` : ""),
+    ref: `${cita}${refuerzo ? ` · refuerzo ${refuerzo.codigo}` : ""} · ${note}`, refEn: `${citaEn}${refuerzo ? ` · reinforcement ${refuerzo.codigo}` : ""}`, material: note, negativa: true, refuerzo, aviso };
 }
 const ACC_CATS = ["transverse_connector", "corner_cleat", "sealant", "gasket", "hanger", "access_door", "flexible_connector"];
 const ACC_LABEL = { transverse_connector: "Junta transversal", corner_cleat: "Esquinero", sealant: "Sellador", gasket: "Empaque", hanger: "Soporte", access_door: "Puerta de acceso", flexible_connector: "Conector flexible", volume_damper: "Compuerta de volumen", fire_smoke: "Compuerta fuego/humo", turning_vane: "Álabes de giro", spin_in: "Collarín spin-in", takeoff: "Derivación" };
@@ -9692,6 +9735,7 @@ function calcSegment(s, meta) {
   const longSide = s.shape === "round" ? (d || De) : Math.max(w || 0, hgt || 0);
   const gauge = selectGauge(s.shape, longSide, meta.pc, meta.material, s.service);
   if (gauge.aviso) warn.push(gauge.aviso);
+  if (gauge.sinCalibre) warn.push(gauge.sinCalibre);   /* H-311 */
   const acc = accessoriesFor(s.shape, longSide, meta.pc);
   // Cuantificación
   const perim = s.shape === "round" ? Math.PI * De / 1000 : 2 * (w + hgt) / 1000;
@@ -9761,6 +9805,10 @@ function cotizacionDuct(R, D) {
   (R.segs || []).filter((s) => s.error && num(s.L) > 0).forEach((s) => pendientes.push({ mot: "duct",
     desc: `Ducto de lámina, tramo ${s.tag} (${n(s.L, 1)} m)`, descEn: `Sheet metal duct, run ${s.tag} (${n(s.L, 1)} m)`,
     motivo: `pendiente de medida: ${s.error}`, motivoEn: `size pending: ${s.errorEn || s.error}` }));
+  /* H-311: retorno o extracción redondo sin calibre en la Tabla 3-2B: sin lámina; queda pendiente con su razón. */
+  (R.segs || []).filter((s) => !s.error && s.gauge && s.gauge.sinCalibre && num(s.L) > 0).forEach((s) => pendientes.push({ mot: "duct",
+    desc: `Ducto de lámina, tramo ${s.tag} (${n(s.L, 1)} m)`, descEn: `Sheet metal duct, run ${s.tag} (${n(s.L, 1)} m)`,
+    motivo: s.gauge.sinCalibre, motivoEn: s.gauge.sinCalibreEn }));
   /* H-167 (dependencia de ductos, quote v22): un tramo sin longitud capturada no lleva lámina; queda pendiente de longitud. */
   (R.segs || []).filter((s) => !(num(s.L) > 0)).forEach((s) => pendientes.push({ mot: "duct",
     desc: `Ducto de lámina, tramo ${s.tag}`, descEn: `Sheet metal duct, run ${s.tag}`,
@@ -19763,7 +19811,7 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "7", clean: "3", equip: "4", duct: "5", vent: "4", quote: "24", valor: "2", kaizen: "1", elec: "10", hidro: "10", fuego: "6", aire: "6", civil: "8", soporte: "14" };
+const MOTOR_VER = { load: "7", clean: "3", equip: "4", duct: "6", vent: "4", quote: "24", valor: "2", kaizen: "1", elec: "10", hidro: "10", fuego: "6", aire: "6", civil: "8", soporte: "14" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
@@ -19779,7 +19827,7 @@ const MOTOR_CAMBIOS = {
   vent: [{ ver: "2", rev: "2.9.24", que: "H-154 + H-156: la cobertura real manda en la selección Greenheck (cfmMin ≤ objetivo ≤ cfmMax, sin tolerancia ×0.9); la familia del modo sólo ordena entre los que cubren; si nadie cubre no hay modelo (proyecto fijo: GB-360 → CSW-30 para 11,643 CFM)" },
     { ver: "3", rev: "2.9.24", que: "H-155: sin medidas no hay caudal: campana sin largo o fondo y rejilla sin ancho, alto, área libre o velocidad dan demanda 0 con aviso (antes pisos de 0.1 ft, 5 % y 100 fpm fabricaban 30 y 258 CFM y sus partidas)" },
     { ver: "4", rev: "2.9.24", que: "H-262 (decisión del dueño, 27-sep-2026): ventilación calcula sólo con sus propios datos: el área, la altura y los ocupantes ya no se copian de carga térmica (se capturan en su pestaña; un proyecto guardado conserva los valores que ya tenía copiados). Se retira la propuesta load>vent (aire exterior de carga térmica como reposición: con el local sin capturar fabricaba cambios/h sobre 1 m² × 0.1 m). Sin área o altura capturadas, el caudal por cambios de aire queda pendiente de captura, con aviso. La relación con carga térmica va al revés: el ventilador seleccionado entrega el calor de su motor a una zona (H-263)" }],
-  duct: [{ ver: "2", rev: "2.9.24", que: "H-166: un tramo sin caudal, con medida bloqueada sin capturar o fuera de la serie, o sin ninguna medida de la serie que cumpla no lleva sección, kilos ni importe: error visible, «sin medida» en cédula y Excel, pendiente en cotización y soportería (antes 400×200 / Ø250 inventados)" }, { ver: "3", rev: "2.9.24", que: "H-167: «Generar desde carga» trae sólo caudales: sin longitudes (antes 20/10/15 m) ni accesorios (tee 0.65, salida 1.0, entrada 0.03, 2 codos); tramo sin longitud = «pendiente de longitud» sin kilos, juntas ni soportes (antes 1 y 1 mínimos)" }, { ver: "4", rev: "2.9.24", que: "H-165 (decisión 7 del dueño): ducto de grasa por UMC 2018 §510.5 (up.codes): acero al carbón 0.060 in (16 MSG) o inoxidable 0.048 in (18 MSG), soldadura externa continua, nunca galvanizado ni aluminio (antes tabla galvanizada + 2: 500 L/s clase ½\" = cal 22, 0.853 mm); ratificar con NFPA 96" }, { ver: "5", rev: "2.9.24", que: "H-310 (decisión del dueño): calibre de ducto redondo por SMACNA HVAC-DCS 2.ª ed. 1995, Tabla 3-2A, costura longitudinal; clases ½, 1, 3 y 6 con la columna inmediata superior (supuesto propio). Antes, criterio de la casa (H-168): Ø800 clase 2\" cal 18 → 22, Ø500 clase 2\" cal 20 → 24, Ø1600 clase 1\" cal 18 → 16" }],
+  duct: [{ ver: "2", rev: "2.9.24", que: "H-166: un tramo sin caudal, con medida bloqueada sin capturar o fuera de la serie, o sin ninguna medida de la serie que cumpla no lleva sección, kilos ni importe: error visible, «sin medida» en cédula y Excel, pendiente en cotización y soportería (antes 400×200 / Ø250 inventados)" }, { ver: "3", rev: "2.9.24", que: "H-167: «Generar desde carga» trae sólo caudales: sin longitudes (antes 20/10/15 m) ni accesorios (tee 0.65, salida 1.0, entrada 0.03, 2 codos); tramo sin longitud = «pendiente de longitud» sin kilos, juntas ni soportes (antes 1 y 1 mínimos)" }, { ver: "4", rev: "2.9.24", que: "H-165 (decisión 7 del dueño): ducto de grasa por UMC 2018 §510.5 (up.codes): acero al carbón 0.060 in (16 MSG) o inoxidable 0.048 in (18 MSG), soldadura externa continua, nunca galvanizado ni aluminio (antes tabla galvanizada + 2: 500 L/s clase ½\" = cal 22, 0.853 mm); ratificar con NFPA 96" }, { ver: "5", rev: "2.9.24", que: "H-310 (decisión del dueño): calibre de ducto redondo por SMACNA HVAC-DCS 2.ª ed. 1995, Tabla 3-2A, costura longitudinal; clases ½, 1, 3 y 6 con la columna inmediata superior (supuesto propio). Antes, criterio de la casa (H-168): Ø800 clase 2\" cal 18 → 22, Ø500 clase 2\" cal 20 → 24, Ø1600 clase 1\" cal 18 → 16" }, { ver: "6", rev: "2.9.24", que: "H-311 (decisión del dueño): retorno y extracción redondos por SMACNA HVAC-DCS 2.ª ed. 1995, Tabla 3-2B (presión negativa), costura longitudinal; el refuerzo que pide la tabla (ángulo y separación) se avisa; donde la tabla no da calibre longitudinal (37-72\" a -10\", 61-72\") o pasa de 72\" el calibre queda pendiente, sin kilos. Antes iban con la 3-2A positiva: Ø500 clase 2\" cal 24 → 22, Ø800 22 → 18" }],
   clean: [{ ver: "2", rev: "2.9.16", que: "sin pisos de 1 m² ni 2.2 m; 5 Pa de ISO 14644-4 con aviso; ceros capturados respetados" },
     { ver: "3", rev: "2.9.24", que: "H-127: se respeta el signo de la presión diferencial capturada (contención en negativa, EU GMP Anexo 1 (2022) §4.14); piso de 5 Pa y fuga por rendijas sobre |ΔP|; el signo sale en memoria, PDF y Excel; aviso con los 10 Pa guía del Anexo 1" }],
   quote: [{ ver: "2", rev: "2.9.16", que: "red hidráulica por diámetro con precio capturado; sin 50 m supuestos; partidas pendientes" }, { ver: "3", rev: "2.9.19", que: "tramo con longitud y sin unidades mueble queda pendiente" }, { ver: "4", rev: "2.9.23", que: "precio de tubería por renglón con origen (referencia de mercado o proveedor local), IVA desglosado y por metro; sin precio: partida Por cotizar en el Budget, bloqueo sólo en la formal" }, { ver: "5", rev: "2.9.23", que: "precios en USD sólo se convierten con tipo de cambio capturado con fecha; sin fecha salen Por cotizar y bloquean la formal (nada se estima)" }, { ver: "6", rev: "2.9.23", que: "referencias sólo de California y sólo material (mano de obra por capturar; combinados → Por cotizar); referencias IUSA retiradas; flete, aduana e importación como renglón propio siempre Por cotizar hasta capturarlo" }, { ver: "7", rev: "2.9.24", que: "H-198: un tramo de agua sin diámetro verificado (fuera del catálogo del material, o PEAD sin SDR ni fuente) va Por cotizar con sus metros; ya no se cotiza con el precio del mayor diámetro ni pide precio de un diámetro que no le corresponde" }, { ver: "8", rev: "2.9.24", que: "H-196: cisterna y equipo de bombeo sin precio semilla (9,500 MXN/m³ y 14,500 MXN/HP sin fuente): van Por cotizar con su volumen y su potencia; la bomba sólo cuando la presión de la red no alcanza; cisterna en 0 queda pendiente de volumen, nunca cisterna de 0 m³" }, { ver: "9", rev: "2.9.24", que: "H-206: bomba contra incendio y reserva sin precio fijo (385,000 MXN + 9,500 MXN/m³ sin fuente): Por cotizar con capacidad (gpm y L/min), presión, potencia y volumen declarados" }, { ver: "10", rev: "2.9.24", que: "dependencia de aire v3 (H-215): la partida del secador lleva la capacidad nominal de ISO 7183 A1 y declara si la corrección del fabricante está pendiente" }, { ver: "11", rev: "2.9.24", que: "dependencia de aire v5 (H-218): la partida de la red declara «diámetros indicativos: DI del fabricante pendiente» en aluminio e inoxidable" }, { ver: "12", rev: "2.9.24", que: "dependencia de vent v2 (H-154): la partida de ventilación nombra el modelo que cubre de verdad (o ninguno)" }, { ver: "13", rev: "2.9.24", que: "dependencia de soporte v5 (H-225): sin altura de colgado la varilla sale pendiente, no cotizada" }, { ver: "14", rev: "2.9.24", que: "dependencia de soporte v6 (H-226): el anclaje va Por cotizar (sección G) mientras no haya SDS con fuente, estructura y f'c" }, { ver: "15", rev: "2.9.24", que: "dependencia de soporte v8 (H-229): más soportes de cobre con los claros MSS/IPC" }, { ver: "16", rev: "2.9.24", que: "dependencia de civil v4 (H-243): muro clasificado y media caña por cuarto limpio" }, { ver: "17", rev: "2.9.24", que: "dependencia de civil v5 (H-244): tabiquería por zona, sin los muros de carga térmica" }, { ver: "18", rev: "2.9.24", que: "H-254: el factor de plaza no toca la sección H ni los precios con origen declarado (referencia o proveedor): tal cual (antes la importación de 18,500 salía 19,980 en Mexicali)" }, { ver: "19", rev: "2.9.24", que: "H-253: la formal (licitación) no sale con referencias de mercado, mano de obra por capturar, importación sin capturar o USD sin tipo de cambio fechado; cada bloqueo se nombra en pantalla y en el error" }, { ver: "20", rev: "2.9.24", que: "H-252 (decisión 6, opción a): cada precio semilla sin fuente sale en el Budget con «SEMILLA · SIN FUENTE» (EN «SEED · NO SOURCE») y bloquea la formal; sólo los renglones con origen declarado y la importación capturada quedan sin marca" }, { ver: "21", rev: "2.9.24", que: "H-166 (dependencia de ductos): la lámina de un tramo sin sección queda pendiente con su razón (ES/EN) y fuera de los kilos de la partida" }, { ver: "22", rev: "2.9.24", que: "H-167 (dependencia de ductos): cada tramo de ducto sin longitud capturada queda pendiente de longitud (ES/EN), sin lámina" }, { ver: "23", rev: "2.9.24", que: "H-165 (dependencia de ductos): los kilos del ducto de grasa salen de la partida de lámina galvanizada y quedan Por cotizar como ducto soldado (UMC 2018 §510.5)" }, { ver: "24", rev: "2.9.24", que: "H-181: el alimentador se cuantifica por calibre (juegos × hilos × m de fase y neutro, tierra por canalización 250-122(f), tubo por juego) y el tablero por capacidad y circuitos dimensionados, «Por cotizar» sin precio con fuente (antes 1 juego a 1,350 MXN/m y tablero de 68,000 + 4,200 por circuito); sin distancia, pendiente de longitud; ramal sin corriente, pendiente" }],
