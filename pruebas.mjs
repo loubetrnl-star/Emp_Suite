@@ -7438,6 +7438,28 @@ t("S.219 (AUD-14, aprobada por el dueño el 7-oct-2026) sin longitud de troncal 
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+t("S.220 (AUD-14, aprobada por el dueño el 7-oct-2026) aire comprimido nace sin material de red (antes «aluminio» por omisión): la red queda pendiente de material, visible en avisos y en la cotización (sin importe), y el selector ofrece «sin capturar»; un proyecto guardado con su material lo conserva", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    eq(G("defaultAire")().material, null, "aire nace sin material:");
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.220";
+    S.aire = { ...S.aire, Lprincipal: 30, Lramales: 20, consumos: [{ id: "s220", tipo: "generico", nombre: "Carga", cant: 1, lmin: 600, bar: 6, uso: 1 }] };
+    G("recompute")();
+    const A = G("AIRE");
+    eq(A.matCap, null, "sin material capturado:");
+    if (!A.tramos.every((t) => t.pendiente)) throw new Error("sin material la red no se dimensiona");
+    if (!A.avisos.some((a) => /material/i.test(a.msg) && /pendiente/i.test(a.msg))) throw new Error("no hay aviso de material pendiente");
+    if (!G("cotizacionAire")(A).pendientes.some((p) => /material/.test(p.motivo))) throw new Error("la cotización no deja la red pendiente de material");
+    S.tab = "aire"; G("render")();
+    const selMat = w.document.querySelector('#view select[data-path="aire.material"]');
+    if (!selMat || ![...selMat.options].some((o) => o.value === "")) throw new Error("el selector de material no ofrece «sin capturar»");
+    eq(selMat.value, "", "el selector muestra «sin capturar», no un material:");
+    const d = JSON.parse(JSON.stringify(G("defaultState")())); d.aire = { ...d.aire, material: "aluminio" };
+    G("reemplazarEstado")(d);
+    eq(S.aire.material, "aluminio", "un proyecto guardado con su material lo conserva:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 t("S.69 (H-141, decisión (a) del dueño) la diversidad del edificio se aplica UNA sola vez, en la planta: las ganancias internas y el pico de cada zona no la llevan; el objetivo de planta sí (×0.8), y la memoria lo declara como criterio Carrier por ratificar", () => {
   const guardado = JSON.stringify(S);
   const pdfTxt = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");

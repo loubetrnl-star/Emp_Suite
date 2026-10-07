@@ -7009,7 +7009,7 @@ function defaultAire() {
     fugas: 0.10,              // fracción sobre la demanda
     reserva: 0.20,            // crecimiento
     simultaneidad: 0,         // 0 = calcular por número de puntos
-    material: "aluminio",
+    material: null,           // AUD-14 (aprobada por el dueño, 7-oct-2026): sin material por omisión (antes «aluminio»): pendiente hasta capturarlo
     /* Arranque en ceros (decisión del dueño, 17-sep-2026): Lprincipal/Lramales
        y los 3 consumos eran datos inventados (120+90 m de red y 38 puntos de
        proceso que no existen), no criterio de casa — se capturan del
@@ -19811,7 +19811,7 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "7", clean: "3", equip: "4", duct: "4", vent: "4", quote: "24", valor: "2", kaizen: "1", elec: "11", hidro: "11", fuego: "6", aire: "7", civil: "8", soporte: "14" };
+const MOTOR_VER = { load: "7", clean: "3", equip: "4", duct: "4", vent: "4", quote: "24", valor: "2", kaizen: "1", elec: "11", hidro: "11", fuego: "6", aire: "8", civil: "8", soporte: "14" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
@@ -19857,7 +19857,8 @@ const MOTOR_CAMBIOS = {
     { ver: "4", rev: "2.9.24", que: "H-216: el tanque pulmón no se trunca a 5,000 L en silencio: si el teórico rebasa el mayor de la lista comercial se instalan varios de 5,000 L en paralelo (capacidad instalada ≥ teórica), con aviso y memoria veraz (13,103 L → 3 × 5,000 = 15,000 L; antes 5,000). Proyecto fijo: sin cambio (3,000 L)" },
     { ver: "5", rev: "2.9.24", que: "H-218: diámetro interior por material: cobre tipo L con los DI de ASTM B88 (TUB_AGUA.cobre: 55 m de cobre 1\" → 1 1/4\"), acero con cédula 40, aluminio e inoxidable con cédula 40 sólo como indicativo y el DI del fabricante pendiente (aviso, memoria, PDF y partida). Proyecto fijo (aluminio): sin cambio de cifras, con la pendencia declarada" },
     { ver: "6", rev: "2.9.24", que: "AUD-14 (auditoría externa, 29-sep-2026; «nada se estima»): un material de red que no está en la lista ya no se toma como aluminio (red pendiente de material, sin diámetros, caída ni importe); en aluminio calibrado e inoxidable ya no se dimensiona con cédula 40 «indicativa»: diámetros y caída de la red quedan pendientes del DI del fabricante, con aviso (la partida de la red dice «diámetros pendientes»)" },
-    { ver: "7", rev: "2.9.24", que: "AUD-14 (aprobada por el dueño, 7-oct-2026; regla 6, nada se estima): sin longitud de troncal o de ramales capturada ya no se suponen 120 m ni 90 m: ese tramo queda «dato pendiente» con error en avisos y memoria, no se dimensiona ni se cotiza (la cotización lo deja pendiente de longitud), la caída total queda pendiente y el aire queda incompleto. Un 0 capturado se respeta. Mueve números sólo con la longitud vacía (diámetros, caída y metros de esos tramos). Prueba S.219" }],
+    { ver: "7", rev: "2.9.24", que: "AUD-14 (aprobada por el dueño, 7-oct-2026; regla 6, nada se estima): sin longitud de troncal o de ramales capturada ya no se suponen 120 m ni 90 m: ese tramo queda «dato pendiente» con error en avisos y memoria, no se dimensiona ni se cotiza (la cotización lo deja pendiente de longitud), la caída total queda pendiente y el aire queda incompleto. Un 0 capturado se respeta. Mueve números sólo con la longitud vacía (diámetros, caída y metros de esos tramos). Prueba S.219" },
+    { ver: "8", rev: "2.9.24", que: "AUD-14 (aprobada por el dueño, 7-oct-2026; regla 6, nada se estima): aire comprimido nace sin material de red (antes «aluminio» por omisión en el estado inicial): la red queda pendiente de material, con aviso y sin importe en su cotización, hasta capturarlo; el selector ofrece «sin capturar». Un proyecto guardado con su material lo conserva. Mueve números sólo en proyectos que dependían del material por omisión (nuevos, o guardados sin el campo). Prueba S.220" }],
   civil: [{ ver: "2", rev: "2.9.16", que: "sin área clasificada no hay partidas de área clasificada" }, { ver: "3", rev: "2.9.19", que: "un cuarto limpio vacío no cuenta como área clasificada" }, { ver: "4", rev: "2.9.24", que: "H-243: muro clasificado y media caña cuarto por cuarto (perímetro capturado o rectángulo 3:2 declarado «estimado» en la partida) × su altura; antes la fracción de área del edificio entre la altura media (proyecto fijo 31.11 ml / 73.32 m² → 89.44 ml / 134.16 m²)" }, { ver: "5", rev: "2.9.24", que: "H-244 (decisión 5): la tabiquería es un perímetro capturable por zona; sin captura, rectángulo 3:2 × altura marcado «estimado» en la partida; los muros de carga térmica ya no entran (capturar un muro exterior bajaba el muro civil)" },
     { ver: "6", rev: "2.9.24", que: "H-265 (decisión del dueño, 27-sep-2026): obra civil es autónoma: sus áreas de obra (área, altura, perímetro de tabiquería) y sus cuartos clasificados (área, altura, perímetro) se capturan en su pestaña; ya no se leen las zonas de carga térmica ni los cuartos limpios (cruces load>civil y clean>civil retirados). Un proyecto guardado los copia una vez al abrirlo, con las mismas cifras. Sin altura capturada no se suponen 2.8 m: el muro queda pendiente" },
     { ver: "7", rev: "2.9.24", que: "H-265 (complemento): con «De las áreas de obra capturadas aquí» y la lista vacía el área es 0 y no se cotiza nada; antes se usaban los totales a mano que la pantalla oculta en ese modo (500 m² y 300 m² de muro → 1,690,210 MXN en la cotización)" },
@@ -23198,7 +23199,7 @@ function viewAire() {
       ${inp(`Simultaneidad (0 = curva de la casa: ${n(R.simulAuto * 100, 0)} % por ${R.nPuntos} puntos, criterio de la casa sin fuente normativa)`, "aire.simultaneidad", "number", "0.05", "aire.simul", A)}
       <div class="row">
         ${sel("Redundancia", "aire.redundancia", [["ninguna", "Sin relevo"], ["n1", "N+1 con alternancia automática"]])}
-        ${sel("Material de la red", "aire.material", Object.entries(TUB_AIRE).map(([k, v]) => [k, v.label]))}
+        ${sel("Material de la red", "aire.material", [["", "— sin capturar (pendiente) —"]].concat(Object.entries(TUB_AIRE).map(([k, v]) => [k, v.label])))}
       </div>
       <div class="hint" style="margin-top:8px">${esc(R.mat.nota)}</div>
       <div class="row" style="margin-top:12px">

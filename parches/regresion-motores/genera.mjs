@@ -56,7 +56,8 @@ w.eval(String.raw`
     muebles: [{ id: "wc_flux", cant: 4 }, { id: "ming_flux", cant: 2 }, { id: "lavabo", cant: 4 }, { id: "fregadero", cant: 1 }, { id: "manguera", cant: 2 }] };
   /* H-264: contra incendio ya no hereda; captura lo que la herencia le imponía al abrir (700 m² = suma de zonas, 6 m = zona más alta). */
   S.fuego = { ...defaultFuego(), area: 700, altura: 6, Lramal: 30, Lmontante: 12, presFuente: 30 };
-  S.aire = { ...defaultAire(), Lprincipal: 60, consumos: [{ ...defaultConsumo("Sopleteo"), cant: 2, lmin: 400, bar: 6, uso: .5 }, { ...defaultConsumo("Actuadores"), cant: 4, lmin: 250, bar: 6, uso: .3 }] };
+  /* AUD-14 (aprobada por el dueño, 7-oct-2026): defaultAire() ya no trae material; el proyecto fijo captura el aluminio que siempre tuvo. */
+  S.aire = { ...defaultAire(), material: "aluminio", Lprincipal: 60, consumos: [{ ...defaultConsumo("Sopleteo"), cant: 2, lmin: 400, bar: 6, uso: .5 }, { ...defaultConsumo("Actuadores"), cant: 4, lmin: 250, bar: 6, uso: .3 }] };
   /* H-265: obra civil ya no lee zonas ni cuartos limpios: captura las mismas áreas y el mismo cuarto que antes tomaba de ellos. */
   S.civil = { ...defaultCivil(), firmeM2: 120, puertasSimples: 3, puertasLimpias: 2, demoler: true, demolMuroM2: 40,
     areas: S.zones.map((z, i) => ({ id: "a" + (i + 1), nombre: z.name, area: z.area, altura: z.height, perimetro: 0 })),
