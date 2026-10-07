@@ -21385,12 +21385,7 @@ function viewSeleccion() {
       </div></div>
 
       <div class="card"><h3>Bases de precio</h3><div class="body">
-        <div class="row">
-          ${sel("Moneda", "quote.currency", [["MXN", "Pesos MXN"], ["USD", "Dólares USD"]])}
-          ${inp("Tipo de cambio (MXN por USD)", "quote.fx", "number", "0.25")}
-          ${inp("Fecha del tipo de cambio", "quote.fxFecha", "date")}
-          ${inp("Fuente del tipo de cambio", "quote.fxFuente", "text")}
-        </div>
+        <div class="ref" style="margin-bottom:8px">Moneda, tipo de cambio, indirectos, utilidad, contingencia e IVA son de la pestaña <b>Cotización</b> y se capturan allá (decisión del dueño, 6-oct-2026).</div>
         ${inp("Factor de ajuste de lista", "equip.precios.priceFactor", "number", "0.05")}
         <details><summary>Precios por familia (MXN por TR)</summary>
           ${FAMILIES.map((f) => `<div class="field"><label>${esc(f.label)}</label>
@@ -21400,11 +21395,8 @@ function viewSeleccion() {
         <details><summary>Instalación, distribución y factores</summary>
           <div class="row">${inp("Instalación (fracción del equipo)", "equip.precios.instPct", "number", "0.01", null, null, "inst")}${inp("Tubería por TR (MXN)", "equip.precios.pipeTR", "number", "500")}</div>
           ${inp("Control DDC por equipo (MXN)", "equip.precios.controls", "number", "2500")}
-          <div class="row">${inp("Indirectos", "quote.indirect", "number", "0.01")}${inp("Utilidad", "quote.utility", "number", "0.01")}</div>
-          ${inp("Contingencia (fracción del costo directo)", "quote.contingencia", "number", "0.005")}
           ${inp("Exponente de economía de escala", "equip.precios.scaleExp", "number", "0.05")}
           <div class="ref" style="margin-top:-8px;margin-bottom:8px">1.00 = precio lineal por TR · 0.85 = un equipo del doble de capacidad cuesta 80 % más, no 100 % más.</div>
-          ${sel("IVA", "quote.iva", [[0.08, "8 % región fronteriza"], [0.16, "16 % nacional"], [0, "Sin IVA"]])}
         </details>
       </div></div>
     </div>

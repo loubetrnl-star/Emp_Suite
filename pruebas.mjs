@@ -7106,6 +7106,42 @@ t("S.202 (AUD-09, H-126) el id de cada zona nace con la zona (contador del proye
   if (fallas.length) throw new Error(fallas.join(" | "));
 });
 
+t("S.203 (decisión del dueño, 6-oct-2026; H-301) la pestaña Selección no escribe en la Cotización general: su tarjeta «Bases de precio» ya no trae moneda, tipo de cambio (valor, fecha y fuente), indirectos, utilidad, contingencia ni IVA (quote.*), que siguen en la pestaña Cotización; editar todo lo que Selección ofrece no toca S.quote y pintarla no mueve la huella de la cotización", () => {
+  const guardado = JSON.stringify(S);
+  const CAMPOS = ["quote.currency", "quote.fx", "quote.fxFecha", "quote.fxFuente", "quote.indirect", "quote.utility", "quote.contingencia", "quote.iva"];
+  /* Campos que escriben en el estado: data-path (captura) y data-live (perillas de la cotización). */
+  const rutas = () => [...w.document.querySelectorAll("#view [data-path], #view [data-live]")].map((e) => e.dataset.path || e.dataset.live);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.203"; G("recompute")();
+    const h0 = G("huellaMotor")("quote");
+    S.tab = "seleccion"; G("render")(); G("recompute")();
+    eq(G("huellaMotor")("quote"), h0, "pintar Selección no mueve la huella de la cotización:");
+    const ajenos = rutas().filter((r) => /^quote\./.test(r));
+    if (ajenos.length) throw new Error(`Selección todavía trae campos de la Cotización general: ${ajenos.join(", ")}`);
+    /* Edita uno por uno todo lo que Selección ofrece (se vuelve a buscar cada campo: la vista se repinta) y S.quote no cambia. */
+    const q0 = JSON.stringify(S.quote);
+    for (const r of [...new Set(rutas())]) {
+      const el = w.document.querySelector(`#view [data-path="${r}"], #view [data-live="${r}"]`);
+      if (!el) continue;
+      if (el.tagName === "SELECT") { const o = [...el.options].find((x) => x.value !== el.value); if (o) el.value = o.value; }
+      else if (el.type === "checkbox") el.checked = !el.checked;
+      else if (el.type === "number" || el.type === "range") el.value = String((+el.value || 0) + (+el.step || 1));
+      else if (el.type === "date") el.value = "2026-10-06";
+      else el.value = `${el.value || ""} S.203`;
+      el.dispatchEvent(new w.Event("input", { bubbles: true })); el.dispatchEvent(new w.Event("change", { bubbles: true }));
+    }
+    G("recompute")();
+    eq(JSON.stringify(S.quote), q0, "editar Selección no escribe en la Cotización general:");
+    /* Los ocho campos siguen en la pestaña Cotización (que los pinta en cuanto tiene partidas: vacía no hay nada que cotizar). */
+    llenarTodoS(); G("recompute")();
+    if (!(G("QUOTE").lines.length || G("QUOTE").auxTotal)) throw new Error("el caso no aísla lo que se quiere probar: la cotización quedó sin partidas");
+    S.tab = "cotizacion"; G("render")();
+    const enCot = new Set(rutas());
+    const faltan = CAMPOS.filter((c) => !enCot.has(c));
+    if (faltan.length) throw new Error(`la pestaña Cotización ya no trae: ${faltan.join(", ")}`);
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 t("S.69 (H-141, decisión (a) del dueño) la diversidad del edificio se aplica UNA sola vez, en la planta: las ganancias internas y el pico de cada zona no la llevan; el objetivo de planta sí (×0.8), y la memoria lo declara como criterio Carrier por ratificar", () => {
   const guardado = JSON.stringify(S);
   const pdfTxt = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");
