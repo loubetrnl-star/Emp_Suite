@@ -41,6 +41,9 @@ w.eval(String.raw`
   ];
   const r0 = cleanRooms()[0]; r0.name = "Cuarto limpio 1"; r0.area = 120; r0.height = 3; r0.iso = "iso7"; r0.occ = 2;
   S.duct.segments = [{ ...defaultSegment("TR-1", 6000), length: 18 }, { ...defaultSegment("TR-2", 3400), length: 12 }, { ...defaultSegment("RT-1", 5000), service: "return", length: 15 }];
+  /* H-170: el fixture guardado es de antes del espaciado de refuerzo (sus tramos no traen la llave y conservan la tabla de la casa,
+     «migración, sin confirmar»); el proyecto fijo en código simula lo mismo para dar las mismas cifras. */
+  S.duct.segments.forEach((s) => { delete s.espaciadoRef; });
   /* H-262: ventilación ya no hereda de carga térmica. El proyecto fijo captura en su pestaña los mismos valores que antes le
      copiaba la herencia (700 m² = suma de zonas, 4.71 m de altura media, 46 personas) para que las cifras no cambien. */
   S.vent = { ...S.vent, mode: "general", area: 700, height: 4.71, occ: 46 };

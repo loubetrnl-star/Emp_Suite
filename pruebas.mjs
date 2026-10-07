@@ -1062,10 +1062,16 @@ if (baseFile) {
     cerca(b.tons, a.tons, 0.001, "toneladas:");
   });
   t("8.2 mismos ductos con los mismos tramos", () => {
-    Gb("S").duct = JSON.parse(JSON.stringify(S.duct));
-    Gb("recompute")(); G("recompute")();
-    cerca(G("DUCT").path, Gb("DUCT").path, 0.01, "caída de presión:");
-    cerca(G("DUCT").boq.kg, Gb("DUCT").boq.kg, 0.01, "kilos de lámina:");
+    /* H-170 (duct v7): un tramo rectangular nuevo toma su calibre de SMACNA 1995 con el espaciado de refuerzo; la base no lo
+       conoce. La comparación es con los tramos tal como los guardaba la base (sin espaciado): deben dar lo mismo que antes. */
+    const guardado = JSON.stringify(S.duct);
+    try {
+      S.duct.segments.forEach((s) => { delete s.espaciadoRef; });
+      Gb("S").duct = JSON.parse(JSON.stringify(S.duct));
+      Gb("recompute")(); G("recompute")();
+      cerca(G("DUCT").path, Gb("DUCT").path, 0.01, "caída de presión:");
+      cerca(G("DUCT").boq.kg, Gb("DUCT").boq.kg, 0.01, "kilos de lámina:");
+    } finally { S.duct = JSON.parse(guardado); G("recompute")(); }
   });
   t("8.3 mismo cuadro de cargas con las mismas cargas capturadas", () => {
     /* rev 2.9.24 (H-178): la corriente de un motor de uso general sale de la Tabla 430-250, así que con esos motores la
@@ -1097,7 +1103,7 @@ if (baseFile) {
   });
   t("8.5 misma hidrosanitaria y misma cotización", () => {
     /* Contingencia (14-sep-2026): renglón que la base no tiene; se compara en 0 %. */
-    const contAntes = S.quote.contingencia;
+    const contAntes = S.quote.contingencia, ductAntes = JSON.stringify(S.duct);
     S.quote.contingencia = 0;
     try {
     Gb("S").hidro = JSON.parse(JSON.stringify(S.hidro));
@@ -1107,10 +1113,12 @@ if (baseFile) {
       instPct: PE.instPct, pipeTR: PE.pipeTR, controls: PE.controls, rociador: S.fuego.precioRociador, fanCFM: S.vent.precioCFM, ...S.clean.precios, ...S.aire.precios,
       ductKg: S.duct.precios.kg, diffuser: S.duct.precios.difusor };
     Gb("S").perms = JSON.parse(JSON.stringify(S.perms));
+    /* H-170: los tramos como los guardaba la base (sin espaciado de refuerzo), igual que en 8.2. */
+    S.duct.segments.forEach((s) => { delete s.espaciadoRef; }); Gb("S").duct = JSON.parse(JSON.stringify(S.duct));
     Gb("recompute")(); G("recompute")();
     cerca(G("HIDRO").Qtotal, Gb("HIDRO").Qtotal, 0.001, "gasto probable:");
     cerca(G("QUOTE").tot, Gb("QUOTE").tot, 0.01, "importe:");
-    } finally { S.quote.contingencia = contAntes; G("recompute")(); }
+    } finally { S.quote.contingencia = contAntes; S.duct = JSON.parse(ductAntes); G("recompute")(); }
   });
 }
 
@@ -4775,7 +4783,7 @@ t("P.8 el comparativo de revisiones ve un cambio de cantidad como PRECIO del mis
     /* Arranque en ceros: defaultSegment() ya no trae longitud de ejemplo; la
        revisión origen necesita kg > 0 de ducto para que exista la partida
        que luego cambia de PRECIO. */
-    S.duct.segments = [{ ...G("defaultSegment")("SA-PRINCIPAL", 2500), length: 30 }];
+    S.duct.segments = [{ ...G("defaultSegment")("SA-PRINCIPAL", 2500), length: 30, espaciadoRef: "5" }];   /* H-170: con espaciado de refuerzo */
     G("recompute")(); G("projSave")(true);
     const idA = S.pid;
     act("proj-rev", idA);
@@ -5007,7 +5015,7 @@ t("Q.7 H-67/H-266: la soportería ya no cuenta con permisos sueltos: sin la inst
 t("Q.8 H-77/H-45/H-46 la instantánea de soportería guarda dimensiones, calibre y longitudes reales (no el respaldo genérico 400×200)", () => {
   const segs0 = JSON.parse(JSON.stringify(S.duct.segments)), sop0 = JSON.parse(JSON.stringify(S.soporte)), vinc0 = JSON.parse(JSON.stringify(S.vinculos || {}));
   try {
-    S.duct.segments = [{ ...G("defaultSegment")("QT", 8000), length: 12 }];
+    S.duct.segments = [{ ...G("defaultSegment")("QT", 8000), length: 12, espaciadoRef: "5" }];   /* H-170: con espaciado de refuerzo */
     S.soporte = G("defaultSoporte")();
     G("recompute")();
     const segReal = G("DUCT").segs[0];
@@ -6334,7 +6342,7 @@ t("S.36 (rev 2.9.20, decisión del dueño) versión por motor en el sello: sólo
      H-194: hidro v5 = presión mínima por mueble de la Tabla 604.3 del IPC 2015 y CDT con máx(residual, mínima); H-195: v6 = equipo de emergencia fuera de Hunter; H-197: v7 = sin pisos sin norma (días, ΔT, pendiente 704.1); H-198: v8 = CPVC sólo hasta 2" CTS, fuera de catálogo y PEAD sin SDR como error.
      H-263: carga v6 = calor del motor del ventilador seleccionado en Ventilación como misceláneos de la zona elegida; H-262: ventilación v4 = ya no hereda de carga térmica;
      H-268: eléctrico v9 = autónomo (las cargas de otros motores sólo como propuesta aceptada). */
-  eq(MV.elec, "10", "eléctrico v10 (AUD-14):"); eq(MV.hidro, "10", "hidro v10 (AUD-18):"); eq(MV.load, "7", "carga v7 (H-290):"); eq(MV.duct, "6", "ductos v6 (H-311):"); eq(MV.equip, "4", "selección v4 (H-288):"); eq(MV.kaizen, "1", "Kaizen sin cambio de lógica: v1:");
+  eq(MV.elec, "10", "eléctrico v10 (AUD-14):"); eq(MV.hidro, "10", "hidro v10 (AUD-18):"); eq(MV.load, "7", "carga v7 (H-290):"); eq(MV.duct, "7", "ductos v7 (H-170):"); eq(MV.equip, "4", "selección v4 (H-288):"); eq(MV.kaizen, "1", "Kaizen sin cambio de lógica: v1:");
   Object.keys(MV).forEach((id) => { const c = G("MOTOR_CAMBIOS")[id] || []; if (MV[id] !== "1" && !c.some((x) => x.ver === MV[id])) throw new Error(`${id}: la versión ${MV[id]} no tiene hallazgo registrado`); });
   const s0 = JSON.stringify(S.sellos || {});
   try {
@@ -7420,7 +7428,7 @@ t("S.83 (H-166) ductos: un tramo sin medida posible (ninguna de la serie cumple)
     if (D.segs[0].error) throw new Error("con medida bloqueada capturada no hay error");
     eq([D.segs[0].w, D.segs[0].h].join("x"), "800x400", "medida bloqueada capturada:");
     /* 3) Sin caudal, 25 m: antes 400×200, 225 kg y la partida de lámina en la cotización. */
-    D = armar([["TR-1", 6000, { length: 18 }], ["SQ-1", 0, { length: 25 }]]);
+    D = armar([["TR-1", 6000, { length: 18, espaciadoRef: "5" }], ["SQ-1", 0, { length: 25 }]]);   /* H-170: 1200×700 con 5 ft = H-20 (Tabla 1-5), mismo calibre 20 */
     sinSeccion(D.segs[1], "sin caudal"); contiene(D.segs[1].error, "Sin caudal", "razón del error:");
     cerca(D.boq.kg, 604.88, 0.05, "el tramo sano conserva sus kilos (CM.duct.1.j):");
     const Q = G("QUOTE"), lam = Q.aux.find((a) => a.mot === "duct" && a.un === "KG");
@@ -7469,7 +7477,7 @@ t("S.84 (H-167) la red con sólo caudales (antes «Generar desde carga», retira
     const pend = Q.pendientes.filter((p) => p.mot === "duct" && /longitud/.test(p.motivo) && p.descEn && /length/.test(p.motivoEn));
     eq(pend.length, 4, "cada tramo sin longitud queda pendiente (ES/EN) en la cotización:");
     /* Al capturar la longitud del principal, ese tramo entra con sus kilos y deja de estar pendiente. */
-    S.duct.segments[0].length = 20; G("recompute")();
+    S.duct.segments[0].length = 20; S.duct.segments[0].espaciadoRef = "5"; G("recompute")();   /* H-170: con espaciado de refuerzo capturado */
     if (!(G("DUCT").segs[0].kg > 0)) throw new Error("con longitud capturada el principal lleva kilos");
     Q = G("QUOTE");
     if (!Q.aux.some((a) => a.mot === "duct" && a.un === "KG")) throw new Error("con longitud capturada hay partida de lámina");
@@ -7485,7 +7493,7 @@ t("S.85 (H-165) ducto de grasa según UMC 2018 §510.5.1 y §510.5.3 (up.codes, 
     G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.85";
     Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.85" }; });
     S.duct.meta.pc = "0.5"; S.duct.meta.material = material;
-    S.duct.segments = [{ ...G("defaultSegment")("GR-1", 500), service: "kitchen_grease", length: 6 }, { ...G("defaultSegment")("TR-1", 6000), length: 18 }];
+    S.duct.segments = [{ ...G("defaultSegment")("GR-1", 500), service: "kitchen_grease", length: 6 }, { ...G("defaultSegment")("TR-1", 6000), length: 18, espaciadoRef: "5" }];
     G("recompute")(); return G("DUCT");
   };
   try {
@@ -9847,8 +9855,10 @@ t("S.202 (H-310) calibre de ducto redondo por SMACNA HVAC-DCS 2.ª ed. 1995, Tab
     }
     cerca(redondo(800, "2").gauge.th_in, 0.0336, 1e-12, "espesor del calibre 22 (GAUGE_T, sin cambio):");
     /* Rectangular: RECT_G no se toca (1200×700 clase 2" = cal 20, CM.duct.1). */
-    const rect = G("calcSegment")({ ...G("defaultSegment")("TR-1", 6000), lock: true, w: 1200, h: 700, length: 18 }, meta("2"));
-    eq(rect.gauge.gauge, 20, "rectangular sin cambio:");
+    /* Rectangular de un proyecto anterior (sin espaciado de refuerzo, H-170): RECT_G no cambia con H-310. */
+    const tramoRect = { ...G("defaultSegment")("TR-1", 6000), lock: true, w: 1200, h: 700, length: 18 }; delete tramoRect.espaciadoRef;
+    const rect = G("calcSegment")(tramoRect, meta("2"));
+    eq(rect.gauge.gauge, 20, "rectangular de la tabla de la casa sin cambio:");
     /* Grasa redonda: sigue rigiendo UMC 2018 §510.5.1 (16 MSG acero al carbón). */
     eq(redondo(500, "2", { service: "kitchen_grease" }).gauge.gauge, 16, "grasa redonda sigue en UMC 16:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
@@ -9890,6 +9900,47 @@ t("S.203 (H-311) retorno y extracción redondos a presión negativa por SMACNA H
     /* Suministro con la 3-2A (H-310) y grasa con UMC 2018 §510.5.1, sin cambio. */
     eq(tramo(800, "2", "supply").gauge.gauge, 22, "suministro sigue en 3-2A:");
     eq(tramo(500, "2", "kitchen_grease").gauge.gauge, 16, "grasa sigue en UMC 16:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+t("S.204 (H-170) calibre rectangular por SMACNA HVAC-DCS 2.ª ed. 1995, Tablas 1-3 a 1-9, con el espaciado de refuerzo capturado por tramo (decisión del dueño): sin capturar, la columna sin refuerzo (Tabla 1-24) o calibre pendiente si la tabla exige refuerzo; «not designed»: pendiente; clase de refuerzo y tirante avisados; un tramo de proyecto anterior (sin la llave) conserva la tabla de la casa rotulada «migración, sin confirmar»; grasa sigue con UMC", () => {
+  const guardado = JSON.stringify(S);
+  const meta = (pc) => ({ ...S.duct.meta, pc, material: "galvanized" });
+  const rect = (w, h, pc, esp, extra = {}) => G("calcSegment")({ ...G("defaultSegment")("RC-" + w, 1000), lock: true, w, h, length: 10, espaciadoRef: esp, ...extra }, meta(pc));
+  try {
+    G("reemplazarEstado")(G("defaultState")());
+    /* Clase 2" = Tabla 1-5 (pág. 1.22). Lado mayor en in = mm / 25.4. */
+    let s = rect(1200, 700, "2", null);            // 47.24 in → renglón 43-48": sin refuerzo «not designed» → pendiente
+    eq(s.gauge.gauge, "—", "1200×700 sin espaciado: pendiente (antes cal 20):"); eq(s.kg, 0, "sin kilos:");
+    if (!s.warn.some((x) => /Calibre pendiente: .*pide refuerzo: captura el espaciado/.test(x))) throw new Error("falta el aviso: " + JSON.stringify(s.warn));
+    if (s.error) throw new Error("no es un tramo sin medida (H-166)"); if (!(s.Pam > 0) || !(s.sheet > 0)) throw new Error("la sección, la fricción y la lámina siguen");
+    contiene(s.gauge.ref, "SMACNA HVAC-DCS 2.ª ed. 1995, Tabla 1-5", "cita:");
+    s = rect(1200, 700, "2", "5");                // 43-48" / 5 ft = «H-20»
+    eq(s.gauge.gauge, 20, "1200×700 con refuerzo cada 5 ft:"); eq(s.gauge.refuerzoRect.clase, "H", "clase de refuerzo:");
+    cerca(s.kg, s.sheet * s.gauge.th_mm / 1000 * 7850, 1e-9, "kilos con el calibre 20:");
+    if (!s.warn.some((x) => /Refuerzo clase H cada 5 ft \(SMACNA 1995 Tabla 1-5\)/.test(x))) throw new Error("falta el aviso de refuerzo");
+    contiene(s.gauge.ref, "refuerzo cada 5 ft", "cita con el espaciado:"); contiene(s.gauge.ref, "H-20", "y la celda:");
+    s = rect(1200, 700, "2", "10");               // 43-48" / 10 ft = «NOT DESIGNED»
+    eq(s.gauge.gauge, "—", "10 ft no diseñado:"); if (!s.warn.some((x) => /not designed/.test(x))) throw new Error("falta «not designed»");
+    eq(rect(1200, 700, "2", "8").gauge.gauge, 16, "8 ft = «I-16»:");
+    s = rect(1400, 700, "2", "5");                // 55.12 in → 55-60" / 5 ft = «I-18G»
+    eq(s.gauge.gauge, 18, "1400×700 con 5 ft:"); eq(s.gauge.refuerzoRect.clase, "I", "clase:"); eq(s.gauge.refuerzoRect.alternaTirante, "G", "alternativa con tirante:");
+    if (!s.warn.some((x) => /alternativa con tirante: clase G/.test(x))) throw new Error("falta el aviso del tirante");
+    eq(rect(500, 300, "2", null).gauge.gauge, 18, "500×300 (19.69 in) sin refuerzo = 18 ga. (Tabla 1-24):");
+    eq(rect(300, 250, "2", "10").gauge.gauge, 24, "300×250 (11.81 in) con 10 ft «not required» = calibre sin refuerzo 24:");
+    eq(rect(300, 250, "2", "").gauge.gauge, 24, "«» (vaciado en pantalla) = sin capturar:");
+    /* Clase ½" = Tabla 1-3 (pág. 1.18): 600×400 (23.62 in) sin refuerzo = 22 ga. */
+    eq(rect(600, 400, "0.5", null).gauge.gauge, 22, "clase ½\" 600×400:");
+    /* Proyecto anterior: sin la llave (o «casa») = tabla de la casa, rotulada y avisada, misma cifra que antes. */
+    const viejo = { ...G("defaultSegment")("TR-1", 6000), lock: true, w: 1200, h: 700, length: 18 }; delete viejo.espaciadoRef;
+    s = G("calcSegment")(viejo, meta("2"));
+    eq(s.gauge.gauge, 20, "tramo de proyecto anterior: tabla de la casa:"); eq(s.gauge.migrado, true, "marcado de la migración:");
+    contiene(s.gauge.ref, "migración, sin confirmar", "rótulo:"); if (!s.warn.some((x) => /proyecto anterior a H-170/.test(x))) throw new Error("falta el aviso de migración");
+    eq(G("calcSegment")({ ...viejo, espaciadoRef: "casa" }, meta("2")).gauge.gauge, 20, "«casa» (opción de la pantalla) = migración:");
+    /* Cotización de ductos: el tramo sin calibre queda pendiente (ES/EN). */
+    const R = G("calcDuct")({ meta: meta("2"), segments: [{ ...G("defaultSegment")("TR-P", 6000), lock: true, w: 1200, h: 700, length: 18 }] });
+    if (!R.cot.pendientes.some((p) => /TR-P/.test(p.desc) && /Calibre pendiente/.test(p.motivo) && /Gauge pending/.test(p.motivoEn))) throw new Error("su cotización no lo deja pendiente");
+    /* Grasa: UMC 2018 §510.5.1 sin cambio. */
+    eq(rect(350, 300, "0.5", null, { service: "kitchen_grease" }).gauge.gauge, 16, "grasa rectangular sigue en UMC 16:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {

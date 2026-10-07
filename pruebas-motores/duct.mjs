@@ -38,7 +38,10 @@ export default async function ({ t, G, S, CM }) {
       }
     } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
   });
-  const FIJO = () => [seg("TR-1", 6000, { length: 18 }), seg("TR-2", 3400, { length: 12 }), seg("RT-1", 5000, { service: "return", length: 15 })];
+  /* H-170: el proyecto fijo se guardó antes del espaciado de refuerzo: sus tramos no traen la llave y conservan la tabla de la casa
+     («migración, sin confirmar»); estos casos a mano son de esa tabla. */
+  const viejo = (s) => { delete s.espaciadoRef; return s; };
+  const FIJO = () => [viejo(seg("TR-1", 6000, { length: 18 })), viejo(seg("TR-2", 3400, { length: 12 })), viejo(seg("RT-1", 5000, { service: "return", length: 15 }))];
 
   caso(1, "(Huebscher, Darcy-Weisbach/Haaland; criterio de la casa en medida, calibre y kilos) TR-1 6,000 L/s 18 m → 1200×700, 26.36 Pa, 604.88 kg", [
     [null, () => tramos(FIJO())],
@@ -66,7 +69,7 @@ export default async function ({ t, G, S, CM }) {
     [["a", "b"], () => tramos([seg("SC-1", 6000, { length: 18, hmax: 200 })])],
     [["c"], () => tramos([seg("BL-1", 2000, { length: 10, lock: true }), seg("BL-2", 2000, { shape: "round", length: 10, lock: true })])],
     [["d", "e", "f"], () => { permisos(); tramos([seg("SQ-1", 0, { length: 25 })]); }],
-    [["g"], () => tramos([seg("TR-1", 6000, { length: 18 }), seg("SQ-1", 0, { length: 25 })])],
+    [["g"], () => tramos([viejo(seg("TR-1", 6000, { length: 18 })), seg("SQ-1", 0, { length: 25 })])],
   ]);
   caso(8, "(arranque en ceros; H-167) la red con sólo caudales (antes «Generar desde carga», retirado en H-305) no lleva longitudes ni accesorios", [
     [null, () => {
