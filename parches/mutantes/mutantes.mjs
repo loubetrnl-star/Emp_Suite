@@ -23,7 +23,7 @@ const opt = (k, def) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1]
 const motorArg = args.find((a) => !a.startsWith("--") && !["index.html"].includes(a)) || "todos";
 const indexFile = path.resolve(RAIZ, opt("--index", "index.html"));
 const solo = opt("--solo", null);
-const tmp = opt("--dir", fs.mkdtempSync(path.join(os.tmpdir(), "suiteemp-mutantes-")));
+const tmp = opt("--dir", null) || fs.mkdtempSync(path.join(os.tmpdir(), "suiteemp-mutantes-"));
 const paralelo = Math.max(1, parseInt(opt("--paralelo", "1"), 10) || 1);
 const html = fs.readFileSync(indexFile, "utf8");
 const motores = motorArg === "todos" ? fs.readdirSync(AQUI).filter((f) => /^[a-z]+\.json$/.test(f)).map((f) => f.replace(/\.json$/, "")) : [motorArg];
