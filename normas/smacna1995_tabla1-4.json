@@ -1,0 +1,1835 @@
+{
+  "norma": "SMACNA HVAC Duct Construction Standards, Metal and Flexible, 2nd Ed. 1995, Addendum No. 1 (1997)",
+  "tabla": "1-4",
+  "titulo": "TABLE 1-4 RECTANGULAR DUCT REINFORCEMENT",
+  "pagina": "1.20",
+  "fuente": "normas/smacna.duct.1995.pdf, página 40 del archivo (impresa 1.20), SHA-256 074d19f86c65d819d9a2e97c9e954af81c79dfac157572593c70ce352f97a5b5; cotejada con normas/smacna.duct.1995.html, SHA-256 0bab514ac5fa5e50d623c650f4153218c094fda8e797657d3e316c9bccc0db68 (ver normas/FUENTE.md)",
+  "transcripcion": "Del PDF escaneado (la página no trae texto), renderizado con pypdfium2 4.30.0 a 144 ppp (página completa) y 288 ppp (dos franjas de la tabla y la nota), con acercamientos a 600 ppp en celdas dudosas; cotejada celda por celda con la tabla del HTML de la misma URL (rowspan/colspan expandidos).",
+  "unidades": {
+    "dimension": "in (lado mayor)",
+    "espaciado": "ft",
+    "calibre": "número de calibre"
+  },
+  "clase_presion_inwg": 1,
+  "signo": "+/-",
+  "columnas": [
+    {
+      "id": "sin_refuerzo",
+      "espaciado_ft": null
+    },
+    {
+      "id": "s10",
+      "espaciado_ft": 10
+    },
+    {
+      "id": "s8",
+      "espaciado_ft": 8
+    },
+    {
+      "id": "s6",
+      "espaciado_ft": 6
+    },
+    {
+      "id": "s5",
+      "espaciado_ft": 5
+    },
+    {
+      "id": "s4",
+      "espaciado_ft": 4
+    },
+    {
+      "id": "s3",
+      "espaciado_ft": 3
+    },
+    {
+      "id": "s2_5",
+      "espaciado_ft": 2.5
+    },
+    {
+      "id": "s2",
+      "espaciado_ft": 2
+    }
+  ],
+  "renglones": [
+    {
+      "dimension_texto": "10\"dn",
+      "dim_min_in": null,
+      "dim_max_in": 10,
+      "celdas": {
+        "sin_refuerzo": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "26 ga."
+        },
+        "s10": {
+          "estado": "no_requerido",
+          "calibre": null,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "NOT REQUIRED"
+        },
+        "s8": {
+          "estado": "no_requerido",
+          "calibre": null,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "NOT REQUIRED"
+        },
+        "s6": {
+          "estado": "no_requerido",
+          "calibre": null,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "NOT REQUIRED"
+        },
+        "s5": {
+          "estado": "no_requerido",
+          "calibre": null,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "NOT REQUIRED"
+        },
+        "s4": {
+          "estado": "no_requerido",
+          "calibre": null,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "NOT REQUIRED"
+        },
+        "s3": {
+          "estado": "no_requerido",
+          "calibre": null,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "NOT REQUIRED"
+        },
+        "s2_5": {
+          "estado": "no_requerido",
+          "calibre": null,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "NOT REQUIRED"
+        },
+        "s2": {
+          "estado": "no_requerido",
+          "calibre": null,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "NOT REQUIRED"
+        }
+      },
+      "nota": null
+    },
+    {
+      "dimension_texto": "11, 12\"",
+      "dim_min_in": 11,
+      "dim_max_in": 12,
+      "celdas": {
+        "sin_refuerzo": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "26 ga."
+        },
+        "s10": {
+          "estado": "no_requerido",
+          "calibre": null,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "NOT REQUIRED"
+        },
+        "s8": {
+          "estado": "no_requerido",
+          "calibre": null,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "NOT REQUIRED"
+        },
+        "s6": {
+          "estado": "no_requerido",
+          "calibre": null,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "NOT REQUIRED"
+        },
+        "s5": {
+          "estado": "no_requerido",
+          "calibre": null,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "NOT REQUIRED"
+        },
+        "s4": {
+          "estado": "no_requerido",
+          "calibre": null,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "NOT REQUIRED"
+        },
+        "s3": {
+          "estado": "no_requerido",
+          "calibre": null,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "NOT REQUIRED"
+        },
+        "s2_5": {
+          "estado": "no_requerido",
+          "calibre": null,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "NOT REQUIRED"
+        },
+        "s2": {
+          "estado": "no_requerido",
+          "calibre": null,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "NOT REQUIRED"
+        }
+      },
+      "nota": null
+    },
+    {
+      "dimension_texto": "13, 14\"",
+      "dim_min_in": 13,
+      "dim_max_in": 14,
+      "celdas": {
+        "sin_refuerzo": {
+          "estado": "valor",
+          "calibre": 24,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "24 ga."
+        },
+        "s10": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "B",
+          "tirante": false,
+          "texto": "B-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s8": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "B",
+          "tirante": false,
+          "texto": "B-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s6": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "B",
+          "tirante": false,
+          "texto": "B-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s5": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "B",
+          "tirante": false,
+          "texto": "B-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s4": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "B",
+          "tirante": false,
+          "texto": "B-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s3": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "A",
+          "tirante": false,
+          "texto": "A-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s2_5": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "A",
+          "tirante": false,
+          "texto": "A-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s2": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "A",
+          "tirante": false,
+          "texto": "A-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        }
+      },
+      "nota": null
+    },
+    {
+      "dimension_texto": "15, 16\"",
+      "dim_min_in": 15,
+      "dim_max_in": 16,
+      "celdas": {
+        "sin_refuerzo": {
+          "estado": "valor",
+          "calibre": 22,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "22 ga."
+        },
+        "s10": {
+          "estado": "valor",
+          "calibre": 24,
+          "clase_refuerzo": "B",
+          "tirante": false,
+          "texto": "B-24",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s8": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "B",
+          "tirante": false,
+          "texto": "B-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s6": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "B",
+          "tirante": false,
+          "texto": "B-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s5": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "B",
+          "tirante": false,
+          "texto": "B-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s4": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "B",
+          "tirante": false,
+          "texto": "B-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s3": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "B",
+          "tirante": false,
+          "texto": "B-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s2_5": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "B",
+          "tirante": false,
+          "texto": "B-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s2": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "A",
+          "tirante": false,
+          "texto": "A-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        }
+      },
+      "nota": null
+    },
+    {
+      "dimension_texto": "17, 18\"",
+      "dim_min_in": 17,
+      "dim_max_in": 18,
+      "celdas": {
+        "sin_refuerzo": {
+          "estado": "valor",
+          "calibre": 22,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "22 ga."
+        },
+        "s10": {
+          "estado": "valor",
+          "calibre": 24,
+          "clase_refuerzo": "B",
+          "tirante": false,
+          "texto": "B-24",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s8": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "B",
+          "tirante": false,
+          "texto": "B-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s6": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "B",
+          "tirante": false,
+          "texto": "B-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s5": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "B",
+          "tirante": false,
+          "texto": "B-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s4": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "B",
+          "tirante": false,
+          "texto": "B-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s3": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "B",
+          "tirante": false,
+          "texto": "B-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s2_5": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "B",
+          "tirante": false,
+          "texto": "B-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s2": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "B",
+          "tirante": false,
+          "texto": "B-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        }
+      },
+      "nota": null
+    },
+    {
+      "dimension_texto": "19, 20\"",
+      "dim_min_in": 19,
+      "dim_max_in": 20,
+      "celdas": {
+        "sin_refuerzo": {
+          "estado": "valor",
+          "calibre": 20,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "20 ga."
+        },
+        "s10": {
+          "estado": "valor",
+          "calibre": 24,
+          "clase_refuerzo": "C",
+          "tirante": false,
+          "texto": "C-24",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s8": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "C",
+          "tirante": false,
+          "texto": "C-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s6": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "C",
+          "tirante": false,
+          "texto": "C-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s5": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "C",
+          "tirante": false,
+          "texto": "C-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s4": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "C",
+          "tirante": false,
+          "texto": "C-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s3": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "B",
+          "tirante": false,
+          "texto": "B-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s2_5": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "B",
+          "tirante": false,
+          "texto": "B-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s2": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "B",
+          "tirante": false,
+          "texto": "B-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        }
+      },
+      "nota": null
+    },
+    {
+      "dimension_texto": "21, 22\"",
+      "dim_min_in": 21,
+      "dim_max_in": 22,
+      "celdas": {
+        "sin_refuerzo": {
+          "estado": "valor",
+          "calibre": 18,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "18 ga."
+        },
+        "s10": {
+          "estado": "valor",
+          "calibre": 24,
+          "clase_refuerzo": "C",
+          "tirante": false,
+          "texto": "C-24",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s8": {
+          "estado": "valor",
+          "calibre": 24,
+          "clase_refuerzo": "C",
+          "tirante": false,
+          "texto": "C-24",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s6": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "C",
+          "tirante": false,
+          "texto": "C-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s5": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "C",
+          "tirante": false,
+          "texto": "C-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s4": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "C",
+          "tirante": false,
+          "texto": "C-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s3": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "B",
+          "tirante": false,
+          "texto": "B-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s2_5": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "B",
+          "tirante": false,
+          "texto": "B-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s2": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "B",
+          "tirante": false,
+          "texto": "B-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        }
+      },
+      "nota": null
+    },
+    {
+      "dimension_texto": "23, 24\"",
+      "dim_min_in": 23,
+      "dim_max_in": 24,
+      "celdas": {
+        "sin_refuerzo": {
+          "estado": "valor",
+          "calibre": 18,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "18 ga."
+        },
+        "s10": {
+          "estado": "valor",
+          "calibre": 24,
+          "clase_refuerzo": "C",
+          "tirante": false,
+          "texto": "C-24",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s8": {
+          "estado": "valor",
+          "calibre": 24,
+          "clase_refuerzo": "C",
+          "tirante": false,
+          "texto": "C-24",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s6": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "C",
+          "tirante": false,
+          "texto": "C-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s5": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "C",
+          "tirante": false,
+          "texto": "C-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s4": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "C",
+          "tirante": false,
+          "texto": "C-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s3": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "C",
+          "tirante": false,
+          "texto": "C-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s2_5": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "B",
+          "tirante": false,
+          "texto": "B-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s2": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "B",
+          "tirante": false,
+          "texto": "B-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        }
+      },
+      "nota": null
+    },
+    {
+      "dimension_texto": "25, 26\"",
+      "dim_min_in": 25,
+      "dim_max_in": 26,
+      "celdas": {
+        "sin_refuerzo": {
+          "estado": "valor",
+          "calibre": 18,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "18 ga."
+        },
+        "s10": {
+          "estado": "valor",
+          "calibre": 22,
+          "clase_refuerzo": "D",
+          "tirante": false,
+          "texto": "D-22",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s8": {
+          "estado": "valor",
+          "calibre": 24,
+          "clase_refuerzo": "D",
+          "tirante": false,
+          "texto": "D-24",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s6": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "C",
+          "tirante": false,
+          "texto": "C-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s5": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "C",
+          "tirante": false,
+          "texto": "C-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s4": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "C",
+          "tirante": false,
+          "texto": "C-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s3": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "C",
+          "tirante": false,
+          "texto": "C-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s2_5": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "C",
+          "tirante": false,
+          "texto": "C-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s2": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "B",
+          "tirante": false,
+          "texto": "B-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        }
+      },
+      "nota": null
+    },
+    {
+      "dimension_texto": "27, 28\"",
+      "dim_min_in": 27,
+      "dim_max_in": 28,
+      "celdas": {
+        "sin_refuerzo": {
+          "estado": "valor",
+          "calibre": 16,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "16 ga."
+        },
+        "s10": {
+          "estado": "valor",
+          "calibre": 22,
+          "clase_refuerzo": "D",
+          "tirante": false,
+          "texto": "D-22",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s8": {
+          "estado": "valor",
+          "calibre": 24,
+          "clase_refuerzo": "D",
+          "tirante": false,
+          "texto": "D-24",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s6": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "D",
+          "tirante": false,
+          "texto": "D-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s5": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "C",
+          "tirante": false,
+          "texto": "C-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s4": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "C",
+          "tirante": false,
+          "texto": "C-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s3": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "C",
+          "tirante": false,
+          "texto": "C-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s2_5": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "C",
+          "tirante": false,
+          "texto": "C-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s2": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "C",
+          "tirante": false,
+          "texto": "C-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        }
+      },
+      "nota": null
+    },
+    {
+      "dimension_texto": "29, 30\"",
+      "dim_min_in": 29,
+      "dim_max_in": 30,
+      "celdas": {
+        "sin_refuerzo": {
+          "estado": "valor",
+          "calibre": 16,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "16 ga."
+        },
+        "s10": {
+          "estado": "valor",
+          "calibre": 22,
+          "clase_refuerzo": "E",
+          "tirante": false,
+          "texto": "E-22",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s8": {
+          "estado": "valor",
+          "calibre": 24,
+          "clase_refuerzo": "D",
+          "tirante": false,
+          "texto": "D-24",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s6": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "D",
+          "tirante": false,
+          "texto": "D-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s5": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "D",
+          "tirante": false,
+          "texto": "D-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s4": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "C",
+          "tirante": false,
+          "texto": "C-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s3": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "C",
+          "tirante": false,
+          "texto": "C-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s2_5": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "C",
+          "tirante": false,
+          "texto": "C-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s2": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "C",
+          "tirante": false,
+          "texto": "C-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        }
+      },
+      "nota": null
+    },
+    {
+      "dimension_texto": "31-36\"",
+      "dim_min_in": 31,
+      "dim_max_in": 36,
+      "celdas": {
+        "sin_refuerzo": {
+          "estado": "no_disenado",
+          "calibre": null,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "NOT DESIGNED"
+        },
+        "s10": {
+          "estado": "valor",
+          "calibre": 20,
+          "clase_refuerzo": "E",
+          "tirante": false,
+          "texto": "E-20",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s8": {
+          "estado": "valor",
+          "calibre": 22,
+          "clase_refuerzo": "E",
+          "tirante": false,
+          "texto": "E-22",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s6": {
+          "estado": "valor",
+          "calibre": 24,
+          "clase_refuerzo": "E",
+          "tirante": false,
+          "texto": "E-24",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s5": {
+          "estado": "valor",
+          "calibre": 24,
+          "clase_refuerzo": "D",
+          "tirante": false,
+          "texto": "D-24",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s4": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "D",
+          "tirante": false,
+          "texto": "D-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s3": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "C",
+          "tirante": false,
+          "texto": "C-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s2_5": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "C",
+          "tirante": false,
+          "texto": "C-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s2": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "C",
+          "tirante": false,
+          "texto": "C-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        }
+      },
+      "nota": null
+    },
+    {
+      "dimension_texto": "37-42\"",
+      "dim_min_in": 37,
+      "dim_max_in": 42,
+      "celdas": {
+        "sin_refuerzo": {
+          "estado": "no_disenado",
+          "calibre": null,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "NOT DESIGNED"
+        },
+        "s10": {
+          "estado": "valor",
+          "calibre": 18,
+          "clase_refuerzo": "F",
+          "tirante": false,
+          "texto": "F-18",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s8": {
+          "estado": "valor",
+          "calibre": 20,
+          "clase_refuerzo": "F",
+          "tirante": false,
+          "texto": "F-20",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s6": {
+          "estado": "valor",
+          "calibre": 22,
+          "clase_refuerzo": "E",
+          "tirante": false,
+          "texto": "E-22",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s5": {
+          "estado": "valor",
+          "calibre": 24,
+          "clase_refuerzo": "E",
+          "tirante": false,
+          "texto": "E-24",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s4": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "E",
+          "tirante": false,
+          "texto": "E-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s3": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "D",
+          "tirante": false,
+          "texto": "D-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s2_5": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "D",
+          "tirante": false,
+          "texto": "D-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s2": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "C",
+          "tirante": false,
+          "texto": "C-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        }
+      },
+      "nota": null
+    },
+    {
+      "dimension_texto": "43-48\"",
+      "dim_min_in": 43,
+      "dim_max_in": 48,
+      "celdas": {
+        "sin_refuerzo": {
+          "estado": "no_disenado",
+          "calibre": null,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "NOT DESIGNED"
+        },
+        "s10": {
+          "estado": "valor",
+          "calibre": 16,
+          "clase_refuerzo": "G",
+          "tirante": false,
+          "texto": "G-16",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s8": {
+          "estado": "valor",
+          "calibre": 18,
+          "clase_refuerzo": "G",
+          "tirante": false,
+          "texto": "G-18",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s6": {
+          "estado": "valor",
+          "calibre": 20,
+          "clase_refuerzo": "F",
+          "tirante": false,
+          "texto": "F-20",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s5": {
+          "estado": "valor",
+          "calibre": 22,
+          "clase_refuerzo": "F",
+          "tirante": false,
+          "texto": "F-22",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s4": {
+          "estado": "valor",
+          "calibre": 24,
+          "clase_refuerzo": "E",
+          "tirante": false,
+          "texto": "E-24",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s3": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "E",
+          "tirante": false,
+          "texto": "E-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s2_5": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "E",
+          "tirante": false,
+          "texto": "E-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s2": {
+          "estado": "valor",
+          "calibre": 26,
+          "clase_refuerzo": "D",
+          "tirante": false,
+          "texto": "D-26",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        }
+      },
+      "nota": null
+    },
+    {
+      "dimension_texto": "49-54\"",
+      "dim_min_in": 49,
+      "dim_max_in": 54,
+      "celdas": {
+        "sin_refuerzo": {
+          "estado": "no_disenado",
+          "calibre": null,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "NOT DESIGNED"
+        },
+        "s10": {
+          "estado": "valor",
+          "calibre": 16,
+          "clase_refuerzo": "H",
+          "tirante": false,
+          "texto": "H-16",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s8": {
+          "estado": "valor",
+          "calibre": 18,
+          "clase_refuerzo": "H",
+          "tirante": false,
+          "texto": "H-18",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s6": {
+          "estado": "valor",
+          "calibre": 20,
+          "clase_refuerzo": "G",
+          "tirante": false,
+          "texto": "G-20",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s5": {
+          "estado": "valor",
+          "calibre": 22,
+          "clase_refuerzo": "F",
+          "tirante": false,
+          "texto": "F-22",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s4": {
+          "estado": "valor",
+          "calibre": 24,
+          "clase_refuerzo": "F",
+          "tirante": false,
+          "texto": "F-24",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s3": {
+          "estado": "valor",
+          "calibre": 24,
+          "clase_refuerzo": "E",
+          "tirante": false,
+          "texto": "E-24",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s2_5": {
+          "estado": "valor",
+          "calibre": 24,
+          "clase_refuerzo": "E",
+          "tirante": false,
+          "texto": "E-24",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s2": {
+          "estado": "valor",
+          "calibre": 24,
+          "clase_refuerzo": "E",
+          "tirante": false,
+          "texto": "E-24",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        }
+      },
+      "nota": null
+    },
+    {
+      "dimension_texto": "55-60\"",
+      "dim_min_in": 55,
+      "dim_max_in": 60,
+      "celdas": {
+        "sin_refuerzo": {
+          "estado": "no_disenado",
+          "calibre": null,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "NOT DESIGNED"
+        },
+        "s10": {
+          "estado": "no_disenado",
+          "calibre": null,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "NOT DESIGNED"
+        },
+        "s8": {
+          "estado": "valor",
+          "calibre": 18,
+          "clase_refuerzo": "H",
+          "tirante": false,
+          "texto": "H-18",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s6": {
+          "estado": "valor",
+          "calibre": 20,
+          "clase_refuerzo": "G",
+          "tirante": false,
+          "texto": "G-20",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s5": {
+          "estado": "valor",
+          "calibre": 22,
+          "clase_refuerzo": "G",
+          "tirante": false,
+          "texto": "G-22",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s4": {
+          "estado": "valor",
+          "calibre": 24,
+          "clase_refuerzo": "F",
+          "tirante": false,
+          "texto": "F-24",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s3": {
+          "estado": "valor",
+          "calibre": 24,
+          "clase_refuerzo": "F",
+          "tirante": false,
+          "texto": "F-24",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s2_5": {
+          "estado": "valor",
+          "calibre": 24,
+          "clase_refuerzo": "E",
+          "tirante": false,
+          "texto": "E-24",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s2": {
+          "estado": "valor",
+          "calibre": 24,
+          "clase_refuerzo": "E",
+          "tirante": false,
+          "texto": "E-24",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        }
+      },
+      "nota": null
+    },
+    {
+      "dimension_texto": "61-72\"",
+      "dim_min_in": 61,
+      "dim_max_in": 72,
+      "celdas": {
+        "sin_refuerzo": {
+          "estado": "no_disenado",
+          "calibre": null,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "NOT DESIGNED"
+        },
+        "s10": {
+          "estado": "no_disenado",
+          "calibre": null,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "NOT DESIGNED"
+        },
+        "s8": {
+          "estado": "no_disenado",
+          "calibre": null,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "NOT DESIGNED"
+        },
+        "s6": {
+          "estado": "valor",
+          "calibre": 18,
+          "clase_refuerzo": "H",
+          "tirante": true,
+          "texto": "H-18G",
+          "clase_alterna_tirante": "G",
+          "tirante_obligatorio": false
+        },
+        "s5": {
+          "estado": "valor",
+          "calibre": 18,
+          "clase_refuerzo": "H",
+          "tirante": true,
+          "texto": "H-18G",
+          "clase_alterna_tirante": "G",
+          "tirante_obligatorio": false
+        },
+        "s4": {
+          "estado": "valor",
+          "calibre": 22,
+          "clase_refuerzo": "H",
+          "tirante": true,
+          "texto": "H-22G",
+          "clase_alterna_tirante": "G",
+          "tirante_obligatorio": false
+        },
+        "s3": {
+          "estado": "valor",
+          "calibre": 24,
+          "clase_refuerzo": "F",
+          "tirante": false,
+          "texto": "F-24",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s2_5": {
+          "estado": "valor",
+          "calibre": 24,
+          "clase_refuerzo": "F",
+          "tirante": false,
+          "texto": "F-24",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        },
+        "s2": {
+          "estado": "valor",
+          "calibre": 24,
+          "clase_refuerzo": "F",
+          "tirante": false,
+          "texto": "F-24",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        }
+      },
+      "nota": null
+    },
+    {
+      "dimension_texto": "73-84\"",
+      "dim_min_in": 73,
+      "dim_max_in": 84,
+      "celdas": {
+        "sin_refuerzo": {
+          "estado": "no_disenado",
+          "calibre": null,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "NOT DESIGNED"
+        },
+        "s10": {
+          "estado": "no_disenado",
+          "calibre": null,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "NOT DESIGNED"
+        },
+        "s8": {
+          "estado": "no_disenado",
+          "calibre": null,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "NOT DESIGNED"
+        },
+        "s6": {
+          "estado": "valor",
+          "calibre": 16,
+          "clase_refuerzo": "I",
+          "tirante": true,
+          "texto": "I-16G",
+          "clase_alterna_tirante": "G",
+          "tirante_obligatorio": false
+        },
+        "s5": {
+          "estado": "valor",
+          "calibre": 18,
+          "clase_refuerzo": "I",
+          "tirante": true,
+          "texto": "I-18G",
+          "clase_alterna_tirante": "G",
+          "tirante_obligatorio": false
+        },
+        "s4": {
+          "estado": "valor",
+          "calibre": 20,
+          "clase_refuerzo": "I",
+          "tirante": true,
+          "texto": "I-20G",
+          "clase_alterna_tirante": "G",
+          "tirante_obligatorio": false
+        },
+        "s3": {
+          "estado": "valor",
+          "calibre": 22,
+          "clase_refuerzo": "H",
+          "tirante": true,
+          "texto": "H-22G",
+          "clase_alterna_tirante": "G",
+          "tirante_obligatorio": false
+        },
+        "s2_5": {
+          "estado": "valor",
+          "calibre": 22,
+          "clase_refuerzo": "H",
+          "tirante": true,
+          "texto": "H-22G",
+          "clase_alterna_tirante": "G",
+          "tirante_obligatorio": false
+        },
+        "s2": {
+          "estado": "valor",
+          "calibre": 22,
+          "clase_refuerzo": "G",
+          "tirante": false,
+          "texto": "G-22",
+          "clase_alterna_tirante": null,
+          "tirante_obligatorio": false
+        }
+      },
+      "nota": null
+    },
+    {
+      "dimension_texto": "85-96\"",
+      "dim_min_in": 85,
+      "dim_max_in": 96,
+      "celdas": {
+        "sin_refuerzo": {
+          "estado": "no_disenado",
+          "calibre": null,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "NOT DESIGNED"
+        },
+        "s10": {
+          "estado": "no_disenado",
+          "calibre": null,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "NOT DESIGNED"
+        },
+        "s8": {
+          "estado": "no_disenado",
+          "calibre": null,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "NOT DESIGNED"
+        },
+        "s6": {
+          "estado": "no_disenado",
+          "calibre": null,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "NOT DESIGNED"
+        },
+        "s5": {
+          "estado": "valor",
+          "calibre": 16,
+          "clase_refuerzo": "I",
+          "tirante": true,
+          "texto": "I-16H",
+          "clase_alterna_tirante": "H",
+          "tirante_obligatorio": false
+        },
+        "s4": {
+          "estado": "valor",
+          "calibre": 18,
+          "clase_refuerzo": "I",
+          "tirante": true,
+          "texto": "I-18H",
+          "clase_alterna_tirante": "H",
+          "tirante_obligatorio": false
+        },
+        "s3": {
+          "estado": "valor",
+          "calibre": 20,
+          "clase_refuerzo": "I",
+          "tirante": true,
+          "texto": "I-20G",
+          "clase_alterna_tirante": "G",
+          "tirante_obligatorio": false
+        },
+        "s2_5": {
+          "estado": "valor",
+          "calibre": 20,
+          "clase_refuerzo": "H",
+          "tirante": true,
+          "texto": "H-20G",
+          "clase_alterna_tirante": "G",
+          "tirante_obligatorio": false
+        },
+        "s2": {
+          "estado": "valor",
+          "calibre": 22,
+          "clase_refuerzo": "H",
+          "tirante": true,
+          "texto": "H-22G",
+          "clase_alterna_tirante": "G",
+          "tirante_obligatorio": false
+        }
+      },
+      "nota": null
+    },
+    {
+      "dimension_texto": "97-108\"",
+      "dim_min_in": 97,
+      "dim_max_in": 108,
+      "celdas": {
+        "sin_refuerzo": {
+          "estado": "no_disenado",
+          "calibre": null,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "NOT DESIGNED"
+        },
+        "s10": {
+          "estado": "no_disenado",
+          "calibre": null,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "NOT DESIGNED"
+        },
+        "s8": {
+          "estado": "no_disenado",
+          "calibre": null,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "NOT DESIGNED"
+        },
+        "s6": {
+          "estado": "no_disenado",
+          "calibre": null,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "NOT DESIGNED"
+        },
+        "s5": {
+          "estado": "no_disenado",
+          "calibre": null,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "NOT DESIGNED"
+        },
+        "s4": {
+          "estado": "valor",
+          "calibre": 18,
+          "clase_refuerzo": "I",
+          "tirante": true,
+          "texto": "I-18G",
+          "clase_alterna_tirante": "G",
+          "tirante_obligatorio": false
+        },
+        "s3": {
+          "estado": "valor",
+          "calibre": 18,
+          "clase_refuerzo": "I",
+          "tirante": true,
+          "texto": "I-18G",
+          "clase_alterna_tirante": "G",
+          "tirante_obligatorio": false
+        },
+        "s2_5": {
+          "estado": "valor",
+          "calibre": 18,
+          "clase_refuerzo": "I",
+          "tirante": true,
+          "texto": "I-18G",
+          "clase_alterna_tirante": "G",
+          "tirante_obligatorio": false
+        },
+        "s2": {
+          "estado": "valor",
+          "calibre": 18,
+          "clase_refuerzo": "I",
+          "tirante": true,
+          "texto": "I-18G",
+          "clase_alterna_tirante": "G",
+          "tirante_obligatorio": false
+        }
+      },
+      "nota": null
+    },
+    {
+      "dimension_texto": "109-120\"",
+      "dim_min_in": 109,
+      "dim_max_in": 120,
+      "celdas": {
+        "sin_refuerzo": {
+          "estado": "no_disenado",
+          "calibre": null,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "NOT DESIGNED"
+        },
+        "s10": {
+          "estado": "no_disenado",
+          "calibre": null,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "NOT DESIGNED"
+        },
+        "s8": {
+          "estado": "no_disenado",
+          "calibre": null,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "NOT DESIGNED"
+        },
+        "s6": {
+          "estado": "no_disenado",
+          "calibre": null,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "NOT DESIGNED"
+        },
+        "s5": {
+          "estado": "no_disenado",
+          "calibre": null,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "NOT DESIGNED"
+        },
+        "s4": {
+          "estado": "no_disenado",
+          "calibre": null,
+          "clase_refuerzo": null,
+          "tirante": false,
+          "texto": "NOT DESIGNED"
+        },
+        "s3": {
+          "estado": "valor",
+          "calibre": 18,
+          "clase_refuerzo": "I",
+          "tirante": true,
+          "texto": "I-18H",
+          "clase_alterna_tirante": "H",
+          "tirante_obligatorio": false
+        },
+        "s2_5": {
+          "estado": "valor",
+          "calibre": 18,
+          "clase_refuerzo": "I",
+          "tirante": true,
+          "texto": "I-18H",
+          "clase_alterna_tirante": "H",
+          "tirante_obligatorio": false
+        },
+        "s2": {
+          "estado": "valor",
+          "calibre": 18,
+          "clase_refuerzo": "I",
+          "tirante": true,
+          "texto": "I-18G",
+          "clase_alterna_tirante": "G",
+          "tirante_obligatorio": false
+        }
+      },
+      "nota": null
+    }
+  ],
+  "notas": [
+    "See page 1-15. Circles in the Table denotes only column numbers. For column 2, see Fig. 1-7. For columns 3 through 9, see Introduction to Schedules. The number in the box is minimum duct gage; the alphabet letter is the minimum reinforcement grade for joints and intermediates occurring at a maximum spacing interval in the column heading. A letter to the right of the gage gives a tie rodded reinforcement alternative. A “t” compels use of tie rod(s) for the reinforcement listing. For beading or crossbreaking, see Fig. 1-8."
+  ],
+  "observaciones": [
+    "Esquina superior izquierda impresa «1\" W.G. STATIC POS.OR NEG.» → clase_presion_inwg = 1, signo \"+/-\". Encabezados impresos de columnas (números en círculo 1 a 10): 2 = NO REINFORCEMENT REQUIRED; 3 = 10'; 4 = 8'; 5 = 6'; 6 = 5'; 7 = 4'; 8 = 3'; 9 = 21/2'; 10 = 2'; columna 1 = DUCT DIMENSION.",
+    "Columna 1 (DUCT DIMENSION): la tabla imprime el lado del ducto en pulgadas. Según el texto de la norma (§1.8.1 «Rectangular Table Reading Guide», pág. 1.12, y §1.8 «Reading Guide Summary», pág. 1.15, del HTML), la dimensión MAYOR fija el calibre de los cuatro lados; para el refuerzo del lado corto se entra con la dimensión menor y se busca el calibre del lado ancho. Se conserva la etiqueta de unidad \"in (lado mayor)\" del esquema común; quien consuma la tabla para el lado corto debe leerla así.",
+    "dim_min_in = null cuando el renglón sólo imprime un valor («10\"dn» = 10 in y menores); no se infiere el mínimo.",
+    "Sufijo de letra tras el calibre (p. ej. H-18G, I-16H, K-18I): según la nota al pie y el texto de §1.8.1 (pág. 1.13: \"an entry such as H-18G means that the H reinforcement size may be downsized to a G ... if an internal tie rod is used\") y de §1.8.4 (págs. 1.15-1.16: \"An entry such as H-18G indicates ... H class, but G class may be substituted if an available tie rod alternative is selected\"), la letra de la derecha es la clase alterna PERMITIDA con tirante (tie rod), no obligatoria. En el JSON: tirante = true; la letra alterna queda en 'texto' (el esquema común no tiene campo propio para ella). Ninguna celda de esta tabla trae el código «t» (tirante obligatorio, p. ej. Kt-16).",
+    "No hay flechas («→») en esta tabla; ninguna celda tiene estado 'flecha'.",
+    "Recuadros combinados («NOT REQUIRED», «NOT DESIGNED»): la leyenda se imprime una vez; cada celda cubierta por el recuadro lleva el estado correspondiente y en 'texto' la leyenda del recuadro.",
+    "La columna 2 (sin_refuerzo) imprime el calibre como «NN ga.»; calibre = NN, clase_refuerzo = null.",
+    "Encabezado de columna 9 impreso «21/2'» (= 2 1/2 ft); espaciado_ft = 2.5.",
+    "Lectura de la letra I: en la imagen las clases I se imprimen con I mayúscula sin serifas (misma forma que el sufijo de K-18I/J-18I); se transcribe «I». No se confunde con «t» (que lleva travesaño) ni con el dígito 1.",
+    "Página del archivo 40 (pie impreso 1.20).",
+    "HTML vs imagen: el HTML imprime «10\"dn.» (con punto); la imagen dice «10\"dn» (sin punto). Se transcribe la imagen. Los valores de las 21 × 9 celdas del HTML coinciden con la imagen (aquí el HTML sí escribe «I»).",
+    "Sufijo H (tirante alterno clase H) en 85-96\" (5' «I-16H», 4' «I-18H») y 109-120\" (3' y 2 1/2' «I-18H»): leídos a 288 ppp, sin ambigüedad.",
+    "Recuadro NOT REQUIRED: renglones 10\"dn y 11, 12\", columnas 3 a 10. NOT DESIGNED: columna 2 desde 31-36\"; columna 3 desde 55-60\"; columna 4 desde 61-72\"; columna 5 desde 85-96\"; columna 6 desde 97-108\"; columna 7 en 109-120\".",
+    "clase_alterna_tirante (letra a la derecha del calibre: alternativa con tirante) y tirante_obligatorio («t»: el tirante es obligatorio) se derivan de «texto» según la nota al pie de la tabla; agregados por el principal al integrar (2026-10-07)."
+  ]
+}

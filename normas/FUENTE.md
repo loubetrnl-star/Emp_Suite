@@ -28,6 +28,25 @@
 | TABLE 3-2A ROUND DUCT GAGE UNREINFORCED POSITIVE PRESSURE | 3.3 | 139 | `smacna1995_tabla3-2A.json` |
 | TABLE 3-2B ROUND DUCT GAGE NEGATIVE PRESSURE | 3.5 | 141 | `smacna1995_tabla3-2B.json` |
 | TABLE 3-3 ALUMINUM ROUND DUCT GAGE SCHEDULE | 3.7 | 143 | `smacna1995_tabla3-3.json` |
+| TABLE 1-3 RECTANGULAR DUCT REINFORCEMENT (½" w.g. static pos. or neg.) | 1.18 | 38 | `smacna1995_tabla1-3.json` |
+| TABLE 1-4 RECTANGULAR DUCT REINFORCEMENT (1" w.g. static pos. or neg.) | 1.20 | 40 | `smacna1995_tabla1-4.json` |
+| TABLE 1-5 RECTANGULAR DUCT REINFORCEMENT (2" w.g. static pos. or neg.) | 1.22 | 42 | `smacna1995_tabla1-5.json` |
+| TABLE 1-6 RECTANGULAR DUCT REINFORCEMENT (3" w.g. static pos. or neg.) | 1.24 | 44 | `smacna1995_tabla1-6.json` |
+| TABLE 1-7 RECTANGULAR DUCT REINFORCEMENT (4" w.g. static pos. or neg.) | 1.26 | 46 | `smacna1995_tabla1-7.json` |
+| TABLE 1-8 RECTANGULAR DUCT REINFORCEMENT (6" w.g. static pos. or neg.) | 1.28 | 48 | `smacna1995_tabla1-8.json` |
+| TABLE 1-9 RECTANGULAR DUCT REINFORCEMENT (10" w.g. static pos. or neg.) | 1.30 | 50 | `smacna1995_tabla1-9.json` |
+| TABLE 1-24 UNREINFORCED DUCT (WALL THICKNESS) | 1.69 | 89 | `smacna1995_tabla1-24.json` |
+
+**Capítulo 1 (ducto rectangular, transcrito el 2026-10-07):** página impresa 1.n = página n + 20 del archivo (comprobado con el
+pie impreso en 1.16–1.30, 1.67 y 1.69). El índice impreso del propio libro dice «TABLE 1-9 … 1.23»; es errata del original
+(el pie de la página y el HTML dicen 1.30). Cada celda trae `estado` (valor, no_requerido, no_disenado, en_blanco, flecha),
+calibre, clase de refuerzo (A–L), tirante, clase alterna con tirante y si el tirante es obligatorio («t»), con el texto tal
+como se imprime. El HTML no distingue los recuadros «NOT REQUIRED», «NOT DESIGNED» y las celdas en blanco: se asignaron por
+las líneas del escaneo. El OCR del HTML escribe el dígito «1» en lugar de la letra «I» de la clase de refuerzo (1-3: 6 celdas;
+1-9: 1 celda); manda la imagen. Celdas revisadas por el principal sobre el escaneo: 1-9, 13-14″ / 10′ queda dentro del
+recuadro «NOT REQUIRED» aunque la columna 2 del mismo renglón está en «NOT DESIGNED» (se transcribe tal cual); 1-5, 10′ en
+11-14″ igual. Las tablas métricas 1-3M a 1-9M y 1-24M no se transcribieron. **Pendiente:** el Addendum No. 1 trata de los
+tirantes a medio panel (MPT) del capítulo 1; falta revisar en el escaneo si modifica alguna celda de las tablas 1-3 a 1-9.
 
 En esta edición no existe una «Table 3-2» a secas. Las tablas métricas, TABLE 3-2AM (pág. 3.4) y 3-2BM (pág. 3.6), dan
 espesores en mm y no se transcribieron en este paso.
@@ -45,4 +64,5 @@ python normas/verificar_smacna.py
 ```
 
 El script comprueba estructura, continuidad de diámetros, tipos y monotonía, y coteja cada celda contra la tabla del HTML.
-Con `--suite` compara además con `ROUND_G` de `index.html`.
+Con `--suite` compara además con `ROUND_G` de `index.html`. Para las tablas rectangulares comprueba estructura, hash citado, estados, calibres y clases válidos, que el texto
+de cada celda coincida con sus campos y que la columna «sin refuerzo» de 1-3 a 1-9 coincida con la TABLE 1-24.

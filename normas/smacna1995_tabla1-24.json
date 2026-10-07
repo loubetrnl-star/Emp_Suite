@@ -1,0 +1,620 @@
+{
+  "norma": "SMACNA HVAC Duct Construction Standards, Metal and Flexible, 2nd Ed. 1995, Addendum No. 1 (1997)",
+  "tabla": "1-24",
+  "titulo": "TABLE 1-24 UNREINFORCED DUCT (WALL THICKNESS)",
+  "pagina": "1.69",
+  "fuente": "normas/smacna.duct.1995.pdf, página 89 del archivo (impresa 1.69), SHA-256 074d19f86c65d819d9a2e97c9e954af81c79dfac157572593c70ce352f97a5b5; cotejada con normas/smacna.duct.1995.html, SHA-256 0bab514ac5fa5e50d623c650f4153218c094fda8e797657d3e316c9bccc0db68 (ver normas/FUENTE.md)",
+  "transcripcion": "Del PDF escaneado (la página no trae texto), renderizado con pypdfium2 4.30.0 a 144 ppp (página completa) y 288 ppp (zona de datos); cotejada celda por celda con la tabla del HTML de la misma URL.",
+  "unidades": {
+    "dimension": "in (lado mayor)",
+    "presion": "in w.g.",
+    "calibre": "número de calibre"
+  },
+  "signo": "+/-",
+  "columnas": [
+    {
+      "id": "p0_5",
+      "clase_presion_inwg": 0.5
+    },
+    {
+      "id": "p1",
+      "clase_presion_inwg": 1
+    },
+    {
+      "id": "p2",
+      "clase_presion_inwg": 2
+    },
+    {
+      "id": "p3",
+      "clase_presion_inwg": 3
+    },
+    {
+      "id": "p4",
+      "clase_presion_inwg": 4
+    },
+    {
+      "id": "p6",
+      "clase_presion_inwg": 6
+    },
+    {
+      "id": "p10",
+      "clase_presion_inwg": 10
+    }
+  ],
+  "renglones": [
+    {
+      "dimension_texto": "8\" dn",
+      "dim_min_in": null,
+      "dim_max_in": 8,
+      "celdas": {
+        "p0_5": {
+          "estado": "valor",
+          "calibre": 26,
+          "texto": "26"
+        },
+        "p1": {
+          "estado": "valor",
+          "calibre": 26,
+          "texto": "26"
+        },
+        "p2": {
+          "estado": "valor",
+          "calibre": 26,
+          "texto": "26"
+        },
+        "p3": {
+          "estado": "valor",
+          "calibre": 24,
+          "texto": "24"
+        },
+        "p4": {
+          "estado": "valor",
+          "calibre": 24,
+          "texto": "24"
+        },
+        "p6": {
+          "estado": "valor",
+          "calibre": 24,
+          "texto": "24"
+        },
+        "p10": {
+          "estado": "valor",
+          "calibre": 22,
+          "texto": "22"
+        }
+      },
+      "nota": null
+    },
+    {
+      "dimension_texto": "9, 10\"",
+      "dim_min_in": 9,
+      "dim_max_in": 10,
+      "celdas": {
+        "p0_5": {
+          "estado": "valor",
+          "calibre": 26,
+          "texto": "26"
+        },
+        "p1": {
+          "estado": "valor",
+          "calibre": 26,
+          "texto": "26"
+        },
+        "p2": {
+          "estado": "valor",
+          "calibre": 26,
+          "texto": "26"
+        },
+        "p3": {
+          "estado": "valor",
+          "calibre": 24,
+          "texto": "24"
+        },
+        "p4": {
+          "estado": "valor",
+          "calibre": 22,
+          "texto": "22"
+        },
+        "p6": {
+          "estado": "valor",
+          "calibre": 20,
+          "texto": "20"
+        },
+        "p10": {
+          "estado": "valor",
+          "calibre": 18,
+          "texto": "18"
+        }
+      },
+      "nota": null
+    },
+    {
+      "dimension_texto": "11, 12\"",
+      "dim_min_in": 11,
+      "dim_max_in": 12,
+      "celdas": {
+        "p0_5": {
+          "estado": "valor",
+          "calibre": 26,
+          "texto": "26"
+        },
+        "p1": {
+          "estado": "valor",
+          "calibre": 26,
+          "texto": "26"
+        },
+        "p2": {
+          "estado": "valor",
+          "calibre": 24,
+          "texto": "24"
+        },
+        "p3": {
+          "estado": "valor",
+          "calibre": 22,
+          "texto": "22"
+        },
+        "p4": {
+          "estado": "valor",
+          "calibre": 20,
+          "texto": "20"
+        },
+        "p6": {
+          "estado": "valor",
+          "calibre": 18,
+          "texto": "18"
+        },
+        "p10": {
+          "estado": "valor",
+          "calibre": 16,
+          "texto": "16"
+        }
+      },
+      "nota": null
+    },
+    {
+      "dimension_texto": "13, 14\"",
+      "dim_min_in": 13,
+      "dim_max_in": 14,
+      "celdas": {
+        "p0_5": {
+          "estado": "valor",
+          "calibre": 26,
+          "texto": "26"
+        },
+        "p1": {
+          "estado": "valor",
+          "calibre": 24,
+          "texto": "24"
+        },
+        "p2": {
+          "estado": "valor",
+          "calibre": 22,
+          "texto": "22"
+        },
+        "p3": {
+          "estado": "valor",
+          "calibre": 20,
+          "texto": "20"
+        },
+        "p4": {
+          "estado": "valor",
+          "calibre": 18,
+          "texto": "18"
+        },
+        "p6": {
+          "estado": "valor",
+          "calibre": 18,
+          "texto": "18"
+        },
+        "p10": {
+          "estado": "refuerzo_requerido",
+          "calibre": null,
+          "texto": "Reinforcement is required."
+        }
+      },
+      "nota": null
+    },
+    {
+      "dimension_texto": "15, 16\"",
+      "dim_min_in": 15,
+      "dim_max_in": 16,
+      "celdas": {
+        "p0_5": {
+          "estado": "valor",
+          "calibre": 26,
+          "texto": "26"
+        },
+        "p1": {
+          "estado": "valor",
+          "calibre": 22,
+          "texto": "22"
+        },
+        "p2": {
+          "estado": "valor",
+          "calibre": 20,
+          "texto": "20"
+        },
+        "p3": {
+          "estado": "valor",
+          "calibre": 18,
+          "texto": "18"
+        },
+        "p4": {
+          "estado": "valor",
+          "calibre": 18,
+          "texto": "18"
+        },
+        "p6": {
+          "estado": "valor",
+          "calibre": 16,
+          "texto": "16"
+        },
+        "p10": {
+          "estado": "refuerzo_requerido",
+          "calibre": null,
+          "texto": "Reinforcement is required."
+        }
+      },
+      "nota": null
+    },
+    {
+      "dimension_texto": "17. 18\"",
+      "dim_min_in": 17,
+      "dim_max_in": 18,
+      "celdas": {
+        "p0_5": {
+          "estado": "valor",
+          "calibre": 26,
+          "texto": "26"
+        },
+        "p1": {
+          "estado": "valor",
+          "calibre": 22,
+          "texto": "22"
+        },
+        "p2": {
+          "estado": "valor",
+          "calibre": 20,
+          "texto": "20"
+        },
+        "p3": {
+          "estado": "valor",
+          "calibre": 18,
+          "texto": "18"
+        },
+        "p4": {
+          "estado": "valor",
+          "calibre": 16,
+          "texto": "16"
+        },
+        "p6": {
+          "estado": "refuerzo_requerido",
+          "calibre": null,
+          "texto": "Reinforcement is required."
+        },
+        "p10": {
+          "estado": "refuerzo_requerido",
+          "calibre": null,
+          "texto": "Reinforcement is required."
+        }
+      },
+      "nota": null
+    },
+    {
+      "dimension_texto": "19, 20\"",
+      "dim_min_in": 19,
+      "dim_max_in": 20,
+      "celdas": {
+        "p0_5": {
+          "estado": "valor",
+          "calibre": 24,
+          "texto": "24"
+        },
+        "p1": {
+          "estado": "valor",
+          "calibre": 20,
+          "texto": "20"
+        },
+        "p2": {
+          "estado": "valor",
+          "calibre": 18,
+          "texto": "18"
+        },
+        "p3": {
+          "estado": "valor",
+          "calibre": 16,
+          "texto": "16"
+        },
+        "p4": {
+          "estado": "refuerzo_requerido",
+          "calibre": null,
+          "texto": "Reinforcement is required."
+        },
+        "p6": {
+          "estado": "refuerzo_requerido",
+          "calibre": null,
+          "texto": "Reinforcement is required."
+        },
+        "p10": {
+          "estado": "refuerzo_requerido",
+          "calibre": null,
+          "texto": "Reinforcement is required."
+        }
+      },
+      "nota": null
+    },
+    {
+      "dimension_texto": "21, 22\"",
+      "dim_min_in": 21,
+      "dim_max_in": 22,
+      "celdas": {
+        "p0_5": {
+          "estado": "valor",
+          "calibre": 22,
+          "texto": "22"
+        },
+        "p1": {
+          "estado": "valor",
+          "calibre": 18,
+          "texto": "18"
+        },
+        "p2": {
+          "estado": "valor",
+          "calibre": 16,
+          "texto": "16"
+        },
+        "p3": {
+          "estado": "valor",
+          "calibre": 16,
+          "texto": "16"
+        },
+        "p4": {
+          "estado": "refuerzo_requerido",
+          "calibre": null,
+          "texto": "Reinforcement is required."
+        },
+        "p6": {
+          "estado": "refuerzo_requerido",
+          "calibre": null,
+          "texto": "Reinforcement is required."
+        },
+        "p10": {
+          "estado": "refuerzo_requerido",
+          "calibre": null,
+          "texto": "Reinforcement is required."
+        }
+      },
+      "nota": null
+    },
+    {
+      "dimension_texto": "23, 24\"",
+      "dim_min_in": 23,
+      "dim_max_in": 24,
+      "celdas": {
+        "p0_5": {
+          "estado": "valor",
+          "calibre": 22,
+          "texto": "22"
+        },
+        "p1": {
+          "estado": "valor",
+          "calibre": 18,
+          "texto": "18"
+        },
+        "p2": {
+          "estado": "valor",
+          "calibre": 16,
+          "texto": "16"
+        },
+        "p3": {
+          "estado": "valor",
+          "calibre": 16,
+          "texto": "16"
+        },
+        "p4": {
+          "estado": "refuerzo_requerido",
+          "calibre": null,
+          "texto": "Reinforcement is required."
+        },
+        "p6": {
+          "estado": "refuerzo_requerido",
+          "calibre": null,
+          "texto": "Reinforcement is required."
+        },
+        "p10": {
+          "estado": "refuerzo_requerido",
+          "calibre": null,
+          "texto": "Reinforcement is required."
+        }
+      },
+      "nota": null
+    },
+    {
+      "dimension_texto": "25, 26\"",
+      "dim_min_in": 25,
+      "dim_max_in": 26,
+      "celdas": {
+        "p0_5": {
+          "estado": "valor",
+          "calibre": 20,
+          "texto": "20"
+        },
+        "p1": {
+          "estado": "valor",
+          "calibre": 18,
+          "texto": "18"
+        },
+        "p2": {
+          "estado": "refuerzo_requerido",
+          "calibre": null,
+          "texto": "Reinforcement is required."
+        },
+        "p3": {
+          "estado": "refuerzo_requerido",
+          "calibre": null,
+          "texto": "Reinforcement is required."
+        },
+        "p4": {
+          "estado": "refuerzo_requerido",
+          "calibre": null,
+          "texto": "Reinforcement is required."
+        },
+        "p6": {
+          "estado": "refuerzo_requerido",
+          "calibre": null,
+          "texto": "Reinforcement is required."
+        },
+        "p10": {
+          "estado": "refuerzo_requerido",
+          "calibre": null,
+          "texto": "Reinforcement is required."
+        }
+      },
+      "nota": null
+    },
+    {
+      "dimension_texto": "27, 28\"",
+      "dim_min_in": 27,
+      "dim_max_in": 28,
+      "celdas": {
+        "p0_5": {
+          "estado": "valor",
+          "calibre": 18,
+          "texto": "18"
+        },
+        "p1": {
+          "estado": "valor",
+          "calibre": 16,
+          "texto": "16"
+        },
+        "p2": {
+          "estado": "refuerzo_requerido",
+          "calibre": null,
+          "texto": "Reinforcement is required."
+        },
+        "p3": {
+          "estado": "refuerzo_requerido",
+          "calibre": null,
+          "texto": "Reinforcement is required."
+        },
+        "p4": {
+          "estado": "refuerzo_requerido",
+          "calibre": null,
+          "texto": "Reinforcement is required."
+        },
+        "p6": {
+          "estado": "refuerzo_requerido",
+          "calibre": null,
+          "texto": "Reinforcement is required."
+        },
+        "p10": {
+          "estado": "refuerzo_requerido",
+          "calibre": null,
+          "texto": "Reinforcement is required."
+        }
+      },
+      "nota": null
+    },
+    {
+      "dimension_texto": "29, 30\"",
+      "dim_min_in": 29,
+      "dim_max_in": 30,
+      "celdas": {
+        "p0_5": {
+          "estado": "valor",
+          "calibre": 18,
+          "texto": "18"
+        },
+        "p1": {
+          "estado": "valor",
+          "calibre": 16,
+          "texto": "16"
+        },
+        "p2": {
+          "estado": "refuerzo_requerido",
+          "calibre": null,
+          "texto": "Reinforcement is required."
+        },
+        "p3": {
+          "estado": "refuerzo_requerido",
+          "calibre": null,
+          "texto": "Reinforcement is required."
+        },
+        "p4": {
+          "estado": "refuerzo_requerido",
+          "calibre": null,
+          "texto": "Reinforcement is required."
+        },
+        "p6": {
+          "estado": "refuerzo_requerido",
+          "calibre": null,
+          "texto": "Reinforcement is required."
+        },
+        "p10": {
+          "estado": "refuerzo_requerido",
+          "calibre": null,
+          "texto": "Reinforcement is required."
+        }
+      },
+      "nota": null
+    },
+    {
+      "dimension_texto": "31-36\"",
+      "dim_min_in": 31,
+      "dim_max_in": 36,
+      "celdas": {
+        "p0_5": {
+          "estado": "valor",
+          "calibre": 16,
+          "texto": "16"
+        },
+        "p1": {
+          "estado": "refuerzo_requerido",
+          "calibre": null,
+          "texto": "Reinforcement is required."
+        },
+        "p2": {
+          "estado": "refuerzo_requerido",
+          "calibre": null,
+          "texto": "Reinforcement is required."
+        },
+        "p3": {
+          "estado": "refuerzo_requerido",
+          "calibre": null,
+          "texto": "Reinforcement is required."
+        },
+        "p4": {
+          "estado": "refuerzo_requerido",
+          "calibre": null,
+          "texto": "Reinforcement is required."
+        },
+        "p6": {
+          "estado": "refuerzo_requerido",
+          "calibre": null,
+          "texto": "Reinforcement is required."
+        },
+        "p10": {
+          "estado": "refuerzo_requerido",
+          "calibre": null,
+          "texto": "Reinforcement is required."
+        }
+      },
+      "nota": null
+    }
+  ],
+  "notas": [
+    "This table gives minimum duct wall thickness (gage) for use of flat type joint systems. Plain S and hemmed S connectors are limited to 2\" w.g. maximum. Slips and drives must not be less than two gages lighter then the duct wall nor below 24 gage. Double S slips must be 24 gage for ducts 30\" wide or less and 22 gage for greater width.",
+    "Duct Gage: 26 to 22 | 20 | 18 | 16",
+    "Minimum Flat Slip and Drive Gage: 24 | 22 | 20 | 18",
+    "See Figure 1-7 for joint types."
+  ],
+  "observaciones": [
+    "Página del archivo 89 (pie impreso 1.69). Desfase del capítulo 1: impresa 1.n = archivo n+20.",
+    "Encabezado: «PRESSURE CLASS (In W.G.)» / «Positive or Negative» → signo \"+/-\"; columnas impresas 1/2\", 1\", 2\", 3\", 4\", 6\", 10\" → p0_5 … p10.",
+    "Zona «Reinforcement is required.»: recuadro escalonado único, la leyenda se imprime una vez; cada celda cubierta lleva estado 'refuerzo_requerido', calibre null y en 'texto' la leyenda. No hay celdas en blanco fuera de ese recuadro.",
+    "dim_min_in = null en «8\" dn» (8 in y menores; no se infiere el mínimo).",
+    "HTML vs imagen: (1) la imagen imprime «17. 18\"» (punto, errata del original) y el HTML «17, 18\"»; se transcribe la imagen y se interpreta como 17 a 18 in. (2) La imagen imprime «31-36\"» y el HTML «31, 36\"»; se transcribe la imagen (rango 31 a 36 in). (3) La imagen dice «Duct Gage» y el HTML «DUCT Gage». Los 91 valores numéricos (13 renglones × 7 columnas) coinciden.",
+    "Las dos filas «Duct Gage / Minimum Flat Slip and Drive Gage» bajo la tabla se transcriben en 'notas' como texto, en el orden impreso; están alineadas bajo las columnas 1\" a 4\" sólo por diagramación y no son valores por clase de presión.",
+    "Según el texto de la norma (§1.8.2 «Unreinforced Duct (Fig. 1-7)», HTML pág. 1.15), Table 1-24 resume la columna 2 de las Tablas 1-3 a 1-9. La columna p0_5 corresponde a la Tabla 1-3, p1 a 1-4, p2 a 1-5, p3 a 1-6, p4 a 1-7, p6 a 1-8 y p10 a 1-9 (supuesto por coincidencia de clase de presión; la columna 2 de 1-3, 1-4 y 1-5 se cotejó contra esta tabla sin diferencias)."
+  ]
+}

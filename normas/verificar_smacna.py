@@ -2,6 +2,8 @@
 
 Uso:  python normas/verificar_smacna.py [--suite]
 
+También comprueba las tablas de ducto rectangular TABLES 1-3 a 1-9 y 1-24 (ver rectangulares()).
+
 Norma: SMACNA HVAC Duct Construction Standards, Metal and Flexible, 2nd Ed. 1995, Addendum No. 1 (1997);
 TABLE 3-2A (pág. 3.3), TABLE 3-2B (pág. 3.5), TABLE 3-3 (pág. 3.7).
 
@@ -138,6 +140,7 @@ def main():
         n = len(R) * len(cols)
         resumen[t] = (len(R), len(cols), n, nulls, len(dif))
         print(f"   renglones {len(R)} · columnas {len(cols)} · celdas {n} · null {nulls} · difieren del HTML {len(dif)}")
+    rectangulares(hashes)
     if "--suite" in sys.argv: suite(json.loads((RAIZ / TABLAS["3-2A"]).read_text(encoding="utf-8")))
     print("\nAVISOS (se reportan, no se corrigen):"); [print("  -", a) for a in avisos] or print("  (ninguno)")
     print("ERRORES:"); [print("  -", e) for e in errores] or print("  (ninguno)")
@@ -162,6 +165,57 @@ def suite(A):
             print(f"   {r['diametro_texto']:>7} · {clase:>2}\" · {g:>2} · {s:>2} / {l:>2} · spiral {s - g:+d}, long {l - g:+d}")
     print(f"   Clases de ROUND_G sin tabla en SMACNA 3-2A/3-2B: {[c for c in bandas if c not in ('2', '4', '10')]}")
     print(f"   Diámetro máximo de TABLE 3-2A: 84 in; ROUND_G extiende su última banda hasta 999 in.")
+
+
+RECT = {"1-3": 0.5, "1-4": 1, "1-5": 2, "1-6": 3, "1-7": 4, "1-8": 6, "1-9": 10}
+COL_1_24 = {0.5: "p0_5", 1: "p1", 2: "p2", 3: "p3", 4: "p4", 6: "p6", 10: "p10"}
+CALIBRES = {28, 26, 24, 22, 20, 18, 16, 14, 12, 10}
+ESTADOS = {"valor", "no_requerido", "no_disenado", "en_blanco", "flecha"}
+
+
+def rectangulares(hashes):
+    """TABLES 1-3 a 1-9 (pág. 1.18-1.30) y 1-24 (pág. 1.69), ducto rectangular. El cotejo celda por celda contra el HTML
+    se hizo al transcribir (diferencias en «observaciones»); aquí se comprueba la coherencia interna:
+      R1 estructura y hash citado; R2 dimensiones crecientes y continuas (pulgadas enteras, supuesto propio);
+      R3 estados válidos, calibre entero de la serie y clase de refuerzo A-L sólo en celdas «valor»;
+      R4 «texto» coincide con calibre, clase, tirante y clase alterna (nota al pie de cada tabla);
+      R5 la columna «sin refuerzo» de cada tabla coincide con su clase en la TABLE 1-24 (§1.8.2: la 1-24 la resume)."""
+    print("\n== Ducto rectangular: TABLES 1-3 a 1-9 y 1-24 (unidades: lado mayor en in; espaciado en ft; calibre gage)")
+    T24 = json.loads((RAIZ / "smacna1995_tabla1-24.json").read_text(encoding="utf-8"))
+    def en_24(clase, x):
+        for r in T24["renglones"]:
+            if (r["dim_min_in"] or 0) <= x <= r["dim_max_in"] or (r["dim_min_in"] is None and x <= r["dim_max_in"]):
+                c = r["celdas"][COL_1_24[clase]]
+                return c["calibre"] if c["estado"] == "valor" else None
+        return None
+    for t, clase in RECT.items():
+        J = json.loads((RAIZ / f"smacna1995_tabla{t}.json").read_text(encoding="utf-8"))
+        for k, h in hashes.items():
+            if h and h not in J["fuente"]: errores.append(f"{t}: el hash del {k} no está citado en «fuente»")
+        if J.get("clase_presion_inwg") != clase: errores.append(f"{t}: clase {J.get('clase_presion_inwg')} ≠ {clase}")
+        cols = [c["id"] for c in J["columnas"]]
+        prev, n, dif24 = None, 0, 0
+        for r in J["renglones"]:
+            mx, mn = r["dim_max_in"], r["dim_min_in"]
+            if prev is not None and not mx > prev: errores.append(f"{t} {r['dimension_texto']}: dimensión no creciente")
+            if prev is not None and mn is not None and mn != prev + 1: avisos.append(f"{t} {r['dimension_texto']}: salto de {prev} a {mn} in")
+            for cid in cols:
+                c = r["celdas"][cid]; n += 1
+                if c["estado"] not in ESTADOS: errores.append(f"{t} {r['dimension_texto']} {cid}: estado {c['estado']!r}")
+                if c["estado"] == "valor":
+                    if c["calibre"] not in CALIBRES: errores.append(f"{t} {r['dimension_texto']} {cid}: calibre {c['calibre']!r}")
+                    if cid == "sin_refuerzo":
+                        if not re.fullmatch(rf"{c['calibre']} ga\.", c["texto"]): errores.append(f"{t} {r['dimension_texto']} {cid}: texto {c['texto']!r}")
+                    else:
+                        m = re.fullmatch(r"([A-L])(t?)-(\d+)([A-L]?)", c["texto"])
+                        if not m or m[1] != c["clase_refuerzo"] or int(m[3]) != c["calibre"] or (m[4] or None) != c.get("clase_alterna_tirante")                                 or bool(m[2]) != c.get("tirante_obligatorio") or c["tirante"] != bool(m[2] or m[4]):
+                            errores.append(f"{t} {r['dimension_texto']} {cid}: «{c['texto']}» no coincide con sus campos")
+                elif c.get("calibre") is not None: errores.append(f"{t} {r['dimension_texto']} {cid}: calibre en celda {c['estado']}")
+            for x in range((mn or (prev or 0) + 1), mx + 1):
+                c = r["celdas"]["sin_refuerzo"]; v = c["calibre"] if c["estado"] == "valor" else None
+                if v != en_24(clase, x): dif24 += 1; errores.append(f"{t} {x} in: sin refuerzo {v} ≠ TABLE 1-24 {en_24(clase, x)}")
+            prev = mx
+        print(f"   TABLE {t} ({clase}\" w.g., pág. {J['pagina']}): renglones {len(J['renglones'])} · celdas {n} · difieren de la 1-24 {dif24}")
 
 
 if __name__ == "__main__":
