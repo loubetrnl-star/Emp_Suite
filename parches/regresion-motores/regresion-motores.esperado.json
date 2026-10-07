@@ -429,7 +429,15 @@
       2.208157,
       2.556146189118067
      ]
-    ]
+    ],
+    "udTotal": 52,
+    "drenaje": [
+     100,
+     100,
+     100
+    ],
+    "Qcal": 0.7373982576,
+    "kWcal": 83.3422258704672
    }
   },
   "fuego": {
@@ -451,7 +459,24 @@
     "hp": 20,
     "tanque": 3000,
     "nTanques": 1,
-    "secador": 2430
+    "secador": 2430,
+    "red": [
+     [
+      "Troncal principal (anillo)",
+      "pendiente",
+      null,
+      60,
+      0
+     ],
+     [
+      "Ramales y bajadas a punto de uso",
+      "pendiente",
+      null,
+      0,
+      0
+     ]
+    ],
+    "dPred": null
    }
   },
   "civil": {

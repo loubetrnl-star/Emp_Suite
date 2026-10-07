@@ -10300,7 +10300,8 @@ t("R.4 (AUD-12) segundo proyecto fijo capturado disciplina por disciplina: ejerc
     /* Las ramas que el proyecto debe ejercitar: si el fixture las pierde, la regresión deja de verlas. */
     const E = G("ELEC"), D = G("DUCT"), V = G("VENT"), H = G("HIDRO"), A = G("AIRE");
     eq(E.mat, "aluminio", "eléctrico en aluminio:");
-    if (!E.calc.some((c) => c.art440 && !c.mcaEst && !c.mopEst)) throw new Error("falta el motor con MCA y MOP de placa");
+    /* AUD-12: desde AUD-14 mcaEst/mopEst siempre son falsos; lo que distingue MCA y MOP de placa es que no haya referencia estimada (placaRef). */
+    if (!E.calc.some((c) => c.art440 && !(c.placaRef && (c.placaRef.mca || c.placaRef.mop)))) throw new Error("falta el motor con MCA y MOP de placa");
     if (!(E.principal > 300)) throw new Error("la protección principal debe pasar de 300 A: " + E.principal);
     eq(E.alim.dv, null, "sin distancia al tablero (caída del alimentador pendiente):"); eq(E.IccTrafo, null, "sin transformador (Icc pendiente):");
     if (!E.calc.some((c) => c.sinL)) throw new Error("falta una carga sin distancia capturada");

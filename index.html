@@ -19931,9 +19931,13 @@ function cifrasMotor(id) {
     /* AUD-12: también tierra, caída de tensión (alimentador y cada circuito), corriente de falla en barras y capacidad interruptiva. */
     elec: { kVAdemanda: ELEC.kVAdemanda, principal: ELEC.principal, alim: [ELEC.alim.awg, ELEC.alim.tubo.d, ELEC.alim.ocpd], calc: ELEC.calc.map((c) => [c.cond.awg, c.cond.ocpd, c.cond.tubo.d]),
       tierra: [ELEC.alim.tierra, ...ELEC.calc.map((c) => c.cond.tierra)], dv: [ELEC.alim.dv, ...ELEC.calc.map((c) => c.cond.dv)], Icc: ELEC.IccTrafo, kAIC: ELEC.kAIC },
-    hidro: { Qtotal: HIDRO.Qtotal, cdt: HIDRO.cdt, hpBomba: HIDRO.hpBomba, cisterna: HIDRO.cisterna, tramos: HIDRO.tramos.map((x) => [x.nom, x.Q, x.hf]) },
+    hidro: { Qtotal: HIDRO.Qtotal, cdt: HIDRO.cdt, hpBomba: HIDRO.hpBomba, cisterna: HIDRO.cisterna, tramos: HIDRO.tramos.map((x) => [x.nom, x.Q, x.hf]),
+      /* AUD-12 (aprobada por el dueño, 7-oct-2026): drenaje y agua caliente también se vigilan (H-197, AUD-18). */
+      udTotal: HIDRO.udTotal, drenaje: [HIDRO.ramal ? HIDRO.ramal.d : null, HIDRO.bajada ? HIDRO.bajada.d : null, HIDRO.colector ? HIDRO.colector.d : null], Qcal: HIDRO.Qcal, kWcal: HIDRO.kWcal },
     fuego: { qTotal: FUEGO.qTotal, nTotal: FUEGO.nTotal, qBomba: FUEGO.qBomba, hpBomba: FUEGO.hpBomba, reserva: FUEGO.reserva, mcaTotal: FUEGO.mcaTotal },
-    aire: { fad: AIRE.fadRequerido, unidades: AIRE.totalUnidades, hp: AIRE.principal ? AIRE.principal.hp : null, tanque: AIRE.tanque, nTanques: AIRE.nTanques, secador: AIRE.capSecador },
+    aire: { fad: AIRE.fadRequerido, unidades: AIRE.totalUnidades, hp: AIRE.principal ? AIRE.principal.hp : null, tanque: AIRE.tanque, nTanques: AIRE.nTanques, secador: AIRE.capSecador,
+      /* AUD-12 (aprobada por el dueño, 7-oct-2026): la red también se vigila (H-218, AUD-03, AUD-14). */
+      red: (AIRE.tramos || []).map((t) => [t.etiqueta, t.nom, t.d, t.L, t.dPbar]), dPred: AIRE.dPtotal },
     civil: { total: CIVIL.total, part: CIVIL.part.map((p) => [p.desc, p.qty, p.total]) },
     soporte: { n: SOPORTE.nSoportes, total: SOPORTE.total, part: SOPORTE.part.map((p) => [p.desc, p.qty, p.total]) },
     quote: { direct: QUOTE.direct, sub: QUOTE.sub, tot: QUOTE.tot, aux: (QUOTE.aux || []).map((a) => [a.desc, a.qty, a.total]), pendientes: (QUOTE.pendientes || []).map((p) => p.desc) },
