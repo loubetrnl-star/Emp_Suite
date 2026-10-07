@@ -7239,6 +7239,20 @@ t("S.208 (AUD-14, H-177) el submittal de Selección no presenta como de placa el
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+t("S.209 (AUD-12, H-48/H-52) un error de soportería llega a validateAll por su propia ruta (ENGINES.soporte.checks): una tubería capturada a mano en cobre con un diámetro fuera del catálogo de SoporteCalc es error visible en soportería y deja VALID.ok en falso (R.10 dejó de vigilar esta ruta al pasar a aire con H-218)", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.209";
+    S.soporte = { ...G("defaultSoporte")(), usarMotores: false, tubHidroM: 20, tubHidroD: 300, tubHidroMat: "cobre", alturaTrabajo: 4, alturaEstructura: 6 };
+    G("recompute")();
+    const err = (G("SOPORTE").avisos || []).find((a) => a.lvl === "err" && /catalogado en cobre/.test(a.msg));
+    if (!err) throw new Error("el caso no aísla lo que se quiere probar: soportería no dio el error de catálogo de cobre");
+    const V = G("validateAll")();
+    if (!V.rows.some((r) => r.lvl === "err" && r.msg === err.msg)) throw new Error("el error de soportería no llegó a validateAll()");
+    eq(V.ok, false, "VALID.ok debe dar falso con el error de soportería:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 t("S.69 (H-141, decisión (a) del dueño) la diversidad del edificio se aplica UNA sola vez, en la planta: las ganancias internas y el pico de cada zona no la llevan; el objetivo de planta sí (×0.8), y la memoria lo declara como criterio Carrier por ratificar", () => {
   const guardado = JSON.stringify(S);
   const pdfTxt = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");

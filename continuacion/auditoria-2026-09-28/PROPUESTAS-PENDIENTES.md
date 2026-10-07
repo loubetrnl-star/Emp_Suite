@@ -46,3 +46,17 @@ mueve, cuánto y bajo qué norma o criterio, y la prueba que lo fijaría.
   `MOTOR_VER.soporte` 14 → 15. Norma: la tabla de espaciamiento que ya usa soportería para cada familia.
 - **quote · libro de la propuesta** (`buildPropuestaXlsx`, hoja MEMORIA_ELECTRICA): dice «de placa» para un MCA estimado porque
   `mcaEst` quedó en false desde AUD-14. DEPENDENCIA: es Cotización general (congelada); no mueve números.
+
+## AUD-12 · cobertura de los proyectos fijos (PROPUESTAS · regeneran esperados)
+Ninguna mueve una cifra del cálculo: amplían lo que R.1 y R.4 vigilan, y eso obliga a regenerar los esperados
+(`node parches/regresion-motores/genera.mjs`), que la regla 3 de `CLAUDE.md` sólo permite con la versión que subió.
+- `cifrasMotor("hidro")` sin drenaje ni agua caliente, y los dos proyectos fijos con cisterna 0: H-197 y AUD-18 no se ven
+  en R.1/R.4. Propuesta: sumar diámetro del colector, UD de descarga y cisterna; un tercer caso con cisterna.
+- `cifrasMotor("aire")` sin diámetros ni caída de la red: el efecto del cobre (H-218, AUD-03) sólo se ve de rebote en la
+  cotización (congelada). Propuesta: sumar diámetros y ΔP por tramo.
+- ΔP negativa de |ΔP| ≥ 5 Pa en el proyecto fijo 2 (hoy −3 Pa, que con el piso de 5 Pa da lo mismo que +3).
+- Ramas de AUD-14 en los fijos: MCA/MOP estimados, aire en aluminio/inoxidable o sin material, soportería a mano sin
+  material, hidro sin presión de la red ni altura (hoy sólo las cubren S.193–S.196).
+- `S.site` y `S.sitioCarga` iguales en el fijo 2: un retroceso a leer el sitio de Proyecto no movería carga (H-290).
+- Red contra incendio en cobre o CPVC para H-224 (el fijo 2 es acero).
+- Quitar de R.4 la aserción vacía `!c.mcaEst && !c.mopEst` (desde AUD-14 siempre son falsos) o cambiarla por `placaRef`.
