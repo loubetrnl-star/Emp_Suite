@@ -21033,14 +21033,14 @@ function hidroDiametrosSinPrecio() {
   const noms = [...new Set(HIDRO.tramos.filter((t) => t.Lcap > 0 && t.um > 0 && !t.fueraCatalogo).map((t) => String(t.nom).split(" ·")[0]))];
   return noms.filter((nom) => { const e = hidroPUEntrada(claveHidroPU(HIDRO.mat, nom)); return !(e && e.precioM > 0); });
 }
-/* Plantilla CSV: material,clave,diametro,precio_por_metro,moneda,fuente — una fila por cada diámetro que el motor puede producir. */
+/* Plantilla CSV: una fila por cada diámetro que el motor puede producir, con las 18 columnas del encabezado (AUD-22). */
 function hidroPUPlantillaCsv() {
   /* rev 2.9.23 · precio tal como lo publica el proveedor: por_tramo_m (1 = por metro), iva_incluido (si/no), origen
      (proveedor = cotización de proveedor local; referencia = precio de mercado para el Budget), url y fecha. */
   /* H-251: columnas estado y pais; una referencia sólo entra con estado California (CA), EE. UU. */
   const filas = [["material", "clave", "diametro", "precio", "por_tramo_m", "iva_incluido", "moneda", "origen", "alcance", "fuente", "edicion", "pagina", "ubicacion", "estado", "pais", "lista", "url", "fecha"]];
   Object.entries(TUB_AGUA).forEach(([mat, T]) => T.d.forEach(([, nom]) => { const d = String(nom).split(" ·")[0], k = claveHidroPU(mat, d), e = (S.hidro && S.hidro.hidroPU && typeof S.hidro.hidroPU[k] === "object") ? S.hidro.hidroPU[k] : null;
-    filas.push(e ? [mat, k, d, e.precio, e.porTramo || 1, e.iva === true ? "si" : e.iva === false ? "no" : "no especificado", e.moneda || "MXN", e.origen || "proveedor", e.alcance || "no especificado", e.fuente || "", e.edicion || "", e.pagina || "", e.ubicacion || "", e.estado || "", e.pais || "", e.lista || "no especificado", e.url || "", e.fecha || ""] : [mat, k, d, "", "1", "no", "MXN", "proveedor", "no especificado", "","", "", "", "no especificado", "", ""]); }));
+    filas.push(e ? [mat, k, d, e.precio, e.porTramo || 1, e.iva === true ? "si" : e.iva === false ? "no" : "no especificado", e.moneda || "MXN", e.origen || "proveedor", e.alcance || "no especificado", e.fuente || "", e.edicion || "", e.pagina || "", e.ubicacion || "", e.estado || "", e.pais || "", e.lista || "no especificado", e.url || "", e.fecha || ""] : [mat, k, d, "", "1", "no", "MXN", "proveedor", "no especificado", "", "", "", "", "", "", "no especificado", "", ""]); }));   /* AUD-22: las 18 columnas del encabezado (antes 16: «no especificado» caía en «estado») */
   return filas.map((f) => f.map((c) => /[",\n]/.test(String(c)) ? `"${String(c).replace(/"/g, '""')}"` : String(c)).join(",")).join("\n");
 }
 /* Importa un CSV con las columnas de la plantilla. USD se convierte con el tipo de cambio del proyecto. Devuelve el resumen. */

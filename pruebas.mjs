@@ -6506,7 +6506,12 @@ t("S.39 (rev 2.9.22, decisión del dueño) precios de tubería hidráulica: PP-R
     const csv = G("hidroPUPlantillaCsv")();
     contiene(csv, "material,clave,diametro,precio,por_tramo_m,iva_incluido,moneda,origen,alcance,fuente,edicion,pagina,ubicacion,estado,pais,lista,url,fecha", "encabezado (rev 2.9.24, H-251: columnas estado y pais):");
     eq(csv.split("\n").length - 1, Object.values(T).reduce((a, t) => a + t.d.length, 0), "una fila por diámetro y material:");
-    contiene(csv, "cpvc,cpvc_1_1_4_,\"1 1/4\"\"\",,1,no,MXN,proveedor,no especificado,,,,,no especificado,,", "fila CPVC 1 1/4 (el diámetro lleva comillas):");
+    /* AUD-22: cada fila trae las 18 columnas del encabezado y «no especificado» cae en «lista», no en «estado» (antes 16 celdas). */
+    contiene(csv, "cpvc,cpvc_1_1_4_,\"1 1/4\"\"\",,1,no,MXN,proveedor,no especificado,,,,,,,no especificado,,", "fila CPVC 1 1/4 (el diámetro lleva comillas):");
+    const celdas = (l) => { let n = 1, q = false; for (const ch of l) { if (ch === '"') q = !q; else if (ch === "," && !q) n++; } return n; };
+    const lineas = csv.split(String.fromCharCode(10)), ancho = celdas(lineas[0]);
+    eq(ancho, 18, "el encabezado trae 18 columnas:");
+    lineas.slice(1).forEach((l, i) => { if (celdas(l) !== ancho) throw new Error(`la fila ${i + 2} de la plantilla trae ${celdas(l)} celdas y el encabezado ${ancho}: ${l}`); });
     if (/IUSA/.test(csv)) throw new Error("la plantilla no debe traer referencias IUSA (regla: únicamente California)");
     G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.39"; Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.39" }; }); aceptarSitioCarga();   /* H-290 */
     S.zones[0].area = 100; S.zones[0].height = 3; S.duct.difusores = 2;   /* H-300: los difusores que daba la zona se capturan en Ductos */
