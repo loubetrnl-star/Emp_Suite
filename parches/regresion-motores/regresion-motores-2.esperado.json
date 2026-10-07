@@ -357,7 +357,7 @@
    }
   },
   "elec": {
-   "ver": "10",
+   "ver": "11",
    "cifras": {
     "kVAdemanda": 431.80332363990533,
     "principal": 700,

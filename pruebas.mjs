@@ -6334,7 +6334,7 @@ t("S.36 (rev 2.9.20, decisión del dueño) versión por motor en el sello: sólo
      H-194: hidro v5 = presión mínima por mueble de la Tabla 604.3 del IPC 2015 y CDT con máx(residual, mínima); H-195: v6 = equipo de emergencia fuera de Hunter; H-197: v7 = sin pisos sin norma (días, ΔT, pendiente 704.1); H-198: v8 = CPVC sólo hasta 2" CTS, fuera de catálogo y PEAD sin SDR como error.
      H-263: carga v6 = calor del motor del ventilador seleccionado en Ventilación como misceláneos de la zona elegida; H-262: ventilación v4 = ya no hereda de carga térmica;
      H-268: eléctrico v9 = autónomo (las cargas de otros motores sólo como propuesta aceptada). */
-  eq(MV.elec, "10", "eléctrico v10 (AUD-14):"); eq(MV.hidro, "11", "hidro v11 (AUD-24.2):"); eq(MV.load, "7", "carga v7 (H-290):"); eq(MV.duct, "4", "ductos v4 (H-165):"); eq(MV.equip, "4", "selección v4 (H-288):"); eq(MV.kaizen, "1", "Kaizen sin cambio de lógica: v1:");
+  eq(MV.elec, "11", "eléctrico v11 (AUD-14, sistema pendiente):"); eq(MV.hidro, "11", "hidro v11 (AUD-24.2):"); eq(MV.load, "7", "carga v7 (H-290):"); eq(MV.duct, "4", "ductos v4 (H-165):"); eq(MV.equip, "4", "selección v4 (H-288):"); eq(MV.kaizen, "1", "Kaizen sin cambio de lógica: v1:");
   Object.keys(MV).forEach((id) => { const c = G("MOTOR_CAMBIOS")[id] || []; if (MV[id] !== "1" && !c.some((x) => x.ver === MV[id])) throw new Error(`${id}: la versión ${MV[id]} no tiene hallazgo registrado`); });
   const s0 = JSON.stringify(S.sellos || {});
   try {
@@ -7389,6 +7389,29 @@ t("S.217 (AUD-24.3, decisión (a) del dueño, 7-oct-2026) un proyecto guardado a
     if (G("HIDRO").avisos.some((a) => /sin confirmar/i.test(a.msg) && /lavaojos/.test(a.msg))) throw new Error("el aviso sigue después de confirmar");
     if (armar(false).sinConfirmar) throw new Error("un proyecto de formato vigente no se marca");
     if (armar(true, "6").sinConfirmar) throw new Error("un proyecto sellado con hidro v6 o posterior no se marca");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+t("S.218 (AUD-14, aprobada por el dueño el 7-oct-2026) sin sistema eléctrico válido (vacío o fuera del catálogo) no se suponen 3 fases 4 hilos 220/127 V: el sistema queda «dato pendiente» visible (error en avisos y memoria), ninguna carga, alimentador ni hilo se dimensiona ni se cotiza con un sistema supuesto, y el eléctrico queda incompleto; con un sistema válido de 3 hilos la cotización cuenta 3 hilos", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    for (const sisMalo of ["", "XYZ"]) {
+      G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.218";
+      S.elec.cargas = [{ ...G("defaultCarga")("Motor"), tipo: "motor", kW: 15, V: 220, ph: 3, cant: 1, L: 30 }];
+      S.elec.Ltablero = 30; S.elec.sistema = sisMalo;
+      G("recompute")();
+      const R = G("ELEC");
+      if (!R.avisos.some((a) => a.lvl === "err" && /sistema/i.test(a.msg) && /dato pendiente/.test(a.msg))) throw new Error(`sistema «${sisMalo}»: no hay aviso de error «dato pendiente»`);
+      if (!R.memo.some((m) => /sistema/i.test(m) && /dato pendiente/.test(m))) throw new Error(`sistema «${sisMalo}»: la memoria no lo dice`);
+      if (R.memo.some((m) => /3 fases · 4 hilos · 220\/127 V/.test(m))) throw new Error(`sistema «${sisMalo}»: la memoria presenta el sistema supuesto 3F4H-220`);
+      eq(R.kVAdemanda, 0, `sistema «${sisMalo}»: nada se dimensiona con un sistema supuesto:`);
+      const cot = G("cotizacionElec")(R, S.elec);
+      if (cot.porCotizar.some((p) => /hilos/.test(p.desc))) throw new Error(`sistema «${sisMalo}»: la cotización cuenta hilos de un sistema supuesto`);
+      eq(G("semaforoDisciplina")(G("DISCIPLINAS").find((d) => d.id === "elec")).nivel, "incompleta", `sistema «${sisMalo}»: semáforo del eléctrico:`);
+    }
+    S.elec.sistema = "1F3H-220"; G("recompute")();
+    const cot3 = G("cotizacionElec")(G("ELEC"), S.elec), cond = cot3.porCotizar.find((p) => p.clave === "alimConductor");
+    if (!cond || !/× 3 hilos/.test(cond.desc)) throw new Error(`con 1F3H-220 la cotización debe contar 3 hilos: ${cond ? cond.desc : "sin renglón del alimentador"}`);
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
