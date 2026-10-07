@@ -15508,13 +15508,23 @@ function cxAplicar(lote, modo, opts) {
   const fuenteDe = (p) => (lote.fuentes || []).find((x) => x.nombre === p.archivo || String(p.archivo || "").startsWith(x.nombre + " · ")) || {};
   const claveDe = (p) => `${fuenteDe(p).huella || fuenteDe(p).ruta || p.archivo || ""}|${p.archivo}|${p.destino}|${p.etiqueta}`;
   const previos = new Map();
-  if (modo !== "nuevo") cxLotesDe(lote.tab).forEach((l) => (l.aplicados || []).forEach((a) => { if (a && a.clave && !previos.has(a.clave)) previos.set(a.clave, l.ts); }));
-  let yaEntraron = 0, tsPrevio = null;
+  /* AUD-02(a) (decisión del dueño ratificada el 6-oct-2026: los datos claros entran solos). Un archivo EDITADO y vuelto a cargar trae
+     otra huella de contenido: lo que ya entró del mismo archivo con el mismo destino, dato y valor se reconoce igual (no se
+     duplica), y el dato que cambió de valor no entra solo: queda sin marcar, «cambió en el archivo», para que el usuario decida. */
+  const valorDe = (p) => (typeof p.valor === "number" ? +p.valor.toFixed(3) : String(p.valor).slice(0, 120));
+  const datoDe = (x) => `${x.archivo}|${x.destino}|${x.etiqueta}`;
+  const previosCont = new Map(), previosDato = new Map();
+  if (modo !== "nuevo") cxLotesDe(lote.tab).forEach((l) => (l.aplicados || []).forEach((a) => { if (a && a.clave && !previos.has(a.clave)) previos.set(a.clave, l.ts);
+    if (a && a.archivo) { const d = datoDe(a), c = `${d}|${a.valor}`; if (!previosCont.has(c)) previosCont.set(c, l.ts); if (!previosDato.has(d)) previosDato.set(d, l.ts); } }));
+  let yaEntraron = 0, tsPrevio = null, cambiaron = 0;
   lote.propuestas.forEach((p) => {
-    if (p.aplicado || !p.fn || p.grupo === "info" || !previos.has(claveDe(p))) return;
-    p.aplicado = true; p.yaEntro = true; p.marcado = false; yaEntraron++; tsPrevio = tsPrevio || previos.get(claveDe(p));
+    if (p.aplicado || !p.fn || p.grupo === "info") return;
+    const ts = previos.get(claveDe(p)) || previosCont.get(`${datoDe(p)}|${valorDe(p)}`);
+    if (ts) { p.aplicado = true; p.yaEntro = true; p.marcado = false; yaEntraron++; tsPrevio = tsPrevio || ts; return; }
+    if (previosDato.has(datoDe(p))) { p.marcado = false; p.cambioEnArchivo = true; cambiaron++; }
   });
   lote.yaEntraron = { n: yaEntraron, ts: tsPrevio };
+  lote.cambiaron = cambiaron;
   const marcadas = lote.propuestas.filter((p) => p.marcado && !p.aplicado && p.fn && p.grupo !== "info");
   /* Nada nuevo que escribir: ni lote vacío ni paso de deshacer. */
   if (!marcadas.length && modo !== "nuevo") { if (!(opts && opts.quedarse)) S.tab = lote.tab; return 0; }

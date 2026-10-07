@@ -7142,6 +7142,31 @@ t("S.203 (decisión del dueño, 6-oct-2026; H-301) la pestaña Selección no esc
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+t("S.204 (AUD-02(a), ratificada por el dueño el 6-oct-2026; H-272b) la carga de archivos sigue aplicando sola los datos claros (marcados «auto»), y volver a cargar el MISMO archivo ya EDITADO no duplica: lo que no cambió se reconoce como ya entrado y lo que cambió de valor no entra solo (queda por decidir), sin repetir ni pisar la carga", () => {
+  const guardado = JSON.stringify(S);
+  const lote = (huella, kwB) => ({ id: `s204-${huella}`, tab: "electrico", fuentes: [{ nombre: "cuadro-s204.csv", huella, avisos: [] }], analisis: { normas: [] },
+    propuestas: [["Motor A", 7.5], ["Motor B", kwB]].map(([nombre, kW]) => ({ marcado: true, grupo: "elec", archivo: "cuadro-s204.csv", destino: "elec.cargas", etiqueta: nombre, valor: kW, unidad: "kW", texto: `${nombre} ${kW} kW`,
+      fn: () => ({ carga: { ...G("defaultCarga")(nombre), kW } }) })) });
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.204"; G("recompute")();
+    const n0 = S.elec.cargas.length;
+    G("cxAplicar")(lote("h1", 5), "abierto", { quedarse: true, auto: true });
+    eq(S.elec.cargas.length, n0 + 2, "los datos claros entran solos (decisión ratificada):");
+    const ult = S.cx.lotes[S.cx.lotes.length - 1];
+    if (!ult.aplicados.length || !ult.aplicados.every((a) => a.auto === true)) throw new Error("lo que entró solo no queda marcado «auto»");
+    /* El mismo archivo, editado: Motor A igual, Motor B de 5 a 6 kW (otra huella de contenido). */
+    const L2 = lote("h2", 6);
+    G("cxAplicar")(L2, "abierto", { quedarse: true, auto: true });
+    const cuenta = (nom) => S.elec.cargas.filter((c) => c.nombre === nom).length;
+    eq(cuenta("Motor A"), 1, "Motor A (sin cambio en el archivo) no se duplica:");
+    eq(cuenta("Motor B"), 1, "Motor B (cambió en el archivo) no se duplica:");
+    eq(S.elec.cargas.find((c) => c.nombre === "Motor B").kW, 5, "Motor B no se pisa solo con el valor nuevo:");
+    const pB = L2.propuestas.find((p) => p.etiqueta === "Motor B");
+    if (pB.aplicado || pB.marcado) throw new Error("el dato que cambió en el archivo entró solo; debe quedar por decidir");
+    if (!L2.propuestas.find((p) => p.etiqueta === "Motor A").yaEntro) throw new Error("el dato sin cambio no se reconoce como ya entrado");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 t("S.69 (H-141, decisión (a) del dueño) la diversidad del edificio se aplica UNA sola vez, en la planta: las ganancias internas y el pico de cada zona no la llevan; el objetivo de planta sí (×0.8), y la memoria lo declara como criterio Carrier por ratificar", () => {
   const guardado = JSON.stringify(S);
   const pdfTxt = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");
