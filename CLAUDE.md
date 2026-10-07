@@ -120,3 +120,10 @@ versiona a otro.
 - Versión y esperados por motor: sólo sube `MOTOR_VER` del motor que movió números y sólo se regenera su esperado.
   Un rojo en el bloque `CM.<motor>` detiene ese motor; un rojo en lo común detiene la integración de todos.
 - Firma de commits: `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`, como indica la sección Git.
+
+## Congelados (decisión del dueño, 28-sep-2026)
+- Kaizen, Ingeniería de valor y Cotización general (`computeQuote`, `QUOTE`, kaizen, valor, sus pestañas, PDF, Excel y
+  `MOTOR_VER`) NO SE TOCAN hasta que terminen todas las demás disciplinas. Si una tarea obliga a tocarlos, se detiene
+  ahí, se registra como dependencia en la bitácora y se sigue con la siguiente. La cotización propia de cada
+  disciplina (H-293 a H-304, `X.cot`) sí es de su motor y sí se trabaja. Origen:
+  `continuacion/auditoria-2026-09-28/PROMPT-CODE-independencia-y-criticos.md`, líneas 13-17.
