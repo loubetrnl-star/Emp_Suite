@@ -16,7 +16,7 @@
      (defaultState, línea 11127); serie de medidas STD_RECT/STD_ROUND (9071-9072); dimensionado a fricción constante 0.8
      Pa/m: redondo = primer diámetro de la serie con Pa/m ≤ 0.8·1.02 (sizeRoundEF 9161), rectangular = mínimo de
      |De − De_obj| + 5·|Pa/m − 0.8| + 2·(w/h − 1) con 1.5 ≤ V ≤ 20 m/s, w/h ≤ aspecto + 0.05 y Pa/m ≤ 0.8·1.08 (sizeRect
-     9173); calibre por lado mayor en pulgadas con RECT_G/ROUND_G (9080-9097, sin número de tabla SMACNA: H-170/H-168) y
+     9173); calibre por lado mayor en pulgadas: RECT_G sin número de tabla SMACNA (H-170); redondo con SMACNA 1995 Tabla 3-2A (H-310) y
      espesor galvanizado GAUGE_T (9079); lámina = perímetro × L × 1.12 (traslapes, H-175);
      acero 7,850 kg/m³; juntas cada 1.219 m (rectangular) o cada tramo comercial de 3.048 m (espiro); soportes cada 2.4 m
      (1.8 m si el lado mayor pasa de 900 mm).
@@ -37,7 +37,9 @@ const STD_ROUND = [100, 125, 150, 160, 180, 200, 224, 250, 280, 300, 315, 355, 4
 const GAUGE_T = { 28: .0187, 26: .0217, 24: .0276, 22: .0336, 20: .0396, 18: .0516, 16: .0635, 14: .0785, 13: .0934, 12: .1084, 11: .1233, 10: .1382 };
 const GAUGE_ORDER = [28, 26, 24, 22, 20, 18, 16, 14, 13, 12, 11, 10];
 const RECT_G = { "0.5": [[30, 26], [54, 24], [84, 22], [999, 20]], "2": [[12, 24], [30, 22], [48, 20], [60, 18], [999, 16]] };
-const ROUND_G = { "0.5": [[14, 26], [26, 24], [36, 22], [999, 20]], "2": [[14, 22], [26, 20], [36, 18], [999, 16]] };
+/* H-310: SMACNA HVAC-DCS 2.ª ed. 1995, Tabla 3-2A (pág. 3.3), costura longitudinal, columna +2" w.g. (½" toma +2": supuesto
+   propio, decisión del dueño); transcrita de normas/smacna1995_tabla3-2A.json, renglones con igual calibre juntos. */
+const ROUND_G = { "0.5": [[8, 28], [14, 26], [26, 24], [36, 22], [50, 20], [60, 18], [84, 16]], "2": [[8, 28], [14, 26], [26, 24], [36, 22], [50, 20], [60, 18], [84, 16]] };
 const r = (x, d = 4) => Number(x.toFixed(d));
 
 const huebscher = (a, b) => 1.3 * Math.pow(a / 1000 * b / 1000, .625) / Math.pow(a / 1000 + b / 1000, .25) * 1000;
@@ -144,7 +146,7 @@ const resFijo = FIJO.map((c) => {
   const ent = "redondo bloqueado Ø500 mm, 1,000 L/s, 12 m, 2 codos C 0.28, clase 2\", galvanizado, tramo comercial 10 pies";
   fila("CM.duct.5.a", "fricción del redondo (Pa/m)", ent, `V = ${r(t.V, 4)} m/s; Haaland ${r(t.Pam, 4)} Pa/m`, FD, "primaria", "DUCT.segs[0].Pam", r(t.Pam, 4), 0.0005);
   fila("CM.duct.5.b", "caída del tramo (Pa)", ent, `${r(t.Pam, 4)} × 12 + ${r(t.fit, 3)} = ${r(t.total, 3)} Pa`, `${FD}; ${FC}`, "primaria", "DUCT.segs[0].total", r(t.total, 3), 0.02);
-  fila("CM.duct.5.c", "calibre del redondo", ent, `Ø500 = 19.69 in → calibre ${t.g}`, "criterio de la casa (ROUND_G clase 2\", index.html:9089; sin tabla SMACNA de espiral, H-168 BLOQUEADO)", "criterio de la casa", "DUCT.segs[0].gauge.gauge", t.g, 0);
+  fila("CM.duct.5.c", "calibre del redondo", ent, `Ø500 = 19.69 in → calibre ${t.g}`, "SMACNA HVAC-DCS 2.ª ed. 1995 + Addendum No. 1 (1997), Tabla 3-2A pág. 3.3, renglón 19-26\", columna +2\" w.g. Long. Seam (costura longitudinal: decisión del dueño, H-310); https://law.resource.org/pub/us/cfr/ibr/005/smacna.duct.1995.pdf", "primaria", "DUCT.segs[0].gauge.gauge", t.g, 0);
   fila("CM.duct.5.d", "kilos del redondo", ent, `π·0.5 × 12 × 1.12 × ${r(t.th, 4)} mm × 7.85 = ${r(t.kg, 2)} kg`, FK, "criterio de la casa", "DUCT.segs[0].kg", r(t.kg, 2), 0.05);
   fila("CM.duct.5.e", "espiroducto: tramos enteros de 10 pies", ent, `⌊12 / 3.048⌋ = ${t.enteras}`, "criterio de la casa (despieceSeg, index.html:9239)", "criterio de la casa", "DUCT.segs[0].despiece.enteras", t.enteras, 0);
   fila("CM.duct.5.f", "espiroducto: recorte (m)", ent, `12 − ${t.enteras} × 3.048 = ${t.recorte} m`, "criterio de la casa (despieceSeg)", "criterio de la casa", "DUCT.segs[0].despiece.recorte", t.recorte, 0.001);

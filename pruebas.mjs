@@ -6334,7 +6334,7 @@ t("S.36 (rev 2.9.20, decisión del dueño) versión por motor en el sello: sólo
      H-194: hidro v5 = presión mínima por mueble de la Tabla 604.3 del IPC 2015 y CDT con máx(residual, mínima); H-195: v6 = equipo de emergencia fuera de Hunter; H-197: v7 = sin pisos sin norma (días, ΔT, pendiente 704.1); H-198: v8 = CPVC sólo hasta 2" CTS, fuera de catálogo y PEAD sin SDR como error.
      H-263: carga v6 = calor del motor del ventilador seleccionado en Ventilación como misceláneos de la zona elegida; H-262: ventilación v4 = ya no hereda de carga térmica;
      H-268: eléctrico v9 = autónomo (las cargas de otros motores sólo como propuesta aceptada). */
-  eq(MV.elec, "10", "eléctrico v10 (AUD-14):"); eq(MV.hidro, "10", "hidro v10 (AUD-18):"); eq(MV.load, "7", "carga v7 (H-290):"); eq(MV.duct, "4", "ductos v4 (H-165):"); eq(MV.equip, "4", "selección v4 (H-288):"); eq(MV.kaizen, "1", "Kaizen sin cambio de lógica: v1:");
+  eq(MV.elec, "10", "eléctrico v10 (AUD-14):"); eq(MV.hidro, "10", "hidro v10 (AUD-18):"); eq(MV.load, "7", "carga v7 (H-290):"); eq(MV.duct, "5", "ductos v5 (H-310):"); eq(MV.equip, "4", "selección v4 (H-288):"); eq(MV.kaizen, "1", "Kaizen sin cambio de lógica: v1:");
   Object.keys(MV).forEach((id) => { const c = G("MOTOR_CAMBIOS")[id] || []; if (MV[id] !== "1" && !c.some((x) => x.ver === MV[id])) throw new Error(`${id}: la versión ${MV[id]} no tiene hallazgo registrado`); });
   const s0 = JSON.stringify(S.sellos || {});
   try {
@@ -9811,6 +9811,40 @@ t("S.200 (H-309) el sello del eléctrico sólo depende de su captura: conceder o
     eq(G("selloDe")("elec").estado, "calculado", "ni retirarlos:");
     S.elec.cargas[0].kW = 7.5; G("recompute")();
     eq(G("selloDe")("elec").estado, "desactualizado", "cambiar su captura sí lo marca:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+t("S.202 (H-310) calibre de ducto redondo por SMACNA HVAC-DCS 2.ª ed. 1995, Tabla 3-2A (pág. 3.3), costura longitudinal (decisión del dueño): clases ½, 1 y 2 con la columna +2\" w.g., 3 y 4 con +4\", 6 y 10 con +10\" (clases sin columna propia: supuesto propio, la inmediata superior); kilos con el espesor del calibre nuevo; rectangular y grasa sin cambio", () => {
+  const guardado = JSON.stringify(S);
+  const meta = (pc) => ({ ...S.duct.meta, pc, material: "galvanized" });
+  const redondo = (d, pc, extra = {}) => G("calcSegment")({ ...G("defaultSegment")("RD-" + d, 1000), shape: "round", lock: true, d, length: 10, ...extra }, meta(pc));
+  try {
+    G("reemplazarEstado")(G("defaultState")());
+    /* [Ø mm, clase in w.g., calibre de la Tabla 3-2A, columna, calibre de antes] — Ø en in = mm / 25.4 */
+    const casos = [
+      [800, "2", 22, "2", 18],    // 31.50 in → renglón 27-36", +2" Long. Seam = 22
+      [500, "2", 24, "2", 20],    // 19.69 in → 19-26", +2" Long. = 24 (CM.duct.5)
+      [200, "0.5", 28, "2", 26],  // 7.87 in → 8", +2" Long. = 28 (½" toma +2")
+      [1600, "1", 16, "2", 18],   // 62.99 in → 61-84", +2" Long. = 16 (antes más delgado que la norma)
+      [500, "3", 22, "4", 18],    // 19.69 in → 19-26", +4" Long. = 22 (3" toma +4")
+      [400, "10", 22, "10", 14],  // 15.75 in → 16", +10" Long. = 22
+      [160, "6", 26, "10", 16],   // 6.30 in → 8", +10" Long. = 26 (6" toma +10")
+    ];
+    for (const [d, pc, gEsp, col, gAntes] of casos) {
+      const s = redondo(d, pc), g = s.gauge;
+      eq(g.gauge, gEsp, `Ø${d} clase ${pc}" (antes ${gAntes}):`);
+      contiene(g.ref, "SMACNA HVAC-DCS 2.ª ed. 1995, Tabla 3-2A", "cita con edición y tabla:");
+      contiene(g.ref, "costura longitudinal", "columna de costura:");
+      contiene(g.ref, `columna +${col}" w.g.`, "columna de presión:");
+      if (col !== pc) contiene(g.ref, "supuesto propio", "la clase sin columna se rotula como supuesto propio:");
+      else if (/supuesto propio/.test(g.ref)) throw new Error("una clase tabulada no es supuesto: " + g.ref);
+      cerca(s.kg, s.sheet * g.th_mm / 1000 * 7850, 1e-9, "kilos con el espesor del calibre:");
+    }
+    cerca(redondo(800, "2").gauge.th_in, 0.0336, 1e-12, "espesor del calibre 22 (GAUGE_T, sin cambio):");
+    /* Rectangular: RECT_G no se toca (1200×700 clase 2" = cal 20, CM.duct.1). */
+    const rect = G("calcSegment")({ ...G("defaultSegment")("TR-1", 6000), lock: true, w: 1200, h: 700, length: 18 }, meta("2"));
+    eq(rect.gauge.gauge, 20, "rectangular sin cambio:");
+    /* Grasa redonda: sigue rigiendo UMC 2018 §510.5.1 (16 MSG acero al carbón). */
+    eq(redondo(500, "2", { service: "kitchen_grease" }).gauge.gauge, 16, "grasa redonda sigue en UMC 16:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {

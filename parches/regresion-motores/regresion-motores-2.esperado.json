@@ -47,9 +47,9 @@
    }
   },
   "duct": {
-   "ver": "4",
+   "ver": "5",
    "cifras": {
-    "kg": 2444.37267329492,
+    "kg": 2302.9360769649984,
     "path": 84.81110888095893,
     "segs": [
      [
@@ -95,14 +95,14 @@
   "quote": {
    "ver": "24",
    "cifras": {
-    "direct": 29818816.107456513,
-    "sub": 45074122.42803125,
-    "tot": 52285982.01651625,
+    "direct": 29795479.069062077,
+    "sub": 45038846.160794236,
+    "tot": 52245061.54652131,
     "aux": [
      [
       "Instalación mecánica, bases, izaje y arranque (35 % del equipo)",
       1,
-      419671.04627668374
+      419671.0462766838
      ],
      [
       "Tubería de refrigerante o hidráulica, aislada (15 TR)",
@@ -110,9 +110,9 @@
       142500
      ],
      [
-      "Ducto de lámina galvanizada instalado y sellado (2,192 kg del cálculo de ductos)",
-      2191.807322705775,
-      361648.20824645285
+      "Ducto de lámina galvanizada instalado y sellado (2,050 kg del cálculo de ductos)",
+      2050.3707263758533,
+      338311.1698520158
      ],
      [
       "Difusores y rejillas con caja plenum (24 piezas capturadas en Ductos)",
