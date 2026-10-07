@@ -113,3 +113,19 @@ Ninguna mueve una cifra del cálculo: amplían lo que R.1 y R.4 vigilan, y eso o
 - La propuesta `cedula>elec` se retiró (H-306): ya no hay «volver a aceptar la cédula». El emparejamiento por nombre sólo vive
   en la migración única al abrir (`aceptarCargasElec`, llamada desde `recompute`) y su firma ya no se compara con nada. No se
   toca: cambiarlo movería las cifras que esa migración copia una vez.
+
+## Estado al 7-oct-2026 (aprobaciones del dueño)
+- Aplicadas: 24.2 (`eaafe40`, hidro 11), 24.3 opción (a) (`73be952`, sin versión), hilos en elec (`53396b5`, elec 11),
+  longitudes de aire (`a8c898d`, aire 7), material de aire (`ae51c1d`, aire 8), piso de fuego (`3f08178`, fuego 7), cobertura
+  de R.1/R.4 sólo con renglones nuevos (`f6b0eb4`).
+- **AUD-17 opción (c): DETENIDA por la compuerta.** El esperado de la Cotización general (congelada) guarda los renglones de aire
+  tal como salen: «Compresor de tornillo lubricado 20 HP · 2,430 L/min a 6.8 bar» (ya con la corrección de ~5 %/bar) y
+  «Secador refrigerativo de 2.43 m³/min … corrección a 35 °C y 6.75 bar…» (con la temperatura de succión). La opción (c) cambia
+  los dos (FAD a la presión de trabajo pendiente; temperatura de entrada al secador), así que cambia el esperado de un motor
+  que no se está trabajando. Para seguir hace falta que el dueño autorice regenerar sólo el esperado de quote (sin tocar su
+  código ni su versión) o que espere a descongelarla.
+- **Familia por omisión en soportería: PROHIBIDA por ahora.** PAUSA.md:51 registra la orden del dueño de no tocar Estructural
+  ni Soportería, y TAREAS-AUDITORIA-rev-2.9.24.md:14 la da por vigente para todo lo que no esté listado en la auditoría; esta
+  propuesta no está en esa lista.
+- Partes de AUD-12 no aplicadas (cambiarían valores existentes de los proyectos fijos): ΔP negativa ≥ 5 Pa, ramas de AUD-14,
+  sitios distintos, red de incendio no acero.
