@@ -10980,13 +10980,13 @@ function computeHidro(H) {
   const emerg = lista.filter((x) => x.emergGpm > 0);
   const qEmerg = emerg.reduce((a, x) => a + x.emergGpm * x.cant, 0) * GPM_LS;
   const volEmerg = qEmerg * 60 * EMERG_MIN;
-  const Qtotal = hunterQ(umTotal, tipoSistema) + qEmerg;
+  const qHunter = hunterQ(umTotal, tipoSistema), Qtotal = qHunter + qEmerg;
   memo.push(`${lista.reduce((a, x) => a + x.cant, 0)} muebles · ${n(umTotal, 1)} unidades mueble de suministro (uso ${H.uso === "privado" ? "privado" : "público"}) · ${n(udTotal, 0)} unidades de descarga.`);
   if (emerg.length) {
     memo.push(`Equipo de emergencia fuera de Hunter, con gasto fijo: ${emerg.map((x) => `${x.cant} × ${x.nombre.toLowerCase()} a ${n(x.emergGpm * GPM_LS * 60, 1)} L/min (${x.emergGpm} gpm)`).join(" · ")} = ${n(qEmerg * 60, 1)} L/min que se suman al gasto probable, todos a la vez (criterio de la casa). Volumen para ${EMERG_MIN} min: ${n(volEmerg, 0)} L. Fuente secundaria: ANSI Z358.1-1990 citada por OSHA (cartas del 18-abr-2002 y del 22-nov-1993); falta ratificar con el texto de Z358.1-2014. La temperatura del agua (templada) la fija Z358.1; OSHA la deja a la evaluación del patrón: no se calcula aquí.`);
     avisos.push({ lvl: "warn", msg: `La presión de ${n(emerg[0].presMin, 1)} m en el equipo de emergencia es criterio de la casa sin fuente (la Tabla 604.3 no lo lista y remite al fabricante): confírmala con la placa del equipo.` });
   }
-  memo.push(`Gasto probable por el método de Hunter (IPC apéndice E, Table E103.3(3); el agua caliente con la curva de tanque), curva de ${tipoSistema === "fluxometro" ? "fluxómetro" : "tanque"}: ${n(Qtotal, 2)} L/s (${n(Qtotal * 60, 0)} L/min). El mueble más exigente pide ${n(presMinReq, 1)} m de columna de agua en su llave (${masExigente ? `${masExigente.nombre}: ${masExigente.presFuente}` : "sin muebles capturados: 8 psi, el menor renglón de la IPC 2015 Tabla 604.3"}).`);
+  memo.push(`Gasto probable por el método de Hunter (IPC apéndice E, Table E103.3(3); el agua caliente con la curva de tanque), curva de ${tipoSistema === "fluxometro" ? "fluxómetro" : "tanque"}: ${n(qHunter, 2)} L/s (${n(qHunter * 60, 0)} L/min)${qEmerg > 0 ? `; más el equipo de emergencia con gasto fijo, ${n(qEmerg, 2)} L/s: gasto probable total ${n(Qtotal, 2)} L/s (${n(Qtotal * 60, 0)} L/min)` : ""}. El mueble más exigente pide ${n(presMinReq, 1)} m de columna de agua en su llave (${masExigente ? `${masExigente.nombre}: ${masExigente.presFuente}` : "sin muebles capturados: 8 psi, el menor renglón de la IPC 2015 Tabla 604.3"}).`);
   if (umTotal > 0 && umTotal < 10) avisos.push({ lvl: "warn", msg: `Con ${n(umTotal, 1)} unidades mueble el método de Hunter pierde sentido estadístico: por debajo de unas diez unidades conviene calcular el gasto simultáneo real de los muebles que puedan abrirse a la vez.` });
 
   /* 2) Tramos de agua: cada uno con sus unidades mueble acumuladas */

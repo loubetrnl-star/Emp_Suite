@@ -7204,6 +7204,23 @@ t("S.206 (AUD-09, H-126 y H-128) traspasar la reposición por vínculo y «Crear
   for (const h of ["H-126", "H-128"]) if (!new RegExp(String.raw`\|\s*3 \(sin cambio\)\s*\|[^\n]*` + h).test(sec)) throw new Error(`CHANGELOG-motores.md (Cuartos limpios) no declara ${h} como cambio sin subir versión`);
 });
 
+t("S.207 (AUD-24, H-195) la memoria de hidráulica no titula «método de Hunter» un gasto que ya incluye el gasto fijo del equipo de emergencia: da el de Hunter, el de emergencia y el total por separado (mismas cifras)", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.207";
+    S.hidro = { ...G("defaultHidro")(), tramos: [{ ...G("defaultTramoAgua")("AF-GENERAL"), um: 40, L: 25, alt: 0 }], muebles: [{ id: "wc_flux", cant: 4 }, { id: "lavabo", cant: 4 }, { id: "lavaojos", cant: 1 }] };
+    G("recompute")();
+    const H = G("HIDRO"), qH = G("hunterQ")(H.umTotal, "fluxometro"), qE = H.Qtotal - qH;
+    if (!(qE > 0)) throw new Error("el caso no aísla lo que se quiere probar: no hay gasto de emergencia");
+    const linea = H.memo.find((m) => /método de Hunter/.test(m)) || "";
+    const n2 = (v) => G("n")(v, 2);
+    contiene(linea, `${n2(qH)} L/s`, "el gasto de Hunter es sólo el de Hunter:");
+    if (linea.indexOf(`Hunter (IPC apéndice E, Table E103.3(3); el agua caliente con la curva de tanque), curva de fluxómetro: ${n2(H.Qtotal)} L/s`) >= 0) throw new Error("la memoria vuelve a titular «Hunter» el gasto total con la emergencia");
+    contiene(linea, `${n2(qE)} L/s`, "el gasto fijo de emergencia, aparte:");
+    contiene(linea, `${n2(H.Qtotal)} L/s`, "y el total:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 t("S.69 (H-141, decisión (a) del dueño) la diversidad del edificio se aplica UNA sola vez, en la planta: las ganancias internas y el pico de cada zona no la llevan; el objetivo de planta sí (×0.8), y la memoria lo declara como criterio Carrier por ratificar", () => {
   const guardado = JSON.stringify(S);
   const pdfTxt = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");
