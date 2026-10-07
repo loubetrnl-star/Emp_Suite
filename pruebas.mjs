@@ -7476,6 +7476,21 @@ t("S.221 (AUD-04, aprobada por el dueño el 7-oct-2026) un proyecto anterior a H
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+t("S.222 (AUD-17, dependencia: cotización general congelada y sin tablas del fabricante) mientras no haya tablas, la memoria y el PDF de aire rotulan «criterio provisional, sin fuente» la comparación de la temperatura de succión contra la entrada de A1 (ISO 7183) y la corrección del FAD de ~5 % por bar; las cifras no cambian", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.222";
+    S.aire = { ...S.aire, material: "cobre", Lprincipal: 30, Lramales: 20, consumos: [{ id: "s222", tipo: "generico", nombre: "Carga", cant: 1, lmin: 600, bar: 6, uso: 1 }] };
+    G("recompute")();
+    const A = G("AIRE");
+    if (!A.memo.some((m) => /5 % por bar/.test(m) && /criterio provisional, sin fuente/.test(m))) throw new Error("la memoria no rotula la corrección de ~5 %/bar como criterio provisional, sin fuente");
+    if (!A.memo.some((m) => /^Secador/.test(m) && /succión/.test(m) && /criterio provisional, sin fuente/.test(m))) throw new Error("la memoria no rotula la comparación con la temperatura de succión como criterio provisional, sin fuente");
+    const pdf = txtPdfE(G("buildAirePdf")());
+    const veces = (pdf.match(/criterio provisional, sin fuente/g) || []).length;
+    if (veces < 2) throw new Error(`el PDF de aire debe rotular las dos cosas como criterio provisional, sin fuente (lo hace ${veces} vez/veces)`);
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 t("S.69 (H-141, decisión (a) del dueño) la diversidad del edificio se aplica UNA sola vez, en la planta: las ganancias internas y el pico de cada zona no la llevan; el objetivo de planta sí (×0.8), y la memoria lo declara como criterio Carrier por ratificar", () => {
   const guardado = JSON.stringify(S);
   const pdfTxt = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");

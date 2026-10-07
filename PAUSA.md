@@ -1,6 +1,24 @@
 # PAUSA
 
-## Estado al 27-sep-2026 (vigente)
+## Estado al 7-oct-2026 (vigente)
+Cierre de la auditoría externa del 28-sep-2026 (`continuacion/auditoria-2026-09-28/`). Todo en `master`, sin push.
+- Bancos al cierre: `node pruebas.mjs index.html` → **604/604**; con `--base respaldo-rev-2.9.8/index-2.9.21-inicio-20260921-221100.html`
+  → **610/610**. Versiones: load 7, clean 3, equip 4, duct 4, vent 4, quote 24, valor 2, kaizen 1, elec 11, hidro 11, fuego 7,
+  aire 8, civil 8, soporte 14.
+- **Cerrado** (detalle en `bitacora.md` y en la tabla de `PROPUESTAS-PENDIENTES.md`): AUD-01 a 06, 09, 11, 14 (salvo
+  soportería), 15, 16, 18, 19, 21 (retirada con evidencia), 22, 23 (por H-306), 24 (24.1, 24.2 y 24.3 opción a); AUD-02(a)
+  ratificada; AUD-04 sin piso de 1 m²; AUD-12 en lo que sólo agrega renglones a R.1/R.4; AUD-20 (a) y (b), y (c) y (d)
+  declaradas como fuente secundaria.
+- **Espera decisión del dueño**: AUD-17 opción (c) (cambia el esperado de la Cotización general congelada: autorizar regenerar
+  sólo ese esperado o esperar a descongelarla); familia por omisión en soportería (la orden de no tocar Estructural ni
+  Soportería, más abajo, sigue vigente); partes de AUD-12 que cambiarían valores de los proyectos fijos.
+- **Espera documentos**: tabla de corrección del fabricante del secador (temperatura de entrada y presión) y tabla de capacidad
+  del compresor por presión (AUD-17); ANSI Z358.1-2014 (lavaojos, AUD-20 e); texto base de ICC de la Tabla 604.3 del IPC 2015
+  (AUD-20 d); ASTM B88 y ASME B36.10 con edición (AUD-20 c); NFPA 13 (umbral de 12 m para rack, AUD-19).
+- **Congelados** (CLAUDE.md): Cotización general, Kaizen e Ingeniería de valor; AUD-07 (decidida: suma de cotizaciones
+  aceptadas), AUD-08, AUD-10 y AUD-13 esperan que se descongelen.
+
+## Estado al 27-sep-2026 (histórico)
 El dueño dijo «continúa» y se trabajó la independencia de motores. **Para retomar: leer `CONTINUACION.md`, que manda**
 sobre este archivo y sobre `RELEVO.md`. Detalle por hallazgo: `Bitacora-independencia-motores.md`.
 

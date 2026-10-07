@@ -129,3 +129,22 @@ Ninguna mueve una cifra del cálculo: amplían lo que R.1 y R.4 vigilan, y eso o
   propuesta no está en esa lista.
 - Partes de AUD-12 no aplicadas (cambiarían valores existentes de los proyectos fijos): ΔP negativa ≥ 5 Pa, ramas de AUD-14,
   sitios distintos, red de incendio no acero.
+
+## AUD-17 · DEPENDENCIA (registrada el 7-oct-2026)
+- La opción (c) que eligió el dueño no se aplica: cambia el esperado de la Cotización general, que está congelada (renglones del
+  compresor y del secador de aire), y además faltan los documentos que la harían trazable.
+- Documentos que faltan:
+  1. Tabla de corrección de capacidad del secador del fabricante, por temperatura de entrada y por presión de trabajo
+     (ISO 7183 sólo define el punto A1: 35 °C, 7 bar(e)).
+  2. Tabla de capacidad (FAD) del compresor del fabricante por presión de descarga, para sustituir la corrección de ~5 % por bar.
+- Mientras tanto (commit de cierre): la memoria y el PDF de aire rotulan «criterio provisional, sin fuente» la comparación de
+  la temperatura de succión contra los 35 °C de entrada de A1 y la corrección de ~5 % por bar (S.222). No cambió ningún
+  esperado de ningún motor (verificado con genera.mjs).
+
+## Cifras «antes» que faltaban (medidas el 7-oct-2026 sobre copias temporales de los commits anteriores)
+- elec, sistema vacío (motor de 15 kW, 220 V, 3 fases, 30 m al tablero), en `73be952` (antes de `53396b5`): 32.389 kVA de
+  demanda, 85 A en el alimentador, principal de 175 A, conductor 3 AWG, «1 juego × 4 hilos × 30 m» = 120 m de conductor por
+  cotizar. Después: 0 kVA, nada dimensionado ni cotizado, sistema «dato pendiente».
+- aire, material por omisión (600 L/min, 30 m de troncal y 20 m de ramales), en `a8c898d` (antes de `ae51c1d`): «Red de aire
+  comprimido en aluminio calibrado tipo push-fit: diámetros pendientes (DI del fabricante)», 50 m × 1,171 MXN/m = 58,550 MXN.
+  Después: sin importe, «Red de aire comprimido: pendiente de material».

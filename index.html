@@ -7149,6 +7149,8 @@ function computeAire(A) {
   const redund = A.redundancia === "n1";
   const totalUnidades = nUnidades + (redund && nUnidades > 0 ? 1 : 0);
   if (!cubre) avisos.push({ lvl: "warn", msg: `El compresor más grande de la lista entrega ${n(principal.fadReal, 0)} L/min y se necesitan ${n(fadRequerido, 0)}: se proponen ${nUnidades} unidades en paralelo con control secuencial.` });
+  /* AUD-17 (dependencia): sin la tabla de capacidad por presión del fabricante, la corrección de ~5 % por bar queda rotulada. */
+  if (fadRequerido > 0) memo.push(`FAD del compresor a ${pDescarga.toFixed(2)} bar: el de catálogo a 7 bar × ${corrP.toFixed(4)} (corrección de ~5 % por bar): criterio provisional, sin fuente; falta la tabla de capacidad por presión del fabricante (AUD-17).`);
   if (exento) memo.push(`Clase ${cls.id}: la clase de aceite obliga a compresor EXENTO DE ACEITE. Un tornillo lubricado con carbón activado no es equivalente para contacto con producto, porque una falla del filtro contamina sin aviso.`);
 
   /* ---- 4. Tanque pulmón ----
@@ -7193,7 +7195,7 @@ function computeAire(A) {
     { id: "f-carbon", label: "Filtro de carbón activado (vapor de aceite y olor)", labelEn: "Activated carbon filter (oil vapor and odor)", req: cls.carbon },
     { id: "f-esteril", label: "Filtro estéril 0.01 µm en punto de uso", labelEn: "0.01 µm sterile point-of-use filter", req: cls.id === "1.2.1" },
   ].filter((f) => f.req);
-  memo.push(`Secador ${sec.label.toLowerCase()} de ${n(capSecador / 1000, 2)} m³/min: todo el caudal del compresor (${nUnidades} × ${n(principal.fadReal, 0)} L/min) a la capacidad nominal de ISO 7183:2007 Tabla 2 opción A1 (35 °C de entrada, 7 bar(e), 100 % del caudal), factor 1.0${enA1 ? "" : `; a ${tAmb} °C y ${pDescarga.toFixed(1)} bar el punto no es A1 y la corrección queda pendiente de la tabla del fabricante (H-215)`}. Sin corregir, el secador sale chico y el punto de rocío no se cumple en verano.`);
+  memo.push(`Secador ${sec.label.toLowerCase()} de ${n(capSecador / 1000, 2)} m³/min: todo el caudal del compresor (${nUnidades} × ${n(principal.fadReal, 0)} L/min) a la capacidad nominal de ISO 7183:2007 Tabla 2 opción A1 (35 °C de entrada, 7 bar(e), 100 % del caudal), factor 1.0${enA1 ? "" : `; a ${tAmb} °C y ${pDescarga.toFixed(1)} bar el punto no es A1 y la corrección queda pendiente de la tabla del fabricante (H-215)`}. Se compara la temperatura de succión del compresor con los 35 °C de entrada al secador de A1: criterio provisional, sin fuente, hasta capturar la temperatura de entrada al secador y tener la tabla de corrección del fabricante (AUD-17). Sin corregir, el secador sale chico y el punto de rocío no se cumple en verano.`);
   if (sec.perdida > 0) memo.push(`El desecante consume ${n(purgaLmin, 0)} L/min en la purga de regeneración (${n(sec.perdida * 100, 0)} % del caudal tratado). Ese aire se compra: ya está sumado al FAD requerido.`);
 
   /* ---- 6. Red de distribución ---- */
@@ -7335,10 +7337,10 @@ function buildAirePdf() {
 
   pdfHeading(d, "Equipo seleccionado");
   pdfTable(d, ["Equipo", "Dato", "Base de seleccion"], [
-    ["Compresor", `${A.principal.tipo} ${A.principal.hp} HP · ${A.principal.kW} kW`, `FAD ${n(A.principal.fadReal, 0)} L/min corregido ${n((A.corrP - 1) * 100, 1)} % por presion`],
+    ["Compresor", `${A.principal.tipo} ${A.principal.hp} HP · ${A.principal.kW} kW`, `FAD ${n(A.principal.fadReal, 0)} L/min corregido ${n((A.corrP - 1) * 100, 1)} % por presion (~5 %/bar: criterio provisional, sin fuente; AUD-17)`],
     ["Unidades", `${A.totalUnidades}${A.redund ? " (incluye relevo N+1)" : ""}`, A.totalUnidades === 0 ? "sin demanda capturada: no se cotiza ninguna unidad" : A.cubre ? "una unidad cubre la demanda" : "varias en paralelo con control secuencial"],
     ["Tanque pulmon", `${n(A.tanque, 0)} L${A.nTanques > 1 ? ` (${A.nTanques} x ${n(A.tanqueUnit, 0)} L en paralelo)` : ""}`, `V = Q·t·p/(4·dp) da ${n(A.vTeorico, 0)} L con ${A.arr} arranques/h y banda de ${A.dPt.toFixed(1)} bar${A.nTanques > 1 ? "; rebasa el mayor de la lista comercial (5,000 L): varios en paralelo (H-216)" : ""}`],
-    ["Secador", `${A.sec.label} · ${n(A.capSecador / 1000, 2)} m3/min`, `caudal del compresor a la capacidad nominal de ISO 7183:2007 Tabla 2 opcion A1 (35 C, 7 bar(e)), factor 1.0${A.enA1 ? "" : `; a ${A.tAmb} C y ${A.pDescarga.toFixed(1)} bar la correccion es del fabricante: pendiente`}`],
+    ["Secador", `${A.sec.label} · ${n(A.capSecador / 1000, 2)} m3/min`, `caudal del compresor a la capacidad nominal de ISO 7183:2007 Tabla 2 opcion A1 (35 C, 7 bar(e)), factor 1.0${A.enA1 ? "" : `; a ${A.tAmb} C y ${A.pDescarga.toFixed(1)} bar la correccion es del fabricante: pendiente`} · comparacion con la temperatura de succion: criterio provisional, sin fuente (AUD-17)`],
     ["Filtracion", `${A.trenFiltros.length} etapa(s)`, A.trenFiltros.map((f) => f.label).join(" · ")],
   ], [95, 165, 226]);
 
