@@ -10855,6 +10855,7 @@ function defaultHidro() {
     uso: "publico",                    // público o privado, cambia la tabla de UM
     material: "cobre",
     muebles: [],
+    formatoMuebles: 2,                 // AUD-24.3: desde H-195 «lavaojos» es la regadera de emergencia; sin esta marca el proyecto es anterior
     presRed: null,                     // presión disponible en la toma, mca; AUD-14: sin captura = pendiente (antes 0 y, si faltaba, 25)
     tramos: [],
     /* Drenaje */
@@ -10965,8 +10966,14 @@ function computeHidro(H) {
   const lista = (H.muebles || []).map((x) => {
     const m = muebleDe(x.id), cant = Math.max(0, Math.round(num(x.cant, 0)));
     if (!m) { if (cant > 0) desconocidos.push({ id: String(x.id), cant }); return null; }
-    return { ...m, cant, umTot: m[uso] * cant, udTot: m.ud * cant, calTot: m.cal * m[uso] * cant };
+    return { ...m, cant, sinConfirmar: x.sinConfirmar === true, umTot: m[uso] * cant, udTot: m.ud * cant, calTot: m.cal * m[uso] * cant };
   }).filter((x) => x && x.cant > 0);
+  /* AUD-24.3: piezas «lavaojos» de un proyecto anterior a H-195, sin confirmar: se calculan como regadera (sin mover el gasto) y se dice. */
+  const sinConfLav = lista.filter((x) => x.sinConfirmar);
+  if (sinConfLav.length) {
+    const txt = `Sin confirmar: ${sinConfLav.map((x) => `${x.cant} pieza(s) «lavaojos»`).join(", ")} de un proyecto guardado antes de H-195, cuando ese id era «lavaojos / regadera de emergencia» (6 UM dentro de Hunter). Hoy se calculan como regadera de emergencia (20 gpm fijos fuera de Hunter) y así se conservan hasta confirmarlo; si es un lavaojos fijo, captúralo como «Lavaojos de emergencia fijo» (AUD-24.3).`;
+    avisos.push({ lvl: "warn", msg: txt }); memo.push(txt);
+  }
   desconocidos.forEach((x) => {
     const txt = `Mueble desconocido «${x.id}» (${x.cant} pieza(s)): dato pendiente. No está en el catálogo de muebles; no se cuenta en unidades mueble, gasto ni presión hasta capturarlo con un mueble del catálogo (AUD-24.2).`;
     avisos.push({ lvl: "err", msg: txt }); memo.push(txt);
@@ -19757,7 +19764,7 @@ const ENTRADAS = {
   equip: () => ({ items: S.equip.items || [], precios: S.equip.precios || null, comercial: S.equip.comercial || null, zonas: zonasSel().map((z) => sinClaves(z, ["id", "origen", "editada"])), bldDiv: S.equip.div ?? null, sitio: sitioSelHuella(), sysForce: S.sysForce, sel: eSel(), esp: espCapturada() }),
   duct: () => ({ duct: S.duct }),   /* H-284: el sitio de Proyecto no entra al cálculo de ductos (rho, mu y rugosidad se capturan aquí): fuera de la huella */
   vent: () => ({ vent: sinClaves(S.vent, ["seleccion"]) }),   /* H-263: la selección no la lee computeVent. H-291: el sitio de Proyecto tampoco: fuera de la huella */
-  hidro: () => ({ hidro: sinClaves(S.hidro, ["equipoHN"]) }),   /* H-285: el sitio de Proyecto no entra al cálculo hidráulico: fuera de la huella */
+  hidro: () => { const h = sinClaves(S.hidro, ["equipoHN", "formatoMuebles"]); if (Array.isArray(h.muebles)) h.muebles = h.muebles.map((x) => (x && "sinConfirmar" in x ? sinClaves(x, ["sinConfirmar"]) : x)); return { hidro: h }; },   /* H-285: el sitio de Proyecto no entra al cálculo hidráulico: fuera de la huella. AUD-24.3: la marca de formato y la de «sin confirmar» no son captura que cambie el cálculo: fuera de la huella */
   fuego: () => ({ fuego: S.fuego }),   /* H-264: computeFuego ya no lee permisos (salió load>fuego): conceder o retirar uno no toca su sello. H-292: tampoco el sitio de Proyecto, que no usa */
   aire: () => ({ aire: S.aire, site: S.site }),
   civil: () => ({ civil: S.civil }),   /* H-265: obra civil sólo depende de su propia captura */
@@ -23056,6 +23063,7 @@ function viewHidro() {
           <div style="flex:1;min-width:0">
             <div style="font-size:15.5px;font-weight:600">${esc(m.nombre)}</div>
             <div class="sub">${m.emergGpm ? `${n(m.emergGpm * GPM_LS * 60, 1)} L/min fijos (${m.emergGpm} gpm, Z358.1-1990 vía OSHA, secundaria), fuera de Hunter` : `${m[H.uso === "privado" ? "umPriv" : "um"]} UM`} · ${m.ud} UD · pide ${n(m.presMin, 1)} m (${esc(m.presFuente)})</div>
+            ${ix >= 0 && H.muebles[ix].sinConfirmar ? `<div class="sub" style="color:var(--warn)">Sin confirmar: viene de un proyecto anterior a H-195 (entonces «lavaojos / regadera», dentro de Hunter). Se calcula como regadera de emergencia. <button type="button" class="btn-ghost" data-act="hidro-lavaojos-confirmar">Confirmar: es regadera de emergencia</button></div>` : ""}
           </div>
           <input type="number" min="0" step="1" style="width:74px" value="${cant}" data-mueble="${m.id}" aria-label="${esc("Cantidad de " + m.nombre)}" />
         </div>`;
@@ -24088,6 +24096,7 @@ document.addEventListener("click", (e) => {
     case "confirmar-si": { const f = CONFIRMA; CONFIRMA = null; closeModal(); if (f) f(); break; }
     case "zone": S.zi = +b.dataset.i; render(); break;
     case "go-zona": S.zi = +b.dataset.i; irATab("carga"); break;
+    case "hidro-lavaojos-confirmar": (S.hidro.muebles || []).forEach((x) => { if (x && x.id === "lavaojos") delete x.sinConfirmar; }); projAutosave(); render(); break;   /* AUD-24.3: el usuario confirma que es regadera */
     case "zone-add": agregarZona(defaultZone(`Zona ${S.zones.length + 1}`)); S.zi = S.zones.length - 1; render(); break;   /* AUD-09: nace con su id */
     case "zone-del": {
       const k = +b.dataset.i, z = S.zones[k];
@@ -24711,7 +24720,14 @@ function sanearEstado(d) {
      if (!Array.isArray(s.elec.cargas)) s.elec.cargas = [];
    s.elec.aislamiento = aislamientoDe(s.elec.aislamiento);
   const hidroPrevio = s.hidro && typeof s.hidro === "object" && !Array.isArray(s.hidro) ? s.hidro : null;   /* H-302 */
-  s.hidro = { ...defaultHidro(), ...(s.hidro && typeof s.hidro === "object" ? s.hidro : {}) };
+  /* AUD-24.3 (decisión (a) del dueño, 7-oct-2026): un proyecto guardado sin formatoMuebles (anterior a esta marca) y sin sello de
+     hidro v6 o posterior (H-195) puede traer «lavaojos» con el significado de antes («lavaojos / regadera», dentro de Hunter):
+     esas piezas quedan «sin confirmar», con el gasto de regadera de hoy, hasta que el usuario lo confirme. Nada se migra solo. */
+  const hidroCrudo = s.hidro && typeof s.hidro === "object" ? s.hidro : null;
+  const lavaojosAnterior = !!hidroCrudo && hidroCrudo.formatoMuebles !== 2 && !(num(((s.sellos || {}).hidro || {}).ver, 0) >= 6);
+  s.hidro = { ...defaultHidro(), ...(hidroCrudo || {}) };
+  if (lavaojosAnterior && Array.isArray(s.hidro.muebles)) s.hidro.muebles = s.hidro.muebles.map((x) => (x && x.id === "lavaojos" ? { ...x, sinConfirmar: true } : x));
+  s.hidro.formatoMuebles = 2;
   if (!Array.isArray(s.hidro.muebles)) s.hidro.muebles = defaultHidro().muebles;
   if (!Array.isArray(s.hidro.tramos)) s.hidro.tramos = defaultHidro().tramos;
   const fuegoTraiaPrecio = !!(s.fuego && typeof s.fuego === "object" && "precioRociador" in s.fuego);   /* H-293 */

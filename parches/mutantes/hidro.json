@@ -499,8 +499,8 @@
     "id": "hidro.m63",
     "que": "H-285: la huella hidráulica vuelve a llevar el sitio de Proyecto (cambiarlo marcaría el sello sin que cambie nada)",
     "logica": true,
-    "buscar": "  hidro: () => ({ hidro: sinClaves(S.hidro, [\"equipoHN\"]) }),",
-    "reemplazar": "  hidro: () => ({ hidro: sinClaves(S.hidro, [\"equipoHN\"]), site: S.site }),",
+    "buscar": "return { hidro: h }; },",
+    "reemplazar": "return { hidro: h, site: S.site }; },",
     "estado": "vigente"
   }
 ]

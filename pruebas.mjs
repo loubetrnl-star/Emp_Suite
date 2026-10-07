@@ -7365,6 +7365,33 @@ t("S.216 (AUD-24.2, aprobada por el dueño el 7-oct-2026) un mueble con id desco
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+t("S.217 (AUD-24.3, decisión (a) del dueño, 7-oct-2026) un proyecto guardado antes de que «lavaojos» pasara a ser la regadera de emergencia (H-195) abre con esas piezas «sin confirmar», con aviso, y con el mismo gasto de regadera; confirmar quita la marca; un proyecto de formato vigente o sellado con hidro v6 o posterior no se marca; nada se migra en silencio", () => {
+  const guardado = JSON.stringify(S);
+  const act = (a) => { const b = w.document.createElement("button"); b.dataset.act = a; w.document.body.appendChild(b); b.dispatchEvent(new w.MouseEvent("click", { bubbles: true })); b.remove(); };
+  const armar = (viejo, sello) => {
+    const d = JSON.parse(JSON.stringify(G("defaultState")()));
+    d.meta.name = "S.217";
+    d.hidro = { ...G("defaultHidro")(), presRed: 30, alturaEdificio: 6, tramos: [{ ...G("defaultTramoAgua")("AF-1"), id: "h-s217", um: 20, L: 20, alt: 0 }], muebles: [{ id: "wc_flux", cant: 2 }, { id: "lavaojos", cant: 2 }] };   /* id fijo del tramo: la huella se compara entre dos armados */
+    if (viejo) delete d.hidro.formatoMuebles;
+    if (sello) d.sellos = { hidro: { ts: 1790553600000, huella: "x", ver: sello, hf: 1 } };
+    G("reemplazarEstado")(d); G("recompute")();
+    return S.hidro.muebles.find((x) => x.id === "lavaojos");
+  };
+  try {
+    armar(false); const qNuevo = G("HIDRO").Qtotal, hNuevo = G("huellaMotor")("hidro");
+    const lv = armar(true);
+    eq(lv.sinConfirmar, true, "la pieza de un proyecto anterior queda sin confirmar:");
+    cerca(G("HIDRO").Qtotal, qNuevo, 1e-12, "mismo gasto de regadera mientras no se confirme:");
+    eq(G("huellaMotor")("hidro"), hNuevo, "la marca «sin confirmar» y la de formato no mueven la huella de hidro:");
+    if (!G("HIDRO").avisos.some((a) => /sin confirmar/i.test(a.msg) && /lavaojos/.test(a.msg))) throw new Error("no hay aviso de la pieza sin confirmar");
+    S.tab = "hidro"; G("render")(); act("hidro-lavaojos-confirmar"); G("recompute")();
+    if (S.hidro.muebles.find((x) => x.id === "lavaojos").sinConfirmar) throw new Error("confirmar no quitó la marca");
+    if (G("HIDRO").avisos.some((a) => /sin confirmar/i.test(a.msg) && /lavaojos/.test(a.msg))) throw new Error("el aviso sigue después de confirmar");
+    if (armar(false).sinConfirmar) throw new Error("un proyecto de formato vigente no se marca");
+    if (armar(true, "6").sinConfirmar) throw new Error("un proyecto sellado con hidro v6 o posterior no se marca");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 t("S.69 (H-141, decisión (a) del dueño) la diversidad del edificio se aplica UNA sola vez, en la planta: las ganancias internas y el pico de cada zona no la llevan; el objetivo de planta sí (×0.8), y la memoria lo declara como criterio Carrier por ratificar", () => {
   const guardado = JSON.stringify(S);
   const pdfTxt = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");
