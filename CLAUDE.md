@@ -64,6 +64,14 @@ node pruebas.mjs index.html --base respaldo-rev-2.9.8/index-2.9.21-inicio-202609
 Los dos deben quedar en verde antes de cada commit. Con rojo no se avanza. `pruebas.mjs` acepta otra ruta de
 `index.html` (útil para probar contra una copia).
 
+Velocidad (decisión del dueño, 7-oct-2026; medido ese día en esta PC):
+- Los dos bancos completos se corren **a la vez** (son dos, el tope de `turno.sh` se respeta): 57 s contra 101 s en serie
+  (49.4 s + 51.9 s). En PowerShell: dos `Start-Job` y `Wait-Job`.
+- Durante el ciclo rojo/verde de una tarea se corre sólo lo del motor tocado con `--solo <regex>` (aire: 4.4 s). El
+  filtrado NO vale como banco: las comprobaciones comparten estado y una omitida puede dejar sin preparar a otra (con
+  `--solo "aire|S\.222"` cae S.188 por falta de un tramo de ductos). Antes de cada commit, los dos completos.
+- Las aprobaciones del dueño se piden juntas, en un solo mensaje por bloque, no una por hallazgo.
+
 ## Reglas por hallazgo (obligatorias)
 1. **Prueba primero.** La prueba lleva el ID (`S.nn (H-nnn) …`), se escribe antes y debe FALLAR con el código actual
    por la conducta que corrige (no por un símbolo inexistente). Luego se corrige y debe pasar.

@@ -2,7 +2,7 @@
 // Verifica las cuatro entregas (menú de íconos, tablero, interoperabilidad de
 // tres reglas, memoria integral), los hallazgos corregidos y que ningún motor
 // de cálculo cambió de resultado.
-// Uso: node pruebas.mjs [archivo.html] [--base archivo-original.html]
+// Uso: node pruebas.mjs [archivo.html] [--base archivo-original.html] [--solo regex]
 import { JSDOM } from "jsdom";
 import fs from "node:fs";
 
@@ -43,9 +43,16 @@ const licitacionFormal = () => {
   try { return G("buildLicitacionPdf")({ borrador: true }); } finally { S.quote.importacion = imp0; G("recompute")(); }
 };
 
-let ok = 0, fail = 0;
+let ok = 0, fail = 0, omitidas = 0;
 const fallos = [];
+/* --solo <regex>: sólo corre las comprobaciones cuyo nombre coincide (p. ej. "^CM\.aire|S\.222"). Es un atajo para el ciclo
+   rojo/verde de una tarea: las comprobaciones comparten estado y una omitida puede dejar sin preparar a otra, así que el resultado
+   filtrado no vale como banco. Antes de cada commit se corren los dos bancos completos (CLAUDE.md). */
+const soloIx = process.argv.indexOf("--solo");
+const solo = soloIx > 0 ? new RegExp(process.argv[soloIx + 1]) : null;
+const omite = (nombre) => (solo && !solo.test(nombre) ? (omitidas++, true) : false);
 function t(nombre, fn) {
+  if (omite(nombre)) return;
   try {
     const r = fn();
     if (r === false) { fail++; fallos.push([nombre, "devolvió falso"]); }
@@ -1864,7 +1871,7 @@ t("16.7 la misma área repartida en las ocho da una carga solar coherente con la
 {
   const fsx = await import("node:fs");
   const zlibx = await import("node:zlib");
-  const tA = async (nombre, fn) => {
+  const tA = async (nombre, fn) => { if (omite(nombre)) return;
     try { const r = await fn(); if (r === false) { fail++; fallos.push([nombre, "devolvió falso"]); } else ok++; }
     catch (e) { fail++; fallos.push([nombre, e.message]); }
   };
@@ -2258,7 +2265,7 @@ t("16.7 la misma área repartida en las ocho da una carga solar coherente con la
      setImmediate; si el proceso se detiene más de 80 ms entre saltos (GC, varios bancos a la vez), el reloj de la prueba ganaba:
      18.10 veía el proyecto viejo y la importación tardía caía dentro de la espera de 18.16. Sondea cada 5 ms, tope ~10 s. */
   const esperarA = async (cond, veces = 2000) => { for (let i = 0; i < veces && !cond(); i++) await esperar(5); };
-  const tA = async (nombre, fn) => {
+  const tA = async (nombre, fn) => { if (omite(nombre)) return;
     try { const r = await fn(); if (r === false) { fail++; fallos.push([nombre, "devolvió falso"]); } else ok++; }
     catch (e) { fail++; fallos.push([nombre, e.message]); }
   };
@@ -2826,7 +2833,7 @@ t("16.7 la misma área repartida en las ocho da una carga solar coherente con la
    uno como estaba. Los motores no cambian: eso lo vigila la sección 8. */
 {
   const zlibx = await import("node:zlib");
-  const tA = async (nombre, fn) => {
+  const tA = async (nombre, fn) => { if (omite(nombre)) return;
     try { const r = await fn(); if (r === false) { fail++; fallos.push([nombre, "devolvió falso"]); } else ok++; }
     catch (e) { fail++; fallos.push([nombre, e.message]); }
   };
@@ -3139,7 +3146,7 @@ t("16.7 la misma área repartida en las ocho da una carga solar coherente con la
    de cálculo cambia: eso lo sigue vigilando la sección 8 y el --base. */
 {
   const zlibx = await import("node:zlib");
-  const tA = async (nombre, fn) => {
+  const tA = async (nombre, fn) => { if (omite(nombre)) return;
     try { const r = await fn(); if (r === false) { fail++; fallos.push([nombre, "devolvió falso"]); } else ok++; }
     catch (e) { fail++; fallos.push([nombre, e.message]); }
   };
@@ -9027,7 +9034,7 @@ t("S.104 (H-267) selección de equipo es autónoma: sin aceptar la propuesta, ca
    extracción y de cargas. Sin nombres de clientes. */
 {
   const zlibx = await import("node:zlib");
-  const tA = async (nombre, fn) => { try { const r = await fn(); if (r === false) { fail++; fallos.push([nombre, "devolvió falso"]); } else ok++; } catch (e) { fail++; fallos.push([nombre, e.message]); } };
+  const tA = async (nombre, fn) => { if (omite(nombre)) return; try { const r = await fn(); if (r === false) { fail++; fallos.push([nombre, "devolvió falso"]); } else ok++; } catch (e) { fail++; fallos.push([nombre, e.message]); } };
   const archivo = (nombre, c, ruta) => ({ file: new w.File([typeof c === "string" ? c : new Uint8Array(c)], nombre), ruta: ruta || nombre });
   const par = (c, v) => `${String(c).padStart(3)}\n${v}\n`;
   const lw = (capa, pts) => par(0, "LWPOLYLINE") + par(8, capa) + par(90, pts.length) + par(70, 1) + pts.map(([x, y]) => par(10, x) + par(20, y)).join("");
@@ -11557,6 +11564,7 @@ const CM = {
 const total = ok + fail;
 console.log(`\nSuiteEmp rev ${G("REV")} · banco de comprobaciones de la rev 2.9.3`);
 console.log(`${ok} de ${total} comprobaciones correctas`);
+if (solo) console.log(`FILTRADO con --solo ${solo.source}: ${omitidas} omitidas. No vale como banco; antes del commit, los dos completos.`);
 if (fallos.length) { console.log("\nFALLOS:"); fallos.forEach(([n2, m]) => console.log(` ✗ ${n2}\n   ${m}`)); }
 if (w.__errs.length) console.log("\nerrores de ventana:", w.__errs);
 process.exit(fail ? 1 : 0);
