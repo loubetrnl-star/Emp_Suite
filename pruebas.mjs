@@ -6334,7 +6334,7 @@ t("S.36 (rev 2.9.20, decisión del dueño) versión por motor en el sello: sólo
      H-194: hidro v5 = presión mínima por mueble de la Tabla 604.3 del IPC 2015 y CDT con máx(residual, mínima); H-195: v6 = equipo de emergencia fuera de Hunter; H-197: v7 = sin pisos sin norma (días, ΔT, pendiente 704.1); H-198: v8 = CPVC sólo hasta 2" CTS, fuera de catálogo y PEAD sin SDR como error.
      H-263: carga v6 = calor del motor del ventilador seleccionado en Ventilación como misceláneos de la zona elegida; H-262: ventilación v4 = ya no hereda de carga térmica;
      H-268: eléctrico v9 = autónomo (las cargas de otros motores sólo como propuesta aceptada). */
-  eq(MV.elec, "10", "eléctrico v10 (AUD-14):"); eq(MV.hidro, "10", "hidro v10 (AUD-18):"); eq(MV.load, "7", "carga v7 (H-290):"); eq(MV.duct, "4", "ductos v4 (H-165):"); eq(MV.equip, "4", "selección v4 (H-288):"); eq(MV.kaizen, "1", "Kaizen sin cambio de lógica: v1:");
+  eq(MV.elec, "10", "eléctrico v10 (AUD-14):"); eq(MV.hidro, "11", "hidro v11 (AUD-24.2):"); eq(MV.load, "7", "carga v7 (H-290):"); eq(MV.duct, "4", "ductos v4 (H-165):"); eq(MV.equip, "4", "selección v4 (H-288):"); eq(MV.kaizen, "1", "Kaizen sin cambio de lógica: v1:");
   Object.keys(MV).forEach((id) => { const c = G("MOTOR_CAMBIOS")[id] || []; if (MV[id] !== "1" && !c.some((x) => x.ver === MV[id])) throw new Error(`${id}: la versión ${MV[id]} no tiene hallazgo registrado`); });
   const s0 = JSON.stringify(S.sellos || {});
   try {
@@ -6343,9 +6343,9 @@ t("S.36 (rev 2.9.20, decisión del dueño) versión por motor en el sello: sólo
     S.sellos = { kaizen: { ts: 5, huella: G("huellaMotor")("kaizen") }, hidro: { ts: 5, huella: G("huellaMotor")("hidro") } }; G("recompute")();
     eq(G("selloDe")("kaizen").estado, "calculado", "Kaizen (motor v1, sin cambio):");
     const sh = G("selloDe")("hidro");
-    eq(sh.estado, "desactualizado", "hidro (motor v1 → v10):"); contiene(sh.texto, "v1 → v10", "texto:"); contiene(sh.texto, "Hunter", "nombra el hallazgo:"); contiene(sh.texto, "604.3", "nombra H-194:"); contiene(sh.texto, "Z358.1", "nombra H-195:"); contiene(sh.texto, "704.1", "nombra H-197:"); contiene(sh.texto, "catálogo", "nombra H-198:");
+    eq(sh.estado, "desactualizado", "hidro (motor v1 → v11):"); contiene(sh.texto, "v1 → v11", "texto:"); contiene(sh.texto, "Hunter", "nombra el hallazgo:"); contiene(sh.texto, "604.3", "nombra H-194:"); contiene(sh.texto, "Z358.1", "nombra H-195:"); contiene(sh.texto, "704.1", "nombra H-197:"); contiene(sh.texto, "catálogo", "nombra H-198:");
     const m = G("motoresCambiados")();
-    eq(m.map((x) => x.id).join(","), "hidro", "lista para el aviso al abrir:"); eq(m[0].de + ">" + m[0].a, "1>10", "de → a:");
+    eq(m.map((x) => x.id).join(","), "hidro", "lista para el aviso al abrir:"); eq(m[0].de + ">" + m[0].a, "1>11", "de → a:");
     /* Un sello viejo abre sin error y conserva su ver; el saneado acepta ver/resumen/previo y descarta basura. */
     const viejo = JSON.parse(JSON.stringify(S)); viejo.sellos = { hidro: { ts: 5, huella: G("huellaMotor")("hidro"), ver: "3", resumen: { Gasto: "1 L/s" }, previo: { ver: "2", ts: 4, resumen: { Gasto: "0.9 L/s" } } }, duct: { ts: 5, huella: G("huellaMotor")("duct"), ver: "x9", resumen: "no" } };
     const sv = G("sanearEstado")(viejo).sellos;
@@ -6355,15 +6355,15 @@ t("S.36 (rev 2.9.20, decisión del dueño) versión por motor en el sello: sólo
     const Q0 = G("HIDRO").Qtotal;
     clicS(boton("hidro", "calc-motor"));
     const sn = S.sellos.hidro;
-    eq(sn.ver, "10", "sello nuevo con la versión del motor:"); eq(sn.previo.ver, "1", "previo:"); eq(sn.previo.resumen.Gasto, "3.924 L/s", "cifras de antes:");
+    eq(sn.ver, "11", "sello nuevo con la versión del motor:"); eq(sn.previo.ver, "1", "previo:"); eq(sn.previo.resumen.Gasto, "3.924 L/s", "cifras de antes:");
     contiene(sn.resumen.Gasto, G("n")(Q0, 3), "cifras de después:");
     eq(G("selloDe")("hidro").estado, "calculado", "vuelto a sellar:");
     conPdfCapturado((salida) => {
       clicS(boton("hidro", "pdf-memoria-motor"));
       const txt = textoPdf(salida()[salida().length - 1].b);
-      contiene(txt, "CAMBIO DE MOTOR v1 -> v10", "la memoria dice el cambio:"); /* el PDF parte los renglones en varios Tj: se buscan las piezas */
+      contiene(txt, "CAMBIO DE MOTOR v1 -> v11", "la memoria dice el cambio:"); /* el PDF parte los renglones en varios Tj: se buscan las piezas */
       contiene(txt, "ANTES", "antes:"); contiene(txt, "3.924 L/s", "cifra de antes:"); contiene(txt, "DESPUES", "después:"); const plano = txt.replace(/\) Tj ET[\s\S]*?\(/g, " ");   /* el renglón puede partirse entre «motor» y la versión */
-      contiene(plano, "motor v1", "versión de antes:"); contiene(plano, "motor v10", "versión de después:");
+      contiene(plano, "motor v1", "versión de antes:"); contiene(plano, "motor v11", "versión de después:");
     });
     eq(w.eval("MEMO_CAMBIO"), null, "la bandera de la memoria se limpia:");
   } finally { S.sellos = JSON.parse(s0); G("recompute")(); }
@@ -7346,6 +7346,22 @@ t("S.215 (AUD-16, H-194) cuando rige el residual de la casa, la memoria no llama
     const linea = H.memo.find((m) => /^Equipo de bombeo/.test(m)) || "";
     if (!linea) throw new Error("el caso no aísla lo que se quiere probar: no hay renglón del equipo de bombeo");
     if (/mínima de norma/.test(linea)) throw new Error(`la memoria llama «mínima de norma» a una presión que es criterio de la casa: ${linea.slice(0, 260)}`);
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+t("S.216 (AUD-24.2, aprobada por el dueño el 7-oct-2026) un mueble con id desconocido no se calcula como WC con fluxómetro: queda «dato pendiente» visible (error en avisos y memoria), no entra a unidades mueble, gasto ni presión, y la hidráulica queda incompleta en su semáforo", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.216";
+    S.hidro = { ...G("defaultHidro")(), presRed: 30, alturaEdificio: 6, tramos: [{ ...G("defaultTramoAgua")("AF-1"), um: 4, L: 20, alt: 0 }], muebles: [{ id: "no-existe", cant: 1 }, { id: "lavabo", cant: 2 }] };
+    G("recompute")();
+    const H = G("HIDRO"), lav = G("MUEBLES").find((m) => m.id === "lavabo");
+    eq(H.umTotal, lav.um * 2, "sólo cuentan los lavabos (antes sumaba un WC con fluxómetro):");
+    if (H.lista.some((x) => x.id === "wc_flux")) throw new Error("el mueble desconocido se calculó como WC con fluxómetro");
+    const av = H.avisos.find((a) => a.lvl === "err" && /no-existe/.test(a.msg) && /dato pendiente/.test(a.msg));
+    if (!av) throw new Error("no hay aviso de error «dato pendiente» para el mueble desconocido");
+    if (!H.memo.some((m) => /no-existe/.test(m) && /dato pendiente/.test(m))) throw new Error("la memoria no dice que el mueble desconocido es dato pendiente");
+    eq(G("semaforoDisciplina")(G("DISCIPLINAS").find((d) => d.id === "hidro")).nivel, "incompleta", "semáforo de hidráulica:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
