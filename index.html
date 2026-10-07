@@ -8646,11 +8646,9 @@ function computeSoporte(Gc, F) {
      queda pendiente con aviso; antes Math.max(1, num(…, 3)) convertía el 0 en 1 y la omisión en 3 meses. */
   const mesesPendiente = Gc.mesesElevacion == null || Gc.mesesElevacion === "";
   const meses = mesesPendiente ? 0 : Math.max(0, num(Gc.mesesElevacion, 0));
-  /* H-XX (15-sep-2026) · Leía QUOTE.nEquip, y QUOTE corre DESPUÉS de
-     SOPORTE en recompute(): el conteo llegaba con una corrida de retraso —
-     el de la corrida anterior, no el de la que se está calculando. QUOTE.nEquip
-     no es más que S.quote.items reducido por cantidad; se recalcula aquí
-     mismo, directo del capturado, sin esperar a que corra la cotización. */
+  /* H-XX (15-sep-2026) · Antes leía QUOTE.nEquip, con una corrida de retraso (QUOTE corre después de SOPORTE en recompute()).
+     Hoy no lee la cotización: las bases salen de lo capturado en Soportería (basesEquipo) o de la instantánea (F.nEquip), y la
+     instantánea cuenta los equipos de Selección (equiposCotizados, S.equip.items; H-301). */
   /* H-266: sin captura ni instantánea ya no se cuentan los equipos de la cotización ni las unidades de aire comprimido. */
   /* H-231 (rev 2.9.24, soporte v4): en modo gobernado (instantánea aceptada) las bases son las de la instantánea (snap.nEquip =
      equipos cotizados + unidades de aire al tomarla); antes el conteo en vivo sumaba AIRE.totalUnidades = 0 del sustituto y se
@@ -18648,7 +18646,7 @@ function snapshotSoporte() {
     } : { nTotal: 0, Lram: 0, ramD: 100, Lmon: 0, monD: 100 },
     aire: at.map((t) => ({ etiqueta: t.etiqueta || "", L: num(t.L), d: num(t.d) })),
     aireMat: (S.aire && S.aire.material === "cobre") ? "cobre" : "acero",
-    /* H-266: los equipos se cuentan directo de S.quote.items (QUOTE corre después de soportería: su nEquip es de la corrida anterior). */
+    /* H-266: los equipos se cuentan de las partidas de Selección (equiposCotizados, S.equip.items; H-301), no de la cotización. */
     nEquip: equiposCotizados() + ((typeof AIRE !== "undefined" && AIRE) ? num(AIRE.totalUnidades) : 0),
     ts: Date.now(),
   };
