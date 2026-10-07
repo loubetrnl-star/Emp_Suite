@@ -7334,6 +7334,21 @@ t("S.214 (AUD-20 c y d) las citas tomadas de fuente secundaria lo dicen: en aire
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+t("S.215 (AUD-16, H-194) cuando rige el residual de la casa, la memoria no llama «mínima de norma» a la del mueble más exigente si ésta es criterio de la casa (tarja de laboratorio): la nombra con su fuente", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.215";
+    S.hidro = { ...G("defaultHidro")(), presRed: 30, alturaEdificio: 6, tramos: [{ ...G("defaultTramoAgua")("AF-1"), um: 4, L: 20, alt: 0 }], muebles: [{ id: "tarja_lab", cant: 2 }] };
+    G("recompute")();
+    const H = G("HIDRO");
+    if (H.rigeNorma) throw new Error("el caso no aísla lo que se quiere probar: rige la mínima del mueble, no el residual");
+    if (!/criterio de la casa/.test((H.masExigente || {}).presFuente || "")) throw new Error("el caso no aísla lo que se quiere probar: el mueble más exigente no es criterio de la casa");
+    const linea = H.memo.find((m) => /^Equipo de bombeo/.test(m)) || "";
+    if (!linea) throw new Error("el caso no aísla lo que se quiere probar: no hay renglón del equipo de bombeo");
+    if (/mínima de norma/.test(linea)) throw new Error(`la memoria llama «mínima de norma» a una presión que es criterio de la casa: ${linea.slice(0, 260)}`);
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 t("S.69 (H-141, decisión (a) del dueño) la diversidad del edificio se aplica UNA sola vez, en la planta: las ganancias internas y el pico de cada zona no la llevan; el objetivo de planta sí (×0.8), y la memoria lo declara como criterio Carrier por ratificar", () => {
   const guardado = JSON.stringify(S);
   const pdfTxt = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");
