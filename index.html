@@ -950,9 +950,8 @@ const CARRIER_FISICO = {
 function carrierSubmittal(e) {
   const { line, cfm, power, btuh } = carrierSheet(e);
   const tr = e.TR;
-  /* Tensión, FLA, MCA y MOP salen de elecOf, la misma función que alimenta el
-     cuadro de cargas del motor eléctrico: el MCA impreso en el submittal es
-     exactamente el que dimensiona el alimentador de ese equipo. */
+  /* Tensión, FLA, MCA y MOP salen de elecOf: son ESTIMADOS por la suite (440-32 y 440-22 sobre la RLA estimada) y el
+     submittal lo dice. AUD-14: desde ahí ya no fijan conductor ni protección en el eléctrico; la placa manda. */
   const el = elecOf(e);
   const volts = el.volts, ph = el.ph, fla = el.fla, mca = el.mca, mop = el.mop, rla = el.rla;
   const liquid = tr <= 2 ? '3/8"' : tr <= 5 ? '3/8-1/2"' : tr <= 12 ? '1/2-5/8"' : tr <= 30 ? '5/8-7/8"' : '1-1/8" o mayor';
@@ -986,7 +985,7 @@ function carrierSubmittal(e) {
       ...(e.tech === "chiller_fancoil" ? [] : [["Caudal de aire", `${cfm} CFM (nominal estimado de la familia, H-142)`], ["Presión estática externa", esp]]),
       ["Eficiencia", line.efficiency], ["Refrigerante", line.refrigerant], ["Carga de refrigerante", charge],
       ["Alimentación", `${volts} V · ${ph} fase(s)`], ["FLA / RLA", `${fla} A / ${rla} A`],
-      ["MCA / MOP", `${mca} A / ${mop} A`], ["Potencia eléctrica estimada", `${power} kW`],
+      ["MCA / MOP (estimados por la suite; la placa manda)", `${mca} A / ${mop} A`], ["Potencia eléctrica estimada", `${power} kW`],
       ["Conexión de líquido", liquid], ["Conexión de succión", suction],
       ["Dimensiones", dims], ["Peso", weight],
       ["Controles", line.connectivity || "24 V / BMS según línea"],
@@ -1004,7 +1003,7 @@ function carrierSubmittal(e) {
       ["1. Identificación", `Carrier ${e.family} modelo ${e.model} · Tag ${tag} · línea ${e.productLine}`],
       ["2. Capacidad de enfriamiento", `${tr} TR (${e.kW} kW / ${btuh.toLocaleString("es-MX")} BTU/h) nominales del catálogo de la casa${fis && fis.ahri ? ` (${fis.ahri}, ${fis.fuente})` : " (condiciones de prueba no documentadas en la suite)"}`],
       ["3. Caudal de aire", e.tech === "chiller_fancoil" ? "No aplica (chiller): el caudal es de agua helada" : `${cfm} CFM nominal estimado · ${esp}`],
-      ["4. Eléctrico", `${volts} V / ${ph} fase(s) · FLA ${fla} A · MCA ${mca} A · MOP ${mop} A · ~${power} kW`],
+      ["4. Eléctrico", `${volts} V / ${ph} fase(s) · FLA ${fla} A · MCA ${mca} A · MOP ${mop} A (estimados por la suite; la placa manda) · ~${power} kW`],
       ["5. Refrigerante", `${line.refrigerant} · carga ${charge} · compresor ${line.compressor}`],
       ["6. Conexiones", `Líquido ${liquid} · succión ${suction} (o agua/glicol en chiller y fan-coil)`],
       ["7. Dimensiones y peso", `${dims} · peso ${weight}`],
@@ -1787,7 +1786,7 @@ function buildElecPdf() {
     ["Transformador", R.trafoKVA != null && R.trafoZ != null ? `${n(R.trafoKVA, 0)} kVA, Z ${n(R.trafoZ, 1)} % (${R.sinConf.trafoKVA || R.sinConf.trafoZ ? "valores por omision de una revision anterior, sin confirmar" : "placa capturada"})`
       : R.trafoKVA != null ? `${n(R.trafoKVA, 0)} kVA; Z de placa pendiente (no se supone)` : R.trafoZ != null ? `Z ${n(R.trafoZ, 1)} %; kVA pendiente (no se supone)` : "pendiente: kVA y Z de placa no capturados (no se supone)"],
     ["Motores", "Corriente a plena carga de la Tabla 430-250 (trifasicos) o 430-248 (monofasicos), no de kW/fp (art. 430-6(a)(1)): hp de placa o, sin el, el renglon inmediato superior al kW capturado; un hp de catalogo o estimado por otro modulo (no de placa) solo puede subir ese renglon. Su kVA sale de esa corriente. Fuera de la tabla: corriente ESTIMADA con kW/fp, o PENDIENTE sin kW. 125 % del motor mayor mas el resto al 100 % (art. 430-24); proteccion al 250 % de esa corriente, a la capacidad normalizada inmediata superior (art. 430-52)"],
-    ["Equipo con motocompresor", "Con MCA y MOP: conductor por la MCA de placa (440-4(b), 440-35) y proteccion hasta el MOP, al valor normalizado de 240-6(a) que no lo excede (440-22); sin la Tabla 430-52. MCA y MOP estimados por la suite se marcan como tales en la memoria y no bajan el conductor del 125 %"],
+    ["Equipo con motocompresor", "Con MCA y MOP: conductor por la MCA de placa (440-4(b), 440-35) y proteccion hasta el MOP, al valor normalizado de 240-6(a) que no lo excede (440-22); sin la Tabla 430-52. MCA y MOP estimados por la suite se marcan como tales en la memoria y son solo referencia: no fijan conductor ni proteccion; el equipo se dimensiona sin ellos hasta capturar la placa (AUD-14)"],
   ]);
   pdfConsideracionesElec(d, R, E);
   pdfHeading(d, "3. Cuadro de cargas");

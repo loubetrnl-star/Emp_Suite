@@ -26,3 +26,23 @@ mueve, cuánto y bajo qué norma o criterio, y la prueba que lo fijaría.
      (no mueve números; precedente H-306);
   b) migrarlas a `lavaojos_solo` (0.4 gpm) — mueve números: baja el gasto de emergencia 19.6 gpm por pieza;
   c) no hacer nada.
+
+## AUD-14 · valores por omisión que quedan (PROPUESTAS · mueven números salvo donde se dice)
+- **elec · hilos por omisión** (`cotizacionElec`, `index.html`: `String((E && E.sistema) || "3F4H-220")`, y `sistemaDe` que cae a
+  3F4H-220 con una clave desconocida). En la pantalla el sistema siempre se captura con su selector (`defaultElec` nace en
+  3F4H-220, visible), así que sólo actúa con un sistema vacío o inválido. Propuesta: sin sistema, «pendiente de sistema» en
+  la cotización eléctrica y en el cálculo. Se mueve: conductores por fase y neutro (cantidades y costo de cable) sólo en esos
+  proyectos; `MOTOR_VER.elec` 10 → 11. Criterio: regla 6 de `CLAUDE.md` (nada se estima).
+- **aire · material por omisión** (`defaultAire().material = "aluminio"`, `index.html:7012`): un proyecto nuevo nace con la red
+  en aluminio, que desde AUD-14 queda pendiente del DI del fabricante. Propuesta: nacer sin material (pendiente de material).
+  No mueve cifras de proyectos guardados; cambia lo que muestra un proyecto nuevo. `MOTOR_VER.aire` sin cambio si sólo
+  cambia el estado inicial (decisión del dueño).
+- **aire · longitudes por omisión** (`index.html:7216`: `num(A.Lprincipal, 120)` y `num(A.Lramales, 90)`): con el campo
+  vacío o nulo se suponen 120 m y 90 m. Propuesta: «pendiente de longitud» (regla 6). Se mueve: caída de presión, diámetros y
+  metros cotizados de esos proyectos; `MOTOR_VER.aire` 6 → 7.
+- **soporte · familia por omisión** (`computeSoporte` y `snapshotSoporte`: lo que no es cobre se soporta como acero en aire;
+  `FU.tub || "acero_neg"` en contra incendio; `famSoporteAgua` cae a cobre). Propuesta: material no capturado = pendiente de
+  material, como ya hace la tubería a mano desde AUD-14. Se mueve: espaciamiento y número de soportes de esos tramos;
+  `MOTOR_VER.soporte` 14 → 15. Norma: la tabla de espaciamiento que ya usa soportería para cada familia.
+- **quote · libro de la propuesta** (`buildPropuestaXlsx`, hoja MEMORIA_ELECTRICA): dice «de placa» para un MCA estimado porque
+  `mcaEst` quedó en false desde AUD-14. DEPENDENCIA: es Cotización general (congelada); no mueve números.

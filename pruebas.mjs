@@ -7221,6 +7221,24 @@ t("S.207 (AUD-24, H-195) la memoria de hidráulica no titula «método de Hunter
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+t("S.208 (AUD-14, H-177) el submittal de Selección no presenta como de placa el MCA y el MOP que la suite estima (elecOf: 125 % y 175 % de la RLA estimada): cada renglón que los da dice que son estimados", () => {
+  const e = G("CARRIER").find((x) => x.TR >= 5) || G("CARRIER")[0];
+  const sub = G("carrierSubmittal")(e), filas = [];
+  const recorre = (x) => { if (Array.isArray(x)) { if (x.length && x.every((y) => typeof y === "string")) filas.push(x.join(" ")); x.forEach(recorre); } else if (x && typeof x === "object") Object.values(x).forEach(recorre); };
+  recorre(sub);
+  const conMca = filas.filter((f) => /\bMCA\b/.test(f));
+  if (!conMca.length) throw new Error("el caso no aísla lo que se quiere probar: el submittal no da MCA");
+  conMca.forEach((f) => { if (!/estimad/i.test(f)) throw new Error(`el submittal da MCA/MOP sin decir que son estimados: ${f.slice(0, 160)}`); });
+  /* El PDF del eléctrico dice lo que hace desde AUD-14: los estimados no fijan conductor ni protección (antes «no bajan el conductor del 125 %»). */
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.208"; G("recompute")();
+    const pdf = txtPdfE(G("buildElecPdf")());
+    if (/no bajan el conductor del 125/.test(pdf)) throw new Error("el PDF del eléctrico conserva la regla anterior a AUD-14 («no bajan el conductor del 125 %»)");
+    contiene(pdf, "no fijan conductor", "el PDF del eléctrico dice que los estimados no fijan conductor ni protección:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 t("S.69 (H-141, decisión (a) del dueño) la diversidad del edificio se aplica UNA sola vez, en la planta: las ganancias internas y el pico de cada zona no la llevan; el objetivo de planta sí (×0.8), y la memoria lo declara como criterio Carrier por ratificar", () => {
   const guardado = JSON.stringify(S);
   const pdfTxt = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");
