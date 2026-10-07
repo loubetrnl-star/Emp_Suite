@@ -7287,6 +7287,53 @@ t("S.211 (AUD-21, regla 7) lo que cada disciplina manda a la propuesta (partidas
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+t("S.212 (AUD-20 a) la memoria y el PDF del eléctrico citan la NOM con su edición y la página de cada tabla: «NOM-001-SEDE-2012» (nunca la familia sola) y Tabla 310-15(b)(16) p. 190, 310-15(b)(2)(a) p. 186, 310-15(b)(3)(a) p. 187 y Capítulo 10 Tabla 5 p. 1006 (páginas de NORMAS_ELEC, transcritas del DOF)", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.212"; llenarTodoS(); G("recompute")();
+    const memo = G("ELEC").memo.join(" "), pdf = txtPdfE(G("buildElecPdf")());
+    for (const [donde, t] of [["memoria", memo], ["PDF", pdf]]) {
+      const sueltas = (t.match(/NOM-001-SEDE(?!-2012)/g) || []).length;
+      if (sueltas) throw new Error(`${donde} del eléctrico cita ${sueltas} vez(ces) «NOM-001-SEDE» sin edición: ${[...t.matchAll(/NOM-001-SEDE(?!-2012)/g)].map((m) => t.slice(Math.max(0, m.index - 60), m.index + 40)).join(" ¦ ")}`);
+    }
+    if (memo.indexOf("Tabla 5, p. 1006") < 0) throw new Error("la memoria no da la página de la Tabla 5 del Capítulo 10");
+    for (const cita of ["310-15(b)(16), p. 190", "310-15(b)(2)(a), p. 186", "310-15(b)(3)(a), p. 187", "Tabla 5, p. 1006"])
+      if (pdf.indexOf(cita) < 0) throw new Error(`el PDF del eléctrico no da la página: falta «${cita}»`);
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
+t("S.213 (AUD-20 b, H-183) la Tabla 250-122 del motor eléctrico coincide celda por celda con el texto del DOF en el repositorio (parches/normas-texto/NOM-001-SEDE-2012_DOF_texto.txt, p. 151): 19 renglones de cobre y 15 de aluminio (hasta 100 A la columna de aluminio dice «—»)", () => {
+  const txt = fs.readFileSync("parches/normas-texto/NOM-001-SEDE-2012_DOF_texto.txt", "utf8").split(/\r?\n/).map((l) => l.trim());
+  const i0 = txt.findIndex((l) => l.startsWith("TABLA 250-122.-")), i1 = txt.findIndex((l, i) => i > i0 && l.startsWith("Para cumplir con lo establecido en 250-4"));
+  if (i0 < 0 || i1 < 0) throw new Error("no se encontró la Tabla 250-122 en el texto del DOF");
+  const enc = txt.slice(i0, i1), desde = enc.findIndex((l) => l === "15");
+  const celdas = enc.slice(desde).filter((l) => l !== "");
+  if (celdas.length % 5) throw new Error(`la tabla del DOF no se dejó leer en renglones de 5 celdas (${celdas.length} celdas)`);
+  const filas = []; for (let k = 0; k < celdas.length; k += 5) filas.push(celdas.slice(k, k + 5));
+  const CU = G("TIERRA_CU"), AL = G("TIERRA_AL");
+  const cu = filas.map((f) => [Number(f[0]), f[2]]), al = filas.filter((f) => f[4] !== "—").map((f) => [Number(f[0]), f[4]]);
+  eq(cu.length, 19, "renglones de cobre en el DOF:"); eq(al.length, 15, "renglones de aluminio en el DOF:");
+  eq(JSON.stringify(CU), JSON.stringify(cu), "TIERRA_CU contra el DOF:");
+  eq(JSON.stringify(AL), JSON.stringify(al), "TIERRA_AL contra el DOF:");
+});
+
+t("S.214 (AUD-20 c y d) las citas tomadas de fuente secundaria lo dicen: en aire, ASTM B88 y ASME B36.10 con «edición pendiente» (sus textos no están en el repositorio; los DI de cobre vienen del CDA Copper Tube Handbook 2006); en hidro, la Tabla 604.3 es el texto de up.codes (edición adoptada por Connecticut), sin cotejar con el texto base de ICC", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    for (const [mat, norma] of [["cobre", "ASTM B88"], ["acero_neg", "ASME B36.10"]]) {
+      G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.214";
+      S.aire = { ...G("defaultAire")(), material: mat, Lprincipal: 60, Lramales: 40, consumos: [{ id: "s214", tipo: "generico", nombre: "Carga", cant: 1, lmin: 600, bar: 6, uso: 1 }] };
+      G("recompute")();
+      const memo = G("AIRE").memo.join(" ");
+      const k = memo.indexOf(norma);
+      if (k < 0) throw new Error(`la memoria de aire no cita ${norma} con ${mat}`);
+      if (memo.slice(k, k + 220).indexOf("edición pendiente") < 0) throw new Error(`la memoria de aire cita ${norma} sin decir que su edición está pendiente: ${memo.slice(k, k + 160)}`);
+    }
+    const wc = G("MUEBLES").find((m) => m.id === "wc_flux");
+    if (!/up\.codes/.test(wc.presFuente) || !/sin cotejar/.test(wc.presFuente)) throw new Error(`la fuente de la presión mínima no dice que es el texto de up.codes sin cotejar con ICC: ${wc.presFuente}`);
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 t("S.69 (H-141, decisión (a) del dueño) la diversidad del edificio se aplica UNA sola vez, en la planta: las ganancias internas y el pico de cada zona no la llevan; el objetivo de planta sí (×0.8), y la memoria lo declara como criterio Carrier por ratificar", () => {
   const guardado = JSON.stringify(S);
   const pdfTxt = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");

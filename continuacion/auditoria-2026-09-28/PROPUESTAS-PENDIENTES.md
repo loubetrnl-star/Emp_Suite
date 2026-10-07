@@ -65,3 +65,16 @@ Ninguna mueve una cifra del cálculo: amplían lo que R.1 y R.4 vigilan, y eso o
 - El aviso «Con más de 12 m de altura hay que revisar si aplica protección en rack…» y la guía del campo (`fuego.altura`) usan
   el umbral de 12 m sin cita. Igual que la estática, NFPA 13 no está en `parches/normas-texto`: propuesta de declararlo
   «criterio de la casa sin fuente normativa» o pasar el texto de NFPA 13 al repositorio. No mueve números.
+
+## AUD-20 · citas (lo que no se pudo cerrar)
+- **20(d) · cotejo de la Tabla 604.3 con el texto base de ICC** (BLOQUEADO por texto): la única fuente en el repositorio es la
+  transcripción de up.codes, edición adoptada por Connecticut (`parches/normas-texto/IPC-2015_Tabla-604.3_y_424.3_upcodes.txt`).
+  Desde AUD-20 la salida lo dice («sin cotejar con el texto base de ICC»). Para cerrarlo hace falta el texto de ICC; si
+  difiere, mueve las presiones mínimas por mueble y `MOTOR_VER.hidro`.
+- **20(e) · lavaojos 0.4 gpm contra ANSI Z358.1-2014** (BLOQUEADO por texto del dueño): hoy se cita Z358.1-1990 vía cartas de
+  OSHA (secundaria) y la salida ya dice «ratificar con Z358.1-2014». Falta que el dueño pase el texto (está en la lista de
+  textos pendientes de `parches/normas-texto/README.md`).
+- **20(c) · ediciones de ASTM B88 y ASME B36.10** (BLOQUEADO por texto): la salida dice «edición pendiente». Para dar la
+  edición hacen falta los textos; no mueve números si coinciden con los DI de la fuente secundaria.
+- **DEPENDENCIA (congelado)**: el libro de la propuesta (`buildPropuestaXlsx`) cita «NOM-001-SEDE» sin edición ni página en la
+  hoja eléctrica y «IPC 2015 Tabla 604.3 (mínima por mueble)» sin el matiz de up.codes en hidro. No mueve números.

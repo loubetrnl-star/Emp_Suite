@@ -1771,14 +1771,14 @@ function buildElecPdf() {
   pdfDocHeaderMeta(d);
   pdfHeading(d, "2. Bases de calculo");
   pdfRows(d, [
-    ["Norma", "NOM-001-SEDE Instalaciones Electricas (utilizacion)"],
+    ["Norma", "NOM-001-SEDE-2012 Instalaciones Electricas (utilizacion), DOF 29-nov-2012"],
     ["Origen de las cargas", `${(() => { const mg = R.calc.filter((c) => c.origen === "cedula" && c.migrado), sa = (t) => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
       /* H-306: las migradas al abrir se dicen aparte, con su motor de origen por renglon. */
       return mg.length ? `${mg.length} de la migracion al abrir, sin confirmar (un proyecto anterior las tomaba solas de otros motores; se copiaron una vez con las mismas cifras): ${mg.map((c) => `${sa(c.nombre)} <- ${sa(origenMotorElecTxt(c, false))}`).join("; ")}. ` : ""; })()}${R.calc.filter((c) => c.origen === "cedula" && !c.migrado).length} aceptada(s) de los demas motores como propuesta (instantanea con origen y fecha; no se mueven solas si el origen cambia) y ${R.calc.filter((c) => c.origen !== "cedula").length} capturada(s) en la pestana Electrico. Ninguna entra sin aceptarse (H-268)`],
     ["Sistema", SISTEMAS.find(([k]) => k === E.sistema)?.[1] || ""],
-    ["Conductor", `${R.mat === "aluminio" ? "Aluminio" : "Cobre"} tipo ${AISLAMIENTOS[aislamientoDe((S.elec || {}).aislamiento)].pdf} (ampacidad a 75 C, Tabla 310-15(b)(16)) · canalizacion con las areas de ese mismo conductor (NOM-001-SEDE, Cap. 10, Tabla 5)`],
-    ["Temperatura ambiente", `${tempAmbDe(E.tempAmb)} C · factor ${n(fTemp(E.tempAmb), 2)} (Tabla 310-15(b)(2)(a))`],
-    ["Agrupamiento", `${num(E.nCond, 3)} portadores · factor ${n(fGrupo(E.nCond), 2)} (Tabla 310-15(b)(3)(a))`],
+    ["Conductor", `${R.mat === "aluminio" ? "Aluminio" : "Cobre"} tipo ${AISLAMIENTOS[aislamientoDe((S.elec || {}).aislamiento)].pdf} (ampacidad a 75 C, NOM-001-SEDE-2012 Tabla 310-15(b)(16), p. 190) · canalizacion con las areas de ese mismo conductor (NOM-001-SEDE-2012, Cap. 10, Tabla 5, p. 1006)`],
+    ["Temperatura ambiente", `${tempAmbDe(E.tempAmb)} C · factor ${n(fTemp(E.tempAmb), 2)} (Tabla 310-15(b)(2)(a), p. 186)`],
+    ["Agrupamiento", `${num(E.nCond, 3)} portadores · factor ${n(fGrupo(E.nCond), 2)} (Tabla 310-15(b)(3)(a), p. 187)`],
     ["Factor de potencia", `por carga: el capturado o, sin el, el que trae el motor de origen o el del tipo (criterio de la casa: ${Object.values(TIPO_CARGA).map((x) => `${x.label} ${n(x.fp, 2)}`).join(", ")}); alimentador ${n(R.fpAlim, 2)} (${R.fpAlimOrigen === "casa" ? "criterio de la casa" : "capturado"})`],
     ["Caida de tension", `${n(num(E.dvRamal, 3), 1)} % en derivado y ${n(num(E.dvTotal, 5), 1)} % acumulada (recomendacion de los art. 210-19 y 215-2)`],
     ["Carga continua", "125 % segun art. 210-19(a)"],
@@ -7207,8 +7207,8 @@ function computeAire(A) {
   /* AUD-14: en aluminio calibrado e inoxidable el DI real es del fabricante; ya no se dimensiona con cédula 40 «indicativa»: los
      diámetros y la caída de la red quedan pendientes hasta tener el DI del fabricante (o elegir cobre o acero). */
   const matId = matCap;
-  const DI = matId === "cobre" ? { d: DI_COBRE_L_AIRE, fuente: "ASTM B88 tipo L (DI real por diámetro; CDA Copper Tube Handbook 2006, tabla 2b)", pendiente: false }
-    : (matId === "acero_gal" || matId === "acero_neg") ? { d: DIAM_AIRE, fuente: "cédula 40 (ASME B36.10)", pendiente: false }
+  const DI = matId === "cobre" ? { d: DI_COBRE_L_AIRE, fuente: "ASTM B88 tipo L, edición pendiente: su texto no está en el repositorio; DI reales por diámetro de fuente secundaria (CDA Copper Tube Handbook 2006, tabla 2b)", pendiente: false }
+    : (matId === "acero_gal" || matId === "acero_neg") ? { d: DIAM_AIRE, fuente: "cédula 40 (ASME B36.10, edición pendiente: su texto no está en el repositorio)", pendiente: false }
     : matId ? { d: null, fuente: "DI del fabricante pendiente: no se dimensiona con cédula 40 (AUD-14)", pendiente: true }
     : { d: null, fuente: "material de la red pendiente", pendiente: true };
   const rho = rhoAire(pDescarga, tAmb, pAtm);
@@ -10617,7 +10617,7 @@ function computeElec(E) {
     avisos.push({ lvl: "warn", msg: `Valores que este proyecto guardó por omisión en una revisión anterior, sin confirmar: ${[sinConf.Ltablero ? `distancia al tablero ${n(Lalim, 0)} m` : "", sinConf.trafoKVA ? `transformador ${n(kVAtr, 0)} kVA` : "", sinConf.trafoZ ? `Z ${n(z, 1)} %` : "", calc.some((c) => c.Lsin) ? `distancia de ${calc.filter((c) => c.Lsin).length} carga(s) aceptadas de otros motores` : ""].filter(Boolean).join(", ")}. Confírmalos o captura los reales: hoy nada se supone (H-179).` });
   if (kVAtr > 0 && kVAdemanda > kVAtr * .8) avisos.push({ lvl: "err", msg: `La demanda calculada (${n(kVAdemanda, 1)} kVA) supera el 80 % del transformador capturado (${n(kVAtr, 0)} kVA). El transformador queda corto: revisar capacidad contratada antes de seguir.` });
 
-  memo.push(`Sistema ${SISTEMAS.find(([k]) => k === E.sistema)?.[1] || sis.V + " V"} · conductor de ${mat} tipo ${AISLAMIENTOS[aislamientoDe(E.aislamiento)].nombre} con ampacidad de la columna de 75 °C · relleno de canalización con las áreas de ese mismo conductor (NOM-001-SEDE, Capítulo 10, Tabla 5) · temperatura ambiente de diseño ${tempAmbDe(E.tempAmb)} °C (factor ${n(fTemp(E.tempAmb), 2)}) · ${num(E.nCond, 3)} portadores por canalización (factor ${n(fGrupo(E.nCond), 2)}).`);
+  memo.push(`Sistema ${SISTEMAS.find(([k]) => k === E.sistema)?.[1] || sis.V + " V"} · conductor de ${mat} tipo ${AISLAMIENTOS[aislamientoDe(E.aislamiento)].nombre} con ampacidad de la columna de 75 °C · relleno de canalización con las áreas de ese mismo conductor (NOM-001-SEDE-2012, Capítulo 10, Tabla 5, p. 1006) · temperatura ambiente de diseño ${tempAmbDe(E.tempAmb)} °C (factor ${n(fTemp(E.tempAmb), 2)}) · ${num(E.nCond, 3)} portadores por canalización (factor ${n(fGrupo(E.nCond), 2)}).`);
   memo.push(`Carga conectada ${n(kVAconectada, 2)} kVA · demanda ${n(kVAdemanda, 2)} kVA (factor de demanda ${n(fdem, 2)}), incluyendo el 25 % adicional del motor mayor que pide el art. 430-24 (${n(extraMotor, 2)} kVA).`);
   memo.push(`Balanceo: fase A ${n(fases.A, 2)} · B ${n(fases.B, 2)} · C ${n(fases.C, 2)} kVA · desbalance ${n(desbalance, 1)} %.`);
   memo.push(`Alimentador general: ${alim.nota}. Caída de tensión ${alim.dv == null ? "PENDIENTE (falta la distancia al tablero)" : `${n(alim.dv, 2)} % en ${n(Lalim, 0)} m${sinConf.Ltablero ? " (sin confirmar)" : ""}`} de los ${n(num(E.dvTotal, 5), 1)} % acumulados admisibles. Interruptor principal ${principal} A.`);
@@ -10639,7 +10639,7 @@ function computeElec(E) {
   /* H-306: las que pasó sola la migración de un proyecto anterior en vivo no son «aceptadas»: se dicen aparte, con su motor de origen. */
   const migE = calc.filter((c) => c.origen === "cedula" && c.migrado);
   memo.push(`Origen de las cargas (H-268): ${calc.filter((c) => c.origen === "cedula" && !c.migrado).length} aceptada(s) de otros motores como propuesta (instantánea con origen y fecha; si el origen cambia, la propuesta avisa y nada se mueve solo) y ${calc.filter((c) => c.origen !== "cedula").length} capturada(s) en esta pestaña.${migE.length ? ` ${migE.length} de la migración al abrir, sin confirmar (H-306: un proyecto anterior las tomaba solas de otros motores y al abrirlo se copiaron una sola vez, con las mismas cifras; nadie las ha aceptado): ${migE.map((c) => `${c.nombre} ← ${origenMotorElecTxt(c, false)}`).join("; ")}. Capturar un dato del renglón o «Confirmar las cargas migradas» las confirma.` : ""} ${migE.length ? "Fuera de ésas, ninguna" : "Ninguna"} entra sin aceptarse: el eléctrico calcula sólo con lo capturado y lo aceptado aquí.`);
-  memo.push("Criterio de caída de tensión: el capturado para circuito derivado y el acumulado desde la acometida (3 % y 5 % por omisión). No es requisito obligatorio de la NOM-001-SEDE sino recomendación de las notas de los artículos 210-19 y 215-2; se aplica como criterio duro de la casa.");
+  memo.push("Criterio de caída de tensión: el capturado para circuito derivado y el acumulado desde la acometida (3 % y 5 % por omisión). No es requisito obligatorio de la NOM-001-SEDE-2012 sino recomendación de sus notas 210-19(a), Nota 4 (p. 52) y 215-2(a), Nota 2 (p. 62); se aplica como criterio duro de la casa.");
 
   const R = { calc, demTipo, fases, desbalance, kVAconectada, kVAdemanda, fdem, extraMotor,
     Itab, IdisAlim, alim, principal, IccTrafo, kAIC, sis, mat, memo, avisos,
@@ -10706,7 +10706,7 @@ const MUEBLES = [
   { id: "lavaojos",  nombre: "Regadera de emergencia (con o sin lavaojos)", um: 0, umPriv: 0, ud: 4, presMin: 21, emergGpm: 20, tipo: "tanque", cal: 0 },
   { id: "lavaojos_solo", nombre: "Lavaojos de emergencia fijo (sin regadera)", um: 0, umPriv: 0, ud: 1, presMin: 21, emergGpm: 0.4, tipo: "tanque", cal: 0 },
 ].map((m) => ({ ...m, presMin: m.psi != null ? m.psi * PSI_MCA : m.presMin,
-  presFuente: m.psi == null ? "30 psi, criterio de la casa sin fuente: 604.3 no lo lista y las cartas de OSHA sobre Z358.1 no dan presión; confirmar con el fabricante" : m.psiCasa ? `${m.psi} psi, asimilada a sink, service (criterio de la casa)` : `${m.psi} psi, IPC 2015 Tabla 604.3` }));
+  presFuente: m.psi == null ? "30 psi, criterio de la casa sin fuente: 604.3 no lo lista y las cartas de OSHA sobre Z358.1 no dan presión; confirmar con el fabricante" : m.psiCasa ? `${m.psi} psi, asimilada a sink, service (criterio de la casa)` : `${m.psi} psi, IPC 2015 Tabla 604.3 (texto de up.codes, edición adoptada por Connecticut; sin cotejar con el texto base de ICC)` }));
 const EMERG_MIN = 15;   // minutos de agua para el equipo de emergencia: Z358.1-1990 §4.1 vía carta OSHA 18-abr-2002 (secundaria)
 const muebleDe = (id) => MUEBLES.find((m) => m.id === id) || MUEBLES[0];
 
@@ -22572,7 +22572,7 @@ function tarjetaDiagramasElec(R) {
 }
 function pdfDiagramasElec(d, R) {
   const u = describirUnifilar(R), tf = describirTrifilar(R), ver = MOTOR_VER.elec, gris = [0.294, 0.333, 0.388];
-  const proc = (t) => `${t}: procedencia computeElec v${ver}, capturado en esta pestana. Preseleccion NOM-001-SEDE; no sustituye el estudio de corto circuito ni la coordinacion de protecciones. Cada rotulo dice de donde sale su valor: capturado, calculado (tabla o articulo) o criterio de la casa.`;
+  const proc = (t) => `${t}: procedencia computeElec v${ver}, capturado en esta pestana. Preseleccion NOM-001-SEDE-2012; no sustituye el estudio de corto circuito ni la coordinacion de protecciones. Cada rotulo dice de donde sale su valor: capturado, calculado (tabla o articulo) o criterio de la casa.`;
   pdfHeading(d, "3b. Diagrama unifilar");
   if (!u.nodos.length) pdfParagraph(d, `Diagrama unifilar pendiente: ${u.pendientes.join(" · ")}`, { color: PDF_SENAL });
   else {
