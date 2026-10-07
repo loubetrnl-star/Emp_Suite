@@ -27,7 +27,7 @@ repositorio, manda la del repositorio.
 
 ## Método de trabajo
 - Para explorar el código o el problema, lanza subagentes en paralelo con el modelo claude-sonnet-5-5, uno por área o
-  hipótesis, máximo cinco por tarea.
+  hipótesis, máximo dos por tarea.
 - Reserva el modelo principal para la consolidación.
 - Consolida los hallazgos en un análisis profundo con rigor científico e ingenieril antes de proponer cambios, e indica
   el nivel de confianza de cada conclusión.
@@ -113,7 +113,7 @@ versiona a otro.
 - Norma sin texto: manda la regla 4. Si la norma no está en `parches/normas-texto/` ni en fuente pública con URL, el
   hallazgo queda `BLOQUEADO` sólo en su motor; los demás motores siguen. «Supuesto propio» / «criterio de la casa»
   sólo aplica a supuestos que no se presentan como norma.
-- Subagentes: la exploración (sólo lectura) va con subagentes en paralelo, máximo cinco por motor, cada uno acotado a
+- Subagentes: la exploración (sólo lectura) va con subagentes en paralelo, máximo dos a la vez, cada uno acotado a
   un motor. Toda edición sigue el esquema `crit/<motor>` en su worktree; ningún agente edita fuera de su región.
 - Lo compartido (captura de proyecto, unidades, catálogos, entregables) no lo toca ningún motor: se registra como
   dependencia y lo resuelve el integrador en `master`.
