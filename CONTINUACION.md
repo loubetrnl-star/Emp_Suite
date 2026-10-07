@@ -109,7 +109,8 @@ dónde me quedé, lo que quedó a medias, los pendientes en orden y el siguiente
 2. **H-279 (Kaizen) · CONGELADO, no se termina ni se integra.** Mismo congelamiento de `CLAUDE.md` («Congelados», decisión del
    dueño del 28-sep-2026): su parche (§3.2) queda como está hasta que terminen todas las demás disciplinas. Ver §5.
 3. **H-282 · aire** (D1): presión atmosférica propia (captura o propuesta `proyecto>aire`, copia con fecha); sin ella, tanque y
-   ΔP de la red «pendiente»; FAD y compresor siguen. Hacerlo después de integrar H-278 (la cotización lee tanque y red). Hoy aire
+   ΔP de la red «pendiente»; FAD y compresor siguen. Aire no está congelado: se hace sin esperar a H-278. Lo que la Cotización
+   general lee de tanque y red queda como dependencia en la bitácora para cuando el dueño la descongele (CLAUDE.md, «Congelados»). Hoy aire
    lee `SITE_PROY.pAtm` en vivo (`computeAire`, `buildAirePdf`) y lleva `site: S.site` en su huella. X-4 (dimRed mezcla 101.325
    con la del sitio) va con H-219.
 4. **H-280 · valor** (D2, D3): medidas sólo sobre instantáneas; sin dependencia de la pestaña activa (cierra X-2); hoy lee
@@ -117,8 +118,10 @@ dónde me quedé, lo que quedó a medias, los pendientes en orden y el siguiente
 5. **Pregunta abierta al dueño (no tocar hasta que conteste):** la propuesta existente hacia Soportería, `motores>soporte`, trae
    los metros de ducto desde Ductos (además de hidráulica, incendio y aire). Su regla dice «siempre que ninguna venga de Ductos».
    ¿Se quitan de esa propuesta los metros de ducto (Soportería los captura a mano) o se queda como está?
-6. Cruces de pantalla por revisar tras H-278: Selección muestra precios de Cotización (`listPrice`, tarjeta «Bases de precio» y
-   «Resumen de cotización» en `viewSeleccion`); Soportería cuenta partidas de la cotización.
+6. Cruces de pantalla por revisar, sin esperar a H-278 (Selección y Soportería no están congeladas). Lo anotado al corte del
+   28-sep, por verificar contra el código actual: Selección muestra precios de Cotización (`listPrice`, tarjeta «Bases de precio» y
+   «Resumen de cotización» en `viewSeleccion`); Soportería cuenta partidas de la cotización. Si corregirlo obliga a tocar la
+   Cotización general, se detiene ahí y se registra como dependencia en la bitácora (CLAUDE.md, «Congelados»).
 7. Soportería: con «metros a mano guardados» la tarjeta dice «Desactualizada · el origen cambió» sin que cambie el origen (así
    era en `d8f8b5e`); corregirlo toca `estadoPropuestaCalc` (todas las propuestas).
 8. H-273 mutantes de ventilación (PAUSADA; `continuacion/parciales/H-273-vent-mutantes.patch`). Mutantes rotos de antes:
