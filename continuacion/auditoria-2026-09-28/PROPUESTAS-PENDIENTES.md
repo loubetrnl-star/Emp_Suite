@@ -78,3 +78,38 @@ Ninguna mueve una cifra del cálculo: amplían lo que R.1 y R.4 vigilan, y eso o
   edición hacen falta los textos; no mueve números si coinciden con los DI de la fuente secundaria.
 - **DEPENDENCIA (congelado)**: el libro de la propuesta (`buildPropuestaXlsx`) cita «NOM-001-SEDE» sin edición ni página en la
   hoja eléctrica y «IPC 2015 Tabla 604.3 (mínima por mueble)» sin el matiz de up.codes en hidro. No mueve números.
+
+## AUD-04 · fuego · piso de 1 m² en la migración (PROPUESTA · mueve números en un caso de borde)
+- `sanearEstado` (`index.html:24895`): `if (hS && hS.modo === "heredado") { s.fuego.area = Math.max(1, Math.round(geo.area)); … }`.
+  Un proyecto anterior a H-264 con área heredada entre 0 y 0.5 m² abre con 1 m² inventado (queda marcado «sin confirmar»).
+  El motor ya usa `Math.max(0, num(F.area, 0))` (`computeFuego`); el [a verificar] de AUD-04 se confirma sólo en la migración.
+- Propuesta: `Math.max(0, Math.round(geo.area))`. Se mueve: en esos proyectos el área a proteger pasa de 1 m² a 0 m² (queda
+  pendiente) y con ella el área de diseño, el gasto, la reserva y la bomba. `MOTOR_VER.fuego` 6 → 7. Criterio: regla 6 de
+  `CLAUDE.md` (nada se estima). Prueba que lo fijaría: proyecto anterior con zonas que suman 0.3 m² y herencia → área 0.
+
+## AUD-10 · quote · H-250 y H-251 sin declarar (DEPENDENCIA · congelado)
+- Falta declararlos en `MOTOR_CAMBIOS.quote` y en el CHANGELOG, y un caso que compare importes con partida en USD y
+  referencia fuera de California (S.44 prueba la conducta, no los importes). Todo es de la Cotización general: congelado
+  hasta que el dueño lo abra. Por lectura de código: H-251 saca del Budget una referencia «Tijuana, Baja California» (pasa a
+  «Por cotizar»); H-250 con USD sin fecha deja la moneda en MXN y agrega un pendiente, sin cambiar importes en MXN.
+
+## AUD-08 y AUD-13 · CONGELADAS (constan en bitacora.md:25 y :31 como «siguiente etapa AUD-08/AUD-13»)
+- AUD-08 (sellos que no ven la versión de los motores de los que se alimentan quote, kaizen y valor) y AUD-13 (alimentador
+  de Kaizen con 1,350 MXN/m y 30 m sin fuente) siguen como estaban: son Cotización general y Kaizen.
+
+## AUD-07 · DECIDIDA, congelada
+- Decisión del dueño del 6-oct-2026: la cotización general será sólo la suma de las cotizaciones aceptadas de cada
+  disciplina, sin lecturas en vivo. No se implementa hasta que el dueño la descongele (commit 3b79605).
+
+## AUD-17 · aire · DECISIÓN DEL DUEÑO pendiente
+- `enA1` compara con 35 °C la temperatura de SUCCIÓN del compresor; ISO 7183:2007 Tabla 2 (muestra en el repositorio) define
+  A1 con 35 °C a la ENTRADA del secador y 25 °C de ambiente. La corrección del FAD «~5 % por bar» no tiene cita (sólo la
+  hoja de pruebas la llama criterio de la casa). Fuera de A1 el secador queda con factor 1.0 y marcado «pendiente del fabricante».
+- Opciones: (a) declarar las tres cosas «criterio de la casa sin fuente» en memoria y PDF, sin mover números; (b) dejar el
+  secador «pendiente del fabricante» sin factor fuera de A1 (mueve la capacidad del secador cotizada) — `MOTOR_VER.aire`
+  6 → 7; (c) capturar la temperatura de entrada al secador y comparar con ella (mueve qué proyectos caen en A1) — aire 6 → 7.
+
+## AUD-23 · elec · cerrada por H-306 (sin cambio)
+- La propuesta `cedula>elec` se retiró (H-306): ya no hay «volver a aceptar la cédula». El emparejamiento por nombre sólo vive
+  en la migración única al abrir (`aceptarCargasElec`, llamada desde `recompute`) y su firma ya no se compara con nada. No se
+  toca: cambiarlo movería las cifras que esa migración copia una vez.
