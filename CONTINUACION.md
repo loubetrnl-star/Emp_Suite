@@ -102,8 +102,12 @@ dónde me quedé, lo que quedó a medias, los pendientes en orden y el siguiente
   de Carga y `divSel()`) y `computeKaizen` (`divSel()`), así que habrá conflictos en esas líneas.
 
 ## 4. Pendientes, en orden de prioridad
-1. **Integrar H-278 (Cotización)** — el dueño pidió «continúa con H-274 y la cotización». Pasos en §5.
-2. **Terminar e integrar H-279 (Kaizen)** desde su parche (§3.2): bancos, mutantes, revisión adversarial, ajuste a H-289/H-290.
+1. **H-278 (Cotización) · CONGELADO, no se integra.** Cotización general, Kaizen e Ingeniería de valor no se tocan hasta que
+   terminen todas las demás disciplinas (`CLAUDE.md`, sección «Congelados», decisión del dueño del 28-sep-2026). Decisión del
+   dueño del 6-oct-2026 (respuesta a AUD-07): la cotización general será sólo la suma de las cotizaciones aceptadas de cada
+   disciplina, sin lecturas en vivo; no se implementa ahora. Ver §5.
+2. **H-279 (Kaizen) · CONGELADO, no se termina ni se integra.** Mismo congelamiento de `CLAUDE.md` («Congelados», decisión del
+   dueño del 28-sep-2026): su parche (§3.2) queda como está hasta que terminen todas las demás disciplinas. Ver §5.
 3. **H-282 · aire** (D1): presión atmosférica propia (captura o propuesta `proyecto>aire`, copia con fecha); sin ella, tanque y
    ΔP de la red «pendiente»; FAD y compresor siguen. Hacerlo después de integrar H-278 (la cotización lee tanque y red). Hoy aire
    lee `SITE_PROY.pAtm` en vivo (`computeAire`, `buildAirePdf`) y lleva `site: S.site` en su huella. X-4 (dimRed mezcla 101.325
@@ -126,7 +130,12 @@ dónde me quedé, lo que quedó a medias, los pendientes en orden y el siguiente
     archivos reales (guiones 04–12 en `continuacion/flujos/`); renglón de catálogo como equipo seleccionado; H-134;
     Estructural/Soportería; bloques 5a–5e; quitar la pestaña «Cuartos limpios» (preguntar antes).
 
-## 5. Siguiente paso concreto (integrar H-278)
+## 5. Cotización general (H-278): congelada, no se integra
+No hay paso que dar aquí mientras siga el congelamiento de `CLAUDE.md` («Congelados», decisión del dueño del 28-sep-2026):
+Cotización general, Kaizen e Ingeniería de valor no se tocan hasta que terminen todas las demás disciplinas. Cuando el dueño
+lo descongele, la arquitectura ya está decidida (6-oct-2026, respuesta a AUD-07): la cotización general es sólo la suma de
+las cotizaciones aceptadas de cada disciplina, sin lecturas en vivo. Lo que sigue es el procedimiento de integración que se
+dejó escrito el 28-sep; queda sólo como referencia y **no se ejecuta** mientras siga el congelamiento.
 ```bash
 cd /home/user/Emp_Suite                                  # (o la ruta del clon)
 git checkout claude/focused-euler-f9knvw && git status   # árbol limpio
@@ -139,7 +148,8 @@ continuacion/turno.sh node pruebas.mjs index.html --base respaldo-rev-2.9.8/inde
 node parches/mutantes/mutantes.mjs quote --paralelo 3 --dir <carpeta existente>
 git commit (mensaje de fusión con las líneas finales) && git push -u origin claude/focused-euler-f9knvw
 ```
-Luego H-279: `git worktree add -b claude/h279-kaizen /home/user/wt-kaizen 4832cb4`, `git -C /home/user/wt-kaizen apply
+H-279 (Kaizen) también está congelado (mismo congelamiento de `CLAUDE.md`) y **no se ejecuta**; su procedimiento, sólo como
+referencia para cuando el dueño lo descongele: `git worktree add -b claude/h279-kaizen /home/user/wt-kaizen 4832cb4`, `git -C /home/user/wt-kaizen apply
 "$PWD"/continuacion/parciales/H-279-kaizen-en-curso.patch`, terminar (§3.2), commit en esa rama y fusionar como H-278. Los
 guiones de los flujos están en `continuacion/flujos/15-h278-quote.js` (revisor) y `16-h279-kaizen.js` (implementación + revisor):
 se relanzan con la herramienta Workflow cuando el dueño pida trabajo en segundo plano (poner en el guion que retome del parche).
