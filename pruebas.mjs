@@ -7268,6 +7268,25 @@ t("S.210 (AUD-19, H-205) la estática al rociador más alto más 1 m es regla de
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+t("S.211 (AUD-21, regla 7) lo que cada disciplina manda a la propuesta (partidas pendientes y por cotizar) trae su espejo en inglés: ninguna llega al documento en inglés como «undefined» o en español; las memorias de cada motor son sólo en español por diseño (pdfFirmas) y no entran a esta regla", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.211"; llenarTodoS();
+    /* Ramas que dejan partidas pendientes o por cotizar en varias disciplinas. */
+    S.hidro.presRed = null; S.hidro.alturaEdificio = null;
+    if (S.fuego) S.fuego.altura = 0;
+    S.elec.Ltablero = null;
+    if (S.duct && Array.isArray(S.duct.segments) && S.duct.segments.length) S.duct.segments[0].length = 0;
+    G("recompute")();
+    const Q = G("QUOTE"), malos = [];
+    const vacio = (x) => typeof x !== "string" || !x.trim() || /undefined/.test(x);
+    (Q.pendientes || []).forEach((p) => { if (vacio(p.descEn) || vacio(p.motivoEn)) malos.push(`pendiente ${p.mot}: «${p.desc}» (descEn ${JSON.stringify(p.descEn)}, motivoEn ${JSON.stringify(p.motivoEn)})`); });
+    (Q.porCotizar || []).forEach((p) => { if (vacio(p.descEn)) malos.push(`por cotizar ${p.mot}: «${p.desc}» (descEn ${JSON.stringify(p.descEn)})`); });
+    if (!((Q.pendientes || []).length + (Q.porCotizar || []).length)) throw new Error("el caso no aísla lo que se quiere probar: no hay partidas pendientes ni por cotizar");
+    if (malos.length) throw new Error(`sin espejo en inglés: ${malos.join(" | ").slice(0, 600)}`);
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 t("S.69 (H-141, decisión (a) del dueño) la diversidad del edificio se aplica UNA sola vez, en la planta: las ganancias internas y el pico de cada zona no la llevan; el objetivo de planta sí (×0.8), y la memoria lo declara como criterio Carrier por ratificar", () => {
   const guardado = JSON.stringify(S);
   const pdfTxt = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");
