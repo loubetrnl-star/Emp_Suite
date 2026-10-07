@@ -7460,6 +7460,22 @@ t("S.220 (AUD-14, aprobada por el dueño el 7-oct-2026) aire comprimido nace sin
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 
+t("S.221 (AUD-04, aprobada por el dueño el 7-oct-2026) un proyecto anterior a H-264 cuya herencia daba menos de 0.5 m² de área a proteger ya no abre con 1 m² inventado: el área queda en 0, «dato pendiente», sin demanda ni bomba supuestas; con 0.5 m² o más se conserva el redondeo de siempre", () => {
+  const guardado = JSON.stringify(S);
+  const viejo = (areaZona) => ({ ...G("defaultState")(), meta: { name: "S.221" },
+    zones: [{ ...G("defaultZone")("Cuarto"), area: areaZona, height: 3 }],
+    fuego: { ...G("defaultFuego")(), riesgo: "ord2", area: areaZona, altura: 3, Lramal: 10, Lmontante: 6 },
+    her: { "fuego.area": { modo: "heredado", ts: 1, valor: areaZona, origen: "load" } } });
+  try {
+    G("importarRespaldo")(JSON.stringify(viejo(0.3))); G("recompute")();
+    eq(S.fuego.area, 0, "área menor a 0.5 m²: queda en 0 (antes 1 m²):");
+    eq(G("FUEGO").nTotal, 0, "sin rociadores supuestos:");
+    if (!G("FUEGO").memo.some((m) => /dato pendiente/.test(m) && /área/.test(m))) throw new Error("la memoria no dice que el área es dato pendiente");
+    G("importarRespaldo")(JSON.stringify(viejo(0.6))); G("recompute")();
+    eq(S.fuego.area, 1, "0.6 m² se redondea a 1 m² como siempre:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+
 t("S.69 (H-141, decisión (a) del dueño) la diversidad del edificio se aplica UNA sola vez, en la planta: las ganancias internas y el pico de cada zona no la llevan; el objetivo de planta sí (×0.8), y la memoria lo declara como criterio Carrier por ratificar", () => {
   const guardado = JSON.stringify(S);
   const pdfTxt = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");

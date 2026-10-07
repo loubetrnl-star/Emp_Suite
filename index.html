@@ -11328,7 +11328,7 @@ function computeFuego(F) {
      reserva) que nadie capturó. Sin área no hay demanda y se dice. */
   const area = Math.max(0, num(F.area, 0));
   const sinArea = !(area > 0);
-  if (sinArea) memo.push("Sin área protegida capturada: no se calcula demanda, bomba ni reserva, y no se supone ninguna (rev 2.9.16).");
+  if (sinArea) memo.push("Sin área protegida capturada: dato pendiente; no se calcula demanda, bomba ni reserva, y no se supone ninguna (rev 2.9.16; AUD-04).");
 
   /* Área de diseño: la parte del edificio que se supone operando a la vez. No
      es el área total: es el paño de rociadores que abriría un incendio real. */
@@ -19811,7 +19811,7 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "7", clean: "3", equip: "4", duct: "4", vent: "4", quote: "24", valor: "2", kaizen: "1", elec: "11", hidro: "11", fuego: "6", aire: "8", civil: "8", soporte: "14" };
+const MOTOR_VER = { load: "7", clean: "3", equip: "4", duct: "4", vent: "4", quote: "24", valor: "2", kaizen: "1", elec: "11", hidro: "11", fuego: "7", aire: "8", civil: "8", soporte: "14" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
@@ -19851,7 +19851,8 @@ const MOTOR_CAMBIOS = {
     { ver: "3", rev: "2.9.24", que: "H-205: la altura heredada de las zonas es la MÁXIMA (rociador más alto), no la media ponderada: estática y CDT al rociador más alto y aviso de rack con la altura real (proyecto fijo: 4.71 → 6 m, +1.29 m de CDT)" },
     { ver: "4", rev: "2.9.24", que: "H-264 (decisión del dueño, 27-sep-2026): contra incendio es autónomo: el área a proteger y la altura al rociador más alto se capturan en su pestaña; ya no se heredan de carga térmica ni se toma el área en vivo (cruce load>fuego retirado). Un proyecto guardado conserva los valores que ya tenía copiados; sin área capturada no hay demanda" },
      { ver: "5", rev: "2.9.24", que: "H-210: sin altura al rociador más alto, cabezal o montante capturados la bomba no se dimensiona: presión en la base, carga y potencia quedan pendientes, con aviso de error y semáforo «incompleta»; la cotización la lleva a pendientes y no se ofrece a eléctrico. Sin 6 / 30 / 12 m ni 30 mca ocultos si el campo viene nulo. El caudal nominal y la reserva siguen" },
-     { ver: "6", rev: "2.9.24", que: "H-264 (complemento): un proyecto guardado antes de H-264 abre con la altura y el área que la herencia le daba al abrir (zona más alta y suma de zonas) o con el área que se tomaba en vivo (tomarArea con permiso load>fuego), marcadas «sin confirmar» en memoria, PDF y aviso hasta que se capture otro valor (antes abría con la media ponderada vieja, p. ej. 3.91 m en vez de 13 m, y la llamaba «capturada»)" }],
+     { ver: "6", rev: "2.9.24", que: "H-264 (complemento): un proyecto guardado antes de H-264 abre con la altura y el área que la herencia le daba al abrir (zona más alta y suma de zonas) o con el área que se tomaba en vivo (tomarArea con permiso load>fuego), marcadas «sin confirmar» en memoria, PDF y aviso hasta que se capture otro valor (antes abría con la media ponderada vieja, p. ej. 3.91 m en vez de 13 m, y la llamaba «capturada»)" },
+    { ver: "7", rev: "2.9.24", que: "AUD-04 (aprobada por el dueño, 7-oct-2026; regla 6, nada se estima): al abrir un proyecto anterior a H-264, un área a proteger heredada menor a 0.5 m² ya no se sube a 1 m² (Math.max(1, …) de la migración): el área queda en 0, «dato pendiente» en la memoria, sin rociadores, demanda, bomba ni reserva supuestos. Desde 0.5 m² se conserva el redondeo de siempre. Mueve números sólo en esos proyectos. Prueba S.221" }],
   aire: [{ ver: "2", rev: "2.9.16", que: "sin demanda no se cuentan unidades" },
     { ver: "3", rev: "2.9.24", que: "H-215: secador por ISO 7183:2007 Tabla 2 opción A1: capacidad = todo el caudal del compresor a las condiciones nominales (35 °C, 7 bar(e)), factor 1.0; fuera de A1 la corrección es del fabricante y queda pendiente con aviso (antes FAD requerido / (0.92 × 0.90) de memoria: proyecto fijo 2.46 → 2.43 m³/min)" },
     { ver: "4", rev: "2.9.24", que: "H-216: el tanque pulmón no se trunca a 5,000 L en silencio: si el teórico rebasa el mayor de la lista comercial se instalan varios de 5,000 L en paralelo (capacidad instalada ≥ teórica), con aviso y memoria veraz (13,103 L → 3 × 5,000 = 15,000 L; antes 5,000). Proyecto fijo: sin cambio (3,000 L)" },
@@ -24942,7 +24943,8 @@ function sanearEstado(d) {
   if (s.fuego && typeof s.fuego === "object" && geo.hay) {
     const hA = s.her["fuego.altura"], hS = s.her["fuego.area"], sc = {};
     if (hA && hA.modo === "heredado") { s.fuego.altura = geo.alturaMax; sc.altura = geo.alturaMax; }
-    if (hS && hS.modo === "heredado") { s.fuego.area = Math.max(1, Math.round(geo.area)); sc.area = s.fuego.area; }
+    /* AUD-04 (aprobada por el dueño, 7-oct-2026): menos de 0.5 m² heredados ya no se suben a 1 m²: el área queda en 0, dato pendiente. */
+    if (hS && hS.modo === "heredado") { const aR = Math.round(geo.area); s.fuego.area = aR >= 1 ? aR : 0; if (aR >= 1) sc.area = aR; }
     if (s.fuego.tomarArea === true && s.perms["load>fuego"]) { s.fuego.area = geo.area; sc.area = geo.area; s.fuego.tomarArea = false; }
     if (Object.keys(sc).length) s.fuego.sinConfirmar = { ...(s.fuego.sinConfirmar && typeof s.fuego.sinConfirmar === "object" ? s.fuego.sinConfirmar : {}), ...sc };
   }
