@@ -27,7 +27,8 @@ repositorio, manda la del repositorio.
 
 ## Método de trabajo
 - Para explorar el código o el problema, lanza subagentes en paralelo con el modelo claude-sonnet-5-5, uno por área o
-  hipótesis, máximo dos por tarea.
+  hipótesis, máximo seis a la vez (decisión del dueño, 9-oct-2026). Además, un programador (claude-opus-5-5,
+  esfuerzo alto) escribe código y pruebas en su propio worktree y rama; sólo el hilo principal escribe en `master`.
 - Reserva el modelo principal para la consolidación.
 - Consolida los hallazgos en un análisis profundo con rigor científico e ingenieril antes de proponer cambios, e indica
   el nivel de confianza de cada conclusión.
@@ -121,8 +122,11 @@ versiona a otro.
 - Norma sin texto: manda la regla 4. Si la norma no está en `parches/normas-texto/` ni en fuente pública con URL, el
   hallazgo queda `BLOQUEADO` sólo en su motor; los demás motores siguen. «Supuesto propio» / «criterio de la casa»
   sólo aplica a supuestos que no se presentan como norma.
-- Subagentes: la exploración (sólo lectura) va con subagentes en paralelo, máximo dos a la vez, cada uno acotado a
-  un motor. Toda edición sigue el esquema `crit/<motor>` en su worktree; ningún agente edita fuera de su región.
+- Subagentes: la exploración (sólo lectura) va con subagentes en paralelo, máximo seis a la vez, cada uno acotado a
+  un motor. Un programador (`.claude/agents/programador.md`) toma una tarea a la vez, de un motor distinto al del hilo
+  principal, en su worktree y rama, con un rango de IDs de prueba reservado; no mueve números, no sube `MOTOR_VER`, no
+  escribe en `bitacora.md` ni toca congelados o Soportería. La integración a `master` la hace el hilo principal, un commit
+  a la vez, con los dos bancos en verde (decisión del dueño, 9-oct-2026). Toda edición sigue el esquema `crit/<motor>` en su worktree; ningún agente edita fuera de su región.
 - Lo compartido (captura de proyecto, unidades, catálogos, entregables) no lo toca ningún motor: se registra como
   dependencia y lo resuelve el integrador en `master`.
 - Versión y esperados por motor: sólo sube `MOTOR_VER` del motor que movió números y sólo se regenera su esperado.
