@@ -94,7 +94,8 @@ Velocidad (decisión del dueño, 7-oct-2026; medido ese día en esta PC):
 
 ## Git
 - Identidad local del repo: `EMP Suite <suite@emdelpacifico.local>`. Mensajes en español. Cada commit termina con
-  `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`.
+  `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>` (decisión del dueño, 9-oct-2026; los commits anteriores
+  conservan la firma con la que se hicieron).
 - Los tags existentes no se mueven nunca; cada candidata lleva tag nuevo (`rev-2.9.24-candidata`, `-2`, …).
 - No se commitean respaldos ni instaladores (`.gitignore`). El instalador se rehace con
   `node parches/construye-instalador.mjs <index.html> <carpeta-base> <salida.zip>`.
@@ -131,7 +132,7 @@ versiona a otro.
   dependencia y lo resuelve el integrador en `master`.
 - Versión y esperados por motor: sólo sube `MOTOR_VER` del motor que movió números y sólo se regenera su esperado.
   Un rojo en el bloque `CM.<motor>` detiene ese motor; un rojo en lo común detiene la integración de todos.
-- Firma de commits: `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`, como indica la sección Git.
+- Firma de commits: `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`, como indica la sección Git.
 
 ## Congelados (decisión del dueño, 28-sep-2026)
 - Kaizen, Ingeniería de valor y Cotización general (`computeQuote`, `QUOTE`, kaizen, valor, sus pestañas, PDF, Excel y
