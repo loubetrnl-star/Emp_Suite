@@ -2,7 +2,9 @@
 
 Motor de ventilación (`vent`, v3). Hoja: `vent.csv` (58 filas: 46 vigentes, 12 fase2) · cálculo independiente:
 `vent.calc.mjs` · módulo: `pruebas-motores/vent.mjs` (16 pruebas CM.vent.0–15) · compuerta: `parches/mutantes/vent.json`
-(34 mutantes: 27 de lógica vigente, 6 de lógica fase2:H-nnn, 1 valor por omisión fase2:H-160).
+(35 mutantes al 7-oct-2026: 32 de lógica vigente, 2 de lógica fase2 —m31 H-159 y m32 H-157— y 1 valor por omisión
+fase2:H-160, m24. Antes de H-154/H-155 eran 34: 27 de lógica vigente, 6 de lógica fase2 y 1 valor por omisión; m35 entró
+con H-291).
 
 ## 0. Cierres de la Fase 2
 
@@ -40,6 +42,16 @@ cambia a `estado: "vigente"` (debe morir con la fila ya exigida).
 `fase2:H-nnn` o valor por omisión (se reportan, no bloquean). m01–m29 en una corrida completa; m30–m34 con `--solo`
 (la corrida completa cayó por el límite de la API tras m29).
 
+**Al día (7-oct-2026): esa corrida ya no vale para 9 de los 35.** m10, m11, m18 y m33 dejaron de encontrar su texto
+(H-155 quitó los pisos `Math.max(.1, …)` y `Math.max(100, …)`; H-154 cambió el orden de candidatos), y m12, m13, m30 y
+m32 mutaban `SPACES`/`P` de carga térmica, que ventilación ya no lee: desde AUD-03 tiene su copia propia
+(`ESPACIOS_VENT`, `OA_PERS_VENT`). Los 8 están reapuntados en `parches/mutantes/vent.json` a la línea de ventilación
+(1 aparición cada uno en index.html); corrida completa del 7-oct-2026 (H-273): 35 mutantes, 32 muertos, 3 vivos sólo en fase2 (m24, m31, m32), 0 vivos en lógica vigente, 0 inválidos; m35 (H-291, prueba S.170) tampoco tiene
+corrida registrada aquí. Lo que dice la tabla en «Lo mata» para esos renglones es de la corrida vieja, sólo referencia.
+- **m33 (cerrado en H-273, MUERTO por S.64)**: antes de H-273 sobrevivía: `primary` y `closest` salen de `cubren[0]`/`noCubren[0]`, no de `sorted`; `sorted`
+  sólo alimenta `candidates` y `families`, y ni `pruebas.mjs` ni `pruebas-motores/vent.mjs` los leen (búsqueda del
+  7-oct-2026, sin coincidencias). H-273 agregó en S.64 la aserción del orden de candidatos (el elegido primero; los que cubren antes que los que no) y con ella muere (corrida del 7-oct-2026).
+
 | id | Qué | Estado | Veredicto | Lo mata |
 |---|---|---|---|---|
 | m01 | IMC muro a la mitad | vigente | MUERTO | CM.vent.5 |
@@ -51,15 +63,15 @@ cambia a `estado: "vigente"` (debe morir con la fila ya exigida).
 | m07 | Vbz a la mitad | vigente | MUERTO | CM.vent.1, 2, 4 |
 | m08 | cambios/h → CFM ÷66 (general) | vigente | MUERTO | CM.vent.1, 2, 12, 13 (y S.20, R.1) |
 | m09 | CFM → m³/h ×1.6 | vigente | MUERTO | CM.vent.1, 4, 5, 9 (y S.20, R.1) |
-| m10 | m → ft campana ×3.0 | vigente | MUERTO | CM.vent.5, 6, 7, 8 |
-| m11 | m → ft rejilla ×3.0 | vigente | MUERTO | CM.vent.9 |
-| m12 | 62.1 aula Rp 2.5 | vigente | MUERTO | CM.vent.4 |
-| m13 | 62.1 producción Ra 0.3 | vigente | MUERTO | CM.vent.2 |
+| m10 | m → ft campana ×3.0 (reapuntado: `const Lft = num(v.hoodL) * 3.28084, …` → `* 3.0`) | vigente | MUERTO (S.64, S.65, CM.vent.5–8; corrida del 7-oct-2026) | antes: CM.vent.5, 6, 7, 8 |
+| m11 | m → ft rejilla ×3.0 (reapuntado: `const face = v.louverW * 3.28084 * v.louverH * 3.28084;` → alto `* 3.0`) | vigente | MUERTO (S.65, CM.vent.9, CM.vent.0) | antes: CM.vent.9 |
+| m12 | 62.1 aula Rp 2.5 (reapuntado a `ESPACIOS_VENT`, AUD-03: `classroom: { label: "Aula", Rp: 5, Ra: 0.6 },`) | vigente | MUERTO (CM.vent.4, CM.vent.0) | antes: CM.vent.4 |
+| m13 | 62.1 producción Ra 0.3 (reapuntado a `ESPACIOS_VENT`, AUD-03: `production: { …, Rp: 5, Ra: 0.9 },`) | vigente | MUERTO (CM.vent.2) | antes: CM.vent.2 |
 | m14 | IMC isla media 300 | vigente | MUERTO | CM.vent.6 |
 | m15 | IMC visera ligera 150 | vigente | MUERTO | CM.vent.7 |
 | m16 | HOOD por área muro pesada 50 | vigente | MUERTO | CM.vent.8 |
 | m17 | campana sin «rige el mayor» | vigente | MUERTO | CM.vent.8 |
-| m18 | rejilla piso de velocidad 600 fpm | vigente | MUERTO | CM.vent.9 |
+| m18 | rejilla vuelve a tener piso de velocidad, 600 fpm (H-155 quitó todo piso; reapuntado: `const free = face * v.freeArea / 100, vel = v.faceVel;` → `Math.max(600, v.faceVel)`) | vigente | MUERTO (S.65, CM.vent.9, CM.vent.0) | antes: CM.vent.9 |
 | m19 | cobertura tolerancia ×0.5 | vigente | MUERTO | CM.vent.12 |
 | m20 | cobertura real con tolerancia ×0.8 (reapuntado en H-154/H-156) | vigente | MUERTO | 5.e, 14.c, S.64 |
 | m21 | familia preferida no manda (tier×0) | vigente desde H-154 | MUERTO | S.64 (1,907 CFM: G-140 sobre CSW-12) |
@@ -71,11 +83,12 @@ cambia a `estado: "vigente"` (debe morir con la fila ya exigida).
 | m27 | reposición a la mitad (modo mua) | vigente | MUERTO | CM.vent.13 |
 | m28 | aviso OA > cambios/h ×10 | vigente | MUERTO | CM.vent.4 |
 | m29 | cambios/h → CFM ÷66 (industrial) | vigente | MUERTO | CM.vent.11 |
-| m30 | Tab.45 20 m³/h·pers | vigente | MUERTO | CM.vent.1, 2 (y S.20, R.1) |
+| m30 | Tab.45 20 m³/h·pers (reapuntado a la copia de ventilación, AUD-03: `const OA_PERS_VENT = 30, OA_M2_VENT = 1.8;`) | vigente | MUERTO (CM.vent.1, CM.vent.2, CM.vent.0) | antes: CM.vent.1, 2 (y S.20, R.1) |
 | m31 | visera pesada 600 CFM/ft | fase2:H-159 | VIVO | sólo lo mata «no permitida → 0» (fila 7.b con CM_FASE2=1) |
-| m32 | 62.1 almacén Rp 1 | fase2:H-157 | VIVO | Tab.45 tapa el Vbz mientras Rp sea 2.5 o menos; lo mata la fila 3.a con CM_FASE2=1 |
-| m33 | rank: cobertura ±5 % deja de ir primero | vigente | MUERTO | CM.vent.1, 9, 13 |
+| m32 | 62.1 almacén Rp 1 (reapuntado a `ESPACIOS_VENT`, AUD-03: `warehouse: { label: "Almacén", Rp: 2.5, Ra: 0.3 },`) | fase2:H-157 | VIVO (fase2: Tab.45 tapa el Vbz; no cuenta para la compuerta) | antes: VIVO (Tab.45 tapa el Vbz mientras Rp sea 2.5 o menos; lo mata la fila 3.a con CM_FASE2=1) |
+| m33 | los que cubren dejan de ir primero en la lista de candidatos (H-154; reapuntado: `const sorted = cubren.concat(noCubren);` → `noCubren.concat(cubren)`) | vigente | MUERTO (S.64: aserción de orden de candidatos agregada en H-273) | antes (rank ±5 %): CM.vent.1, 9, 13; aserción nueva prevista en S.64 |
 | m34 | general sin aire exterior | vigente | MUERTO | CM.vent.4 |
+| m35 | H-291: la huella de Ventilación vuelve a llevar el sitio de Proyecto | vigente | MUERTO (S.170) | prueba de H-291: S.170 |
 
 ## Hallazgos del motor sin fila fase2 (requieren decisión del dueño o texto de norma)
 - **H-158** (rótulo «Aire exterior ASHRAE 62.1» sobre un valor que casi siempre sale de Tab.45): sólo rótulo. Las filas

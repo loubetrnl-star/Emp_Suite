@@ -1,0 +1,2 @@
+# Dependencias de los scripts de Python de scripts/ (versiones fijadas).
+# calibres_redondo_smacna.py: sólo biblioteca estándar (Python 3.14.7); sin paquetes externos.

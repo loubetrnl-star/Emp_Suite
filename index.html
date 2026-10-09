@@ -9378,15 +9378,213 @@ const RECT_G = [
   { c: "6", b: [[12, 18], [30, 16], [48, 14], [999, 12]], j: "Brida companion" },
   { c: "10", b: [[12, 16], [30, 14], [48, 12], [999, 10]], j: "Soldado / brida pesada" },
 ];
+/* H-170 (duct v7; decisiones del dueño, 2026-10-07): calibre de ducto RECTANGULAR según SMACNA HVAC Duct Construction
+   Standards, 2nd Ed. 1995 + Addendum No. 1 (1997), TABLES 1-3 a 1-9 «Rectangular duct reinforcement» (½ a 10 in w.g.,
+   static pos. or neg., pág. 1.18-1.30; normas/smacna1995_tabla1-3…1-9.json, texto público en law.resource.org). El calibre
+   depende del lado mayor y del ESPACIADO DE REFUERZO, que se captura por tramo (espaciadoRef, ft). Sin capturar (null): la
+   columna «no reinforcement required» (= TABLE 1-24); si a ese tamaño la tabla exige refuerzo, el calibre queda PENDIENTE
+   (regla 6). Celda «NOT DESIGNED» o en blanco, o lado mayor > 120 in: pendiente. «NOT REQUIRED» en una columna de espaciado:
+   el calibre sin refuerzo. Un tramo de un proyecto guardado antes de H-170 no trae la llave espaciadoRef: conserva RECT_G
+   (criterio de la casa) rotulado «migración, sin confirmar» hasta que se capture el espaciado.
+   r = [lado mayor máximo en in, calibre sin refuerzo | null, celdas 10, 8, 6, 5, 4, 3, 2½ y 2 ft]; celda = texto impreso
+   («C-24G»: clase C, calibre 24, alternativa con tirante G; «Lt-16»: tirante obligatorio), "NR" not required,
+   "ND" not designed, "" en blanco. */
+const RECT_SMACNA = {
+  "1": { tabla: "1-4", pag: "1.20", r: [
+    [10, 26, ["NR", "NR", "NR", "NR", "NR", "NR", "NR", "NR"]],
+    [12, 26, ["NR", "NR", "NR", "NR", "NR", "NR", "NR", "NR"]],
+    [14, 24, ["B-26", "B-26", "B-26", "B-26", "B-26", "A-26", "A-26", "A-26"]],
+    [16, 22, ["B-24", "B-26", "B-26", "B-26", "B-26", "B-26", "B-26", "A-26"]],
+    [18, 22, ["B-24", "B-26", "B-26", "B-26", "B-26", "B-26", "B-26", "B-26"]],
+    [20, 20, ["C-24", "C-26", "C-26", "C-26", "C-26", "B-26", "B-26", "B-26"]],
+    [22, 18, ["C-24", "C-24", "C-26", "C-26", "C-26", "B-26", "B-26", "B-26"]],
+    [24, 18, ["C-24", "C-24", "C-26", "C-26", "C-26", "C-26", "B-26", "B-26"]],
+    [26, 18, ["D-22", "D-24", "C-26", "C-26", "C-26", "C-26", "C-26", "B-26"]],
+    [28, 16, ["D-22", "D-24", "D-26", "C-26", "C-26", "C-26", "C-26", "C-26"]],
+    [30, 16, ["E-22", "D-24", "D-26", "D-26", "C-26", "C-26", "C-26", "C-26"]],
+    [36, null, ["E-20", "E-22", "E-24", "D-24", "D-26", "C-26", "C-26", "C-26"]],
+    [42, null, ["F-18", "F-20", "E-22", "E-24", "E-26", "D-26", "D-26", "C-26"]],
+    [48, null, ["G-16", "G-18", "F-20", "F-22", "E-24", "E-26", "E-26", "D-26"]],
+    [54, null, ["H-16", "H-18", "G-20", "F-22", "F-24", "E-24", "E-24", "E-24"]],
+    [60, null, ["ND", "H-18", "G-20", "G-22", "F-24", "F-24", "E-24", "E-24"]],
+    [72, null, ["ND", "ND", "H-18G", "H-18G", "H-22G", "F-24", "F-24", "F-24"]],
+    [84, null, ["ND", "ND", "I-16G", "I-18G", "I-20G", "H-22G", "H-22G", "G-22"]],
+    [96, null, ["ND", "ND", "ND", "I-16H", "I-18H", "I-20G", "H-20G", "H-22G"]],
+    [108, null, ["ND", "ND", "ND", "ND", "I-18G", "I-18G", "I-18G", "I-18G"]],
+    [120, null, ["ND", "ND", "ND", "ND", "ND", "I-18H", "I-18H", "I-18G"]]] },
+  "2": { tabla: "1-5", pag: "1.22", r: [
+    [10, 26, ["NR", "NR", "NR", "NR", "NR", "NR", "NR", "NR"]],
+    [12, 24, ["NR", "B-26", "B-26", "B-26", "B-26", "B-26", "B-26", "B-26"]],
+    [14, 22, ["NR", "B-24", "B-26", "B-26", "B-26", "B-26", "B-26", "B-26"]],
+    [16, 20, ["C-22", "C-24", "C-24", "C-26", "C-26", "C-26", "B-26", "B-26"]],
+    [18, 20, ["C-22", "C-24", "C-24", "C-26", "C-26", "C-26", "C-26", "B-26"]],
+    [20, 18, ["C-20", "C-22", "C-24", "C-26", "C-26", "C-26", "C-26", "C-26"]],
+    [22, 16, ["D-20", "D-22", "D-24", "D-26", "C-26", "C-26", "C-26", "C-26"]],
+    [24, 16, ["E-20", "E-22", "D-24", "D-26", "D-26", "C-26", "C-26", "C-26"]],
+    [26, null, ["E-20", "E-22", "E-24", "D-26", "D-26", "C-26", "C-26", "C-26"]],
+    [28, null, ["F-18", "E-20", "E-22", "E-24", "D-26", "D-26", "C-26", "C-26"]],
+    [30, null, ["F-18", "F-20", "E-22", "E-24", "E-26", "D-26", "D-26", "C-26"]],
+    [36, null, ["G-16", "G-18", "F-20", "F-22", "E-24", "E-26", "D-26", "D-26"]],
+    [42, null, ["ND", "H-16", "G-18", "G-20", "F-24", "E-24", "E-26", "E-26"]],
+    [48, null, ["ND", "I-16", "H-18", "H-20", "G-22", "F-24", "F-24", "E-24"]],
+    [54, null, ["ND", "ND", "I-16G", "H-18G", "H-20G", "G-24", "F-24", "F-24"]],
+    [60, null, ["ND", "ND", "I-16G", "I-18G", "H-18G", "G-22", "G-24", "F-24"]],
+    [72, null, ["ND", "ND", "ND", "J-16H", "I-18G", "H-22G", "H-22G", "H-24"]],
+    [84, null, ["ND", "ND", "ND", "ND", "I-18G", "I-20G", "I-22G", "I-22G"]],
+    [96, null, ["ND", "ND", "ND", "ND", "J-18H", "I-18H", "I-20H", "I-22H"]],
+    [108, null, ["ND", "ND", "ND", "ND", "ND", "K-18H", "J-18H", "I-18H"]],
+    [120, null, ["ND", "ND", "ND", "ND", "ND", "ND", "K-18I", "J-18I"]]] },
+  "3": { tabla: "1-6", pag: "1.24", r: [
+    [10, 24, ["NR", "NR", "B-26", "B-26", "B-26", "B-26", "B-26", "B-26"]],
+    [12, 22, ["NR", "B-24", "B-24", "B-26", "B-26", "B-26", "B-26", "B-26"]],
+    [14, 20, ["NR", "C-22", "C-24", "C-24", "C-26", "C-26", "B-26", "B-26"]],
+    [16, 18, ["NR", "C-22", "C-24", "C-24", "C-26", "C-26", "C-26", "C-26"]],
+    [18, 18, ["NR", "D-22", "D-24", "C-24", "C-26", "C-26", "C-26", "C-26"]],
+    [20, 16, ["D-18", "D-20", "D-22", "D-24", "D-24", "C-26", "C-26", "C-26"]],
+    [22, 16, ["E-18", "E-20", "E-22", "D-24", "D-24", "D-26", "C-26", "C-26"]],
+    [24, 16, ["E-18", "E-18", "E-22", "E-24", "E-24", "D-26", "D-26", "C-26"]],
+    [26, null, ["F-18", "F-18", "E-22", "E-24", "E-24", "D-26", "D-26", "C-26"]],
+    [28, null, ["F-16", "F-18", "F-20", "F-22", "E-24", "E-26", "D-26", "D-26"]],
+    [30, null, ["G-16", "G-18", "F-20", "F-22", "E-24", "E-26", "E-26", "D-26"]],
+    [36, null, ["ND", "H-16G", "H-18G", "G-20", "F-22", "F-24", "E-26", "E-26"]],
+    [42, null, ["ND", "ND", "H-18G", "H-20G", "G-22", "F-24", "F-24", "E-26"]],
+    [48, null, ["ND", "ND", "I-16G", "I-18G", "H-20", "G-22", "G-24", "F-24"]],
+    [54, null, ["ND", "ND", "ND", "I-18G", "I-18G", "H-22G", "G-24", "G-24"]],
+    [60, null, ["ND", "ND", "ND", "I-16G", "I-18G", "H-20G", "H-22G", "G-24"]],
+    [72, null, ["ND", "ND", "ND", "ND", "J-16H", "I-20G", "I-22G", "I-24G"]],
+    [84, null, ["ND", "ND", "ND", "ND", "ND", "J-18H", "I-20H", "I-22G"]],
+    [96, null, ["ND", "ND", "ND", "ND", "ND", "K-18I", "J-18I", "I-20H"]],
+    [108, null, ["ND", "ND", "ND", "ND", "ND", "ND", "L-18I", "K-18I"]],
+    [120, null, ["ND", "ND", "ND", "ND", "ND", "ND", "L-18I", "L-18I"]]] },
+  "4": { tabla: "1-7", pag: "1.26", r: [
+    [8, 24, ["NR", "NR", "B-26", "B-26", "B-26", "B-26", "B-26", "B-26"]],
+    [10, 22, ["NR", "NR", "B-24", "B-26", "B-26", "B-26", "B-26", "B-26"]],
+    [12, 20, ["B-22", "B-22", "C-24", "C-26", "C-26", "C-26", "B-26", "B-26"]],
+    [14, 18, ["C-20", "C-22", "C-22", "C-24", "C-26", "C-26", "C-26", "C-26"]],
+    [16, 18, ["C-18", "D-20", "D-22", "C-24", "C-26", "C-26", "C-26", "C-26"]],
+    [18, 16, ["D-18", "D-20", "D-22", "D-24", "D-26", "C-26", "C-26", "C-26"]],
+    [20, null, ["E-18", "E-20", "E-22", "E-24", "D-24", "D-26", "C-26", "C-26"]],
+    [22, null, ["E-18", "E-18", "E-20", "E-24", "E-24", "D-26", "D-26", "C-26"]],
+    [24, null, ["F-18", "F-18", "F-20", "E-22", "E-24", "E-26", "D-26", "D-26"]],
+    [26, null, ["G-18", "G-18", "F-20", "F-22", "E-24", "E-26", "E-26", "D-26"]],
+    [28, null, ["H-16G", "G-18", "G-20", "F-22", "F-24", "E-26", "E-26", "D-26"]],
+    [30, null, ["H-16G", "H-18G", "G-18", "G-22", "F-24", "E-26", "E-26", "E-26"]],
+    [36, null, ["ND", "ND", "H-18G", "H-20", "G-22", "F-24", "F-26", "E-26"]],
+    [42, null, ["ND", "ND", "I-16G", "I-18G", "H-20G", "G-22", "G-24", "F-26"]],
+    [48, null, ["ND", "ND", "ND", "I-18G", "I-18G", "H-22G", "H-24G", "G-24"]],
+    [54, null, ["ND", "ND", "ND", "I-16H", "I-18G", "I-20G", "H-22G", "H-24G"]],
+    [60, null, ["ND", "ND", "ND", "J-16I", "I-16H", "I-20G", "I-22G", "H-24G"]],
+    [72, null, ["ND", "ND", "ND", "ND", "ND", "J-18H", "I-20H", "I-22G"]],
+    [84, null, ["ND", "ND", "ND", "ND", "ND", "K-16I", "J-18I", "I-20H"]],
+    [96, null, ["ND", "ND", "ND", "ND", "ND", "ND", "K-18I", "J-20I"]],
+    [108, null, ["ND", "ND", "ND", "ND", "ND", "ND", "L-18I", "L-18I"]],
+    [120, null, ["ND", "ND", "ND", "ND", "ND", "ND", "L-18J", "L-18J"]]] },
+  "6": { tabla: "1-8", pag: "1.28", r: [
+    [8, 24, ["NR", "NR", "NR", "C-26", "C-26", "B-26", "B-26", "B-26"]],
+    [10, 20, ["NR", "NR", "B-22", "C-24", "C-24", "B-26", "B-26", "B-26"]],
+    [12, 18, ["C-20", "C-20", "C-22", "C-24", "C-24", "C-26", "C-26", "C-26"]],
+    [14, 18, ["C-20", "C-20", "D-20", "D-22", "C-24", "C-26", "C-26", "C-26"]],
+    [16, 16, ["D-18", "D-18", "D-20", "D-22", "D-24", "D-26", "C-26", "C-26"]],
+    [18, null, ["E-18", "E-18", "E-20", "E-22", "E-24", "D-26", "D-26", "C-26"]],
+    [20, null, ["F-16", "F-18", "F-20", "E-22", "E-24", "D-24", "D-26", "D-26"]],
+    [22, null, ["F-16", "F-18", "F-20", "F-22", "F-24", "E-24", "E-26", "D-26"]],
+    [24, null, ["ND", "G-18", "G-20", "F-22", "F-22", "E-24", "E-26", "E-26"]],
+    [26, null, ["ND", "H-16G", "G-18", "G-20", "F-22", "F-24", "E-24", "E-24"]],
+    [28, null, ["ND", "H-16G", "H-18G", "H-20G", "G-22", "F-24", "F-24", "E-24"]],
+    [30, null, ["ND", "ND", "H-18G", "H-18G", "G-22", "F-24", "F-24", "E-24"]],
+    [36, null, ["ND", "ND", "I-16H", "I-18H", "H-20G", "H-22G", "G-24", "F-24"]],
+    [42, null, ["ND", "ND", "ND", "I-16H", "I-18G", "H-20G", "H-22G", "G-22"]],
+    [48, null, ["ND", "ND", "ND", "ND", "I-18H", "I-18H", "I-22G", "H-22G"]],
+    [54, null, ["ND", "ND", "ND", "ND", "J-16H", "I-18H", "I-20G", "I-22G"]],
+    [60, null, ["ND", "ND", "ND", "ND", "ND", "J-18H", "I-20H", "I-22G"]],
+    [72, null, ["ND", "ND", "ND", "ND", "ND", "K-16I", "J-18I", "J-20H"]],
+    [84, null, ["ND", "ND", "ND", "ND", "ND", "ND", "L-16J", "K-18I"]],
+    [96, null, ["ND", "ND", "ND", "ND", "ND", "ND", "It-16", "L-18J"]],
+    [108, null, ["ND", "ND", "ND", "ND", "ND", "ND", "Jt-16", "L-18J"]],
+    [120, null, ["ND", "ND", "ND", "ND", "ND", "ND", "Kt-16", "Kt-18"]]] },
+  "10": { tabla: "1-9", pag: "1.30", r: [
+    [8, 22, ["NR", "NR", "", "C-24", "C-24", "C-26", "C-26", "C-26"]],
+    [10, 18, ["NR", "NR", "C-20", "C-22", "C-24", "C-26", "C-26", "C-26"]],
+    [12, 16, ["NR", "C-18", "D-20", "D-22", "D-24", "C-26", "C-26", "C-26"]],
+    [14, null, ["NR", "D-18", "E-18", "E-20", "D-22", "D-24", "D-26", "C-26"]],
+    [16, null, ["ND", "E-16", "E-18", "E-20", "E-22", "E-24", "D-24", "D-26"]],
+    [18, null, ["ND", "F-16", "F-18", "F-20", "F-20", "E-24", "E-24", "D-26"]],
+    [20, null, ["ND", "G-16", "G-18", "G-18", "F-20", "F-22", "E-24", "E-24"]],
+    [22, null, ["ND", "ND", "H-18G", "G-18", "G-20", "F-22", "F-24", "E-24"]],
+    [24, null, ["ND", "ND", "H-18G", "H-18G", "H-20G", "G-22", "F-24", "F-24"]],
+    [26, null, ["ND", "ND", "I-16G", "H-18G", "H-20G", "G-22", "F-24", "F-24"]],
+    [28, null, ["ND", "ND", "I-16G", "I-18G", "H-18G", "H-22G", "G-24", "F-24"]],
+    [30, null, ["ND", "ND", "ND", "I-16G", "I-18G", "H-22G", "H-24G", "G-24"]],
+    [36, null, ["ND", "ND", "ND", "J-16H", "I-18H", "I-20G", "H-22G", "H-24G"]],
+    [42, null, ["ND", "ND", "ND", "ND", "J-16I", "I-18G", "I-20H", "I-22G"]],
+    [48, null, ["ND", "ND", "ND", "ND", "ND", "J-18I", "I-18H", "I-22H"]],
+    [54, null, ["ND", "ND", "ND", "ND", "ND", "K-16I", "J-18H", "I-20H"]],
+    [60, null, ["ND", "ND", "ND", "ND", "ND", "L-16I", "K-18I", "J-20I"]],
+    [72, null, ["ND", "ND", "ND", "ND", "ND", "ND", "L-16J", "L-18I"]],
+    [84, null, ["ND", "ND", "ND", "ND", "ND", "ND", "ND", "Lt-16"]],
+    [96, null, ["ND", "ND", "ND", "ND", "ND", "ND", "ND", "Lt-16"]],
+    [108, null, ["ND", "ND", "ND", "ND", "ND", "ND", "ND", "Lt-16"]],
+    [120, null, ["ND", "ND", "ND", "ND", "ND", "ND", "ND", "Lt-16"]]] },
+  "0.5": { tabla: "1-3", pag: "1.18", r: [
+    [10, 26, ["NR", "NR", "NR", "NR", "NR", "NR", "NR", "NR"]],
+    [12, 26, ["NR", "NR", "NR", "NR", "NR", "NR", "NR", "NR"]],
+    [14, 26, ["NR", "NR", "NR", "NR", "NR", "NR", "NR", "NR"]],
+    [16, 26, ["NR", "NR", "NR", "NR", "NR", "NR", "NR", "NR"]],
+    [18, 26, ["NR", "NR", "NR", "NR", "NR", "NR", "NR", "NR"]],
+    [20, 24, ["B-26", "B-26", "B-26", "B-26", "B-26", "B-26", "A-26", "A-26"]],
+    [22, 22, ["B-26", "B-26", "B-26", "B-26", "B-26", "B-26", "B-26", "A-26"]],
+    [24, 22, ["C-26", "C-26", "C-26", "B-26", "B-26", "B-26", "B-26", "B-26"]],
+    [26, 20, ["C-26", "C-26", "C-26", "C-26", "B-26", "B-26", "B-26", "B-26"]],
+    [28, 18, ["C-24", "C-26", "C-26", "C-26", "C-26", "B-26", "B-26", "B-26"]],
+    [30, 18, ["C-24", "C-26", "C-26", "C-26", "C-26", "B-26", "B-26", "B-26"]],
+    [36, 16, ["D-22", "D-24", "C-26", "C-26", "C-26", "C-26", "C-26", "B-26"]],
+    [42, null, ["E-20", "E-24", "D-24", "D-26", "C-26", "C-26", "C-26", "C-26"]],
+    [48, null, ["E-20", "E-22", "E-24", "E-26", "D-26", "D-26", "C-26", "C-26"]],
+    [54, null, ["F-18", "F-20", "E-22", "E-26", "E-26", "E-26", "D-26", "C-26"]],
+    [60, null, ["G-18", "F-20", "F-22", "E-24", "E-24", "E-26", "E-26", "D-26"]],
+    [72, null, ["H-16", "H-18", "F-20", "F-22", "F-24", "E-24", "E-24", "E-24"]],
+    [84, null, ["ND", "I-16G", "H-18G", "H-22G", "G-24", "F-24", "F-24", "F-24"]],
+    [96, null, ["ND", "I-16G", "I-18G", "H-20G", "H-22G", "G-22", "F-22", "F-22"]],
+    [108, null, ["ND", "ND", "ND", "I-18G", "I-18G", "H-18G", "H-18G", "G-18"]],
+    [120, null, ["ND", "ND", "ND", "ND", "ND", "I-18G", "H-18G", "H-18G"]]] },
+};
+const ESP_REFUERZO = [10, 8, 6, 5, 4, 3, 2.5, 2];
+/* H-310 (duct v5; decisión del dueño, 2026-10-07): calibre de ducto redondo según SMACNA HVAC Duct Construction
+   Standards, 2nd Ed. 1995 + Addendum No. 1 (1997), TABLE 3-2A «Round duct gage unreinforced positive pressure», pág. 3.3
+   (normas/smacna1995_tabla3-2A.json; texto público en law.resource.org, normas/FUENTE.md). Columna de costura
+   LONGITUDINAL (decisión del dueño: en todas las celdas es igual o más gruesa que la espiral, así que cubre las dos).
+   b = [diámetro máximo en in, calibre], renglones seguidos con el mismo calibre juntos; la tabla llega a 84 in y la serie
+   redonda a Ø2000 mm (78.7 in): arriba de eso el tramo ya es error H-166. col = columna de presión de la tabla (+2, +4,
+   +10 in w.g.); las clases ½, 1, 3 y 6 no están tabuladas y toman la inmediata superior (supuesto propio, decisión del
+   dueño). j (junta) sigue siendo criterio de la casa. Antes (criterio de la casa sin tabla, H-168): 2 a 14 calibres más
+   grueso hasta 60 in y más delgado arriba de 60 in en las clases bajas (Ø800 clase 2": cal 18 → 22; Ø1600 clase 1": 18 → 16). */
 const ROUND_G = [
-  { c: "0.5", b: [[14, 26], [26, 24], [36, 22], [999, 20]], j: "Espiral + acople" },
-  { c: "1", b: [[14, 24], [26, 22], [36, 20], [999, 18]], j: "Espiral sellado" },
-  { c: "2", b: [[14, 22], [26, 20], [36, 18], [999, 16]], j: "Espiral / bridado" },
-  { c: "3", b: [[18, 20], [30, 18], [999, 16]], j: "Bridado" },
-  { c: "4", b: [[18, 18], [30, 16], [999, 14]], j: "Bridado industrial" },
-  { c: "6", b: [[24, 16], [36, 14], [999, 12]], j: "Brida companion" },
-  { c: "10", b: [[24, 14], [36, 12], [999, 10]], j: "Soldado" },
+  { c: "0.5", b: [[8, 28], [14, 26], [26, 24], [36, 22], [50, 20], [60, 18], [84, 16]], j: "Espiral + acople", col: "2" },
+  { c: "1", b: [[8, 28], [14, 26], [26, 24], [36, 22], [50, 20], [60, 18], [84, 16]], j: "Espiral sellado", col: "2" },
+  { c: "2", b: [[8, 28], [14, 26], [26, 24], [36, 22], [50, 20], [60, 18], [84, 16]], j: "Espiral / bridado", col: "2" },
+  { c: "3", b: [[8, 28], [12, 26], [18, 24], [26, 22], [50, 20], [60, 18], [84, 16]], j: "Bridado", col: "4" },
+  { c: "4", b: [[8, 28], [12, 26], [18, 24], [26, 22], [50, 20], [60, 18], [84, 16]], j: "Bridado industrial", col: "4" },
+  { c: "6", b: [[6, 28], [10, 26], [14, 24], [26, 22], [50, 20], [60, 18], [84, 16]], j: "Brida companion", col: "10" },
+  { c: "10", b: [[6, 28], [10, 26], [14, 24], [26, 22], [50, 20], [60, 18], [84, 16]], j: "Soldado", col: "10" },
 ];
+/* H-311 (duct v6; decisión del dueño, 2026-10-07): el ducto redondo de RETORNO y de EXTRACCIÓN trabaja a presión negativa
+   (el signo sale del servicio; el suministro sigue con ROUND_G, la grasa con UMC 2018). Calibre según SMACNA HVAC Duct
+   Construction Standards, 2nd Ed. 1995 + Addendum No. 1 (1997), TABLE 3-2B «Round duct gage negative pressure», pág. 3.5
+   (normas/smacna1995_tabla3-2B.json; texto público en law.resource.org, normas/FUENTE.md), costura LONGITUDINAL como en
+   H-310, columnas -2, -4 y -10 in w.g. (las clases ½, 1, 3 y 6 toman la inmediata superior: supuesto propio).
+   b = [diámetro máximo en in, calibre, refuerzo]; el refuerzo «A6» = ángulo A cada 6 ft (nota de la tabla). La tabla no da
+   calibre longitudinal en 37-60" a -10" ni en 61-72", y no pasa de 72": ahí el calibre queda PENDIENTE (regla 6: sin kilos;
+   no se toma la costura espiral ni otra tabla). */
+const ROUND_G_NEG = [
+  { c: "0.5", b: [[10, 28, null], [13, 26, null], [17, 24, null], [20, 22, null], [26, 20, null], [34, 18, null], [42, 16, null], [48, 18, "A6"], [60, 18, "B4"], [72, null, null]], col: "2" },
+  { c: "1", b: [[10, 28, null], [13, 26, null], [17, 24, null], [20, 22, null], [26, 20, null], [34, 18, null], [42, 16, null], [48, 18, "A6"], [60, 18, "B4"], [72, null, null]], col: "2" },
+  { c: "2", b: [[10, 28, null], [13, 26, null], [17, 24, null], [20, 22, null], [26, 20, null], [34, 18, null], [42, 16, null], [48, 18, "A6"], [60, 18, "B4"], [72, null, null]], col: "2" },
+  { c: "3", b: [[8, 28, null], [10, 26, null], [13, 24, null], [16, 22, null], [20, 20, null], [26, 18, null], [33, 16, null], [36, 20, "A6"], [48, 18, "B6"], [60, 16, "B4"], [72, null, null]], col: "4" },
+  { c: "4", b: [[8, 28, null], [10, 26, null], [13, 24, null], [16, 22, null], [20, 20, null], [26, 18, null], [33, 16, null], [36, 20, "A6"], [48, 18, "B6"], [60, 16, "B4"], [72, null, null]], col: "4" },
+  { c: "6", b: [[8, 26, null], [9, 24, null], [12, 22, null], [15, 20, null], [21, 18, null], [24, 16, null], [26, 18, "A4"], [29, 16, "A4"], [36, 16, "B4"], [72, null, null]], col: "10" },
+  { c: "10", b: [[8, 26, null], [9, 24, null], [12, 22, null], [15, 20, null], [21, 18, null], [24, 16, null], [26, 18, "A4"], [29, 16, "A4"], [36, 16, "B4"], [72, null, null]], col: "10" },
+];
+const ANGULO_SMACNA = { A: '1 × 1 × 1/8"', B: '1-1/4 × 1-1/4 × 3/16"', C: '1-1/2 × 1-1/2 × 3/16"', D: '1-1/2 × 1-1/2 × 1/4"', E: '2 × 2 × 3/16"', F: '2 × 2 × 1/4"' };
 const PRESSURE_CLASSES = [["0.5", '½" w.g. · 125 Pa'], ["1", '1" w.g. · 250 Pa'], ["2", '2" w.g. · 500 Pa'], ["3", '3" w.g. · 750 Pa'], ["4", '4" w.g. · 1000 Pa'], ["6", '6" w.g. · 1500 Pa'], ["10", '10" w.g. · 2500 Pa']];
 const FITTINGS = [
   ["elbow_90_smooth", "Codo 90° radio largo R/D 1,5", .21], ["elbow_90_miter", "Codo 90° inglete 3 secciones", .42],
@@ -9439,8 +9637,11 @@ const GRASA_UMC = {
   acero: { gauge: 16, th_in: .060, nombre: "Acero al carbón", nombreEn: "Carbon steel" },
   inox: { gauge: 18, th_in: .048, nombre: "Acero inoxidable", nombreEn: "Stainless steel" },
 };
-function selectGauge(shape, longMm, pc, material, service) {
+function selectGauge(shape, longMm, pc, material, service, esp) {
   const side = longMm / 25.4;
+  if (shape === "round" && (service === "return" || service === "exhaust")) return calibreRedondoNegativo(side, pc, material);
+  const migrado = shape !== "round" && (esp === undefined || esp === "casa");   /* H-170: tramo de un proyecto anterior */
+  if (shape !== "round" && service !== "kitchen_grease" && !migrado) return calibreRectSmacna(side, pc, material, esp);
   const t = (shape === "round" ? ROUND_G : RECT_G).find((x) => x.c === pc) || RECT_G[2];
   let g = t.b[t.b.length - 1][1];
   for (const [max, gauge] of t.b) if (side <= max) { g = gauge; break; }
@@ -9458,7 +9659,74 @@ function selectGauge(shape, longMm, pc, material, service) {
   if (material === "aluminum") { g = GAUGE_ORDER[Math.min(GAUGE_ORDER.length - 1, GAUGE_ORDER.indexOf(g) + 2)]; note = "Aluminio +2 calibres"; }
   if (material === "stainless") note = "Inoxidable 304/316";
   const th = GAUGE_T[g] ?? .0359;
-  return { gauge: g, th_in: th, th_mm: th * 25.4, joint: t.j, ref: `SMACNA · ${shape === "round" ? "circular" : "rectangular"} · ${pc}" w.g. · ${note}`, material: note };
+  /* H-310: el redondo cita su tabla, su columna y, si la clase no está tabulada, el supuesto. */
+  const ref = shape === "round" && t.col
+    ? `SMACNA HVAC-DCS 2.ª ed. 1995, Tabla 3-2A · costura longitudinal · columna +${t.col}" w.g.${t.col !== pc ? ` (clase ${pc}" sin columna propia: supuesto propio, la inmediata superior)` : ""} · ${note}`
+    : migrado ? `Criterio de la casa (tabla anterior a H-170; proyecto guardado sin espaciado de refuerzo: migración, sin confirmar) · ${pc}" w.g. · ${note}`
+    : `SMACNA · ${shape === "round" ? "circular" : "rectangular"} · ${pc}" w.g. · ${note}`;
+  return { gauge: g, th_in: th, th_mm: th * 25.4, joint: t.j, ref, material: note,
+    ...(migrado ? { migrado: true, aviso: "Espaciado de refuerzo sin capturar (proyecto anterior a H-170): calibre de la tabla de la casa, de la migración, sin confirmar; captura el espaciado para tomarlo de SMACNA 1995 (H-170)" } : {}) };
+}
+/* H-170: rectangular por las TABLES 1-3 a 1-9 con el espaciado de refuerzo del tramo. Sin calibre: pendiente, sin kilos. */
+function calibreRectSmacna(side, pc, material, esp) {
+  const t = RECT_SMACNA[pc] || RECT_SMACNA["2"];
+  const e = esp === null || esp === "" ? null : Number(esp);
+  const col = e === null ? -1 : ESP_REFUERZO.indexOf(e);
+  const fila = t.r.find(([max]) => side <= max) || null;
+  const como = e === null ? "sin refuerzo (espaciado sin capturar)" : `refuerzo cada ${n(e, 1)} ft`;
+  const comoEn = e === null ? "unreinforced (spacing not entered)" : `reinforcement every ${n(e, 1)} ft`;
+  const cita = `SMACNA HVAC-DCS 2.ª ed. 1995, Tabla ${t.tabla} (${pc}" w.g., pág. ${t.pag}) · ${como}`;
+  const citaEn = `SMACNA HVAC-DCS 2nd Ed. 1995, Table ${t.tabla} (${pc}" w.g., p. ${t.pag}) · ${comoEn}`;
+  const lado = `${side.toFixed(1)} in`;
+  const pend = (es, en) => ({ gauge: "—", th_in: 0, th_mm: 0, joint: "—", ref: `${cita} · calibre pendiente`, refEn: `${citaEn} · gauge pending`, material: "",
+    sinCalibre: `Calibre pendiente: ${es}; sin calibre, kilos ni importe (H-170)`, sinCalibreEn: `Gauge pending: ${en}; no gauge, weight or cost (H-170)` });
+  if (e !== null && col < 0) return pend(`espaciado de refuerzo de ${e} ft no tabulado (10, 8, 6, 5, 4, 3, 2½ o 2 ft)`, `reinforcement spacing of ${e} ft is not tabulated (10, 8, 6, 5, 4, 3, 2½ or 2 ft)`);
+  if (!fila) return pend(`la Tabla ${t.tabla} llega a 120 in de lado mayor y este tramo tiene ${lado}`, `Table ${t.tabla} stops at a 120 in long side and this run has ${lado}`);
+  const sinRef = fila[1], celda = col < 0 ? null : fila[2][col];
+  let g, m = null;
+  if (e === null || celda === "NR") {
+    if (sinRef === null) return e === null
+      ? pend(`a ${lado} en ${pc}" w.g. la Tabla ${t.tabla} pide refuerzo: captura el espaciado de refuerzo del tramo`, `at ${lado} and ${pc}" w.g. Table ${t.tabla} requires reinforcement: enter the run's reinforcement spacing`)
+      : pend(`la Tabla ${t.tabla} marca «not required» a ${lado} con ${n(e, 1)} ft pero no da calibre sin refuerzo a ese tamaño`, `Table ${t.tabla} marks «not required» at ${lado} with ${n(e, 1)} ft but gives no unreinforced gauge at that size`);
+    g = sinRef;
+  } else if (celda === "ND" || celda === "") {
+    return pend(`la Tabla ${t.tabla} no tiene diseño a ${lado} con refuerzo cada ${n(e, 1)} ft (not designed); elige otro espaciado`, `Table ${t.tabla} has no design at ${lado} with reinforcement every ${n(e, 1)} ft (not designed); choose another spacing`);
+  } else {
+    m = celda.match(/^([A-L])(t?)-(\d+)([A-L]?)$/);
+    g = Number(m[3]);
+  }
+  let note = "Galvanizado G60/G90";
+  if (material === "aluminum") { g = GAUGE_ORDER[Math.min(GAUGE_ORDER.length - 1, GAUGE_ORDER.indexOf(g) + 2)]; note = "Aluminio +2 calibres"; }
+  if (material === "stainless") note = "Inoxidable 304/316";
+  const th = GAUGE_T[g] ?? .0359;
+  const refuerzoRect = m ? { clase: m[1], cadaFt: e, alternaTirante: m[4] || null, tiranteObligatorio: !!m[2], texto: celda } : null;
+  const aviso = refuerzoRect ? `Refuerzo clase ${refuerzoRect.clase} cada ${n(e, 1)} ft (SMACNA 1995 Tabla ${t.tabla})${refuerzoRect.alternaTirante ? `; alternativa con tirante: clase ${refuerzoRect.alternaTirante}` : ""}${refuerzoRect.tiranteObligatorio ? "; el tirante es obligatorio" : ""} (H-170)` : null;
+  return { gauge: g, th_in: th, th_mm: th * 25.4, joint: refuerzoRect ? `Refuerzo clase ${refuerzoRect.clase} cada ${n(e, 1)} ft` : "Sin refuerzo (SMACNA 1995 Tabla 1-24)",
+    ref: `${cita}${refuerzoRect ? ` · ${celda}` : ""} · ${note}`, refEn: `${citaEn}${refuerzoRect ? ` · ${celda}` : ""}`, material: note, refuerzoRect, aviso };
+}
+/* H-311: retorno y extracción redondos por la TABLE 3-2B (presión negativa). Sin celda: calibre pendiente, sin kilos. */
+function calibreRedondoNegativo(side, pc, material) {
+  const t = ROUND_G_NEG.find((x) => x.c === pc) || ROUND_G_NEG[2];
+  const fila = t.b.find(([max]) => side <= max) || null;
+  const cita = `SMACNA HVAC-DCS 2.ª ed. 1995, Tabla 3-2B (presión negativa) · costura longitudinal · columna -${t.col}" w.g.${t.col !== pc ? ` (clase ${pc}" sin columna propia: supuesto propio, la inmediata superior)` : ""}`;
+  const citaEn = `SMACNA HVAC-DCS 2nd Ed. 1995, Table 3-2B (negative pressure) · longitudinal seam · -${t.col}" w.g. column${t.col !== pc ? ` (class ${pc}" has no column of its own: own assumption, next higher)` : ""}`;
+  if (!fila || fila[1] === null) {
+    const fuera = !fila;
+    const sinCalibre = fuera ? `Calibre pendiente: la Tabla 3-2B de SMACNA 1995 (presión negativa) llega a Ø72"; este retorno o extracción de Ø${side.toFixed(1)}" queda sin calibre, kilos ni importe (H-311)`
+      : `Calibre pendiente: la Tabla 3-2B de SMACNA 1995 no da calibre de costura longitudinal a Ø${side.toFixed(1)}" en -${t.col}" w.g.; sin calibre, kilos ni importe (H-311)`;
+    const sinCalibreEn = fuera ? `Gauge pending: SMACNA 1995 Table 3-2B (negative pressure) stops at Ø72"; this Ø${side.toFixed(1)}" return or exhaust run has no gauge, weight or cost (H-311)`
+      : `Gauge pending: SMACNA 1995 Table 3-2B gives no longitudinal-seam gauge at Ø${side.toFixed(1)}" for -${t.col}" w.g.; no gauge, weight or cost (H-311)`;
+    return { gauge: "—", th_in: 0, th_mm: 0, joint: "—", ref: `${cita} · calibre pendiente`, refEn: `${citaEn} · gauge pending`, material: "", negativa: true, sinCalibre, sinCalibreEn };
+  }
+  let g = fila[1], note = "Galvanizado G60/G90";
+  if (material === "aluminum") { g = GAUGE_ORDER[Math.min(GAUGE_ORDER.length - 1, GAUGE_ORDER.indexOf(g) + 2)]; note = "Aluminio +2 calibres"; }
+  if (material === "stainless") note = "Inoxidable 304/316";
+  const th = GAUGE_T[g] ?? .0359;
+  const ref = fila[2] ? fila[2].match(/^([A-F])(\d+)$/) : null;
+  const refuerzo = ref ? { codigo: fila[2], angulo: ref[1], cadaFt: Number(ref[2]), medida: ANGULO_SMACNA[ref[1]] } : null;
+  const aviso = refuerzo ? `Retorno/extracción Ø${side.toFixed(1)}": la Tabla 3-2B de SMACNA 1995 pide ángulo de refuerzo ${refuerzo.angulo} (${refuerzo.medida}) cada ${refuerzo.cadaFt} ft con el calibre ${g} (H-311)` : null;
+  return { gauge: g, th_in: th, th_mm: th * 25.4, joint: "Costura longitudinal" + (refuerzo ? ` · ángulo ${refuerzo.angulo} cada ${refuerzo.cadaFt} ft` : ""),
+    ref: `${cita}${refuerzo ? ` · refuerzo ${refuerzo.codigo}` : ""} · ${note}`, refEn: `${citaEn}${refuerzo ? ` · reinforcement ${refuerzo.codigo}` : ""}`, material: note, negativa: true, refuerzo, aviso };
 }
 const ACC_CATS = ["transverse_connector", "corner_cleat", "sealant", "gasket", "hanger", "access_door", "flexible_connector"];
 const ACC_LABEL = { transverse_connector: "Junta transversal", corner_cleat: "Esquinero", sealant: "Sellador", gasket: "Empaque", hanger: "Soporte", access_door: "Puerta de acceso", flexible_connector: "Conector flexible", volume_damper: "Compuerta de volumen", fire_smoke: "Compuerta fuego/humo", turning_vane: "Álabes de giro", spin_in: "Collarín spin-in", takeoff: "Derivación" };
@@ -9700,8 +9968,9 @@ function calcSegment(s, meta) {
   if (!s.lock && s.shape !== "round" && num(s.aspect, 3) > ASPECT_MAX)
     warn.push(`Relación de aspecto capturada ${n(num(s.aspect, 3), 1)}:1: el dimensionado usó el límite de ${ASPECT_MAX}:1 (SMACNA). Arriba de 4:1 sube la lámina y la fricción.`);
   const longSide = s.shape === "round" ? (d || De) : Math.max(w || 0, hgt || 0);
-  const gauge = selectGauge(s.shape, longSide, meta.pc, meta.material, s.service);
+  const gauge = selectGauge(s.shape, longSide, meta.pc, meta.material, s.service, s.espaciadoRef);
   if (gauge.aviso) warn.push(gauge.aviso);
+  if (gauge.sinCalibre) warn.push(gauge.sinCalibre);   /* H-311 */
   const acc = accessoriesFor(s.shape, longSide, meta.pc);
   // Cuantificación
   const perim = s.shape === "round" ? Math.PI * De / 1000 : 2 * (w + hgt) / 1000;
@@ -9771,6 +10040,10 @@ function cotizacionDuct(R, D) {
   (R.segs || []).filter((s) => s.error && num(s.L) > 0).forEach((s) => pendientes.push({ mot: "duct",
     desc: `Ducto de lámina, tramo ${s.tag} (${n(s.L, 1)} m)`, descEn: `Sheet metal duct, run ${s.tag} (${n(s.L, 1)} m)`,
     motivo: `pendiente de medida: ${s.error}`, motivoEn: `size pending: ${s.errorEn || s.error}` }));
+  /* H-311: retorno o extracción redondo sin calibre en la Tabla 3-2B: sin lámina; queda pendiente con su razón. */
+  (R.segs || []).filter((s) => !s.error && s.gauge && s.gauge.sinCalibre && num(s.L) > 0).forEach((s) => pendientes.push({ mot: "duct",
+    desc: `Ducto de lámina, tramo ${s.tag} (${n(s.L, 1)} m)`, descEn: `Sheet metal duct, run ${s.tag} (${n(s.L, 1)} m)`,
+    motivo: s.gauge.sinCalibre, motivoEn: s.gauge.sinCalibreEn }));
   /* H-167 (dependencia de ductos, quote v22): un tramo sin longitud capturada no lleva lámina; queda pendiente de longitud. */
   (R.segs || []).filter((s) => !(num(s.L) > 0)).forEach((s) => pendientes.push({ mot: "duct",
     desc: `Ducto de lámina, tramo ${s.tag}`, descEn: `Sheet metal duct, run ${s.tag}`,
@@ -9820,7 +10093,7 @@ function defaultSegment(tag = "TR-1", flow = 0) {
      traen 1000 CFM/12 m de ejemplo por omisión. Los llamadores que SÍ tienen
      un caudal real (detectar de archivo) lo siguen
      pasando explícito; un tramo agregado a mano nace en 0. */
-  return { id: "s" + Math.random().toString(36).slice(2, 8), tag, service: "supply", shape: "rect", flow, method: "equal_friction", targetF: .8, targetV: 6, length: 0, lock: false, d: null, w: null, h: null, aspect: 3, hmax: 0, fittings: [{ type: "elbow_90_rect", qty: 2, C: .28 }] };
+  return { id: "s" + Math.random().toString(36).slice(2, 8), tag, service: "supply", shape: "rect", flow, method: "equal_friction", targetF: .8, targetV: 6, length: 0, lock: false, d: null, w: null, h: null, espaciadoRef: null, aspect: 3, hmax: 0, fittings: [{ type: "elbow_90_rect", qty: 2, C: .28 }] };
 }
 
 /* ---------- Estado ---------- */
@@ -19813,7 +20086,7 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "7", clean: "3", equip: "4", duct: "4", vent: "4", quote: "24", valor: "2", kaizen: "1", elec: "11", hidro: "11", fuego: "7", aire: "8", civil: "8", soporte: "14" };
+const MOTOR_VER = { load: "7", clean: "3", equip: "4", duct: "7", vent: "4", quote: "24", valor: "2", kaizen: "1", elec: "11", hidro: "11", fuego: "7", aire: "8", civil: "8", soporte: "14" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
@@ -19829,7 +20102,7 @@ const MOTOR_CAMBIOS = {
   vent: [{ ver: "2", rev: "2.9.24", que: "H-154 + H-156: la cobertura real manda en la selección Greenheck (cfmMin ≤ objetivo ≤ cfmMax, sin tolerancia ×0.9); la familia del modo sólo ordena entre los que cubren; si nadie cubre no hay modelo (proyecto fijo: GB-360 → CSW-30 para 11,643 CFM)" },
     { ver: "3", rev: "2.9.24", que: "H-155: sin medidas no hay caudal: campana sin largo o fondo y rejilla sin ancho, alto, área libre o velocidad dan demanda 0 con aviso (antes pisos de 0.1 ft, 5 % y 100 fpm fabricaban 30 y 258 CFM y sus partidas)" },
     { ver: "4", rev: "2.9.24", que: "H-262 (decisión del dueño, 27-sep-2026): ventilación calcula sólo con sus propios datos: el área, la altura y los ocupantes ya no se copian de carga térmica (se capturan en su pestaña; un proyecto guardado conserva los valores que ya tenía copiados). Se retira la propuesta load>vent (aire exterior de carga térmica como reposición: con el local sin capturar fabricaba cambios/h sobre 1 m² × 0.1 m). Sin área o altura capturadas, el caudal por cambios de aire queda pendiente de captura, con aviso. La relación con carga térmica va al revés: el ventilador seleccionado entrega el calor de su motor a una zona (H-263)" }],
-  duct: [{ ver: "2", rev: "2.9.24", que: "H-166: un tramo sin caudal, con medida bloqueada sin capturar o fuera de la serie, o sin ninguna medida de la serie que cumpla no lleva sección, kilos ni importe: error visible, «sin medida» en cédula y Excel, pendiente en cotización y soportería (antes 400×200 / Ø250 inventados)" }, { ver: "3", rev: "2.9.24", que: "H-167: «Generar desde carga» trae sólo caudales: sin longitudes (antes 20/10/15 m) ni accesorios (tee 0.65, salida 1.0, entrada 0.03, 2 codos); tramo sin longitud = «pendiente de longitud» sin kilos, juntas ni soportes (antes 1 y 1 mínimos)" }, { ver: "4", rev: "2.9.24", que: "H-165 (decisión 7 del dueño): ducto de grasa por UMC 2018 §510.5 (up.codes): acero al carbón 0.060 in (16 MSG) o inoxidable 0.048 in (18 MSG), soldadura externa continua, nunca galvanizado ni aluminio (antes tabla galvanizada + 2: 500 L/s clase ½\" = cal 22, 0.853 mm); ratificar con NFPA 96" }],
+  duct: [{ ver: "2", rev: "2.9.24", que: "H-166: un tramo sin caudal, con medida bloqueada sin capturar o fuera de la serie, o sin ninguna medida de la serie que cumpla no lleva sección, kilos ni importe: error visible, «sin medida» en cédula y Excel, pendiente en cotización y soportería (antes 400×200 / Ø250 inventados)" }, { ver: "3", rev: "2.9.24", que: "H-167: «Generar desde carga» trae sólo caudales: sin longitudes (antes 20/10/15 m) ni accesorios (tee 0.65, salida 1.0, entrada 0.03, 2 codos); tramo sin longitud = «pendiente de longitud» sin kilos, juntas ni soportes (antes 1 y 1 mínimos)" }, { ver: "4", rev: "2.9.24", que: "H-165 (decisión 7 del dueño): ducto de grasa por UMC 2018 §510.5 (up.codes): acero al carbón 0.060 in (16 MSG) o inoxidable 0.048 in (18 MSG), soldadura externa continua, nunca galvanizado ni aluminio (antes tabla galvanizada + 2: 500 L/s clase ½\" = cal 22, 0.853 mm); ratificar con NFPA 96" }, { ver: "5", rev: "2.9.24", que: "H-310 (decisión del dueño): calibre de ducto redondo por SMACNA HVAC-DCS 2.ª ed. 1995, Tabla 3-2A, costura longitudinal; clases ½, 1, 3 y 6 con la columna inmediata superior (supuesto propio). Antes, criterio de la casa (H-168): Ø800 clase 2\" cal 18 → 22, Ø500 clase 2\" cal 20 → 24, Ø1600 clase 1\" cal 18 → 16" }, { ver: "6", rev: "2.9.24", que: "H-311 (decisión del dueño): retorno y extracción redondos por SMACNA HVAC-DCS 2.ª ed. 1995, Tabla 3-2B (presión negativa), costura longitudinal; el refuerzo que pide la tabla (ángulo y separación) se avisa; donde la tabla no da calibre longitudinal (37-72\" a -10\", 61-72\") o pasa de 72\" el calibre queda pendiente, sin kilos. Antes iban con la 3-2A positiva: Ø500 clase 2\" cal 24 → 22, Ø800 22 → 18" }, { ver: "7", rev: "2.9.24", que: "H-170 (decisiones del dueño): calibre rectangular por SMACNA HVAC-DCS 2.ª ed. 1995, Tablas 1-3 a 1-9, con el espaciado de refuerzo capturado por tramo; sin capturar, la columna sin refuerzo (Tabla 1-24) o calibre pendiente si la tabla exige refuerzo; not designed o > 120 in: pendiente; la clase de refuerzo y el tirante se avisan. Los tramos de proyectos guardados antes conservan la tabla de la casa rotulada «migración, sin confirmar». Antes: tabla de la casa sin número de tabla (1200×700 clase 2\" cal 20 en todo tramo nuevo)" }],
   clean: [{ ver: "2", rev: "2.9.16", que: "sin pisos de 1 m² ni 2.2 m; 5 Pa de ISO 14644-4 con aviso; ceros capturados respetados" },
     { ver: "3", rev: "2.9.24", que: "H-127: se respeta el signo de la presión diferencial capturada (contención en negativa, EU GMP Anexo 1 (2022) §4.14); piso de 5 Pa y fuga por rendijas sobre |ΔP|; el signo sale en memoria, PDF y Excel; aviso con los 10 Pa guía del Anexo 1" }],
   quote: [{ ver: "2", rev: "2.9.16", que: "red hidráulica por diámetro con precio capturado; sin 50 m supuestos; partidas pendientes" }, { ver: "3", rev: "2.9.19", que: "tramo con longitud y sin unidades mueble queda pendiente" }, { ver: "4", rev: "2.9.23", que: "precio de tubería por renglón con origen (referencia de mercado o proveedor local), IVA desglosado y por metro; sin precio: partida Por cotizar en el Budget, bloqueo sólo en la formal" }, { ver: "5", rev: "2.9.23", que: "precios en USD sólo se convierten con tipo de cambio capturado con fecha; sin fecha salen Por cotizar y bloquean la formal (nada se estima)" }, { ver: "6", rev: "2.9.23", que: "referencias sólo de California y sólo material (mano de obra por capturar; combinados → Por cotizar); referencias IUSA retiradas; flete, aduana e importación como renglón propio siempre Por cotizar hasta capturarlo" }, { ver: "7", rev: "2.9.24", que: "H-198: un tramo de agua sin diámetro verificado (fuera del catálogo del material, o PEAD sin SDR ni fuente) va Por cotizar con sus metros; ya no se cotiza con el precio del mayor diámetro ni pide precio de un diámetro que no le corresponde" }, { ver: "8", rev: "2.9.24", que: "H-196: cisterna y equipo de bombeo sin precio semilla (9,500 MXN/m³ y 14,500 MXN/HP sin fuente): van Por cotizar con su volumen y su potencia; la bomba sólo cuando la presión de la red no alcanza; cisterna en 0 queda pendiente de volumen, nunca cisterna de 0 m³" }, { ver: "9", rev: "2.9.24", que: "H-206: bomba contra incendio y reserva sin precio fijo (385,000 MXN + 9,500 MXN/m³ sin fuente): Por cotizar con capacidad (gpm y L/min), presión, potencia y volumen declarados" }, { ver: "10", rev: "2.9.24", que: "dependencia de aire v3 (H-215): la partida del secador lleva la capacidad nominal de ISO 7183 A1 y declara si la corrección del fabricante está pendiente" }, { ver: "11", rev: "2.9.24", que: "dependencia de aire v5 (H-218): la partida de la red declara «diámetros indicativos: DI del fabricante pendiente» en aluminio e inoxidable" }, { ver: "12", rev: "2.9.24", que: "dependencia de vent v2 (H-154): la partida de ventilación nombra el modelo que cubre de verdad (o ninguno)" }, { ver: "13", rev: "2.9.24", que: "dependencia de soporte v5 (H-225): sin altura de colgado la varilla sale pendiente, no cotizada" }, { ver: "14", rev: "2.9.24", que: "dependencia de soporte v6 (H-226): el anclaje va Por cotizar (sección G) mientras no haya SDS con fuente, estructura y f'c" }, { ver: "15", rev: "2.9.24", que: "dependencia de soporte v8 (H-229): más soportes de cobre con los claros MSS/IPC" }, { ver: "16", rev: "2.9.24", que: "dependencia de civil v4 (H-243): muro clasificado y media caña por cuarto limpio" }, { ver: "17", rev: "2.9.24", que: "dependencia de civil v5 (H-244): tabiquería por zona, sin los muros de carga térmica" }, { ver: "18", rev: "2.9.24", que: "H-254: el factor de plaza no toca la sección H ni los precios con origen declarado (referencia o proveedor): tal cual (antes la importación de 18,500 salía 19,980 en Mexicali)" }, { ver: "19", rev: "2.9.24", que: "H-253: la formal (licitación) no sale con referencias de mercado, mano de obra por capturar, importación sin capturar o USD sin tipo de cambio fechado; cada bloqueo se nombra en pantalla y en el error" }, { ver: "20", rev: "2.9.24", que: "H-252 (decisión 6, opción a): cada precio semilla sin fuente sale en el Budget con «SEMILLA · SIN FUENTE» (EN «SEED · NO SOURCE») y bloquea la formal; sólo los renglones con origen declarado y la importación capturada quedan sin marca" }, { ver: "21", rev: "2.9.24", que: "H-166 (dependencia de ductos): la lámina de un tramo sin sección queda pendiente con su razón (ES/EN) y fuera de los kilos de la partida" }, { ver: "22", rev: "2.9.24", que: "H-167 (dependencia de ductos): cada tramo de ducto sin longitud capturada queda pendiente de longitud (ES/EN), sin lámina" }, { ver: "23", rev: "2.9.24", que: "H-165 (dependencia de ductos): los kilos del ducto de grasa salen de la partida de lámina galvanizada y quedan Por cotizar como ducto soldado (UMC 2018 §510.5)" }, { ver: "24", rev: "2.9.24", que: "H-181: el alimentador se cuantifica por calibre (juegos × hilos × m de fase y neutro, tierra por canalización 250-122(f), tubo por juego) y el tablero por capacidad y circuitos dimensionados, «Por cotizar» sin precio con fuente (antes 1 juego a 1,350 MXN/m y tablero de 68,000 + 4,200 por circuito); sin distancia, pendiente de longitud; ramal sin corriente, pendiente" }],
@@ -21870,6 +22143,7 @@ function segmentSheet(i) {
       <div class="row">${inp("Relación de aspecto máxima", `duct.segments.${i}.aspect`, "number", "0.5")}
       ${inp("Altura máxima disponible (mm)", `duct.segments.${i}.hmax`, "number", "25", "duct.hmax", s)}</div>
       <div class="sub" style="margin-top:-4px;margin-bottom:10px">Altura 0 = sin restricción de plafón.</div>
+      ${s.shape !== "round" ? `<div class="row">${sel("Espaciado de refuerzo (SMACNA 1995, Tablas 1-3 a 1-9)", `duct.segments.${i}.espaciadoRef`, [...(!("espaciadoRef" in s) || s.espaciadoRef === "casa" ? [["casa", "Sin capturar (proyecto anterior): tabla de la casa, sin confirmar"]] : []), ["", "Sin capturar: sin refuerzo (Tabla 1-24) o pendiente"], ...ESP_REFUERZO.map((e) => [String(e), `Refuerzo cada ${n(e, 1)} ft`])])}</div>` : ""}
       <h4 style="font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:16px 0 8px">Accesorios de pérdida local</h4>
       ${(s.fittings || []).map((f, k) => `<div class="row" style="grid-template-columns:1fr 70px 32px;align-items:end;margin-bottom:8px">
         <div class="field" style="margin:0"><select data-path="duct.segments.${i}.fittings.${k}.type" data-fitting="${i}.${k}">
