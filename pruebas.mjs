@@ -10517,6 +10517,38 @@ t("S.228 (soportería, orden del dueño 9-oct-2026) calcularTramo con longitud n
     if (!toks.slice(i, i + 6).includes("pendiente")) throw new Error("el PDF no dice «pendiente»: " + toks.slice(i, i + 6).join(" | "));
   } finally { Sx.porTuberia = pt0; G("recompute")(); }
 });
+t("S.230 (H-266, H-230; mutante soporte.m56) sin instantánea aceptada la soportería cuenta sólo lo capturado a mano aunque el proyecto abra con «usar los motores» activo (su instantánea no era objeto y sanearEstado la quitó): los metros de Ductos e Hidráulica no entran a metros, tuberías ni soportes, y la memoria y la cédula PDF dicen que los metros son capturados a mano («valores propios», regla 8)", () => {
+  const guardado = JSON.stringify(S);
+  const pdfTxt = (bytes) => [...Buffer.from(bytes).toString("latin1").matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((m) => m[1].replace(/\\(.)/g, "$1")).join(" ");
+  const aMano = { ductoM: 10, ductoAnchoMm: 400, ductoAltoMm: 300, tubHidroM: 15, tubHidroD: 50, tubHidroMat: "acero", alturaTrabajo: 4, alturaEstructura: 6 };
+  /* Abre un proyecto guardado (reemplazarEstado = sanearEstado). Con los motores: 20 m en Ductos, 30 m en Hidráulica y
+     «usar los motores» con una instantánea que no es objeto; trae la altura de la estructura, así que la migración de H-266 no corre. */
+  const abrir = (conMotores) => {
+    const p = G("defaultState")(); p.meta.name = "S.230";
+    if (conMotores) {
+      p.duct.segments = [{ ...G("defaultSegment")("TR-1", 3000), length: 20 }];
+      p.hidro.tramos = [{ ...G("defaultTramoAgua")("AF-1"), um: 40, L: 30, alt: 3 }];
+    }
+    p.soporte = { ...G("defaultSoporte")(), ...aMano, usarMotores: conMotores, ...(conMotores ? { snap: "instantánea dañada" } : {}) };
+    G("reemplazarEstado")(p); G("recompute")();
+    return G("SOPORTE");
+  };
+  try {
+    const ref = abrir(false);   /* la misma captura a mano, sin metros en los otros motores */
+    if (!(ref.nSoportes > 0) || ref.mDucto !== 10 || ref.mTub !== 15) throw new Error("el caso no aísla lo que se quiere probar: la captura a mano debe dar 10 m de ducto, 15 m de tubería y soportes");
+    const SP = abrir(true);
+    if (S.soporte.usarMotores !== true || S.soporte.snap !== undefined || S.soporte.tomarInstantanea) throw new Error("el caso no aísla lo que se quiere probar: debe abrir con «usar los motores» activo, sin instantánea y sin migrar");
+    const sn = G("snapshotSoporte")(), mSn = (xs) => (xs || []).reduce((a, x) => a + Math.max(0, Number(x.L) || 0), 0);
+    if (!(mSn(sn.duct) >= 20) || !(mSn(sn.hidro) >= 30)) throw new Error("el caso no aísla lo que se quiere probar: Ductos e Hidráulica deben ofrecer sus metros (20 m y 30 m) a una instantánea");
+    eq(SP.mDucto, ref.mDucto, "sin instantánea aceptada sólo cuentan los 10 m de ducto capturados a mano (no los 20 m de Ductos):");
+    eq(SP.mTub, ref.mTub, "ni los 30 m de Hidráulica: sólo los 15 m de tubería capturados a mano:");
+    eq(SP.nSoportes, ref.nSoportes, "los soportes son los de la captura a mano:");
+    eq(JSON.stringify(SP.porTuberia), JSON.stringify(ref.porTuberia), "el detalle por tubería es el de la captura a mano:");
+    if (!SP.memo.some((m) => /^Modo «valores propios»/.test(m) && /no vienen de los motores/.test(m)))
+      throw new Error("la memoria no dice que los metros son capturados a mano («valores propios», H-230) con «usar los motores» activo y sin instantánea aceptada (H-266)");
+    if (!/valores propios/.test(pdfTxt(G("buildSoportePdf")()))) throw new Error("la cédula PDF de soportería no dice que los metros son capturados a mano («valores propios», regla 8)");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {
   const guardado = JSON.stringify(S);
   try {
