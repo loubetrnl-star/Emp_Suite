@@ -1,0 +1,8 @@
+# Verificación independiente en Python (decisión del dueño, 9-oct-2026). Sólo verificación: nada entra a index.html ni al instalador.
+# Entorno: python -m venv .venv-verificacion && .venv-verificacion/Scripts/python.exe -m pip install --only-binary=:all: -r requirements-verificacion.txt
+# Python 3.14.7. Versiones exactas, incluidas las dependencias (pip freeze). Sólo PyPI oficial.
+flexcache==0.3
+flexparser==0.4
+Pint==0.26.1
+platformdirs==4.12.4
+typing_extensions==4.16.0

@@ -5,3 +5,4 @@ SuiteEmp-*-instalador.zip
 x15/
 *.log
 Claude outputs/
+.venv-verificacion/
