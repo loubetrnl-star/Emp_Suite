@@ -82,6 +82,10 @@
   { "id": "soporte.m82", "que": "H-266 (U10, bases, salida): las bases que puso la migración vuelven a presentarse como captura (sin origen en memoria, observaciones ni pantalla)", "logica": false, "buscar": "  const basesMigradas = deMigracion(num(Gc.basesEquipo, 0), scSop.basesEquipo);", "reemplazar": "  const basesMigradas = false;", "estado": "vigente" }
 ,
   { "id": "soporte.m83", "que": "conteo de soportes con Math.round en vez de Math.ceil (el último claro puede exceder el máximo) (S.227, fast-check)", "logica": true, "buscar": "Math.max(2, Math.ceil(tramo.longitud_m / esp.e_m) + 1)", "reemplazar": "Math.max(2, Math.round(tramo.longitud_m / esp.e_m) + 1)", "estado": "vigente" },
-  { "id": "soporte.m84", "que": "mínimo de soportes por tramo 2 → 1 (S.227, fast-check)", "logica": true, "buscar": "Math.max(2, Math.ceil(tramo.longitud_m / esp.e_m) + 1)", "reemplazar": "Math.max(1, Math.ceil(tramo.longitud_m / esp.e_m) + 1)", "estado": "vigente" },
   { "id": "soporte.m85", "que": "un soporte de más por tramo (+1 → +2) (S.227, fast-check)", "logica": true, "buscar": "Math.max(2, Math.ceil(tramo.longitud_m / esp.e_m) + 1)", "reemplazar": "Math.max(2, Math.ceil(tramo.longitud_m / esp.e_m) + 2)", "estado": "vigente" }
+,
+  { "id": "soporte.m86", "que": "S.228: la longitud no finita o ≤ 0 vuelve a contarse (sin la guarda) (S.228)", "logica": true, "buscar": "  const Lok = Number.isFinite(Lnum) && Lnum > 0;", "reemplazar": "  const Lok = true;", "estado": "vigente" },
+  { "id": "soporte.m87", "que": "S.228: el despiece vuelve a dejar varilla, anclas y perfiles en cero de un tramo inválido (S.228)", "logica": true, "buscar": "    if (!t.varilla || t.n_soportes === null) continue;", "reemplazar": "    if (!t.varilla) continue;", "estado": "vigente" },
+  { "id": "soporte.m88", "que": "S.228: la pantalla vuelve a mostrar «null» en Soportes (S.228)", "logica": true, "buscar": "<td class=\"num\">${d.n == null ? \"pendiente\" : d.n}", "reemplazar": "<td class=\"num\">${d.n}", "estado": "vigente" },
+  { "id": "soporte.m89", "que": "S.228: el PDF vuelve a imprimir «null» en Soportes (S.228)", "logica": true, "buscar": "n(t.L, 0), t.n == null ? \"pendiente\" : String(t.n)])),", "reemplazar": "n(t.L, 0), String(t.n)])),", "estado": "vigente" }
 ]

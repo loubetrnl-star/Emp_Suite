@@ -10482,6 +10482,41 @@ t("S.227 (fast-check, soportería) propiedades de calcularTramo con semilla fija
     const a = ct({ ...base, contenido: "agua" }, {}), v = ct({ ...base, contenido: "vacio" }, {}), o = ct({ ...base, contenido: otro }, {});
     return a.errores.length === 0 && a.peso.fluido > 0 && a.peso.total > v.peso.total && o.peso.fluido === 0 && o.peso.total === v.peso.total; }));
 });
+t("S.228 (soportería, orden del dueño 9-oct-2026) calcularTramo con longitud no finita o ≤ 0 devuelve dato inválido explícito: ok false, n_soportes null, longitud_m null y un error «longitud … dato pendiente», sin tronar y sin NaN en los totales; la pantalla y el PDF muestran «pendiente» en la columna de soportes. Las entradas válidas no cambian (S.227 y R.1/R.4)", () => {
+  const ct = G("calcularTramo"), cs = G("calcularSoporteria");
+  const tipos = [{ tipo: "ducto_rect", ancho_mm: 600, alto_mm: 400 }, { tipo: "ducto_redondo", diam_mm: 500 }, { tipo: "tuberia", material: "acero", dn: '2"', cedula: "ced40", contenido: "agua" }];
+  for (const t of tipos) for (const L of [0, -5, -0.001, NaN, Infinity, -Infinity, undefined, null, "abc", ""]) {
+    let r; try { r = ct({ id: "inv", ...t, longitud_m: L }, {}); } catch (e) { throw new Error(`${t.tipo} con L = ${String(L)} truena: ${e.message}`); }
+    const que = `${t.tipo} con L = ${JSON.stringify(L) ?? String(L)}:`;
+    eq(r.ok, false, que + " ok"); eq(r.n_soportes, null, que + " n_soportes"); eq(r.longitud_m, null, que + " longitud_m");
+    if (!r.errores.some((x) => /longitud/i.test(x) && /pendiente/i.test(x))) throw new Error(que + " falta el error de longitud pendiente: " + JSON.stringify(r.errores));
+    if (!Number.isFinite(r.peso.total) || !Number.isFinite(r.espaciamiento.e_m) || !Number.isFinite(r.carga_por_soporte_kgf)) throw new Error(que + " peso, claro o carga no finitos");
+  }
+  const bueno = { id: "ok", tipo: "ducto_rect", ancho_mm: 600, alto_mm: 400, longitud_m: 10 };
+  const R = cs({ tramos: [{ id: "mal", tipo: "ducto_rect", ancho_mm: 600, alto_mm: 400, longitud_m: NaN }, bueno] });
+  eq(R.resumen.soportes, ct(bueno, {}).n_soportes, "sólo cuenta el tramo válido:"); eq(R.resumen.longitud_total_m, 10, "longitud total sin el inválido:");
+  eq(R.resumen.con_error, 1, "un tramo con error:"); eq(R.ok, false, "la corrida queda con error:");
+  const Rm = cs({ tramos: [{ id: "mal", tipo: "tuberia", material: "acero", dn: '2"', cedula: "ced40", contenido: "agua", longitud_m: 0 }] });
+  eq(JSON.stringify([Rm.despiece.varilla_m, Rm.despiece.anclajes_pza, Rm.despiece.perfil_m, Rm.despiece.abrazaderas_pza]), "[{},{},{},0]", "el tramo inválido no deja varilla, anclas, perfiles ni abrazaderas en cero:");
+  eq(Rm.resumen.soportes, 0, "ni soportes:");
+  /* Pantalla y PDF: un renglón con n null se lee «pendiente», no «null». */
+  const Sx = G("SOPORTE"), pt0 = Sx.porTuberia;
+  try {
+    const det = { tag: "INV-1", d: 50, e: 3, L: null, n: null, wl: 1, carga: 1, varilla: null, varillaOk: false, adm: 0 };
+    Sx.porTuberia = [{ etiqueta: "Prueba S.228", fam: "acero", n: 0, m: 0, det: [det] }];
+    const html = G("viewSoporte")();
+    if (/>null</.test(html)) throw new Error("la pantalla muestra «null»");
+    if (!/INV-1[\s\S]*?<td class="num">pendiente<\/td><\/tr>/.test(html)) throw new Error("la pantalla no dice «pendiente» en Soportes");
+    /* buildSoportePdf recalcula: se envuelve computeSoporteGobernado sólo durante la emisión para meter el renglón. */
+    const cg0 = G("computeSoporteGobernado"), poner = w.eval("(f) => { computeSoporteGobernado = f; }");
+    poner((Gs) => { const R = cg0(Gs); R.porTuberia = [{ etiqueta: "Prueba S.228", fam: "acero", n: 0, m: 0, det: [det] }]; return R; });
+    let pdf; try { pdf = G("buildSoportePdf")(); } finally { poner(cg0); }
+    const toks = [...Buffer.from(pdf).toString("latin1").matchAll(/\(((?:[^()\\]|\\.)*)\) Tj/g)].map((m) => m[1]);
+    const i = toks.indexOf("INV-1"); if (i < 0) throw new Error("el PDF no trae el renglón");
+    if (toks.slice(i, i + 6).includes("null")) throw new Error("el PDF imprime «null»: " + toks.slice(i, i + 6).join(" | "));
+    if (!toks.slice(i, i + 6).includes("pendiente")) throw new Error("el PDF no dice «pendiente»: " + toks.slice(i, i + 6).join(" | "));
+  } finally { Sx.porTuberia = pt0; G("recompute")(); }
+});
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {
   const guardado = JSON.stringify(S);
   try {

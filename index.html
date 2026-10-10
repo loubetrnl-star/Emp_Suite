@@ -8134,6 +8134,12 @@ function dilatacion({ material = 'acero_carbono', longitud_m, T_op_C, T_inst_C =
 }
 function calcularTramo(tramo, ctx = {}) {
   const errores = [], avisos = [];
+  /* Orden del dueño (9-oct-2026, S.228): una longitud no finita o ≤ 0 no se cuenta como 2 soportes (antes Math.max(2, …)
+     daba 2 con L ≤ 0, NaN con NaN e Infinity con Infinity): es dato inválido explícito, sin soportes, varilla ni riostras
+     contados, y la pantalla dice «pendiente». computeSoporte ya filtra L > 0, así que las entradas válidas no cambian. */
+  const Lnum = tramo.longitud_m === null || tramo.longitud_m === undefined || tramo.longitud_m === '' ? NaN : Number(tramo.longitud_m);
+  const Lok = Number.isFinite(Lnum) && Lnum > 0;
+  if (!Lok) errores.push(`Longitud del tramo «${tramo.id ?? ''}» inválida o faltante (${String(tramo.longitud_m)}): dato pendiente; no se cuentan soportes, varilla ni riostras de este tramo.`);
   /* H-48 (15-sep-2026): pesoTuberia/pesoDucto/espaciamiento tiran throw
      cuando el calibre o el diámetro no está en el catálogo (calibre 14-10
      de un ducto de grasa en clase de presión alta; cobre de 5"-6" en aire
@@ -8161,7 +8167,7 @@ function calcularTramo(tramo, ctx = {}) {
     esp = { e_m: 1, fuente: '—', notas: [] };
   }
   esp.notas.forEach((n2) => avisos.push(n2));
-  const n_soportes = Math.max(2, Math.ceil(tramo.longitud_m / esp.e_m) + 1);
+  const n_soportes = Lok ? Math.max(2, Math.ceil(tramo.longitud_m / esp.e_m) + 1) : null;
   const carga_muerta = peso.total * esp.e_m;
   const n_lineas = tramo.n_lineas_trapecio || 1;
   const carga_soporte = carga_muerta;
@@ -8227,17 +8233,17 @@ function calcularTramo(tramo, ctx = {}) {
   } else if (ctx.estructura?.tipo === 'deck') {
     avisos.push('Fijación a deck metálico: no se cuelga del deck. Se requiere canal puente entre vigas o anclaje al concreto de la losacero con espesor útil real, que es menor al total.');
   }
-  const arr = arriostramiento(tramo.longitud_m, ctx.sismo?.arriostrar !== false);
-  if (arr.aviso) avisos.push(arr.aviso);
+  const arr = Lok ? arriostramiento(tramo.longitud_m, ctx.sismo?.arriostrar !== false) : null;
+  if (arr && arr.aviso) avisos.push(arr.aviso);
   let dil = null;
-  if (tramo.tipo === 'tuberia' && tramo.temperatura_C !== undefined) {
+  if (Lok && tramo.tipo === 'tuberia' && tramo.temperatura_C !== undefined) {
     const mat = tramo.material === 'cobre' ? 'cobre' : 'acero_carbono';
     dil = dilatacion({ material: mat, longitud_m: tramo.longitud_m, T_op_C: tramo.temperatura_C,
       T_inst_C: ctx.T_instalacion_C ?? 20, od_mm: peso.od_mm || 0 });
     if (dil.requiere_guias) avisos.push(`Tramo ${tramo.id}: ${dil.nota}`);
   }
   return { id: tramo.id, disciplina: tramo.disciplina, tipo: tramo.tipo, descripcion: tramo.descripcion || '',
-    longitud_m: tramo.longitud_m, peso, espaciamiento: esp, n_soportes, carga_por_soporte_kgf: redondo(carga_soporte, 1),
+    longitud_m: Lok ? tramo.longitud_m : null, peso, espaciamiento: esp, n_soportes, carga_por_soporte_kgf: redondo(carga_soporte, 1),
     montaje: es_trapecio ? 'trapecio' : 'colgante sencillo', n_varillas, carga_por_varilla_kgf: redondo(carga_varilla, 1),
     varilla, trapecio, anclaje, sismo, arriostramiento: arr, dilatacion: dil, errores, avisos, ok: errores.length === 0 };
 }
@@ -8245,7 +8251,7 @@ function despiece(tramos) {
   const varillas = {}, perfiles = {}, anclajes = {};
   let abrazaderas = 0, tuercas = 0, rondanas = 0, riostras = 0;
   for (const t of tramos) {
-    if (!t.varilla) continue;
+    if (!t.varilla || t.n_soportes === null) continue;   // S.228: tramo con longitud inválida, no se cuenta
     const h_colgado = t.altura_colgado_m ?? 0.50;
     const m = t.n_soportes * t.n_varillas * h_colgado;
     varillas[t.varilla.id] = redondo((varillas[t.varilla.id] || 0) + m, 2);
@@ -23664,7 +23670,7 @@ function viewSoporte() {
       </div>
       ${R.porTuberia.length ? `<div class="tw" style="margin-top:14px"><table>
         <thead><tr><th>Servicio</th><th>Tramo</th><th class="num">Ø mm</th><th class="num">Espac. m</th><th class="num">Long m</th><th class="num">Soportes</th></tr></thead>
-        <tbody>${R.porTuberia.flatMap((x) => x.det.map((d) => `<tr><td>${esc(x.etiqueta)}</td><td>${esc(String(d.tag))}</td><td class="num">${n(d.d, 0)}</td><td class="num">${d.pendiente ? "pendiente" : n(d.e, 1)}</td><td class="num">${n(d.L, 0)}</td><td class="num">${d.n}</td></tr>`)).join("")}</tbody>
+        <tbody>${R.porTuberia.flatMap((x) => x.det.map((d) => `<tr><td>${esc(x.etiqueta)}</td><td>${esc(String(d.tag))}</td><td class="num">${n(d.d, 0)}</td><td class="num">${d.pendiente ? "pendiente" : n(d.e, 1)}</td><td class="num">${n(d.L, 0)}</td><td class="num">${d.n == null ? "pendiente" : d.n}</td></tr>`)).join("")}</tbody>
       </table></div>` : ""}
     </div></div>
 
@@ -23731,7 +23737,7 @@ function buildSoportePdf() {
   if (R.porTuberia.length) {
     pdfHeading(d, "Conteo por tramo");
     pdfTable(d, ["Servicio", "Tramo", "Diam mm", "Espac m", "Long m", "Soportes"],
-      R.porTuberia.flatMap((x) => x.det.map((t) => [x.etiqueta, String(t.tag), n(t.d, 0), t.pendiente ? "pendiente" : n(t.e, 1), n(t.L, 0), String(t.n)])),
+      R.porTuberia.flatMap((x) => x.det.map((t) => [x.etiqueta, String(t.tag), n(t.d, 0), t.pendiente ? "pendiente" : n(t.e, 1), n(t.L, 0), t.n == null ? "pendiente" : String(t.n)])),
       [120, 130, 55, 55, 55, 71]);
   }
   pdfHeading(d, "Resumen del conteo");
