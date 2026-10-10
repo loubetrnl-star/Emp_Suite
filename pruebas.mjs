@@ -5,6 +5,7 @@
 // Uso: node pruebas.mjs [archivo.html] [--base archivo-original.html] [--solo regex]
 import { JSDOM } from "jsdom";
 import fs from "node:fs";
+import fc from "fast-check";   /* S.227: pruebas por propiedades (devDependency exacta) */
 
 const file = process.argv[2] || "index.html";
 const baseIx = process.argv.indexOf("--base");
@@ -10438,6 +10439,30 @@ t("S.226 (H-170, Addendum No. 1) la cita de las Tablas 1-3 a 1-9 de SMACNA 1995 
     const viejo = { ...G("defaultSegment")("TR-1", 6000), lock: true, w: 1200, h: 700, length: 18 }; delete viejo.espaciadoRef;
     if (/Addendum/.test(G("calcSegment")(viejo, meta("2")).gauge.ref)) throw new Error("la tabla de la casa no lleva el rótulo");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+t("S.227 (fast-check, soportería) propiedades de calcularTramo con semilla fija (decisión del dueño, 9-oct-2026; sólo prueba, la soportería no se toca): n ≥ 2 y los soportes cubren el tramo sin sobrar uno, (n−1)·e ≥ L > (n−2)·e; n no baja al crecer L; la carga por soporte es peso por metro × claro (kg/m · m = kg, redondeo de 0.1 kgf) y no depende de L ni del id; la lámina del ducto escala lineal con el perímetro a calibre fijo y el total es (lámina + aislamiento) × 1.20; la tubería con agua pesa más que vacía (masa del agua > 0)", () => {
+  const C = G("C_SOP"), ct = G("calcularTramo"), pd = G("pesoDucto");
+  const DN = Object.keys(C.TUBERIA_ACERO).filter((d) => C.ESPAC_ACERO[d] !== undefined && C.TUBERIA_ACERO[d].ced40);
+  const CAL = Object.keys(C.LAMINA_GALV).map(Number);
+  if (DN.length < 5 || CAL.length < 4) throw new Error("catálogo de soportería incompleto: " + DN.length + " DN, " + CAL.length + " calibres");
+  const tramo = fc.oneof(
+    fc.record({ tipo: fc.constant("ducto_rect"), ancho_mm: fc.integer({ min: 100, max: 2000 }), alto_mm: fc.integer({ min: 100, max: 1500 }) }),
+    fc.record({ tipo: fc.constant("ducto_redondo"), diam_mm: fc.integer({ min: 100, max: 1500 }) }),
+    fc.record({ tipo: fc.constant("tuberia"), material: fc.constant("acero"), dn: fc.constantFrom(...DN), cedula: fc.constant("ced40"), contenido: fc.constantFrom("agua", "vacio") }));
+  const L = fc.double({ min: 0, max: 300, noNaN: true });
+  const cfg = { seed: 20261009, numRuns: 300 };
+  const prop = (nombre, p) => { try { fc.assert(p, cfg); } catch (e) { throw new Error(nombre + ": " + String(e.message).split("\n").slice(0, 4).join(" · ")); } };
+  prop("P1 cobertura", fc.property(tramo, L, (t, l) => { const r = ct({ id: "p", ...t, longitud_m: l }, {}); const e = r.espaciamiento.e_m, n = r.n_soportes;
+    return r.errores.length === 0 && Number.isInteger(n) && n >= 2 && (n - 1) * e >= l - 1e-9 && (n <= 2 || (n - 2) * e < l + 1e-9); }));
+  prop("P2 monotonía", fc.property(tramo, L, L, (t, a, b) => { const [x, y] = a <= b ? [a, b] : [b, a];
+    return ct({ id: "p", ...t, longitud_m: x }, {}).n_soportes <= ct({ id: "p", ...t, longitud_m: y }, {}).n_soportes; }));
+  prop("P3 carga por soporte", fc.property(tramo, L, L, (t, a, b) => { const r1 = ct({ id: "a", ...t, longitud_m: a }, {}), r2 = ct({ id: "zz", ...t, longitud_m: b }, {});
+    return Math.abs(r1.carga_por_soporte_kgf - r1.peso.total * r1.espaciamiento.e_m) <= 0.05 + 1e-9 && r1.carga_por_soporte_kgf === r2.carga_por_soporte_kgf; }));
+  prop("P4 escalamiento de la lámina", fc.property(fc.integer({ min: 100, max: 1000 }), fc.integer({ min: 100, max: 700 }), fc.integer({ min: 2, max: 3 }), fc.constantFrom(...CAL), (a, h, k, cal) => {
+    const p1 = pd({ forma: "rectangular", ancho_mm: a, alto_mm: h, calibre: cal }), p2 = pd({ forma: "rectangular", ancho_mm: k * a, alto_mm: k * h, calibre: cal });
+    return Math.abs(p2.lamina - k * p1.lamina) <= 0.0005 * (k + 1) + 1e-9 && Math.abs(p1.total - (p1.lamina + p1.aislamiento) * 1.2) <= 0.0005 * 2.2 + 1e-9; }));
+  prop("P5 agua", fc.property(fc.constantFrom(...DN), (dn) => { const t = { id: "p", tipo: "tuberia", material: "acero", dn, cedula: "ced40", longitud_m: 10 };
+    return ct({ ...t, contenido: "agua" }, {}).peso.fluido > 0 && ct({ ...t, contenido: "agua" }, {}).peso.total > ct({ ...t, contenido: "vacio" }, {}).peso.total; }));
 });
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {
   const guardado = JSON.stringify(S);
