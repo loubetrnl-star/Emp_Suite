@@ -48,6 +48,26 @@ repositorio, manda la del repositorio.
   sigue con script.
 - Borra los scripts de un solo uso al terminar.
 
+## Reparto Python / Node y herramientas de verificación (decisión del dueño, 9-oct-2026)
+- Node corre todo lo que ejecuta el código de la suite: banco, mutantes, esperados, instalador, revisión estática,
+  cobertura y pruebas por propiedades. Python es el verificador independiente: recalcula la fórmula desde la norma con
+  otra implementación, revisa unidades, extrae y coteja tablas de norma, y abre los Excel y PDF que genera la suite. No
+  se duplican: Python no corre el banco y Node no coteja contra norma. Ningún número de verificación sale de memoria.
+- Python: entorno `.venv-verificacion` (ignorado por git), `requirements-verificacion.txt` con versiones exactas, sólo
+  wheels de PyPI: Pint 0.26.1, fluids 1.3.1 (numpy 2.5.3, scipy 1.18.1), pdfplumber 0.11.10, openpyxl 3.1.5.
+  psychrolib NO se instaló: sólo publica un sdist cuyo `setup.py` usa `distutils`, retirado de Python 3.12+.
+  Verificador: `scripts/verificacion_independiente.py <valores-suite.json>` (los valores de la suite los extrae Node con
+  `continuacion/arnes.mjs`).
+- Node (devDependencies exactas): c8 12.0.0, fast-check 4.10.2, eslint 10.11.0; jsdom 30.1.0 sin `^`.
+  Revisión estática: `node parches/revision-estatica.mjs` (node --check + no-undef con los globales de jsdom).
+  Cobertura por motor: `npx c8 --temp-directory <dir> --clean=false --reporter=text-summary node pruebas.mjs index.html`
+  y después `node parches/cobertura-motores.mjs <dir> index.html`.
+- Nada de esto entra a `index.html` ni al instalador.
+- Skills: documentos con `anthropic-skills:pdf`, `xlsx` y `docx`; antes de cada commit que toque un motor y de cada
+  fusión, `engineering:code-review` (sólo hallazgos de corrección); `engineering:testing-strategy` si sobrevive un mutante;
+  `engineering:debug` si un banco queda en rojo sin causa clara. No se usan HawkScan ni conectores de correo, calendario
+  o Drive.
+
 ## Supuestos y normas
 - Cada valor calculado cita su supuesto y su fuente con cláusula o tabla (por ejemplo ASHRAE Handbook Fundamentals,
   capítulo y tabla con año; ASHRAE 62.1, tabla 6-1 con edición; SMACNA; NOM con número y año).

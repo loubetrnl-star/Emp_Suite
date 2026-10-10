@@ -1,2 +1,3 @@
 # Dependencias de los scripts de Python de scripts/ (versiones fijadas).
 # calibres_redondo_smacna.py: sólo biblioteca estándar (Python 3.14.7); sin paquetes externos.
+# verificacion_independiente.py: usa el entorno .venv-verificacion (requirements-verificacion.txt, raíz del repo).

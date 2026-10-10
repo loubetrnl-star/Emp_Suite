@@ -166,3 +166,22 @@ Ninguna mueve una cifra del cálculo: amplían lo que R.1 y R.4 vigilan, y eso o
     vigente). Para H-282 espera decisión del dueño (rotularla «fuente secundaria» o esperar el texto).
   - IPC 2015 Tabla 604.3 (texto base de ICC) y Carrier Parte 1 Tabla 20A: no localizados (AUD-20(d) y H-120 siguen igual).
   - ASTM B88: vigente probable B88-22, sin confirmar y de pago. AUD-20(c) sigue con «edición pendiente».
+
+## Verificación independiente en Python (9-oct-2026) · discrepancias, NO aplicadas (mueven números)
+`scripts/verificacion_independiente.py` (Pint, fluids) contra los valores de la suite en el arnés. Coinciden (≤ 0.03 %):
+load (corrección CLTD), clean (FFU 629 cfm), vent (Vbz 62.1), hidro (35 psi → 24.6074 mca), fuego (P = (q/K)², sin texto
+de norma) y civil (perímetro 3:2, sin texto de norma). Discrepancias, cada una espera decisión del dueño:
+- **equip · 50TC-A14 (12.5 TR):** la suite toma 5,000 cfm (400 cfm/TR); Carrier 50TC Product Data rotula 3,600 a 6,000 cfm con
+  la columna central en 4,800 (384 cfm/TR; `Carrier-50TC-7-16-03PD_Product-Data.txt:9441-9742`). +4.17 %. Movería el caudal
+  nominal de esa unidad y lo que dependa de él (equip).
+- **duct · masa de lámina galvanizada:** la suite calcula espesor nominal × 7,850 kg/m³ (acero desnudo): calibre 20 = 7.896 kg/m²;
+  SMACNA 1995, tabla «Galvanized sheet thickness tolerances» (pág. A.2, transcripción HTML sin cotejo con el escaneo) da
+  1.656 lb/ft² = 8.08 kg/m² nominal, con zinc. −2.34 %. Movería kilos de ductos y la partida de lámina (duct; quote congelada).
+- **elec · reactancia:** la suite usa XL = 0.19 Ω/km fijo y lo llama conservador para conduit de acero; la NOM-001-SEDE-2012
+  Tabla 9 da 0.213 Ω/km para 8 AWG en acero (0.171 en PVC). Caso 30 A, 220 V, 3F, 50 m, FP 0.85: ΔV 2.688 % contra 2.702 %
+  (−0.53 %); con la columna Ze de la tabla (2.30 Ω/km) 2.716 %. Puede cambiar el calibre elegido por caída en tramos al límite.
+- **soporte · claro máximo:** la suite usa 2.44 m y 3.66 m; SMACNA 1995 §4.2.8 da 8 ft = 2.4384 m y la Tabla 4-2 12 ft = 3.6576 m.
+  En el borde (ducto rectangular de 9.76 m) la suite pone 5 soportes a 2.44 m, por encima del máximo; con 8 ft serían 6.
+  Soportería no se toca (orden del dueño): queda registrado.
+- **aire · Haaland:** aproximación explícita de Colebrook: −1.14 % en f a Re 1e5 y ε/D 3e-5 (fluids 1.3.1). Sin texto de norma
+  en el repo; se reporta como criterio, no como error.
