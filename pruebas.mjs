@@ -10440,16 +10440,32 @@ t("S.226 (H-170, Addendum No. 1) la cita de las Tablas 1-3 a 1-9 de SMACNA 1995 
     if (/Addendum/.test(G("calcSegment")(viejo, meta("2")).gauge.ref)) throw new Error("la tabla de la casa no lleva el rótulo");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
-t("S.227 (fast-check, soportería) propiedades de calcularTramo con semilla fija (decisión del dueño, 9-oct-2026; sólo prueba, la soportería no se toca): n ≥ 2 y los soportes cubren el tramo sin sobrar uno, (n−1)·e ≥ L > (n−2)·e; n no baja al crecer L; la carga por soporte es peso por metro × claro (kg/m · m = kg, redondeo de 0.1 kgf) y no depende de L ni del id; la lámina del ducto escala lineal con el perímetro a calibre fijo y el total es (lámina + aislamiento) × 1.20; la tubería con agua pesa más que vacía (masa del agua > 0)", () => {
+t("S.227 (fast-check, soportería) propiedades de calcularTramo con semilla fija (decisión del dueño, 9-oct-2026; sólo prueba, la soportería no se toca): n ≥ 2 y los soportes cubren el tramo sin sobrar uno, (n−1)·e ≥ L > (n−2)·e; n no baja al crecer L; la carga por soporte es peso por metro × claro (kg/m · m = kg) y no depende de L ni del id; la lámina del ducto escala lineal con el perímetro a calibre fijo y el total es (lámina + aislamiento) × 1.20; con agua la tubería pesa más que vacía y sin agua (vacío, aire, gas) pesa lo mismo que vacía", () => {
+  /* Dominio declarado (válido, el que llega desde la captura: computeSoporte filtra L > 0): L ∈ [0.01, 300] m; ductos
+     rectangulares 100–2000 × 100–1500 mm y redondos 100–1500 mm; tubería: todo DN × cédula de acero (C_SOP.TUBERIA_ACERO) y
+     DN × tipo L/M de cobre (C_SOP.TUBERIA_COBRE) con espaciamiento tabulado; aislamiento 0–100 mm. Charola y conduit no entran
+     (no llevan fluido ni lámina).
+     Tolerancias, derivadas del redondeo del código (redondo(x, n) = Math.round(x·10ⁿ)/10ⁿ, error ≤ ½·10⁻ⁿ; supuesto: ese redondeo
+     es el comportamiento vigente, no está documentado como especificación — registrado en la bitácora):
+     P3 · carga_por_soporte_kgf = redondo(peso.total · e, 1) y la prueba usa el mismo peso.total ya redondeado: un solo redondeo,
+          |dif| ≤ 0.05 kgf (máximo observado en 3 × 100,000 casos: 0.050000).
+     P4a · lámina(k·a, k·h) y k·lámina(a, h) son múltiplos de 0.001 y su diferencia exacta es k·δ₁ − δ₂ con |δ| ≤ 0.0005: para
+          k ∈ {2, 3} el entero |round(k·f) − k·round(f)| vale 0 o 1, así que |dif| ≤ 0.001 kg/m (observado: 0.001).
+     P4b · total = redondo(1.20·(lám + ais), 3) contra 1.20·(lám + ais) ya redondeados, con ais = 0 en este generador:
+          |dif| ≤ 0.0005 + 1.20·0.0005 = 0.0011 kg/m (observado: 0.001).
+     P5 · el agua mínima del dominio (acero ½" céd. 80, DI 13.88 mm) es 0.1513 kg/m; con factor 1.10 la diferencia
+          agua − vacía es ≥ 0.1664 − 0.001 de redondeo > 0, así que «>» no es frágil (observado: 0.166 kg/m en 3 × 100,000 casos). */
   const C = G("C_SOP"), ct = G("calcularTramo"), pd = G("pesoDucto");
-  const DN = Object.keys(C.TUBERIA_ACERO).filter((d) => C.ESPAC_ACERO[d] !== undefined && C.TUBERIA_ACERO[d].ced40);
+  const TUB = [];
+  for (const [dn, x] of Object.entries(C.TUBERIA_ACERO)) if (C.ESPAC_ACERO[dn] !== undefined) for (const cedula of Object.keys(x).filter((k) => k !== "od")) TUB.push({ material: "acero", dn, cedula });
+  for (const [dn, x] of Object.entries(C.TUBERIA_COBRE)) if (C.ESPAC_COBRE[dn] !== undefined) for (const cedula of ["L", "M"]) if (x[cedula]) TUB.push({ material: "cobre", dn, cedula });
   const CAL = Object.keys(C.LAMINA_GALV).map(Number);
-  if (DN.length < 5 || CAL.length < 4) throw new Error("catálogo de soportería incompleto: " + DN.length + " DN, " + CAL.length + " calibres");
+  if (TUB.length < 40 || CAL.length < 4) throw new Error("catálogo de soportería incompleto: " + TUB.length + " tuberías, " + CAL.length + " calibres");
   const tramo = fc.oneof(
     fc.record({ tipo: fc.constant("ducto_rect"), ancho_mm: fc.integer({ min: 100, max: 2000 }), alto_mm: fc.integer({ min: 100, max: 1500 }) }),
     fc.record({ tipo: fc.constant("ducto_redondo"), diam_mm: fc.integer({ min: 100, max: 1500 }) }),
-    fc.record({ tipo: fc.constant("tuberia"), material: fc.constant("acero"), dn: fc.constantFrom(...DN), cedula: fc.constant("ced40"), contenido: fc.constantFrom("agua", "vacio") }));
-  const L = fc.double({ min: 0, max: 300, noNaN: true });
+    fc.record({ t: fc.constantFrom(...TUB), contenido: fc.constantFrom("agua", "vacio") }).map(({ t, contenido }) => ({ tipo: "tuberia", ...t, contenido })));
+  const L = fc.double({ min: 0.01, max: 300, noNaN: true });
   const cfg = { seed: 20261009, numRuns: 300 };
   const prop = (nombre, p) => { try { fc.assert(p, cfg); } catch (e) { throw new Error(nombre + ": " + String(e.message).split("\n").slice(0, 4).join(" · ")); } };
   prop("P1 cobertura", fc.property(tramo, L, (t, l) => { const r = ct({ id: "p", ...t, longitud_m: l }, {}); const e = r.espaciamiento.e_m, n = r.n_soportes;
@@ -10460,9 +10476,11 @@ t("S.227 (fast-check, soportería) propiedades de calcularTramo con semilla fija
     return Math.abs(r1.carga_por_soporte_kgf - r1.peso.total * r1.espaciamiento.e_m) <= 0.05 + 1e-9 && r1.carga_por_soporte_kgf === r2.carga_por_soporte_kgf; }));
   prop("P4 escalamiento de la lámina", fc.property(fc.integer({ min: 100, max: 1000 }), fc.integer({ min: 100, max: 700 }), fc.integer({ min: 2, max: 3 }), fc.constantFrom(...CAL), (a, h, k, cal) => {
     const p1 = pd({ forma: "rectangular", ancho_mm: a, alto_mm: h, calibre: cal }), p2 = pd({ forma: "rectangular", ancho_mm: k * a, alto_mm: k * h, calibre: cal });
-    return Math.abs(p2.lamina - k * p1.lamina) <= 0.0005 * (k + 1) + 1e-9 && Math.abs(p1.total - (p1.lamina + p1.aislamiento) * 1.2) <= 0.0005 * 2.2 + 1e-9; }));
-  prop("P5 agua", fc.property(fc.constantFrom(...DN), (dn) => { const t = { id: "p", tipo: "tuberia", material: "acero", dn, cedula: "ced40", longitud_m: 10 };
-    return ct({ ...t, contenido: "agua" }, {}).peso.fluido > 0 && ct({ ...t, contenido: "agua" }, {}).peso.total > ct({ ...t, contenido: "vacio" }, {}).peso.total; }));
+    return Math.abs(p2.lamina - k * p1.lamina) <= 0.001 + 1e-9 && Math.abs(p1.total - (p1.lamina + p1.aislamiento) * 1.2) <= 0.0011 + 1e-9; }));
+  prop("P5 agua", fc.property(fc.constantFrom(...TUB), fc.integer({ min: 0, max: 100 }), L, fc.constantFrom("vacio", "aire", "gas"), (x, ais, l, otro) => {
+    const base = { id: "p", tipo: "tuberia", ...x, aislamiento_mm: ais, longitud_m: l };
+    const a = ct({ ...base, contenido: "agua" }, {}), v = ct({ ...base, contenido: "vacio" }, {}), o = ct({ ...base, contenido: otro }, {});
+    return a.errores.length === 0 && a.peso.fluido > 0 && a.peso.total > v.peso.total && o.peso.fluido === 0 && o.peso.total === v.peso.total; }));
 });
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {
   const guardado = JSON.stringify(S);
