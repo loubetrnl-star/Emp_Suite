@@ -12,6 +12,5 @@
   { "id": "civil.m11", "que": "entran partidas con cantidad 0 (H-275)", "logica": true, "buscar": "if (qty > 0 && pu > 0) part.push({ clave, desc,", "reemplazar": "if (qty >= 0 && pu > 0) part.push({ clave, desc,", "estado": "vigente" },
   { "id": "civil.m12", "que": "la demolición se invierte (H-275)", "logica": true, "buscar": "  if (C.demoler) {", "reemplazar": "  if (!C.demoler) {", "estado": "vigente" },
   { "id": "civil.m13", "que": "sin aviso de muro no apto en área clasificada (H-275)", "logica": true, "buscar": "  if (areaLimpia > 0 && !mL.limpio)", "reemplazar": "  if (false && !mL.limpio)", "estado": "vigente" },
-  { "id": "civil.m14", "que": "sin aviso de «No salió media caña» (H-275)", "logica": true, "buscar": "  if (areaLimpia > 0 && mlCana === 0)", "reemplazar": "  if (areaLimpia > 0 && mlCana < 0)", "estado": "vigente" },
   { "id": "civil.m15", "que": "zona con área y sin altura deja de marcarse pendiente (H-275)", "logica": true, "buscar": "      if (a > 0 && !(h > 0)) sinAltura.push(z.nombre || clave);", "reemplazar": "      if (false) sinAltura.push(z.nombre || clave);", "estado": "vigente" }
 ]

@@ -10603,6 +10603,108 @@ t("S.231 (H-266; mutantes soporte.m76 y soporte.m77) los botones de una propuest
     H.pila = hist0.pila; H.ix = hist0.ix; G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")();
   }
 });
+t("S.235 (fast-check, civil) propiedades de computeCivil con semilla fija (decisión del dueño, 9-oct-2026; sólo prueba, el motor no se toca): los cuartos vacíos (área o altura 0) no mueven total, área limpia, media caña, muro clasificado ni partidas; con área clasificada y un muro que no es de cuarto limpio sale el aviso err que lo dice (y no sale con uno que sí lo es); sin perímetro capturado el cuarto va con rectángulo 3:2 (per/√a = 5/√1.5, área×4 ⇒ per×2) marcado estimado; el muro de obra es Σ perímetro × altura y duplicar alturas lo duplica; media caña doble = 2 × sencilla; areaLimpia + areaNoLimpia = area y la fracción limpia es su cociente", () => {
+  /* Dominio declarado (el que llega desde la captura de la pestaña de obra civil, H-265): áreas enteras 1–50,000 m²; alturas n/2 m con
+     n 1..30 (0.5–15 m); perímetro entero 0–2,000 ml (0 = sin captura → rectángulo 3:2). 1–4 áreas de obra y 1–3 cuartos clasificados.
+     Tolerancias, derivadas del redondeo del código (P(): qty = +qty.toFixed(2), error ≤ ½·10⁻² = 0.005 por partida; los totales R.*
+     no se redondean):
+     P1 · igualdad exacta (===) de total, areaLimpia, mlCana y muroLimpio y de JSON.stringify(part): el código excluye al cuarto vacío
+          de limpios→cuartosCivil antes de sumar, así que no entra ningún término (ni siquiera +0 cambia una suma de doubles).
+     P3 · per = 2·(1.5+1)·√(a/1.5) = 5·√(a/1.5): per/√a contra 5/√1.5 con 1e-9 relativo (sólo error de punto flotante, sin redondeo del
+          código). per(4a) = 2·per(a) es EXACTO en IEEE 754: 4a/1.5 = 4·(a/1.5) (escalar por potencia de 2 conmuta con el redondeo) y
+          √(4x) = 2·√x con √ correctamente redondeada; verificado en 1..49,999 antes de escribir la prueba; se pide igualdad con 1e-9.
+     P4 · muroM2 = Σ per·h con per capturado y h = n/2: la prueba recalcula con la misma expresión (mismo orden de suma) → 1e-9; con
+          2h cada término se duplica exacto (×2) y la suma también → 1e-9. La partida A300 no clasificada (sin cuartos: fracLimpia = 0,
+          muroNoLimpio = muroM2·(1−0) = muroM2 exacto) lleva qty = +toFixed(2): |qty − muroM2| ≤ 0.005 (+1e-9 de holgura numérica).
+     P5 · mlCana(doble) = 2·mlMuroLimpio exacto (×2) y mlCana(sencilla) = mlMuroLimpio → igualdad con 1e-9; partida ML: ≤ 0.005.
+     P6 · enteros: areaLimpia + areaNoLimpia === area exacto (sumas de enteros < 2⁵³) cuando Σcuartos ≤ Σáreas; fracLimpia = areaLimpia/area
+          con 1e-12.
+     Mutante civil.m14 («mlCana === 0» → «mlCana < 0»): con num() finito y a > 0, per = cap > 0 ? cap : 5·√(a/1.5) es siempre > 0 (barrido
+     de 1,000 denormales, MIN_VALUE…MAX_VALUE y entradas no finitas: ningún a > 0 da per = 0), así que «areaLimpia > 0 && mlCana === 0»
+     es inalcanzable desde computeCivil y el mutante es EQUIVALENTE por esta interfaz; P2b sólo fija que con área clasificada
+     mlCana > 0 y NO sale ese aviso (lo único observable). */
+  const cc = G("computeCivil"), C0 = G("defaultCivil"), SM = G("SIS_MURO");
+  const murosNo = Object.keys(SM).filter((k) => !SM[k].limpio), murosSi = Object.keys(SM).filter((k) => SM[k].limpio);
+  if (murosNo.length < 2 || murosSi.length < 1) throw new Error("catálogo SIS_MURO incompleto: " + murosNo.length + " no limpios, " + murosSi.length + " limpios");
+  const areaG = fc.integer({ min: 1, max: 50000 }), hG = fc.integer({ min: 1, max: 30 }).map((n) => n / 2), perG = fc.integer({ min: 0, max: 2000 });
+  const reng = fc.record({ area: areaG, altura: hG, perimetro: perG });
+  const conId = (pref) => (xs) => xs.map((x, i) => ({ id: pref + (i + 1), nombre: pref.toUpperCase() + (i + 1), ...x }));
+  const areasG = fc.array(reng, { minLength: 1, maxLength: 4 }).map(conId("a"));
+  const cuartosG = fc.array(reng, { minLength: 1, maxLength: 3 }).map(conId("k"));
+  /* Cuartos vacíos: siempre uno con área y sin altura (el que el mutante m08 volvería a sumar) y 0–2 más de cualquier forma vacía. */
+  const vacioG = fc.oneof(fc.record({ area: areaG, altura: fc.constant(0) }), fc.record({ area: fc.constant(0), altura: hG }), fc.record({ area: fc.constant(0), altura: fc.constant(0) }))
+    .chain((v) => perG.map((p) => ({ ...v, perimetro: p })));
+  const vaciosG = fc.tuple(fc.record({ area: areaG, altura: fc.constant(0), perimetro: perG }), fc.array(vacioG, { maxLength: 2 })).map(([v0, vs]) => [v0, ...vs]);
+  const civ = (x) => cc({ ...C0(), ...x });
+  const cfg = { seed: 20261009, numRuns: 300 };
+  const prop = (nombre, p) => { try { fc.assert(p, cfg); } catch (e) { throw new Error(nombre + ": " + String(e.message).split("\n").slice(0, 4).join(" · ")); } };
+  const cerca = (a, b, tol) => Math.abs(a - b) <= tol * Math.max(1, Math.abs(b)) + 1e-9;
+  prop("P1 cuartos vacíos no suman (m08)", fc.property(areasG, cuartosG, vaciosG, fc.boolean(), (as, ks, vs, doble) => {
+    const r0 = civ({ areas: as, cuartos: ks, mediaCanaDoble: doble }), r1 = civ({ areas: as, cuartos: [...ks, ...vs.map((v, i) => ({ id: "v" + (i + 1), nombre: "Vacío " + (i + 1), ...v }))], mediaCanaDoble: doble });
+    if (r1.total !== r0.total) throw new Error(`total ${r0.total} → ${r1.total} al agregar ${vs.length} cuarto(s) vacío(s)`);
+    if (r1.areaLimpia !== r0.areaLimpia) throw new Error(`areaLimpia ${r0.areaLimpia} → ${r1.areaLimpia} al agregar cuartos vacíos`);
+    if (r1.mlCana !== r0.mlCana) throw new Error(`mlCana ${r0.mlCana} → ${r1.mlCana}`);
+    if (r1.muroLimpio !== r0.muroLimpio) throw new Error(`muroLimpio ${r0.muroLimpio} → ${r1.muroLimpio}`);
+    if (JSON.stringify(r1.part) !== JSON.stringify(r0.part)) throw new Error("las partidas cambian al agregar cuartos vacíos");
+    return r0.areaLimpia > 0 && r0.mlCana > 0;
+  }));
+  prop("P2 aviso de muro no apto en área clasificada (m13)", fc.property(areasG, cuartosG, fc.constantFrom(...murosNo), fc.constantFrom(...murosSi), (as, ks, mNo, mSi) => {
+    const r = civ({ areas: as, cuartos: ks, muro: mNo });
+    if (!(r.areaLimpia > 0)) throw new Error("el generador debe dar área clasificada > 0");
+    const av = r.avisos.find((a) => a.lvl === "err" && /no es de cuarto limpio/.test(a.msg) && a.msg.indexOf(SM[mNo].label) >= 0);
+    if (!av) throw new Error(`con ${r.areaLimpia} m² clasificados y muro «${mNo}» no hay aviso err «… no es de cuarto limpio»; avisos: ${r.avisos.map((a) => a.lvl + ": " + a.msg.slice(0, 60)).join(" | ") || "(ninguno)"}`);
+    const rs = civ({ areas: as, cuartos: ks, muro: mSi });
+    if (rs.avisos.some((a) => /no es de cuarto limpio/.test(a.msg))) throw new Error(`con muro limpio «${mSi}» sale el aviso de muro no apto`);
+    return true;
+  }));
+  prop("P2b con área clasificada hay media caña y no sale «No salió media caña» (m14 equivalente: la rama es inalcanzable)", fc.property(areasG, cuartosG, fc.boolean(), (as, ks, doble) => {
+    const r = civ({ areas: as, cuartos: ks, mediaCanaDoble: doble });
+    if (!(r.areaLimpia > 0 && r.mlCana > 0)) throw new Error(`areaLimpia ${r.areaLimpia}, mlCana ${r.mlCana}`);
+    if (r.avisos.some((a) => /No salió media caña/.test(a.msg))) throw new Error("aviso «No salió media caña» con mlCana = " + r.mlCana);
+    /* La implicación «areaLimpia > 0 ∧ mlCana = 0 ⇒ aviso» es vacua en todo el dominio (ver nota de m14 arriba). */
+    return true;
+  }));
+  prop("P3 rectángulo 3:2 sin perímetro capturado", fc.property(areasG, areaG, hG, fc.boolean(), (as, a, h, doble) => {
+    const k = (area) => [{ id: "k1", nombre: "K1", area, altura: h, perimetro: 0 }];
+    const r = civ({ areas: as, cuartos: k(a), mediaCanaDoble: doble }), r4 = civ({ areas: as, cuartos: k(4 * a), mediaCanaDoble: doble });
+    const c = r.cuartosCivil[0], c4 = r4.cuartosCivil[0];
+    if (!c || c.capturado || !r.cuartoEstimado) throw new Error("el cuarto sin perímetro debe quedar como estimado");
+    if (!cerca(c.per / Math.sqrt(a), 5 / Math.sqrt(1.5), 1e-9)) throw new Error(`per/√a = ${c.per / Math.sqrt(a)} ≠ 5/√1.5 = ${5 / Math.sqrt(1.5)}`);
+    if (!cerca(c4.per, 2 * c.per, 1e-9)) throw new Error(`per(4a) = ${c4.per} ≠ 2·per(a) = ${2 * c.per}`);
+    if (!cerca(c.muro, c.per * h, 1e-9) || !cerca(r.mlCana, c.per * (doble ? 2 : 1), 1e-9)) throw new Error(`muro ${c.muro} ≠ per·h ${c.per * h} o mlCana ${r.mlCana} ≠ per·${doble ? 2 : 1}`);
+    const pA = r.part.find((p) => p.clave === "A300" && /área clasificada/.test(p.desc)), pM = r.part.find((p) => p.un === "ML");
+    if (!pA || !/estimado: rectángulo 3:2/.test(pA.desc) || !pM || !/estimado: rectángulo 3:2/.test(pM.desc)) throw new Error("la partida de muro clasificado o la de media caña no dice «estimado: rectángulo 3:2»");
+    return true;
+  }));
+  prop("P4 muro = Σ perímetro × altura; alturas ×2 ⇒ muro ×2", fc.property(fc.array(fc.record({ area: areaG, altura: fc.integer({ min: 1, max: 15 }).map((n) => n / 2), perimetro: fc.integer({ min: 1, max: 2000 }) }), { minLength: 1, maxLength: 4 }).map(conId("a")), (as) => {
+    const r = civ({ areas: as }), r2 = civ({ areas: as.map((z) => ({ ...z, altura: 2 * z.altura })) });
+    let esperado = 0; as.forEach((z) => { esperado += z.perimetro * z.altura; });
+    if (!cerca(r.muroM2, esperado, 1e-9)) throw new Error(`muroM2 ${r.muroM2} ≠ Σ per·h ${esperado}`);
+    if (r.estimado || r.zonasCivil.some((z) => !z.capturado)) throw new Error("con perímetro capturado nada debe quedar estimado");
+    if (!cerca(r2.muroM2, 2 * r.muroM2, 1e-9)) throw new Error(`alturas ×2: muroM2 ${r2.muroM2} ≠ 2 × ${r.muroM2}`);
+    if (r.areaLimpia !== 0 || r.muroNoLimpio !== r.muroM2) throw new Error(`sin cuartos: areaLimpia ${r.areaLimpia}, muroNoLimpio ${r.muroNoLimpio} ≠ muroM2 ${r.muroM2}`);
+    const p = r.part.find((x) => x.clave === "A300" && /no clasificada/.test(x.desc));
+    if (!p || Math.abs(p.qty - r.muroM2) > 0.005 + 1e-9) throw new Error(`partida A300 no clasificada qty ${p && p.qty} vs muroM2 ${r.muroM2} (tolerancia 0.005 por toFixed(2))`);
+    return true;
+  }));
+  prop("P5 media caña doble = 2 × sencilla", fc.property(areasG, cuartosG, (as, ks) => {
+    const d = civ({ areas: as, cuartos: ks, mediaCanaDoble: true }), s = civ({ areas: as, cuartos: ks, mediaCanaDoble: false });
+    if (!cerca(d.mlCana, 2 * s.mlCana, 1e-9) || !cerca(s.mlCana, s.mlMuroLimpio, 1e-9) || d.mlMuroLimpio !== s.mlMuroLimpio) throw new Error(`mlCana doble ${d.mlCana}, sencilla ${s.mlCana}, mlMuroLimpio ${s.mlMuroLimpio}`);
+    const pd = d.part.find((p) => p.un === "ML"), ps = s.part.find((p) => p.un === "ML");
+    if (!pd || !ps || Math.abs(pd.qty - d.mlCana) > 0.005 + 1e-9 || Math.abs(ps.qty - s.mlCana) > 0.005 + 1e-9) throw new Error(`partida ML qty ${pd && pd.qty}/${ps && ps.qty} vs mlCana ${d.mlCana}/${s.mlCana}`);
+    if (!/piso y plafón/.test(pd.desc) || /plafón/.test(ps.desc)) throw new Error("la descripción de la media caña no distingue doble/sencilla");
+    return true;
+  }));
+  prop("P6 conservación de área", fc.property(areasG, cuartosG, (as, ks) => {
+    const sa = as.reduce((t, z) => t + z.area, 0), sk = ks.reduce((t, k) => t + k.area, 0);
+    fc.pre(sk <= sa);
+    const r = civ({ areas: as, cuartos: ks });
+    if (r.area !== sa || r.areaLimpia !== sk) throw new Error(`area ${r.area} ≠ ${sa} o areaLimpia ${r.areaLimpia} ≠ ${sk}`);
+    if (r.areaLimpia + r.areaNoLimpia !== r.area) throw new Error(`${r.areaLimpia} + ${r.areaNoLimpia} ≠ ${r.area}`);
+    if (!cerca(r.fracLimpia, sk / sa, 1e-12)) throw new Error(`fracLimpia ${r.fracLimpia} ≠ ${sk / sa}`);
+    return true;
+  }));
+});
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {
   const guardado = JSON.stringify(S);
   try {
