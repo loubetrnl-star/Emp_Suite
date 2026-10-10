@@ -17,8 +17,8 @@
     "buscar": "const exento = cls.aceite <= 1 && cls.id === \"1.2.1\";", "reemplazar": "const exento = false;", "estado": "vigente" },
   { "id": "aire.m09", "que": "simultaneidad con más de 40 puntos 0.50→0.20", "logica": true,
     "buscar": "nPuntos <= 40 ? 0.55 : 0.50;", "reemplazar": "nPuntos <= 40 ? 0.55 : 0.20;", "estado": "vigente" },
-  { "id": "aire.m10", "que": "factor de fricción constante 0.002 en vez de Haaland", "logica": true,
-    "buscar": "const f = haaland(Re, mat.eps / 1000 / (d / 1000));", "reemplazar": "const f = 0.002;", "estado": "vigente" },
+  { "id": "aire.m10", "que": "factor de fricción constante 0.002 en vez de Haaland (AUD-03: copia propia haalandAire); reanclado tras 6fa6e96", "logica": true,
+    "buscar": "const f = haalandAire(Re, mat.eps / 1000 / (d / 1000));", "reemplazar": "const f = 0.002;", "estado": "vigente" },
   { "id": "aire.m11", "que": "ramal con 10 % del FAD en vez de 40 %", "logica": true,
     "buscar": "dimRed(fadRequerido * 0.4, Lr, \"Ramales y bajadas a punto de uso\", 15, dPred * 0.5)", "reemplazar": "dimRed(fadRequerido * 0.1, Lr, \"Ramales y bajadas a punto de uso\", 15, dPred * 0.5)", "estado": "vigente" },
   { "id": "aire.m12", "que": "H-216: el tanque vuelve a truncarse al mayor de la lista (un solo tanque aunque el teórico lo rebase)", "logica": true,
@@ -71,8 +71,8 @@
     "buscar": "const tCiclo = 3600 / arr;", "reemplazar": "const tCiclo = 1800 / arr;", "estado": "vigente" },
   { "id": "aire.m36", "que": "ramal sin límite de velocidad (15→30 m/s)", "logica": true,
     "buscar": "\"Ramales y bajadas a punto de uso\", 15, dPred * 0.5)", "reemplazar": "\"Ramales y bajadas a punto de uso\", 30, dPred * 0.5)", "estado": "vigente" },
-  { "id": "aire.m37", "que": "H-218: el cobre vuelve a dimensionarse con DI de cédula 40 en vez de los de ASTM B88", "logica": true,
-    "buscar": "const DI = matId === \"cobre\" ? { d: TUB_AGUA.cobre.d,", "reemplazar": "const DI = matId === \"cobre\" ? { d: DIAM_AIRE,", "estado": "vigente" },
+  { "id": "aire.m37", "que": "H-218: el cobre vuelve a dimensionarse con DI de cédula 40 en vez de los de ASTM B88 (AUD-03: tabla propia DI_COBRE_L_AIRE); reanclado tras 6fa6e96", "logica": true,
+    "buscar": "const DI = matId === \"cobre\" ? { d: DI_COBRE_L_AIRE,", "reemplazar":"const DI = matId === \"cobre\" ? { d: DIAM_AIRE,", "estado": "vigente" },
   { "id": "aire.m38", "que": "H-218: aluminio e inoxidable sin declarar el DI del fabricante pendiente", "logica": true,
     "buscar": "const diPendiente = DI.pendiente && tramos.some((t) => t.L > 0);", "reemplazar": "const diPendiente = false;", "estado": "vigente" }
 ]
