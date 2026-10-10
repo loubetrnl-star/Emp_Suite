@@ -17,18 +17,18 @@
   },
   {
     "id": "hidro.m03",
-    "que": "Hazen-Williams: exponente del diámetro 4.87 → 4.0",
+    "que": "Hazen-Williams: exponente del diámetro 4.87 → 4.0 (en hazen de hidro: AUD-03 copió la línea en hazenFuego y el ancla lleva const velAgua); reanclado tras 58e178a (AUD-03)",
     "logica": true,
-    "buscar": "Math.pow(D, 4.87)",
-    "reemplazar": "Math.pow(D, 4.0)",
+    "buscar": "Math.pow(D, 4.87));\r\n}\r\nconst velAgua",
+    "reemplazar": "Math.pow(D, 4.0));\r\n}\r\nconst velAgua",
     "estado": "vigente"
   },
   {
     "id": "hidro.m04",
-    "que": "Hazen-Williams: exponente del gasto 1.852 → 1.8",
+    "que": "Hazen-Williams: exponente del gasto 1.852 → 1.8 (en hazen de hidro: AUD-03 copió la línea en hazenFuego y el ancla lleva const velAgua); reanclado tras 58e178a (AUD-03)",
     "logica": true,
-    "buscar": "return 10.67 * Math.pow(Q, 1.852)",
-    "reemplazar": "return 10.67 * Math.pow(Q, 1.8)",
+    "buscar": "return 10.67 * Math.pow(Q, 1.852) / (Math.pow(Math.max(1, C), 1.852) * Math.pow(D, 4.87));\r\n}\r\nconst velAgua",
+    "reemplazar": "return 10.67 * Math.pow(Q, 1.8) / (Math.pow(Math.max(1, C), 1.852) * Math.pow(D, 4.87));\r\n}\r\nconst velAgua",
     "estado": "vigente"
   },
   {
@@ -57,10 +57,10 @@
   },
   {
     "id": "hidro.m08",
-    "que": "eficiencia del conjunto bomba-motor 0.6 → 0.9",
+    "que": "eficiencia del conjunto bomba-motor 0.6 → 0.9 (la línea lleva la guarda bombaPendiente de AUD-14); reanclado tras fa72d33 (AUD-14)",
     "logica": true,
-    "buscar": "const kWbomba = 9.81 * Qtotal * cdt / 1000 / .6;",
-    "reemplazar": "const kWbomba = 9.81 * Qtotal * cdt / 1000 / .9;",
+    "buscar": "const kWbomba = bombaPendiente ? 0 : 9.81 * Qtotal * cdt / 1000 / .6;",
+    "reemplazar": "const kWbomba = bombaPendiente ? 0 : 9.81 * Qtotal * cdt / 1000 / .9;",
     "estado": "vigente"
   },
   {
@@ -73,10 +73,10 @@
   },
   {
     "id": "hidro.m10",
-    "que": "DI de cobre tipo L de 2\" 50.42 → 45 mm (ASTM B88)",
+    "que": "DI de cobre tipo L de 2\" 50.42 → 45 mm (ASTM B88; en TUB_AGUA.cobre: AUD-03 copió la tabla en DI_COBRE_L_AIRE y el ancla lleva el cierre «]] },» de hidro); reanclado tras 6fa6e96 (AUD-03)",
     "logica": true,
-    "buscar": "[50.42, \"2\\\"\"]",
-    "reemplazar": "[45, \"2\\\"\"]",
+    "buscar": "[50.42, \"2\\\"\"], [62.61, \"2 1/2\\\"\"], [74.80, \"3\\\"\"], [99.19, \"4\\\"\"]] },",
+    "reemplazar": "[45, \"2\\\"\"], [62.61, \"2 1/2\\\"\"], [74.80, \"3\\\"\"], [99.19, \"4\\\"\"]] },",
     "estado": "vigente"
   },
   {
@@ -121,10 +121,10 @@
   },
   {
     "id": "hidro.m16",
-    "que": "velocidad sin el /4 del área (V cuatro veces menor → diámetros chicos)",
+    "que": "velocidad sin el /4 del área (V cuatro veces menor → diámetros chicos; en velAgua: AUD-03 copió la expresión en velFuego); reanclado tras 58e178a (AUD-03)",
     "logica": true,
-    "buscar": "(Math.PI * Math.pow(num(D_mm) / 1000, 2) / 4)",
-    "reemplazar": "(Math.PI * Math.pow(num(D_mm) / 1000, 2))",
+    "buscar": "const velAgua = (Q_ls, D_mm) => (num(Q_ls) / 1000) / (Math.PI * Math.pow(num(D_mm) / 1000, 2) / 4)",
+    "reemplazar": "const velAgua = (Q_ls, D_mm) => (num(Q_ls) / 1000) / (Math.PI * Math.pow(num(D_mm) / 1000, 2))",
     "estado": "vigente"
   },
   {
@@ -161,10 +161,10 @@
   },
   {
     "id": "hidro.m21",
-    "que": "HP nominales redondeados al más cercano en vez de hacia arriba",
+    "que": "HP nominales redondeados al más cercano en vez de hacia arriba (la línea lleva la guarda bombaPendiente de AUD-14); reanclado tras fa72d33 (AUD-14)",
     "logica": true,
-    "buscar": "const hpBomba = Math.ceil(kWbomba / .746 * 2) / 2;",
-    "reemplazar": "const hpBomba = Math.round(kWbomba / .746 * 2) / 2;",
+    "buscar": "const hpBomba = bombaPendiente ? 0 : Math.ceil(kWbomba / .746 * 2) / 2;",
+    "reemplazar": "const hpBomba = bombaPendiente ? 0 : Math.round(kWbomba / .746 * 2) / 2;",
     "estado": "vigente"
   },
   {
@@ -257,26 +257,26 @@
   },
   {
     "id": "hidro.m33",
-    "que": "presión disponible descontando la mitad de la pérdida",
+    "que": "presión disponible descontando la mitad de la pérdida (la presión de la red ya no se supone 25 m: presRedCap capturada o pendiente, AUD-14); reanclado tras fa72d33 (AUD-14)",
     "logica": true,
-    "buscar": "const presDisp = num(H.presRed, 25) - hfTotal;",
-    "reemplazar": "const presDisp = num(H.presRed, 25) - hfTotal * 0.5;",
+    "buscar": "const presDisp = presRedPend ? null : presRedCap - hfTotal;",
+    "reemplazar": "const presDisp = presRedPend ? null : presRedCap - hfTotal * 0.5;",
     "estado": "vigente"
   },
   {
     "id": "hidro.m34",
-    "que": "H-196: la bomba se cotiza aunque la presión de la red alcance (antes: precio semilla 14,500 → 0, ya retirado)",
+    "que": "H-196: la bomba se cotiza aunque la presión de la red alcance (antes: precio semilla 14,500 → 0, ya retirado; H-302 la pasó a cotizacionHidro(R) y AUD-14 la dejó como último «else if», tras los pendientes de presión y de altura); reanclado tras 044f0c6 (H-302) y fa72d33 (AUD-14)",
     "logica": true,
-    "buscar": "if (!HIDRO.presOk) porCotizar.push({ sec: \"F\", mot: \"hidro\", clave: \"bombaAgua\",",
-    "reemplazar": "if (true) porCotizar.push({ sec: \"F\", mot: \"hidro\", clave: \"bombaAgua\",",
+    "buscar": "else if (!R.presOk) porCotizar.push({ sec: \"F\", mot: \"hidro\", clave: \"bombaAgua\",",
+    "reemplazar": "else if (true) porCotizar.push({ sec: \"F\", mot: \"hidro\", clave: \"bombaAgua\",",
     "estado": "vigente"
   },
   {
     "id": "hidro.m35",
-    "que": "CDT sin la altura del edificio",
+    "que": "CDT sin la altura del edificio (la altura ya no se supone 6 m: altEdifCap capturada o bomba pendiente, AUD-14); reanclado tras fa72d33 (AUD-14)",
     "logica": true,
-    "buscar": "const cdt = num(H.alturaEdificio, 6) + hfTramos + presCdt;",
-    "reemplazar": "const cdt = num(H.alturaEdificio, 6) * 0 + hfTramos + presCdt;",
+    "buscar": "const cdt = bombaPendiente ? null : altEdifCap + hfTramos + presCdt;",
+    "reemplazar": "const cdt = bombaPendiente ? null : altEdifCap * 0 + hfTramos + presCdt;",
     "estado": "vigente"
   },
   {
@@ -489,9 +489,9 @@
   },
   {
     "id": "hidro.m62",
-    "que": "H-196: una cisterna en 0 se manda «Por cotizar» como «Cisterna de 0 m³» en vez de quedar pendiente de volumen",
+    "que": "H-196: una cisterna en 0 se manda «Por cotizar» como «Cisterna de 0 m³» en vez de quedar pendiente de volumen (H-302 la pasó a cotizacionHidro(R)); reanclado tras 044f0c6 (H-302)",
     "logica": true,
-    "buscar": "if (HIDRO.cisterna > 0) {",
+    "buscar": "if (R.cisterna > 0) {",
     "reemplazar": "if (true) {",
     "estado": "vigente"
   },
