@@ -25,10 +25,10 @@
  },
  {
   "id": "equip.m4",
-  "que": "H-267: la huella de selección vuelve a anidar la de carga térmica (un cambio de carga sin aceptar diría «la captura cambió»)",
+  "que": "H-267: la huella de selección vuelve a anidar la de carga térmica (un cambio de carga sin aceptar diría «la captura cambió»); reanclado tras 78a23c1 (H-301: items y precios, y después comercial con H-303, antepuestos a zonas en ENTRADAS.equip)",
   "logica": true,
-  "buscar": "  equip: () => ({ zonas: zonasSel().map((z) => sinClaves(z, [\"id\", \"origen\", \"editada\"])), bldDiv: S.equip.div ?? null,",
-  "reemplazar": "  equip: () => ({ load: ENTRADAS.load(), zonas: zonasSel().map((z) => sinClaves(z, [\"id\", \"origen\", \"editada\"])), bldDiv: S.equip.div ?? null,",
+  "buscar": "zonas: zonasSel().map((z) => sinClaves(z, [\"id\", \"origen\", \"editada\"])), bldDiv: S.equip.div ?? null,",
+  "reemplazar": "load: ENTRADAS.load(), zonas: zonasSel().map((z) => sinClaves(z, [\"id\", \"origen\", \"editada\"])), bldDiv: S.equip.div ?? null,",
   "estado": "vigente"
  },
  {
@@ -65,7 +65,7 @@
  },
  {
   "id": "equip.m9",
-  "que": "H-288: Selección vuelve a corregir la capacidad con el sitio de Proyecto en vivo (SITE) en vez de su sitio propio",
+  "que": "H-288: Selección vuelve a corregir la capacidad con el sitio de Carga térmica en vivo (SITE; desde H-290 el de Proyecto es SITE_PROY) en vez de su sitio propio",
   "logica": true,
   "buscar": "const capSel = (e) => { if (!e) return 0; const f = capFactorEn(e, sitioSel());",
   "reemplazar": "const capSel = (e) => { if (!e) return 0; const f = capFactorEn(e, SITE);",
