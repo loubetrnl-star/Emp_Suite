@@ -110,5 +110,21 @@
   "buscar": "  if (!equipPrevio || !(\"div\" in equipPrevio)) s.equip.div = d && \"bldDiv\" in d ? numONulo(d.bldDiv) : null;",
   "reemplazar": "  if (!equipPrevio || !(\"div\" in equipPrevio)) s.equip.div = null;",
   "estado": "vigente"
+ },
+ {
+  "id": "equip.m15",
+  "que": "H-267: editar la hora pico de una zona con perfil deja de anular el perfil (rama \"hour\" sin prueba: la simultaneidad se calcula con un perfil que ya no corresponde a la hora)",
+  "logica": true,
+  "buscar": "if ((campo === \"tons\" || campo === \"hour\") && Array.isArray(z.profile))",
+  "reemplazar": "if (campo === \"tons\" && Array.isArray(z.profile))",
+  "estado": "vigente"
+ },
+ {
+  "id": "equip.m16",
+  "que": "H-288: Selección vuelve a corregir la capacidad con el sitio de Proyecto (SITE_PROY, H-290) en vez de su sitio propio (sitioSel(): capturado en su pestaña o aceptado como copia con fecha); regresión distinta de m9, que usa el de Carga térmica (SITE)",
+  "logica": true,
+  "buscar": "const f = capFactorEn(e, sitioSel());",
+  "reemplazar": "const f = capFactorEn(e, SITE_PROY);",
+  "estado": "vigente"
  }
 ]
