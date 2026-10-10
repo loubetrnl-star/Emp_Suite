@@ -148,3 +148,21 @@ Ninguna mueve una cifra del cálculo: amplían lo que R.1 y R.4 vigilan, y eso o
 - aire, material por omisión (600 L/min, 30 m de troncal y 20 m de ramales), en `a8c898d` (antes de `ae51c1d`): «Red de aire
   comprimido en aluminio calibrado tipo push-fit: diámetros pendientes (DI del fabricante)», 50 m × 1,171 MXN/m = 58,550 MXN.
   Después: sin importe, «Red de aire comprimido: pendiente de material».
+
+## Bloqueos por documento y decisiones (9-oct-2026)
+- **SMACNA HVAC-DCS: se queda la 2.ª edición de 1995** (+ Addendum No. 1, 1997), decisión del dueño del 9-oct-2026. La vigente es
+  la 4.ª edición, de pago (smacna.org); no se compra. H-170, H-310 y H-311 siguen citando 1995 (texto de dominio público en
+  `normas/`, de law.resource.org).
+- **Addendum No. 1 (nov 1997) contra las Tablas 1-3 a 1-9: BLOQUEADO por documento.** Trata de los tirantes a medio panel (MPT)
+  del capítulo 1; falta cotejarlo celda por celda contra el escaneo (`normas/FUENTE.md`). Mientras tanto la cita de esas tablas
+  dice «pendiente de cotejo con el Addendum No. 1, nov 1997» (ES/EN; prueba S.226, mutante duct.m41). No mueve cifras.
+- Búsqueda de textos del dueño (9-oct-2026), nada desbloquea por la regla 4:
+  - AISC 360-22: PDF gratuito en aisc.org (primaria); sin descargar. Sólo sirve a Estructural (bloque 5d), que no se toca.
+  - NFPA 13 (T17.4.2.1(a)) y NFPA 96: lectura gratuita en pantalla en nfpa.org, sin guardar texto; sin valores de CPVC. Sigue
+    BLOQUEADO. Espesores de ducto de grasa: las secundarias coinciden con lo que ya usa la suite (UMC 2018 §510.5).
+  - ANSI/ISEA Z358.1-2014: sólo secundarias (ISHN: 20 gpm por 15 min; 0.4 gpm a 30 psi). AUD-20(e) sigue BLOQUEADO.
+  - CFE Viento 2020 y NTC Sismo CDMX: sin fuente oficial verificada. Estructural, no se toca.
+  - ASHRAE Fundamentals cap. 1 (presión barométrica): fórmula de EnergyPlus que cita el Handbook de 1997 (secundaria, edición no
+    vigente). Para H-282 espera decisión del dueño (rotularla «fuente secundaria» o esperar el texto).
+  - IPC 2015 Tabla 604.3 (texto base de ICC) y Carrier Parte 1 Tabla 20A: no localizados (AUD-20(d) y H-120 siguen igual).
+  - ASTM B88: vigente probable B88-22, sin confirmar y de pago. AUD-20(c) sigue con «edición pendiente».

@@ -10422,6 +10422,23 @@ t("S.225 (H-170) calibre rectangular por SMACNA HVAC-DCS 2.ª ed. 1995, Tablas 1
     eq(rect(350, 300, "0.5", null, { service: "kitchen_grease" }).gauge.gauge, 16, "grasa rectangular sigue en UMC 16:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
+t("S.226 (H-170, Addendum No. 1) la cita de las Tablas 1-3 a 1-9 de SMACNA 1995 dice «pendiente de cotejo con el Addendum No. 1» (ES/EN): el Addendum No. 1 (nov 1997, tirantes a medio panel) no se ha cotejado contra esas celdas (normas/FUENTE.md); la 3-2A, la 3-2B y la tabla de la casa no lo llevan; sin mover calibre ni kilos", () => {
+  const guardado = JSON.stringify(S);
+  const meta = (pc) => ({ ...S.duct.meta, pc, material: "galvanized" });
+  const seg = (w, h, pc, esp, extra = {}) => G("calcSegment")({ ...G("defaultSegment")("AD-" + w, 1000), lock: true, w, h, length: 10, espaciadoRef: esp, ...extra }, meta(pc));
+  try {
+    G("reemplazarEstado")(G("defaultState")());
+    for (const [s, que] of [[seg(1200, 700, "2", "5"), "con refuerzo"], [seg(500, 300, "2", null), "sin refuerzo"], [seg(1200, 700, "2", null), "calibre pendiente"]]) {
+      contiene(s.gauge.ref, "pendiente de cotejo con el Addendum No. 1", `ES ${que}:`);
+      contiene(s.gauge.refEn, "pending check against Addendum No. 1", `EN ${que}:`);
+    }
+    eq(seg(1200, 700, "2", "5").gauge.gauge, 20, "mismo calibre (H-20):");
+    const r = seg(800, 800, "2", null, { shape: "round", d: 800 });
+    if (/Addendum/.test(r.gauge.ref)) throw new Error("la 3-2A no lleva el rótulo: " + r.gauge.ref);
+    const viejo = { ...G("defaultSegment")("TR-1", 6000), lock: true, w: 1200, h: 700, length: 18 }; delete viejo.espaciadoRef;
+    if (/Addendum/.test(G("calcSegment")(viejo, meta("2")).gauge.ref)) throw new Error("la tabla de la casa no lleva el rótulo");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {
   const guardado = JSON.stringify(S);
   try {

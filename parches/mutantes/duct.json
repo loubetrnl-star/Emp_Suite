@@ -37,4 +37,6 @@
   { "id": "duct.m38", "que": "H-311: una celda vacía de la 3-2B deja de quedar pendiente (se calcula con un espesor supuesto)", "logica": true, "buscar": "  if (!fila || fila[1] === null) {", "reemplazar": "  if (!fila) {", "estado": "vigente" },
   { "id": "duct.m39", "que": "H-170: el tramo de un proyecto anterior (sin espaciado) deja de conservar la tabla de la casa y pasa a SMACNA sin aviso", "logica": true, "buscar": "  const migrado = shape !== \"round\" && (esp === undefined || esp === \"casa\");   /* H-170: tramo de un proyecto anterior */", "reemplazar": "  const migrado = false;", "estado": "vigente" },
   { "id": "duct.m40", "que": "H-170: sin espaciado y con refuerzo exigido por la tabla deja de quedar pendiente (espesor supuesto)", "logica": true, "buscar": "    if (sinRef === null) return e === null", "reemplazar": "    if (false) return e === null", "estado": "vigente" }
+,
+  { "id": "duct.m41", "que": "Addendum No. 1: la cita de las Tablas 1-3 a 1-9 deja de decir «pendiente de cotejo con el Addendum No. 1» (texto de la memoria; no mueve cifras)", "logica": false, "buscar": "; pendiente de cotejo con el Addendum No. 1, nov 1997) · ${como}`;", "reemplazar": ") · ${como}`;", "estado": "vigente" }
 ]

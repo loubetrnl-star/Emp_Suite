@@ -9675,8 +9675,8 @@ function calibreRectSmacna(side, pc, material, esp) {
   const fila = t.r.find(([max]) => side <= max) || null;
   const como = e === null ? "sin refuerzo (espaciado sin capturar)" : `refuerzo cada ${n(e, 1)} ft`;
   const comoEn = e === null ? "unreinforced (spacing not entered)" : `reinforcement every ${n(e, 1)} ft`;
-  const cita = `SMACNA HVAC-DCS 2.ª ed. 1995, Tabla ${t.tabla} (${pc}" w.g., pág. ${t.pag}) · ${como}`;
-  const citaEn = `SMACNA HVAC-DCS 2nd Ed. 1995, Table ${t.tabla} (${pc}" w.g., p. ${t.pag}) · ${comoEn}`;
+  const cita = `SMACNA HVAC-DCS 2.ª ed. 1995, Tabla ${t.tabla} (${pc}" w.g., pág. ${t.pag}; pendiente de cotejo con el Addendum No. 1, nov 1997) · ${como}`;
+  const citaEn = `SMACNA HVAC-DCS 2nd Ed. 1995, Table ${t.tabla} (${pc}" w.g., p. ${t.pag}; pending check against Addendum No. 1, Nov 1997) · ${comoEn}`;
   const lado = `${side.toFixed(1)} in`;
   const pend = (es, en) => ({ gauge: "—", th_in: 0, th_mm: 0, joint: "—", ref: `${cita} · calibre pendiente`, refEn: `${citaEn} · gauge pending`, material: "",
     sinCalibre: `Calibre pendiente: ${es}; sin calibre, kilos ni importe (H-170)`, sinCalibreEn: `Gauge pending: ${en}; no gauge, weight or cost (H-170)` });
