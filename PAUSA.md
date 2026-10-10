@@ -1,6 +1,29 @@
 # PAUSA
 
-## Estado al 7-oct-2026 (vigente)
+## Estado al 10-oct-2026 (vigente)
+Pausa pedida por el dueño. Todo en `master` y en `origin/master` (sin commits pendientes); árbol limpio; nada corriendo.
+- Bancos: `node pruebas.mjs index.html` → **613/613**; con `--base respaldo-rev-2.9.8/index-2.9.21-inicio-20260921-221100.html` →
+  **619/619**. Versiones: load 7, clean 3, equip 4, duct 7, vent 4, quote 24, valor 2, kaizen 1, elec 11, hidro 11, fuego 7,
+  aire 8, civil 8, soporte 14. Etiqueta local `pre-H170` en 7460461 (no subida).
+- Hecho del 9 al 10-oct (detalle en `bitacora.md`): fusión de H-170 (a8d2582) y verificación de sus 38 mutantes; rótulo del
+  Addendum No. 1; firma Opus 5.5; herramientas de verificación (Pint, fluids, pdfplumber, openpyxl en `.venv-verificacion`;
+  c8, fast-check, eslint); cobertura por motor; verificación independiente en Python; S.227 (fast-check, soportería);
+  S.228 (longitud inválida en calcularTramo, 503ec74); S.230, S.231 (vivos de soportería); H-275 (`parches/mutantes/civil.json`)
+  y S.235 (fast-check, civil); reanclaje de mutantes inválidos en soporte, equip, aire, fuego, hidro y elec; CHANGELOG ordenado.
+- **Mutantes vivos que piden prueba** (siguiente tarea, archivo `pruebas.mjs`): equip.m15 (rama «hour» de editarZonaEquip) e
+  hidro.m21 (HP al más cercano: falta un caso con fracción < 0.5). civil.m09 es valor por omisión (no bloquea).
+- **Sin corrida completa tras el reanclaje:** hidro, aire, fuego, elec y equip (sólo se verificaron los 29 cambiados); load,
+  vent, clean y duct no se revisaron en esta ronda.
+- **Esperan decisión del dueño:** retiro de soporte.m70, m72, m73 y m74 (conducta retirada en H-307; logica false); filas
+  «(sin cambio)» del CHANGELOG para cambios de huella y arrastre a Cotización; las propuestas que mueven números de
+  `continuacion/auditoria-2026-09-28/PROPUESTAS-PENDIENTES.md` (equip A14, duct masa con zinc, elec reactancia, claros de
+  soporte, familia por omisión de soporte, AUD-12, AUD-19, H-282); AUD-17 (c) y AUD-20 siguen bloqueadas por documentos.
+- Equipo y entorno: límite de subagentes en `~/.claude/settings.json` = 18 (rige al reiniciar); semáforo de bancos para
+  programadores en `%TEMP%\emp-turno\turno.mjs` (temporal, fuera del repo). Cuatro worktrees de agentes quedaron bloqueados por
+  su proceso en `.claude/worktrees/agent-*` (ramas ya integradas): retirarlos con `git worktree remove --force` al reiniciar.
+- Para retomar: leer este bloque y las últimas filas de `bitacora.md`; correr los dos bancos; seguir con los vivos de arriba.
+
+## Estado al 7-oct-2026 (histórico)
 Cierre de la auditoría externa del 28-sep-2026 (`continuacion/auditoria-2026-09-28/`). Todo en `master`, sin push.
 - Bancos al cierre: `node pruebas.mjs index.html` → **604/604**; con `--base respaldo-rev-2.9.8/index-2.9.21-inicio-20260921-221100.html`
   → **610/610**. Versiones: load 7, clean 3, equip 4, duct 4, vent 4, quote 24, valor 2, kaizen 1, elec 11, hidro 11, fuego 7,
