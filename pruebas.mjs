@@ -10549,6 +10549,60 @@ t("S.230 (H-266, H-230; mutante soporte.m56) sin instantánea aceptada la soport
     if (!/valores propios/.test(pdfTxt(G("buildSoportePdf")()))) throw new Error("la cédula PDF de soportería no dice que los metros son capturados a mano («valores propios», regla 8)");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
+/* ===== S.231 (H-266, U15) «Capturo lo mío» y «Conservar lo aceptado» preguntan si dejan algo cuantificado y dejan paso de Deshacer ===== */
+t("S.231 (H-266; mutantes soporte.m76 y soporte.m77) los botones de una propuesta aceptada no se llevan nada sin dejar vuelta atrás: «Capturo lo mío» pregunta antes si con eso se deja de contar algo ya cuantificado y no toca lo aceptado hasta que se confirma; los dos («Capturo lo mío» y «Conservar lo aceptado») toman una instantánea del historial antes de escribir, y Deshacer regresa a la propuesta como estaba (aceptada, o desactualizada por decidir), no a antes de aceptarla (revisión adversarial U15; decisión del dueño: lo cuantificado no se mueve solo)", () => {
+  const guardado = JSON.stringify(S);
+  const act = (a, id) => { const b = w.document.createElement("button"); b.dataset.act = a; if (id) b.dataset.id = id; w.document.body.appendChild(b); b.dispatchEvent(new w.MouseEvent("click", { bubbles: true })); b.remove(); };
+  const modal = () => w.document.getElementById("modal");
+  const H = G("HIST"), hist0 = { pila: H.pila, ix: H.ix };
+  const id = "proyecto>load", P = G("PROPUESTAS")[id];
+  const nivel = () => { G("recompute")(); return G("estadoPropuesta")(id).nivel; };
+  const rec = () => G("vinculoDe")(id) || {};
+  const enHistorial = (etq) => G("HIST").pila.some((x) => x.etiqueta === etq);
+  try {
+    G("histReiniciar")();
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.231"; S.site = { key: "tijuana" };
+    G("recompute")(); G("histSnap")("inicio S.231");
+    eq(nivel(), "pendiente", "el caso no aísla lo que se quiere probar: el sitio de Proyecto debe quedar como propuesta por decidir:");
+    act("prop-aceptar", id);
+    eq(nivel(), "aceptado", "el caso no aísla lo que se quiere probar: la propuesta debe quedar aceptada:");
+    const tsAcept = rec().ts;
+    /* 1) Con algo ya cuantificado que se dejaría de contar, «Capturo lo mío» pregunta y no toca nada hasta confirmar. Desde
+          H-307 ninguna propuesta vigente deja algo así (la instantánea de soportería va por «sop-propio», S.136): se simula con
+          un doble de prueba de propioPierde, que es lo que propPropioConfirmado consulta. */
+    P.propioPierde = () => [["Sitio aceptado de Proyecto (doble de prueba S.231)", "Tijuana"]];
+    act("prop-propio", id);
+    if (rec().estado !== "aceptado") throw new Error("«Capturo lo mío» dejó lo aceptado sin preguntar (quedó «" + rec().estado + "») aunque se deja de contar algo ya cuantificado");
+    if (modal().hidden || !/Capturar lo propio/.test(modal().textContent) || !/doble de prueba S\.231/.test(modal().textContent))
+      throw new Error("«Capturo lo mío» debe preguntar y decir qué se deja de contar: " + (modal().hidden ? "(sin ventana)" : modal().textContent.replace(/\s+/g, " ").slice(0, 300)));
+    act("close"); w.eval("CONFIRMA = null"); delete P.propioPierde;
+    eq(nivel(), "aceptado", "cancelar deja la propuesta aceptada:");
+    /* 2) «Capturo lo mío» se puede deshacer: Deshacer regresa a lo aceptado con su fecha, no a antes de aceptar. */
+    act("prop-propio", id);
+    eq(rec().estado, "propio", "«Capturo lo mío» registra la captura propia:");
+    if (!enHistorial("capturar lo propio")) throw new Error("«Capturo lo mío» no dejó paso de Deshacer: no hay instantánea «capturar lo propio» en el historial");
+    act("deshacer");
+    eq(rec().estado, "aceptado", "Deshacer tras «Capturo lo mío» regresa a la propuesta aceptada (no a antes de aceptarla):");
+    eq(rec().ts, tsAcept, "con su fecha de aceptación original:");
+    eq(nivel(), "aceptado", "y vigente:");
+    /* 3) «Conservar lo aceptado» se puede deshacer: Deshacer regresa a la propuesta desactualizada, por decidir otra vez. */
+    S.site = { key: "mexicali" };
+    eq(nivel(), "desactualizado", "el caso no aísla lo que se quiere probar: al cambiar el sitio de Proyecto la propuesta debe salir desactualizada:");
+    const firmaVieja = rec().firma;
+    act("prop-conservar", id);
+    eq(nivel(), "aceptado", "«Conservar lo aceptado» la deja vigente:");
+    if (!(rec().conservado > 0)) throw new Error("«Conservar lo aceptado» no dejó la fecha en que se conservó");
+    if (!enHistorial("conservar lo aceptado")) throw new Error("«Conservar lo aceptado» no dejó paso de Deshacer: no hay instantánea «conservar lo aceptado» en el historial");
+    act("deshacer");
+    eq(nivel(), "desactualizado", "Deshacer tras «Conservar lo aceptado» regresa a la propuesta desactualizada, por decidir (no a antes de aceptarla):");
+    eq(rec().estado, "aceptado", "con lo aceptado:"); eq(rec().ts, tsAcept, "y su fecha original:");
+    eq(rec().firma, firmaVieja, "con la firma de lo aceptado, no la de hoy:"); eq(rec().conservado, undefined, "sin la fecha de conservar:");
+    eq(S.site.key, "mexicali", "Deshacer sólo quita el paso de conservar: el sitio de Proyecto sigue el nuevo:");
+  } finally {
+    delete P.propioPierde; G("closeModal")(); w.eval("CONFIRMA = null; clearTimeout(autoT)");
+    H.pila = hist0.pila; H.ix = hist0.ix; G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")();
+  }
+});
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {
   const guardado = JSON.stringify(S);
   try {
