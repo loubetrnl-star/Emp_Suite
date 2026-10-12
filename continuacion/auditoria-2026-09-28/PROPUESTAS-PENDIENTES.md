@@ -1,7 +1,7 @@
 # Propuestas y decisiones pendientes del dueño · cierre de la auditoría del 28-sep-2026
 
 Lo que una tarea AUD no pudo aplicar porque mueve un número, exige regenerar un esperado o subir `MOTOR_VER`,
-toca código congelado o pide una decisión del dueño. Nada de esto está aplicado. Cada renglón dice qué número se
+toca código congelado o pide una decisión del dueño. Salvo lo marcado APLICADO o CERRADA, nada de esto está aplicado. Cada renglón dice qué número se
 mueve, cuánto y bajo qué norma o criterio, y la prueba que lo fijaría.
 
 ## AUD-24 · hidro
@@ -40,7 +40,8 @@ mueve, cuánto y bajo qué norma o criterio, y la prueba que lo fijaría.
 - **aire · longitudes por omisión** (`index.html:7216`: `num(A.Lprincipal, 120)` y `num(A.Lramales, 90)`): con el campo
   vacío o nulo se suponen 120 m y 90 m. Propuesta: «pendiente de longitud» (regla 6). Se mueve: caída de presión, diámetros y
   metros cotizados de esos proyectos; `MOTOR_VER.aire` 6 → 7.
-- **soporte · familia por omisión** (`computeSoporte` y `snapshotSoporte`: lo que no es cobre se soporta como acero en aire;
+- **soporte · familia por omisión** [APLICADO sólo el aire sin material: 12-oct-2026, soporte 15, 7794c30, S.241; siguen abiertos
+  `FU.tub || "acero_neg"` y `famSoporteAgua`; el aire en aluminio e inoxidable sigue como acero, ver punto 1 de la última sección] (`computeSoporte` y `snapshotSoporte`: lo que no es cobre se soporta como acero en aire;
   `FU.tub || "acero_neg"` en contra incendio; `famSoporteAgua` cae a cobre). Propuesta: material no capturado = pendiente de
   material, como ya hace la tubería a mano desde AUD-14. Se mueve: espaciamiento y número de soportes de esos tramos;
   `MOTOR_VER.soporte` 14 → 15. Norma: la tabla de espaciamiento que ya usa soportería para cada familia.
@@ -124,7 +125,8 @@ Ninguna mueve una cifra del cálculo: amplían lo que R.1 y R.4 vigilan, y eso o
   los dos (FAD a la presión de trabajo pendiente; temperatura de entrada al secador), así que cambia el esperado de un motor
   que no se está trabajando. Para seguir hace falta que el dueño autorice regenerar sólo el esperado de quote (sin tocar su
   código ni su versión) o que espere a descongelarla.
-- **Familia por omisión en soportería: PROHIBIDA por ahora.** PAUSA.md:51 registra la orden del dueño de no tocar Estructural
+- **Familia por omisión en soportería: PROHIBIDA por ahora, salvo el aire sin material** (el dueño levantó la orden el 12-oct-2026
+  sólo para los claros exactos de ducto y el aire sin material, aplicados en soporte 15). PAUSA.md registra la orden de no tocar Estructural
   ni Soportería, y TAREAS-AUDITORIA-rev-2.9.24.md:14 la da por vigente para todo lo que no esté listado en la auditoría; esta
   propuesta no está en esa lista.
 - Partes de AUD-12 no aplicadas (cambiarían valores existentes de los proyectos fijos): ΔP negativa ≥ 5 Pa, ramas de AUD-14,
@@ -167,24 +169,27 @@ Ninguna mueve una cifra del cálculo: amplían lo que R.1 y R.4 vigilan, y eso o
   - IPC 2015 Tabla 604.3 (texto base de ICC) y Carrier Parte 1 Tabla 20A: no localizados (AUD-20(d) y H-120 siguen igual).
   - ASTM B88: vigente probable B88-22, sin confirmar y de pago. AUD-20(c) sigue con «edición pendiente».
 
-## Verificación independiente en Python (9-oct-2026) · discrepancias, NO aplicadas (mueven números)
+## Verificación independiente en Python (9-oct-2026) · discrepancias y su estado al 12-oct-2026
 `scripts/verificacion_independiente.py` (Pint, fluids) contra los valores de la suite en el arnés. Coinciden (≤ 0.03 %):
 load (corrección CLTD), clean (FFU 629 cfm), vent (Vbz 62.1), hidro (35 psi → 24.6074 mca), fuego (P = (q/K)², sin texto
-de norma) y civil (perímetro 3:2, sin texto de norma). Discrepancias, cada una espera decisión del dueño:
+de norma) y civil (perímetro 3:2, sin texto de norma). Discrepancias (estado al 12-oct-2026 en cada una):
 - **equip · 50TC-A14 (12.5 TR):** la suite toma 5,000 cfm (400 cfm/TR); Carrier 50TC Product Data rotula 3,600 a 6,000 cfm con
-  la columna central en 4,800 (384 cfm/TR; `Carrier-50TC-7-16-03PD_Product-Data.txt:9441-9742`). +4.17 %. Movería el caudal
-  nominal de esa unidad y lo que dependa de él (equip).
+  la columna central en 4,800 (384 cfm/TR; `Carrier-50TC-7-16-03PD_Product-Data.txt:9441-9742`). +4.17 %. CERRADA el
+  12-oct-2026: se queda en 5,000 cfm (ver «Decisiones del dueño del 12-oct-2026»).
 - **duct · masa de lámina galvanizada:** la suite calcula espesor nominal × 7,850 kg/m³ (acero desnudo): calibre 20 = 7.896 kg/m²;
   SMACNA 1995, tabla «Galvanized sheet thickness tolerances» (pág. A.2, transcripción HTML sin cotejo con el escaneo) da
   1.656 lb/ft² = 8.08 kg/m² nominal, con zinc. −2.34 %. Movería kilos de ductos y la partida de lámina (duct; quote congelada).
+  DIFERIDA hasta descongelar Cotización.
 - **elec · reactancia:** la suite usa XL = 0.19 Ω/km fijo y lo llama conservador para conduit de acero; la NOM-001-SEDE-2012
   Tabla 9 da 0.213 Ω/km para 8 AWG en acero (0.171 en PVC). Caso 30 A, 220 V, 3F, 50 m, FP 0.85: ΔV 2.688 % contra 2.702 %
-  (−0.53 %); con la columna Ze de la tabla (2.30 Ω/km) 2.716 %. Puede cambiar el calibre elegido por caída en tramos al límite.
+  (−0.53 %); con la columna Ze de la tabla (2.30 Ω/km) 2.716 %. APLICADA con H-190 (f761397, elec 12): R y XL de la columna
+  «Conduit de acero» de la Tabla 9; en los proyectos fijos ningún calibre cambió.
 - **soporte · claro máximo:** la suite usa 2.44 m y 3.66 m; SMACNA 1995 §4.2.8 da 8 ft = 2.4384 m y la Tabla 4-2 12 ft = 3.6576 m.
   En el borde (ducto rectangular de 9.76 m) la suite pone 5 soportes a 2.44 m, por encima del máximo; con 8 ft serían 6.
-  Soportería no se toca (orden del dueño): queda registrado.
+  APLICADO en soporte 15 (54a119c y 686aace, S.239), aprobado por el dueño el 12-oct-2026.
 - **aire · Haaland:** aproximación explícita de Colebrook: −1.14 % en f a Re 1e5 y ε/D 3e-5 (fluids 1.3.1). Sin texto de norma
-  en el repo; se reporta como criterio, no como error.
+  en el repo; se reporta como criterio, no como error. Rotulado en la memoria de aire y en NORMAS.aire el 12-oct-2026
+  (1c5ef70, S.243).
 
 ## Decisiones del dueño del 12-oct-2026
 - **equip · 50TC-A14: CERRADA.** Se queda en **5,000 cfm = 12.5 TR × 400 cfm/TR**, decisión de la casa (regla `CFM_POR_TR = 400`,
@@ -195,8 +200,9 @@ de norma) y civil (perímetro 3:2, sin texto de norma). Discrepancias, cada una 
   arrastra la partida de lámina de la Cotización general).
 - **soporte.m70, m72, m73 y m74: RETIRADOS** (commit ef87f1f).
 
-## Lote pendiente de aprobación (no aplicado): H-190 + claros exactos + material de aire no capturado
-Un solo lote, con prueba en rojo por cambio, después de que el dueño lo apruebe. Medido el 12-oct-2026 sobre copias temporales
+## Lote aprobado y aplicado (12-oct-2026): H-190 + claros exactos + material de aire no capturado
+Aprobado por el dueño el 12-oct-2026 y aplicado con prueba en rojo por cambio (elec 12: f761397 y 6120d8f; soporte 15: 54a119c,
+7794c30 y 686aace); las cifras aplicadas coinciden con esta medición previa, hecha sobre copias temporales
 de index.html (no sobre el repo) con los proyectos fijos de `parches/regresion-motores/`.
 1. **elec · H-190 (R y XL de conduit de acero por calibre).** La suite selecciona EMT (acero), pero usa R de la columna PVC y
    XL = 0.19 Ω/km fijo. Cambio: R y XL de la columna «Conduit de acero» de NOM-001-SEDE-2012, Cap. 10, Tabla 9 (DOF; texto en
@@ -207,15 +213,64 @@ de index.html (no sobre el repo) con los proyectos fijos de `parches/regresion-m
    - Proyectos guardados: cambia la caída de tensión de todo conductor (de +0.3 a +5 % en 14 AWG–1 AWG; −1 a −11 % de 1/0 en
      adelante); un calibre sólo cambia si la caída queda a menos de ~5 % de `dvMax`.
    - Dato faltante: la Tabla 9 no trae R de aluminio en 14, 12, 10 y 8 AWG (la suite hoy usa 16.7, 10.5, 6.60 y 4.20 sin
-     respaldo). Propuesta: «sin dato de norma» → calibre pendiente en aluminio de esos tamaños (decisión del dueño).
-2. **soporte · claros exactos de SMACNA 1995** (§4.2.8 «8 ft», Tabla 4-2 «12 ft»): `ESPAC_DUCTO_RECT` 2.44 → 2.4384 m y
+     respaldo). Propuesta: «sin dato de norma» → calibre pendiente en aluminio de esos tamaños (decisión del dueño). APLICADO
+     (f761397 y 6120d8f; S.238 y S.240): mínimo por ampacidad, caída sin evaluar, aviso de error; unifilar y PDF lo marcan.
+2. **APLICADO (54a119c, S.239) · soporte · claros exactos de SMACNA 1995** (§4.2.8 «8 ft», Tabla 4-2 «12 ft»): `ESPAC_DUCTO_RECT` 2.44 → 2.4384 m y
    `ESPAC_DUCTO_RED` 3.66 → 3.6576 m. Proyectos fijos: cifras de soportería sin cambio. Proyectos guardados: n sube en 1 sólo
    si la longitud cae en (k·2.4384, k·2.44] o (k·3.6576, k·3.66]; la carga por soporte baja 0.066 % en todo ducto (puede
    cruzar un umbral de varilla en casos al límite).
-3. **soporte · material de aire no capturado = pendiente** (AUD-14): hoy `snapshotSoporte` y `computeSoporte` soportan como
+3. **APLICADO (7794c30, S.241; sólo null: una instantánea anterior sin la clave conserva el acero) · soporte · material de aire
+   no capturado = pendiente** (AUD-14): antes `snapshotSoporte` y `computeSoporte` soportaban como
    acero todo lo que no es cobre, incluido el aire sin material (proyectos nuevos desde AUD-14). Cambio: sin material,
    «pendiente de material» sin claro ni soportes, como la tubería a mano. Proyectos fijos: sin cambio (capturan aluminio y
    cobre). Proyectos guardados: sólo los de aire sin material.
-   - Los cambios 2 y 3 suben juntos **MOTOR_VER.soporte 14 → 15**; esperados de soporte: sólo la versión (cifras iguales).
-- Requiere: levantar la orden de no tocar Soportería para 2 y 3; ningún congelado se toca (Cotización no lee estos campos de
-  elec; la partida de soportería de Cotización sólo cambiaría en proyectos guardados con aire sin material).
+   - Los cambios 2 y 3 subieron juntos **MOTOR_VER.soporte 14 → 15** (hecho); esperados de soporte: sólo la versión (cifras iguales).
+- Orden de no tocar Soportería: levantada por el dueño el 12-oct-2026 sólo para 2 y 3. Ningún congelado se tocó. La partida de
+  soportería de Cotización sólo cambia en proyectos guardados con aire sin material. Dependencias en congelados: abajo.
+
+## Criterio del dueño o congelado · registradas el 12-oct-2026 (NO aplicadas)
+Preparadas por los exploradores B6 y A1 (revisión adversarial de H-190); líneas verificadas en la copia de trabajo de ese día.
+Ninguna cifra de «qué mueve» está medida salvo donde se dice.
+
+1. **soporte · aire en aluminio e inoxidable se soporta como acero** (decisión del dueño · mueve números).
+   - Hoy: `snapshotSoporte` manda `aireMat: "acero"` a todo `TUB_AIRE` que no sea cobre y `computeSoporte` lo cuenta con
+     `ESPAC_ACERO`. Aire deja el DI de aluminio e inoxidable pendiente (`d: null`); la instantánea lo guarda en 0 y
+     `agregarTuberia` lo sube a 10 mm: se soporta como acero de ½″ (2.1 m). Sin tabla de claros en el repo (soporte.pendientes.md, H-236).
+     S.241 fija hoy ese comportamiento (80 m soportados) para que un cambio sea visible.
+   - Qué mueve: soportes, varilla, anclaje y la partida de soportería de la Cotización (congelada) de esos proyectos; fijos sin
+     cambio. `MOTOR_VER.soporte` 15 → 16.
+   - Decide el dueño: (a) «pendiente de claro y de DI del fabricante», como CPVC; (b) seguir como acero rotulado «criterio de la
+     casa»; (c) entregar la tabla del fabricante.
+2. **kaizen · «un calibre más se paga solo» lee `R_KM` y supone 30 m** (dependencia · congelado).
+   - Hoy: `R_KM` (canalización no magnética) trae R de aluminio 14–8 AWG que la Tabla 9 no da (16.7, 10.5, 6.60, 4.20); el eléctrico
+     ya usa `R_KM_ACERO` (H-190) y el detector sigue con `R_KM`; sin distancia supone 30 m (`num(S.elec.Ltablero, 30)`) y no mira `rPend`.
+   - Qué mueve: kW de pérdida, cobre extra, retorno y si la oportunidad aparece. `MOTOR_VER.kaizen` 1 → 2.
+   - Decide el dueño: al descongelar Kaizen, ¿columna de acero y «pendiente de longitud» en vez de 30 m?
+3. **eléctrico · el libro de la propuesta dice «pendiente de longitud» cuando el pendiente es el calibre** (dependencia · congelado · sin cifras).
+   - Hoy: `buildPropuestaXlsx` decide por `ELEC.alim.dv == null` («pendiente de longitud», «Falta la distancia al tablero: no se
+     supone»); con aluminio de 8 AWG o menor y distancia capturada `dv` también es nulo (`rPend`). PDF, memoria, unifilar y
+     pantalla ya distinguen `rPend`; el libro no.
+   - Decide el dueño: ¿se corrige al descongelar la propuesta, o se autoriza tocar sólo esas dos celdas antes?
+4. **elec · cotización y materiales cuantifican como firme el conductor de calibre pendiente** (dependencia · consumidores congelados).
+   - Hoy: `cotizacionElec` (R.cot, H-299) y `materialesElec` usan `awg` sin mirar `rPend`; los consumen la Cotización general y el
+     libro de la propuesta.
+   - Qué mueve: sólo proyectos con aluminio ≤ 8 AWG: conductor, canalización y, en 12 y 10 AWG, la protección pasarían a
+     «pendiente de calibre». Elec 12 → 13 si cambia.
+   - Decide el dueño: ¿«pendiente de calibre» o «mínimo por ampacidad» rotulado? ¿Se acepta cambiar `R.cot` con consumidores congelados?
+5. **elec · CM.elec.11.e · banda fTemp de 61–65 °C** (decisión del dueño · mueve números).
+   - Hoy: `F_TEMP` junta 61–70 °C en 0.33; NOM-001-SEDE-2012 Tabla 310-15(b)(2)(a), p. 186, columna 75 °C da 61–65 → 0.47 y 66–70 → 0.33.
+     Arriba de 70 °C la suite da 0.35 donde la tabla pone «–».
+   - Qué mueve: a 61–65 °C el factor sube +42 % (deja de ser conservador); puede bajar calibres. Elec 12 → 13.
+   - Decide el dueño: (a) tabla literal; (b) 0.33 rotulado «criterio de la casa, conservador».
+6. **civil · altura por omisión de 3 m en captura a mano (civil.m09)** (decisión del dueño · sólo texto impreso).
+   - Hoy: `alturaProm = Math.max(0, num(C.alturaManual, 3))` con el campo nulo o vacío imprime 3 m «capturada a mano»; no alimenta
+     partidas ni importes. Matar civil.m09 con una prueba fijaría el 3 m que la regla 6 prohíbe.
+   - Decide el dueño: (a) vacío = «pendiente de altura»; (b) 3 m rotulado «criterio de la casa».
+7. **elec · la alerta de caída acumulada ignora ramales con caída pendiente** (decisión del dueño · sin cifras).
+   - Hoy: `e.alim.dv > 0` y `c.cond.dv || 0`: con `dv` nulo (sin distancia o calibre pendiente) no avisa que la acumulada no se
+     puede evaluar; cada causa ya tiene su aviso de error.
+   - Decide el dueño: ¿aviso «caída acumulada no evaluable» y de qué nivel, o bastan los avisos por causa?
+8. **soporte · el resumen de la instantánea sigue diciendo «N m de red de aire» cuando el aire va sin material** (decisión · sólo texto).
+   - Hoy: `resumenSnapSoporte` y `origenesSnapSoporte` cuentan el aire aunque `aireMat === null` lo deje pendiente; salen en la
+     tarjeta, el PDF y el registro de migración.
+   - Decide el dueño: ¿«N m de red de aire (pendiente de material)», o no contarla mientras esté pendiente?
