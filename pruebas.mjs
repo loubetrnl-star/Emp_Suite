@@ -10894,6 +10894,19 @@ t("S.243 (aire, regla 4) el factor de fricción de Darcy de la red de aire sale 
     if ((pdf.match(/Haaland \(1983\), sin texto de norma en el repo; criterio de la casa/g) || []).length < 2) throw new Error("el PDF de aire debe traer el rótulo en las notas y en la trazabilidad");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
+t("S.244 (soportería, textos) el párrafo «Base normativa» del PDF dice los claros vigentes (cobre H-229: 1.524 a 3.048 m; termoplástico H-228 por subtipo: CPVC 0.9/1.219 m, PP-R 0.813/1.219 m, PEAD sin claro) y no los de la rev 2.9.17 (cobre 1.8 a 3.7 m, CPVC/PEAD 0.9 a 1.8 m); el aviso de soportería vacía ya no habla de una propuesta de los motores (retirada por H-307). Sólo texto", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.244"; G("recompute")();
+    const pdf = txtPdfE(G("buildSoportePdf")());
+    ["1.524 m", "3.048 m", "CPVC de 0.9 m", "PP-R de 0.813 m", "1.219 m", "PEAD sin claro", "ANSI/MSS SP-58-2018", "IPC 2009 Tabla 308.5"].forEach((x) => contiene(pdf, x, "PDF de soportería:"));
+    if (/de 1\.8 a 3\.7 m|CPVC\/PEAD\) de 0\.9 a 1\.8 m/.test(pdf)) throw new Error("el PDF conserva los claros de la rev 2.9.17");
+    const av = G("SOPORTE").avisos.find((a) => /No hay soportes que contar/.test(a.msg));
+    if (!av) throw new Error("el caso no aísla lo que se quiere probar: sin metros debe salir «No hay soportes que contar»");
+    if (/propuesta de los motores/.test(av.msg)) throw new Error("el aviso habla de una propuesta retirada por H-307: " + av.msg);
+    contiene(av.msg, "instantánea de metros guardada", "el aviso nombra la instantánea:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {
   const guardado = JSON.stringify(S);
   try {

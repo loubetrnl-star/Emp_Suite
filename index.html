@@ -8327,7 +8327,7 @@ function npsDesdeMM(dmm) { return MM_A_NPS[dnNominal(Math.max(10, num(dmm)))] ||
 
 function defaultSoporte() {
   return {
-    usarMotores: false,       // H-266: true sólo con la instantánea aceptada (propuesta motores>soporte); sin ella, captura a mano
+    usarMotores: false,       // H-266/H-307: true sólo con la instantánea de metros que el proyecto ya tenía (copia propia; la propuesta motores>soporte se retiró); sin ella, captura a mano
     sismico: true,            // Baja California es zona sísmica
     alturaTrabajo: 0,         // H-266: capturada; 0 = pendiente (ya no se toma la mayor altura de zona)
     alturaEstructura: 0,      // H-266: altura de la estructura de la que cuelga la instalación (z = h de ASCE 7 §13.3.1); 0 = pendiente
@@ -8464,14 +8464,14 @@ function computeSoporte(Gc, F) {
      razón 0, sin dividir entre cero. */
   const alturaMontaje = hEstructura;   /* H-266: capturada (antes la mayor altura de zona) */
 
-  /* H-67 (decisión del dueño, 15-sep-2026): duct/hidro/fuego/aire>soporte
-     entran al sistema de cruces. A diferencia de aire>elec y similares, negar
+  /* H-67 (decisión del dueño, 15-sep-2026; RETIRADO por H-307: soportería es autónoma y esos cruces ya no existen). Lo que sigue es
+     histórico: duct/hidro/fuego/aire>soporte entraban al sistema de cruces. A diferencia de aire>elec y similares, negar
      el permiso NO quita la partida ni la baja a cero —la cantidad real se
      sigue contando y cotizando, porque un proyecto en trámite sigue
      necesitando los mismos soportes— solo se marca "pendiente" en avisos para
      que quede trazado que el cruce no está autorizado todavía. */
-  /* H-266: ya no hay conteo en vivo: de los motores sólo se cuenta con la instantánea aceptada (computeSoporteGobernado), y
-     aceptarla concede los cuatro cruces (PROPUESTAS["motores>soporte"].permisos). Sin avisos de permiso pendiente. */
+  /* H-266/H-307: no hay conteo en vivo ni propuesta que conceda cruces: de los motores sólo se cuenta con la instantánea de metros
+     que el proyecto ya tenía guardada (computeSoporteGobernado; copia propia, no se compara con los motores). Sin avisos de permiso pendiente. */
 
   /* ---- Ductos: SoporteCalc no distingue material, siempre corre por él ---- */
   let mDucto = 0;
@@ -8754,7 +8754,7 @@ function computeSoporte(Gc, F) {
   /* H-266 (revisión adversarial U16): desde H-266 los metros de los motores no entran solos; el aviso ya no dice «no hay ductos ni
      tubería calculados en los motores» (falso con tramos en Ductos sin aceptar). computeSoporteGobernado precisa si hay metros
      en los motores sin aceptar. */
-  if (nSoportes === 0) avisos.push({ lvl: "warn", msg: Gc.usarMotores !== false && Gc.snap ? (manualPendientes.length ? "No hay soportes que contar: los metros de la instantánea quedan pendientes de dato (ver los avisos de soportes pendientes)." : "No hay soportes que contar: la instantánea aceptada no trae metros de ducto ni de tubería.") : "No hay soportes que contar: no hay metros capturados a mano en esta pestaña ni una propuesta de los motores aceptada (H-266)." });
+  if (nSoportes === 0) avisos.push({ lvl: "warn", msg: Gc.usarMotores !== false && Gc.snap ? (manualPendientes.length ? "No hay soportes que contar: los metros de la instantánea quedan pendientes de dato (ver los avisos de soportes pendientes)." : "No hay soportes que contar: la instantánea aceptada no trae metros de ducto ni de tubería.") : "No hay soportes que contar: no hay metros capturados a mano en esta pestaña ni una instantánea de metros guardada (H-266, H-307)." });
   if (hTrab > 10 && !mesesPendiente && meses < 2) avisos.push({ lvl: "info", msg: `Trabajo a ${n(hTrab, 1)} m con solo ${meses} mes(es) de renta. Revisa el programa: a esa altura casi todo el montaje mecánico y eléctrico necesita plataforma.` });
 
   /* ---- Memoria ---- */
@@ -20028,8 +20028,8 @@ const MOTOR_ACC = {
     falta: () => (capturaReal("aire") ? "" : "Faltan puntos de consumo de aire") },
   civil: { donde: "Obra civil", archivo: "Obra-civil", memoria: () => buildCivilPdf(), cot: "civil",
     falta: () => (capturaReal("civil") && CIVIL && CIVIL.part && CIVIL.part.length ? "" : "Falta la geometría: área y altura") },
-  /* H-266 (revisión adversarial U16): capturar en Ductos o en las tuberías ya no alimenta a soportería: se acepta su propuesta o se
-     capturan los metros aquí. Si los motores ya tienen metros sin aceptar, se dice. */
+  /* H-266 (revisión adversarial U16) / H-307: capturar en Ductos o en las tuberías no alimenta a soportería: los metros se capturan
+     aquí (o cuenta la instantánea que un proyecto anterior ya tenía guardada; la propuesta de los motores se retiró). */
   soporte: { donde: "Soportería: captura los metros a mano en su pestaña (H-307)", archivo: "Soporteria", memoria: () => buildSoportePdf(), cot: "soporte",
     falta: () => (capturaReal("soporte") && SOPORTE.part && SOPORTE.part.length ? ""
       : "Faltan metros de ducto o tubería que soportar") },
@@ -23765,7 +23765,7 @@ function buildSoportePdf() {
   recompute(); const R = SOPORTE, d = PdfDoc("Cedula de soporteria");
   pdfTitle(d, "Cedula de soporteria y elevacion", `${S.meta.name || "Proyecto"} · seccion G`);
   pdfHeading(d, "Base normativa del espaciamiento");
-  pdfParagraph(d, "MSS SP-58 para tuberia segun diametro y material: acero de 2.1 m en diametros chicos hasta 7.0 m en 12 pulgadas; en cobre de 1.8 a 3.7 m porque el material cede mas; en la red contra incendio el espaciamiento se topa en 4.6 m (NFPA 13); termoplastico (CPVC/PEAD) de 0.9 a 1.8 m con la tabla propia de la suite (IPC 308.5). SMACNA HVAC-DCS 1995 para ducto: 8 ft (2.4384 m) en rectangular (sec. 4.2.8) y 12 ft (3.6576 m) en redondo (Tabla 4-2). NFPA 13 capitulo 18 para arriostramiento sismico: longitudinal cada 24.4 m y transversal cada 12.2 m.");
+  pdfParagraph(d, "MSS SP-58 para tuberia segun diametro y material: acero de 2.1 m en diametros chicos hasta 7.0 m en 12 pulgadas; en cobre de 1.524 m (1/2 y 3/4 de pulgada) a 3.048 m (3 y 4 pulgadas), el minimo entre ANSI/MSS SP-58-2018 e IPC 2009 Tabla 308.5 (fuentes secundarias, por ratificar con el texto de la norma); en la red contra incendio el espaciamiento se topa en 4.6 m (NFPA 13) y la red de CPVC queda pendiente del claro de NFPA 13; termoplastico en agua por subtipo con IPC 2009 Tabla 308.5 (folleto MCP, fuente secundaria): CPVC de 0.9 m hasta 1 pulgada (decision del dueno, mas cerrado que los 3 ft del IPC) y 1.219 m de 1-1/4 pulgadas en adelante, PP-R de 0.813 m hasta 1 pulgada y 1.219 m de 1-1/4 pulgadas en adelante, y PEAD sin claro hasta tener fuente (la tabla no lo trae). SMACNA HVAC-DCS 1995 para ducto: 8 ft (2.4384 m) en rectangular (sec. 4.2.8) y 12 ft (3.6576 m) en redondo (Tabla 4-2). NFPA 13 capitulo 18 para arriostramiento sismico: longitudinal cada 24.4 m y transversal cada 12.2 m.");
   /* H-266 (revisión adversarial U13; regla 8): la cédula dice de dónde salen los metros: la instantánea aceptada (con su fecha y
      los motores de origen) o lo capturado a mano en esta pestaña. */
   const snapSop = S.soporte && S.soporte.snap && typeof S.soporte.snap === "object" && S.soporte.usarMotores !== false ? S.soporte.snap : null;
