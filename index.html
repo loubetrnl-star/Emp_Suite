@@ -7866,8 +7866,11 @@ const C_SOP = (function () {
     '2"': 2.438, '2-1/2"': 2.743, '3"': 3.048, '4"': 3.048,
   };
   const ESPAC_NFPA13_MAX = 4.6;
-  const ESPAC_DUCTO_RECT = 2.44;
-  const ESPAC_DUCTO_RED = 3.66;
+  /* Soporte v15 (aprobado por el dueño, 12-oct-2026; sistema imperial primario): pies exactos de SMACNA HVAC-DCS 2.ª ed. 1995.
+     Rectangular: §4.2.8 «8 (2.44) or 10 foot (3.05 m)», se toma el menor, 8 ft = 2.4384 m. Redondo: Tabla 4-2 «12′ / 3.7 m»,
+     12 ft = 3.6576 m. Antes 2.44 y 3.66 m, que excedían el máximo por 1.6 y 2.4 mm. */
+  const ESPAC_DUCTO_RECT = 2.4384;
+  const ESPAC_DUCTO_RED = 3.6576;
   const ESPAC_CHAROLA = 1.50;
   const LAMINA_GALV = { 26: 0.551, 24: 0.701, 22: 0.853, 20: 1.006, 18: 1.311, 16: 1.613 };
   const KG_M2_POR_MM = 7.85;
@@ -7990,8 +7993,8 @@ function espaciamiento(tramo) {
       e = C_SOP.ESPAC_NFPA13_MAX; fuente = 'NFPA 13 §9.2 · tope de 4.6 m';
       notas.push('El tope de NFPA 13 gobierna sobre MSS SP-58 en esta línea.');
     }
-  } else if (tramo.tipo === 'ducto_rect') { e = C_SOP.ESPAC_DUCTO_RECT; fuente = 'SMACNA · ducto rectangular'; }
-  else if (tramo.tipo === 'ducto_redondo') { e = C_SOP.ESPAC_DUCTO_RED; fuente = 'SMACNA · espiroducto'; }
+  } else if (tramo.tipo === 'ducto_rect') { e = C_SOP.ESPAC_DUCTO_RECT; fuente = 'SMACNA HVAC-DCS 1995 §4.2.8 · ducto rectangular, 8 ft'; }
+  else if (tramo.tipo === 'ducto_redondo') { e = C_SOP.ESPAC_DUCTO_RED; fuente = 'SMACNA HVAC-DCS 1995 Tabla 4-2 · ducto redondo, 12 ft'; }
   else if (tramo.tipo === 'charola') { e = C_SOP.ESPAC_CHAROLA; fuente = 'NEMA VE-1'; }
   else { throw new Error(`Tipo de tramo desconocido: ${tramo.tipo}`); }
   if (tramo.espaciamiento_forzado_m) {
@@ -20111,7 +20114,7 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "7", clean: "3", equip: "4", duct: "7", vent: "4", quote: "24", valor: "2", kaizen: "1", elec: "12", hidro: "11", fuego: "7", aire: "8", civil: "8", soporte: "14" };
+const MOTOR_VER = { load: "7", clean: "3", equip: "4", duct: "7", vent: "4", quote: "24", valor: "2", kaizen: "1", elec: "12", hidro: "11", fuego: "7", aire: "8", civil: "8", soporte: "15" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
@@ -20175,7 +20178,8 @@ const MOTOR_CAMBIOS = {
     { ver: "9", rev: "2.9.24", que: "H-228: claros del termoplástico por subtipo, IPC 2009 T308.5 (MCP, secundaria): CPVC ≤1\" 0.9 m (dueño) y ≥1¼\" 1.219 (antes 1.2 / 1.8), PP-R ≤1\" 0.813 y ≥1¼\" 1.219; PEAD sin renglón queda pendiente de claro; cada soporte de termoplástico lleva ancla (sujeta a H-226) y 4+4 tuercas/rondanas como el despiece (antes 0)" }, { ver: "10", rev: "2.9.24", que: "H-166 (dependencia de ductos): el tramo de ducto sin sección no se soporta con 400×200 ni Ø250 supuestos: queda pendiente con su razón y fuera de los metros y la cotización de soportes" }, { ver: "11", rev: "2.9.24", que: "H-224 (parte no bloqueada): la red contra incendio se soporta con su material: acero como acero, cobre con MSS SP-58-2018; CPVC queda pendiente de la tabla NFPA 13 (sin texto), nunca como acero ni con los claros del IPC (antes toda la red como acero); también a mano y con la instantánea" },
     { ver: "12", rev: "2.9.24", que: "H-266 (decisión del dueño, 27-sep-2026): soportería es autónoma: sin instantánea aceptada cuenta sólo lo capturado a mano (se retiró el conteo en vivo de ductos, hidráulica, incendio y aire); aceptar la propuesta concede los cruces y ya no se mueve sola. Altura de trabajo y altura de la estructura (sismo) capturadas: ya no salen de la zona más alta; sin ellas, renta de elevación pendiente y aviso sísmico. Bases de equipo capturadas o de la instantánea (ya no de la cotización ni de aire). Un proyecto guardado se migra una vez al abrirlo, con las mismas cifras. Red contra incendio sin longitudes de cabezal y montante: pendiente (antes 30 + 12 m a 100 mm leídos en vivo de contra incendio, aun con la instantánea)" },
     { ver: "13", rev: "2.9.24", que: "H-266, complementos de la revisión adversarial (27-sep-2026): con arriostramiento sísmico y sin la altura de la estructura capturada el anclaje va Por cotizar con su motivo (antes se cotizaba como calculado con z/h = 0 supuesto, el lado no conservador de ASCE 7-16 §13.3.1); sin sismo la altura no entra al anclaje. Proyecto fijo: cifras sin cambio" },
-    { ver: "14", rev: "2.9.24", que: "AUD-14 (auditoría externa, 29-sep-2026; «nada se estima»): la tubería capturada a mano sin material ya no se soporta como acero (antes «acero» por omisión en el estado y en el cálculo): queda pendiente de material, sin soportes ni importe, con aviso; un proyecto nuevo nace sin material y la pantalla ofrece «sin capturar»" }],
+    { ver: "14", rev: "2.9.24", que: "AUD-14 (auditoría externa, 29-sep-2026; «nada se estima»): la tubería capturada a mano sin material ya no se soporta como acero (antes «acero» por omisión en el estado y en el cálculo): queda pendiente de material, sin soportes ni importe, con aviso; un proyecto nuevo nace sin material y la pantalla ofrece «sin capturar»" },
+    { ver: "15", rev: "2.9.24", que: "Claros máximos de ducto con los pies exactos de SMACNA HVAC-DCS 2.ª ed. 1995 (aprobado por el dueño, 12-oct-2026; sistema imperial primario): rectangular 8 ft = 2.4384 m (§4.2.8) y redondo 12 ft = 3.6576 m (Tabla 4-2); antes 2.44 y 3.66 m, que excedían el máximo por 1.6 y 2.4 mm. Mueve el número de soportes sólo en tramos cuya longitud cae en (k·2.4384, k·2.44] o (k·3.6576, k·3.66] y la carga por soporte −0.066 %; proyectos fijos sin cambio de cifras. Prueba S.239" }],
 };
 const motorVer = (id) => MOTOR_VER[id] || "1";
 /* H-283 (y los que sigan): cuando sólo cambia la FORMA de la huella de un motor —qué entra a ella— sin cambiar su cálculo, no sube
@@ -23744,7 +23748,7 @@ function buildSoportePdf() {
   recompute(); const R = SOPORTE, d = PdfDoc("Cedula de soporteria");
   pdfTitle(d, "Cedula de soporteria y elevacion", `${S.meta.name || "Proyecto"} · seccion G`);
   pdfHeading(d, "Base normativa del espaciamiento");
-  pdfParagraph(d, "MSS SP-58 para tuberia segun diametro y material: acero de 2.1 m en diametros chicos hasta 7.0 m en 12 pulgadas; en cobre de 1.8 a 3.7 m porque el material cede mas; en la red contra incendio el espaciamiento se topa en 4.6 m (NFPA 13); termoplastico (CPVC/PEAD) de 0.9 a 1.8 m con la tabla propia de la suite (IPC 308.5). SMACNA para ducto: 2.44 m en rectangular y 3.66 m en espiroducto. NFPA 13 capitulo 18 para arriostramiento sismico: longitudinal cada 24.4 m y transversal cada 12.2 m.");
+  pdfParagraph(d, "MSS SP-58 para tuberia segun diametro y material: acero de 2.1 m en diametros chicos hasta 7.0 m en 12 pulgadas; en cobre de 1.8 a 3.7 m porque el material cede mas; en la red contra incendio el espaciamiento se topa en 4.6 m (NFPA 13); termoplastico (CPVC/PEAD) de 0.9 a 1.8 m con la tabla propia de la suite (IPC 308.5). SMACNA HVAC-DCS 1995 para ducto: 8 ft (2.4384 m) en rectangular (sec. 4.2.8) y 12 ft (3.6576 m) en redondo (Tabla 4-2). NFPA 13 capitulo 18 para arriostramiento sismico: longitudinal cada 24.4 m y transversal cada 12.2 m.");
   /* H-266 (revisión adversarial U13; regla 8): la cédula dice de dónde salen los metros: la instantánea aceptada (con su fecha y
      los motores de origen) o lo capturado a mano en esta pestaña. */
   const snapSop = S.soporte && S.soporte.snap && typeof S.soporte.snap === "object" && S.soporte.usarMotores !== false ? S.soporte.snap : null;

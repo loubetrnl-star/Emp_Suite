@@ -10766,6 +10766,19 @@ t("S.238 (H-190, aprobado por el dueño el 12-oct-2026) la caída de tensión us
   eq(cc.cond.rPend, true, "la carga queda con calibre pendiente:");
   if (!R.avisos.some((a) => a.lvl === "err" && /Tabla 9/.test(a.msg) && /Bomba Al/.test(a.msg))) throw new Error("falta el aviso de error del calibre pendiente: " + JSON.stringify(R.avisos.map((a) => a.msg)));
 });
+t("S.239 (soporte v15, aprobado por el dueño el 12-oct-2026) claros máximos de ducto con los pies exactos de SMACNA HVAC-DCS 2.ª ed. 1995 (sistema imperial primario): rectangular 8 ft = 2.4384 m (§4.2.8, «8 (2.44) or 10 foot (3.05 m)»; se toma el menor) y redondo 12 ft = 3.6576 m (Tabla 4-2, «12′ / 3.7 m»); antes 2.44 y 3.66 m, que excedían el máximo por 1.6 y 2.4 mm. En el borde un tramo lleva un soporte más; la fuente cita edición y cláusula", () => {
+  const ct = G("calcularTramo");
+  const r = ct({ id: "c1", tipo: "ducto_rect", ancho_mm: 600, alto_mm: 400, longitud_m: 9.758 }, {});
+  cerca(r.espaciamiento.e_m, 8 * 0.3048, 1e-12, "claro rectangular = 8 ft:");
+  eq(r.n_soportes, 6, "9.758 m rectangular: 9.758/2.4384 = 4.0018 → 6 soportes (con 2.44 m daba 3.9992 → 5):");
+  contiene(r.espaciamiento.fuente, "§4.2.8", "la fuente cita la cláusula:"); contiene(r.espaciamiento.fuente, "1995", "y la edición:");
+  const d = ct({ id: "c2", tipo: "ducto_redondo", diam_mm: 500, longitud_m: 14.635 }, {});
+  cerca(d.espaciamiento.e_m, 12 * 0.3048, 1e-12, "claro redondo = 12 ft:");
+  eq(d.n_soportes, 6, "14.635 m redondo: 14.635/3.6576 = 4.0013 → 6 soportes (con 3.66 m daba 3.9986 → 5):");
+  contiene(d.espaciamiento.fuente, "Tabla 4-2", "la fuente del redondo cita la tabla:");
+  /* Lejos del borde no cambia nada: 10 m rectangular sigue en 6 (10/2.4384 = 4.10). */
+  eq(ct({ id: "c3", tipo: "ducto_rect", ancho_mm: 600, alto_mm: 400, longitud_m: 10 }, {}).n_soportes, 6, "10 m rectangular, igual que antes:");
+});
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {
   const guardado = JSON.stringify(S);
   try {

@@ -548,7 +548,7 @@
    }
   },
   "soporte": {
-   "ver": "14",
+   "ver": "15",
    "cifras": {
     "n": 153,
     "total": 421555,
@@ -595,7 +595,7 @@
  "variantes": {
   "soporte·a mano": {
    "motor": "soporte",
-   "ver": "14",
+   "ver": "15",
    "cifras": {
     "n": 150,
     "total": 395050,

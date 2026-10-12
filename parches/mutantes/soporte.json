@@ -18,7 +18,7 @@
   { "id": "soporte.m17", "que": "cortante sísmico en el anclaje = 0", "logica": true, "buscar": "const cortante_anclaje = F_sismo / Math.max(1, n_varillas);", "reemplazar": "const cortante_anclaje = 0;", "estado": "vigente" },
   { "id": "soporte.m18", "que": "claro de acero 2\" 3.0 → 4.0 m (MSS 10 ft)", "logica": true, "buscar": "'2\"': 3.0, '2-1/2\"': 3.4, '3\"': 3.7, '4\"': 4.3, '6\"': 5.2,", "reemplazar": "'2\"': 4.0, '2-1/2\"': 3.4, '3\"': 3.7, '4\"': 4.3, '6\"': 5.2,", "estado": "vigente" },
   { "id": "soporte.m19", "que": "claro de cobre 2\" 2.438 → 3.4 m (MSS SP-58-2018: 8 ft; reapuntado tras H-229)", "logica": true, "buscar": "'2\"': 2.438, '2-1/2\"': 2.743, '3\"': 3.048, '4\"': 3.048,", "reemplazar": "'2\"': 3.4, '2-1/2\"': 2.743, '3\"': 3.048, '4\"': 3.048,", "estado": "vigente" },
-  { "id": "soporte.m20", "que": "claro de ducto rectangular 2.44 → 3.0 m (SMACNA 8 ft)", "logica": true, "buscar": "const ESPAC_DUCTO_RECT = 2.44;", "reemplazar": "const ESPAC_DUCTO_RECT = 3.0;", "estado": "vigente" },
+  { "id": "soporte.m20", "que": "claro de ducto rectangular 8 ft = 2.4384 → 3.0 m (SMACNA 1995 §4.2.8); reanclado tras soporte v15", "logica": true, "buscar": "  const ESPAC_DUCTO_RECT = 2.4384;", "reemplazar": "  const ESPAC_DUCTO_RECT = 3.0;", "estado": "vigente" },
   { "id": "soporte.m21", "que": "riostra longitudinal cada 24.4 → 48.8 m", "logica": true, "buscar": "const NFPA13_LONGITUDINAL = 24.4;", "reemplazar": "const NFPA13_LONGITUDINAL = 48.8;", "estado": "vigente" },
   { "id": "soporte.m22", "que": "riostra transversal cada 12.2 → 24.4 m", "logica": true, "buscar": "const NFPA13_TRANSVERSAL = 12.2;", "reemplazar": "const NFPA13_TRANSVERSAL = 24.4;", "estado": "vigente" },
   { "id": "soporte.m23", "que": "densidad de lámina 7.85 → 7.0 kg/m² por mm", "logica": true, "buscar": "const KG_M2_POR_MM = 7.85;", "reemplazar": "const KG_M2_POR_MM = 7.0;", "estado": "vigente" },
@@ -84,4 +84,6 @@
   { "id": "soporte.m87", "que": "S.228: el despiece vuelve a dejar varilla, anclas y perfiles en cero de un tramo inválido (S.228)", "logica": true, "buscar": "    if (!t.varilla || t.n_soportes === null) continue;", "reemplazar": "    if (!t.varilla) continue;", "estado": "vigente" },
   { "id": "soporte.m88", "que": "S.228: la pantalla vuelve a mostrar «null» en Soportes (S.228)", "logica": true, "buscar": "<td class=\"num\">${d.n == null ? \"pendiente\" : d.n}", "reemplazar": "<td class=\"num\">${d.n}", "estado": "vigente" },
   { "id": "soporte.m89", "que": "S.228: el PDF vuelve a imprimir «null» en Soportes (S.228)", "logica": true, "buscar": "n(t.L, 0), t.n == null ? \"pendiente\" : String(t.n)])),", "reemplazar": "n(t.L, 0), String(t.n)])),", "estado": "vigente" }
+,
+  { "id": "soporte.m90", "que": "soporte v15: el claro de ducto redondo vuelve a 3.66 m (excede 12 ft = 3.6576 m de la Tabla 4-2 de SMACNA 1995)", "logica": true, "buscar": "  const ESPAC_DUCTO_RED = 3.6576;", "reemplazar": "  const ESPAC_DUCTO_RED = 3.66;", "estado": "vigente" }
 ]

@@ -35,7 +35,7 @@ const claroMin = (fam, dn) => {
   throw new Error(fam);
 };
 const NFPA13_TOPE = ft(15);              // [MEM] NFPA 13: 15 ft para acero ≥ 1¼" (la suite topa en 4.6 m)
-const SMACNA_RECT = ft(8);               // [MEM] SMACNA DCS Tabla 5-1: 8 ft (2.44 m) ducto rectangular — BLOQUEADO
+const SMACNA_RECT = ft(8);               // SMACNA HVAC-DCS 2.ª ed. 1995 §4.2.8 (normas/smacna.duct.1995.html): 8 ft = 2.4384 m, ducto rectangular (soporte v15)
 const RIOSTRA_LONG = 24.4, RIOSTRA_TRANS = 12.2;   // [MEM] NFPA 13 cap. 18: 80 ft / 40 ft
 const riostras = (L) => ({ long: Math.max(1, ceil(L / RIOSTRA_LONG)), trans: Math.max(1, ceil(L / RIOSTRA_TRANS)) });
 const nSop = (L, e) => Math.max(2, ceil(L / e) + 1);   // [CASA] index.html:7778 · soportes = ceil(L/e) + 1
@@ -174,12 +174,12 @@ const SRC_MIN = `mínimo de ${SRC_MSS} e ${SRC_IPC} · decisión 4 del dueño`;
 /* --- Caso C · ducto rectangular TR-1 1200×700 mm cal. 20, 18 m --- */
 {
   const d = pesoDuctoRect(1200, 700);
-  const n = nSop(18, 2.44), carga = d.total * 2.44;
+  const n = nSop(18, SMACNA_RECT), carga = d.total * SMACNA_RECT;
   const ENT = "ducto rectangular 1200×700 mm, calibre 20 (1.006 mm), L 18 m, hvac; mismo ctx que el caso A";
   fila("CM.soporte.5.a", "peso lineal del ducto con refuerzo", ENT, `desarrollo 2(1.2+0.7) = ${d.des} m × 1.006 mm × 7.85 = ${d.lam} kg/m × 1.20 = ${d.total}`, "lámina galvanizada MSG cal. 20 = 1.006 mm; 7.85 kg/m² por mm; ×1.20 criterio de la casa (index.html:7486-7487, 7577)", "secundaria", "CM_SOP.C.peso.total", d.total, 0.02);
-  fila("CM.soporte.5.b", "claro máximo ducto rectangular", ENT, `8 ft × 0.3048 = ${r(SMACNA_RECT, 3)} m`, "SMACNA HVAC DCS Tabla 5-1 (texto no disponible; BLOQUEADO)", "memoria", "CM_SOP.C.espaciamiento.e_m", r(SMACNA_RECT, 2), 0.01);
-  fila("CM.soporte.5.c", "número de soportes", ENT, `ceil(18/2.44) + 1 = ${n}`, "criterio de la casa (index.html:7778)", "memoria", "CM_SOP.C.n_soportes", n, 0);
-  fila("CM.soporte.5.d", "carga muerta por soporte", ENT, `${d.total} × 2.44 = ${r(carga, 2)} kgf`, "criterio de la casa (index.html:7779)", "memoria", "CM_SOP.C.carga_por_soporte_kgf", r(carga, 2), 0.1);
+  fila("CM.soporte.5.b", "claro máximo ducto rectangular", ENT, `8 ft × 0.3048 = ${r(SMACNA_RECT, 4)} m`, "SMACNA HVAC-DCS 2.ª ed. 1995 §4.2.8 «8 (2.44) or 10 foot (3.05 m)», se toma 8 ft exactos (soporte v15)", "memoria", "CM_SOP.C.espaciamiento.e_m", r(SMACNA_RECT, 4), 0.00005);   // tolerancia que distingue 2.4384 de 2.44
+  fila("CM.soporte.5.c", "número de soportes", ENT, `ceil(18/2.4384) + 1 = ${n}`, "criterio de la casa (index.html:7778)", "memoria", "CM_SOP.C.n_soportes", n, 0);
+  fila("CM.soporte.5.d", "carga muerta por soporte", ENT, `${d.total} × 2.4384 = ${r(carga, 2)} kgf (la suite redondea a 0.1 kgf)`, "peso por metro × claro SMACNA 1995 §4.2.8 (8 ft)", "memoria", "CM_SOP.C.carga_por_soporte_kgf", r(carga, 2), 0.05);
   fila("CM.soporte.5.e", "varillas por soporte del ducto rectangular (hoy 1)", ENT, "SMACNA DCS Tabla 5-1: par de colgantes («pair») por soporte = 2", "SMACNA HVAC DCS 2005 Tabla 5-1 (texto no disponible; BLOQUEADO hasta recibirlo)", "memoria", "CM_SOP.C.n_varillas", 2, 0, "fase2:H-227");
 }
 /* --- Red contra incendio acero 6", 30 m: el tope de NFPA 13 gobierna sobre MSS 17 ft --- */
@@ -269,7 +269,7 @@ const SRC_MIN = `mínimo de ${SRC_MSS} e ${SRC_IPC} · decisión 4 del dueño`;
 {
   /* [etiqueta, familia, DN, L m, claro tabulado hoy] — diámetros y longitudes que entregan hidro, incendio, aire y ductos. */
   const TR = [["AF-GENERAL", "cobre", '2"', 25, 2.4], ["AF-RAMAL BAÑOS", "cobre", '1-1/2"', 18, 2.4], ["Cabezal", "acero", '3"', 30, 3.7], ["Montante (incendio)", "acero", '4"', 12, 4.3],
-    ["Aire troncal", "acero", '1-1/4"', 60, 2.1], ["TR-1", "ducto", "1200×700", 18, 2.44], ["TR-2", "ducto", "900×600", 12, 2.44], ["RT-1", "ducto", "900×750", 15, 2.44]];
+    ["Aire troncal", "acero", '1-1/4"', 60, 2.1], ["TR-1", "ducto", "1200×700", 18, SMACNA_RECT], ["TR-2", "ducto", "900×600", 12, SMACNA_RECT], ["RT-1", "ducto", "900×750", 15, SMACNA_RECT]];
   let n = 0, nl = 0, nt = 0;
   const det = TR.map(([et, fam, dn, L, e]) => { const k = nSop(L, e), ri = riostras(L); n += k; nl += ri.long; nt += ri.trans; return `${et} ${L}/${e}→${k}`; });
   const hTrab = Math.max(3, 6 + 1.2);                     // [CASA] index.html:7982: altura de zona mayor (6 m) + 1.2
@@ -277,7 +277,7 @@ const SRC_MIN = `mínimo de ${SRC_MSS} e ${SRC_IPC} · decisión 4 del dueño`;
   const ml = 0;                                           // H-225 (cerrado 25-sep-2026): sin altura de colgado capturada no hay ML de varilla (pendiente)
   const total = ml * PU.varilla38 + 0 * PU.anclaM10 /* H-226: anclaje Por cotizar */ + n * PU.abrazadera + n * 8 * PU.tuercaRondana + (nl + nt) * PU.riostra + 60 * PU.riel + 3 * PU.base + 3 * PU.tijeraMes;
   const ENT = "proyecto fijo parches/regresion-motores/regresion-motores.emp.json: 45 m de ducto (3 tramos), 145 m de tubería (cobre 2\"/1½\", acero 3\"/4\" incendio, acero 1¼\" aire), zona más alta 6 m, riel 60 m, 3 meses, 2 equipos cotizados + 1 compresor; precios de referencia interna PU_SOP_* como entrada";
-  fila("CM.soporte.11.a", "soportes contados", ENT, det.join("; ") + ` = ${n}`, "claros MSS/IPC (cobre 2.4, acero 3.7/4.3/2.1) y SMACNA 2.44 (memoria); ceil(L/e)+1", "secundaria", "SOPORTE.nSoportes", n, 0);
+  fila("CM.soporte.11.a", "soportes contados", ENT, det.join("; ") + ` = ${n}`, "claros MSS/IPC (cobre 2.4, acero 3.7/4.3/2.1) y SMACNA 1995 §4.2.8 8 ft = 2.4384 m; ceil(L/e)+1", "secundaria", "SOPORTE.nSoportes", n, 0);
   fila("CM.soporte.11.b", "riostras longitudinales", ENT, `Σ max(1, ceil(L/24.4)) = ${nl}`, "NFPA 13 cap. 18 (memoria); aplicado a todas las líneas (H-235 pendiente)", "memoria", "SOPORTE.nLong", nl, 0);
   fila("CM.soporte.11.c", "riostras transversales", ENT, `Σ max(1, ceil(L/12.2)) = ${nt}`, "NFPA 13 cap. 18 (memoria)", "memoria", "SOPORTE.nTrans", nt, 0);
   fila("CM.soporte.11.d", "altura de trabajo", ENT, `max(3, 6 + 1.2) = ${hTrab} m`, "criterio de la casa (index.html:7982)", "secundaria", "SOPORTE.hTrab", hTrab, 0.001);
