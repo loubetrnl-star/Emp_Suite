@@ -1,6 +1,22 @@
 # PAUSA
 
-## Estado al 10-oct-2026 (vigente)
+## Estado al 12-oct-2026 (vigente)
+Todo en `master` y en `origin/master`; árbol limpio; nada corriendo.
+- Bancos: **615/615** y **621/621** con `--base` (S.236 y S.237 nuevas). Versiones sin cambio (ningún número se movió).
+- Hecho hoy: entorno (CLAUDE.md global con la excepción de Gemini CLI y el entorno estándar; GitHub CLI 2.102.0 por
+  winget; Blender 5.2.2 LTS anotado fuera del PATH; Gemini CLI NO instalado: no existe en winget, sólo en npm
+  `@google/gemini-cli`, espera aprobación); `.claude/agents/explorador.md` actualizado (69a1d47); cuatro worktrees
+  `agent-*` retirados (contenido verificado en master línea por línea); S.236 mata equip.m15 (3e688a3); S.237 mata
+  hidro.m21 (698c31e); ambos confirmados con el banco completo. H-170/H-311 ya estaban verificados (no se repitió).
+- Sin mutantes vivos de lógica conocidos; quedan inválidos soporte.m70, m72, m73 y m74 (conducta retirada por H-307,
+  inalcanzables; esperan retiro) y civil.m09 (valor por omisión, no bloquea).
+- Esperan decisión del dueño (fichas en el reporte del 12-oct): retiro de m70/m72/m73/m74; equip A14 (5,000 → 4,800 cfm;
+  la columna central de Carrier no se rotula «nominal»); duct masa con zinc (+2.2 a +2.6 % por calibre); elec reactancia
+  por calibre (conviene unirla a H-190, R y XL de acero juntos); soporte claros 8/12 ft exactos (0 cambios en los fijos);
+  soporte material de aire sin capturar (hoy se soporta como acero); Gemini CLI por npm.
+- Para retomar: leer este bloque y las últimas filas de `bitacora.md`; correr los dos bancos.
+
+## Estado al 10-oct-2026 (histórico)
 Pausa pedida por el dueño. Todo en `master` y en `origin/master` (sin commits pendientes); árbol limpio; nada corriendo.
 - Bancos: `node pruebas.mjs index.html` → **613/613**; con `--base respaldo-rev-2.9.8/index-2.9.21-inicio-20260921-221100.html` →
   **619/619**. Versiones: load 7, clean 3, equip 4, duct 7, vent 4, quote 24, valor 2, kaizen 1, elec 11, hidro 11, fuego 7,
