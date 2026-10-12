@@ -1,7 +1,8 @@
 # pruebas-motores · casos calculados a mano por motor (Fase 1, rev 2.9.24)
 
-Cada motor tiene aquí un módulo `<motor>.mjs` que `pruebas.mjs` carga al final del banco. Motores: `load`, `clean`,
-`equip`, `vent`, `duct`, `elec`, `hidro`, `fuego`, `aire`, `soporte`, `civil`, `quote`.
+Cada motor con hoja a mano tiene aquí un módulo `<motor>.mjs` que `pruebas.mjs` carga al final del banco. Módulos hoy: `load`,
+`vent`, `duct`, `elec`, `hidro`, `fuego`, `aire`, `soporte`. Sin módulo ni hoja: `clean`, `equip`, `civil`, `quote` (los vigilan la
+compuerta de mutantes y las pruebas S.nn).
 
 ## Contrato del módulo
 ```js
@@ -46,7 +47,7 @@ propio (`parches/casos-a-mano/<motor>.calc.mjs`, sin cargar index.html) o de una
 No se «arreglan» en la Fase 1. Se marcan en el módulo del motor, en un bloque al inicio:
 ```js
 /* PRUEBAS QUE PROTEGEN VALORES INCORRECTOS (se corrigen en la Fase 2 con su hallazgo):
-   - pruebas.mjs:3793 L.2 fija cobre ½–¾" a 1.8 m; MSS SP-58 da 1.5 m → H-229 */
+   - pruebas.mjs «L.2» fijaba cobre ½–¾" a 1.8 m; MSS SP-58 da 1.5 m → H-229 (ejemplo histórico: cerrado en soporte v8) */
 ```
 y se listan en `parches/casos-a-mano/<motor>.pendientes.md`.
 
