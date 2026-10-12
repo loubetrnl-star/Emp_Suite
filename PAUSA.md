@@ -14,6 +14,10 @@ Todo en `master` y en `origin/master`; árbol limpio; nada corriendo.
   la columna central de Carrier no se rotula «nominal»); duct masa con zinc (+2.2 a +2.6 % por calibre); elec reactancia
   por calibre (conviene unirla a H-190, R y XL de acero juntos); soporte claros 8/12 ft exactos (0 cambios en los fijos);
   soporte material de aire sin capturar (hoy se soporta como acero); Gemini CLI por npm.
+- Decisiones del 12-oct (tarde): soporte.m70, m72, m73 y m74 RETIRADOS (ef87f1f; 83 mutantes de soportería, ninguno inválido);
+  50TC-A14 se queda en 5,000 cfm (12.5 TR × 400 cfm/TR, decisión de la casa, ficha cerrada); **zinc DIFERIDO hasta descongelar
+  Cotización**; lote H-190 + claros 8/12 ft + aire sin material planeado en PROPUESTAS-PENDIENTES.md (elec 11 → 12, soporte
+  14 → 15), **espera aprobación**; Gemini CLI: la autorización llegó sin elegir (plantilla), no se instaló.
 - Para retomar: leer este bloque y las últimas filas de `bitacora.md`; correr los dos bancos.
 
 ## Estado al 10-oct-2026 (histórico)

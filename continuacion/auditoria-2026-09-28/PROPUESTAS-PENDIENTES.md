@@ -185,3 +185,37 @@ de norma) y civil (perímetro 3:2, sin texto de norma). Discrepancias, cada una 
   Soportería no se toca (orden del dueño): queda registrado.
 - **aire · Haaland:** aproximación explícita de Colebrook: −1.14 % en f a Re 1e5 y ε/D 3e-5 (fluids 1.3.1). Sin texto de norma
   en el repo; se reporta como criterio, no como error.
+
+## Decisiones del dueño del 12-oct-2026
+- **equip · 50TC-A14: CERRADA.** Se queda en **5,000 cfm = 12.5 TR × 400 cfm/TR**, decisión de la casa (regla `CFM_POR_TR = 400`,
+  index.html ~2702). La tabla de Carrier (columnas 3,600–6,000 cfm, central 4,800) no rotula ningún «nominal»; la suite rotula el
+  caudal como «regla de 400 CFM/TR, no dato de catálogo». `scripts/verificacion_independiente.py` seguirá mostrando la diferencia
+  de +4.17 % como dato informativo, no como discrepancia abierta.
+- **duct · masa de lámina con zinc: DIFERIDA** hasta descongelar Cotización (+2.2 a +2.6 % por calibre según SMACNA 1995 pág. A.2;
+  arrastra la partida de lámina de la Cotización general).
+- **soporte.m70, m72, m73 y m74: RETIRADOS** (commit ef87f1f).
+
+## Lote pendiente de aprobación (no aplicado): H-190 + claros exactos + material de aire no capturado
+Un solo lote, con prueba en rojo por cambio, después de que el dueño lo apruebe. Medido el 12-oct-2026 sobre copias temporales
+de index.html (no sobre el repo) con los proyectos fijos de `parches/regresion-motores/`.
+1. **elec · H-190 (R y XL de conduit de acero por calibre).** La suite selecciona EMT (acero), pero usa R de la columna PVC y
+   XL = 0.19 Ω/km fijo. Cambio: R y XL de la columna «Conduit de acero» de NOM-001-SEDE-2012, Cap. 10, Tabla 9 (DOF; texto en
+   `parches/normas-texto/NOM-001-SEDE-2012_DOF_texto.txt` ~71035–71430). **MOTOR_VER.elec 11 → 12**; esperados de elec regenerados.
+   - Proyecto fijo 1: caída de tensión del alimentador 1.1293 → 1.1211 %; motor 1.2802 → 1.2836 %; alumbrado (1 AWG Cu, 127 V,
+     40 m) 2.6031 → 2.7399 %. Ningún calibre cambia.
+   - Proyecto fijo 2: 0.9455 → 0.9235 %; 0.5965 → 0.5838 %; alumbrado de nave (2 AWG Al, 70 m) 2.8968 → 2.8943 %. Ningún calibre cambia.
+   - Proyectos guardados: cambia la caída de tensión de todo conductor (de +0.3 a +5 % en 14 AWG–1 AWG; −1 a −11 % de 1/0 en
+     adelante); un calibre sólo cambia si la caída queda a menos de ~5 % de `dvMax`.
+   - Dato faltante: la Tabla 9 no trae R de aluminio en 14, 12, 10 y 8 AWG (la suite hoy usa 16.7, 10.5, 6.60 y 4.20 sin
+     respaldo). Propuesta: «sin dato de norma» → calibre pendiente en aluminio de esos tamaños (decisión del dueño).
+2. **soporte · claros exactos de SMACNA 1995** (§4.2.8 «8 ft», Tabla 4-2 «12 ft»): `ESPAC_DUCTO_RECT` 2.44 → 2.4384 m y
+   `ESPAC_DUCTO_RED` 3.66 → 3.6576 m. Proyectos fijos: cifras de soportería sin cambio. Proyectos guardados: n sube en 1 sólo
+   si la longitud cae en (k·2.4384, k·2.44] o (k·3.6576, k·3.66]; la carga por soporte baja 0.066 % en todo ducto (puede
+   cruzar un umbral de varilla en casos al límite).
+3. **soporte · material de aire no capturado = pendiente** (AUD-14): hoy `snapshotSoporte` y `computeSoporte` soportan como
+   acero todo lo que no es cobre, incluido el aire sin material (proyectos nuevos desde AUD-14). Cambio: sin material,
+   «pendiente de material» sin claro ni soportes, como la tubería a mano. Proyectos fijos: sin cambio (capturan aluminio y
+   cobre). Proyectos guardados: sólo los de aire sin material.
+   - Los cambios 2 y 3 suben juntos **MOTOR_VER.soporte 14 → 15**; esperados de soporte: sólo la versión (cifras iguales).
+- Requiere: levantar la orden de no tocar Soportería para 2 y 3; ningún congelado se toca (Cotización no lee estos campos de
+  elec; la partida de soportería de Cotización sólo cambiaría en proyectos guardados con aire sin material).
