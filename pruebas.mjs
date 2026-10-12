@@ -10725,6 +10725,23 @@ t("S.236 (H-267, mata equip.m15) editar la hora pico de una zona de Selección c
     eq(G("SYS").blockHour, null, "y no hay hora de bloque calculada con un perfil de otra hora:");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
+t("S.237 (mata hidro.m21) la bomba hidroneumática se cotiza con el motor comercial SIGUIENTE en pasos de ½ HP: su potencia nominal cubre la potencia al freno calculada (HP·0.746 ≥ kW) y nunca la redondea hacia abajo. Caso: fixture de CM.hidro (cobre tipo L, 72/20 UM, 13 muebles) con 9 m de altura de edificio, donde kW/0.746·2 cae con fracción < 0.5 (con fracción ≥ 0.5, como en CM.hidro.1, 22.5 y R.1, redondear y subir dan lo mismo). Referencias: kW = 9.81·Q·CDT/1000/η (potencia hidráulica, ρg = 9.81 kN/m³), η = 0.6 y el escalón de ½ HP son criterio de la casa (index.html, computeHidro); NEMA MG 1 no está en parches/normas-texto (BLOQUEADO para citarla)", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")());
+    S.hidro = { ...G("defaultHidro")(), material: "cobre", presRed: 0, alturaEdificio: 9,
+      tramos: [{ ...G("defaultTramoAgua")("AF-GENERAL"), um: 72, L: 25, alt: 3 }, { ...G("defaultTramoAgua")("AF-RAMAL BAÑOS"), um: 20, L: 18, alt: 0 }],
+      muebles: [{ id: "wc_flux", cant: 4 }, { id: "ming_flux", cant: 2 }, { id: "lavabo", cant: 4 }, { id: "fregadero", cant: 1 }, { id: "manguera", cant: 2 }] };
+    G("recompute")();
+    const H = G("HIDRO"), kW = H.kWbomba, hp = H.hpBomba;
+    if (!(kW > 0) || H.bombaPendiente) throw new Error("el caso no aísla lo que se quiere probar: la bomba debe estar dimensionada (kW > 0)");
+    const x = kW / 0.746 * 2, frac = x - Math.floor(x);
+    if (!(frac > 0.05 && frac < 0.45)) throw new Error(`el caso no aísla lo que se quiere probar: kW/0.746·2 = ${x} debe tener fracción en (0.05, 0.45)`);
+    eq(Number.isInteger(hp * 2), true, "la potencia nominal va en pasos de ½ HP:");
+    if (!(hp * 0.746 >= kW - 1e-12)) throw new Error(`el motor no cubre la potencia al freno: ${hp} HP × 0.746 = ${hp * 0.746} kW < ${kW} kW (se redondeó hacia abajo)`);
+    if (!(hp * 0.746 - kW < 0.373 + 1e-12)) throw new Error(`no es el motor comercial siguiente: ${hp} HP sobra más de ½ HP sobre ${kW} kW`);
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {
   const guardado = JSON.stringify(S);
   try {
