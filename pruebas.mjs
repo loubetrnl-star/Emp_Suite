@@ -10705,6 +10705,26 @@ t("S.235 (fast-check, civil) propiedades de computeCivil con semilla fija (decis
     return true;
   }));
 });
+t("S.236 (H-267, mata equip.m15) editar la hora pico de una zona de Selección con perfil horario anula ese perfil: la hora y el perfil ya no corresponden, así que la simultaneidad por hora queda pendiente (sin barrido horario) en vez de calcularse con un perfil de otra hora. Referencia: decisión del dueño H-267 (27-sep-2026, regla 6 «nada se estima»: no se reescala ni se inventa el perfil); sin norma en parches/normas-texto (criterio de la casa)", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.236"; aceptarSitioCarga();
+    Object.keys(G("LINKS")).forEach((k) => { S.perms[k] = { ts: 1, via: "S.236" }; });
+    G("propAceptar")("proyecto>equip");
+    S.zones = [{ ...G("defaultZone")("Nave"), area: 400, height: 6, occ: 30, lights: 8000, equip: 12000 }, { ...G("defaultZone")("Oficina"), area: 100, height: 3, occ: 10, lights: 1500, equip: 2000 }];
+    G("recompute")();
+    G("propAceptar")("load>equip");
+    const z = S.equip.zonas[1];
+    if (!Array.isArray(z.profile) || !G("SYS").haveProf) throw new Error("el caso no aísla lo que se quiere probar: la zona aceptada debe traer perfil horario y el sistema barrido horario");
+    const h0 = Number.isFinite(z.hour) ? z.hour : 7, tons0 = z.tons, h1 = (h0 + 5) % 24;
+    G("editarZonaEquip")(1, "hour", h1); G("recompute")();
+    eq(S.equip.zonas[1].hour, h1, "la hora pico editada:");
+    eq(S.equip.zonas[1].tons, tons0, "la TR no se tocó:");
+    eq(S.equip.zonas[1].profile, null, "editar la hora pico anula el perfil horario (ya no corresponde a la hora):");
+    eq(G("SYS").haveProf, false, "sin ese perfil la simultaneidad por hora queda pendiente (sin barrido horario):");
+    eq(G("SYS").blockHour, null, "y no hay hora de bloque calculada con un perfil de otra hora:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {
   const guardado = JSON.stringify(S);
   try {
