@@ -6717,7 +6717,7 @@ t("S.58 (H-205) contra incendio hereda la altura MÁXIMA de las zonas (rociador 
     S.fuego.altura = 13; G("recompute")();
     F = G("FUEGO");
     eq(F.estatica, 14, "estática 14 m:");
-    if (!F.avisos.some((a) => /rack/.test(a.msg) && /13/.test(a.msg))) throw new Error("con 13 m debe salir el aviso de almacenamiento en rack con la altura real");
+    if (!F.avisos.some((a) => /rack/.test(a.msg) && /Con 13 m de altura/.test(a.msg))) throw new Error("con 13 m debe salir el aviso de almacenamiento en rack con la altura real");
     /* Otra captura: manda en la estática. */
     S.fuego.altura = 9; G("recompute")();
     eq(S.fuego.altura, 9, "la captura propia se respeta:"); eq(G("FUEGO").estatica, 10, "y manda en la estática:");
@@ -10857,6 +10857,27 @@ t("S.241 (soporte v15, AUD-14 en la instantánea; aprobado por el dueño el 12-o
     G("reemplazarEstado")(G("defaultState")()); delete snapCobre.aireMat;
     S.soporte = { ...S.soporte, alturaColgadoM: 1, snap: snapCobre, usarMotores: true }; G("recompute")();
     eq(G("SOPORTE").mTub, 80, "instantánea sin la clave: 80 m, como acero:"); eq(pendAire(G("SOPORTE")), undefined, "sin pendiente:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
+t("S.242 (AUD-19) los umbrales de 12 m de altura (protección en rack) y de 12 bar en la base no tienen texto de NFPA 13 en el repositorio: el aviso, el PDF de contra incendio y la guía del campo los rotulan como criterio de la casa, no como norma; los avisos siguen saliendo sólo arriba de 12 (sin mover números)", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.242";
+    S.fuego = { ...G("defaultFuego")(), riesgo: "ord2", area: 500, altura: 80, Lramal: 30, Lmontante: 90 };
+    G("recompute")();
+    const F = G("FUEGO"), rack = F.avisos.find((a) => /rack/.test(a.msg)), bar = F.avisos.find((a) => /bar en la base es alto/.test(a.msg));
+    if (!rack || !bar || !(F.barTotal > 12)) throw new Error("el caso no aísla lo que se quiere probar: con 80 m deben salir los avisos de rack y de 12 bar");
+    for (const [a, q] of [[rack, "12 m"], [bar, "12 bar"]]) {
+      contiene(a.msg, "criterio de la casa", q + ":"); contiene(a.msg, "NFPA 13 sin texto en el repositorio", q + ":");
+    }
+    if (/NFPA 13 limita/.test(bar.msg)) throw new Error("el aviso de 12 bar sigue citando NFPA 13 como si fuera texto de norma");
+    const pdf = txtPdfE(G("buildFuegoPdf")());
+    if ((pdf.match(/criterio de la casa \(NFPA 13 sin texto en el repositorio/g) || []).length < 2) throw new Error("el PDF de contra incendio no rotula los dos umbrales");
+    const rec = G("REF")["fuego.altura"].rec;
+    contiene(rec, "criterio de la casa", "guía de fuego.altura:"); contiene(rec, "NFPA 13 sin texto en el repositorio", "guía de fuego.altura:");
+    /* El umbral es estricto: con 12 m exactos no sale. */
+    S.fuego.altura = 12; S.fuego.Lmontante = 12; G("recompute")();
+    if (G("FUEGO").avisos.some((a) => /rack/.test(a.msg))) throw new Error("con 12 m exactos no debe salir el aviso de rack");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {

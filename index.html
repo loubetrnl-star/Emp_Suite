@@ -11745,8 +11745,8 @@ function computeFuego(F) {
   if (!sinArea) memo.push("PREDISEÑO: la trayectoria más desfavorable se resuelve completa, pero el cálculo formal de NFPA 13 balancea nodo por nodo toda el área de diseño y se entrega con su gráfica de demanda contra abastecimiento. Este resultado sirve para dimensionar toma, cisterna y bomba, y para saber si el proyecto es viable.");
 
   if (V_MAX_FUEGO < mon.V) avisos.push({ lvl: "warn", msg: `Montante a ${n(mon.V, 2)} m/s, por encima del límite de ${V_MAX_FUEGO} m/s. Subir un diámetro: la pérdida crece con el cuadrado de la velocidad.` });
-  if (barTotal > 12) avisos.push({ lvl: "warn", msg: `${n(barTotal, 1)} bar en la base es alto: NFPA 13 limita la presión de trabajo del sistema a 12 bar (175 psi). Hay que dividir en zonas de presión o usar válvulas reductoras listadas.` });
-  if (hAlt > 12 && /ligero|ord/.test(r.id)) avisos.push({ lvl: "info", msg: `Con ${n(hAlt, 1)} m de altura hay que revisar si aplica protección en rack o rociadores de almacenamiento: la curva densidad-área no cubre almacenamiento alto.` });
+  if (barTotal > 12) avisos.push({ lvl: "warn", msg: `${n(barTotal, 1)} bar en la base es alto: el tope de 12 bar (175 psi) para la presión de trabajo del sistema es criterio de la casa (NFPA 13 sin texto en el repositorio; no se cita de la norma; AUD-19). Hay que dividir en zonas de presión o usar válvulas reductoras listadas.` });
+  if (hAlt > 12 && /ligero|ord/.test(r.id)) avisos.push({ lvl: "info", msg: `Con ${n(hAlt, 1)} m de altura hay que revisar si aplica protección en rack o rociadores de almacenamiento: la curva densidad-área no cubre almacenamiento alto. El umbral de 12 m es criterio de la casa (NFPA 13 sin texto en el repositorio; no se cita de la norma; AUD-19).` });
   if (r.id === "extra2") avisos.push({ lvl: "info", msg: "Riesgo extra grupo 2: casi siempre exige espuma o supresión especial además de los rociadores. Confirmar con la aseguradora y con protección civil antes de cerrar el alcance." });
 
   const R = { r, roc, tub, area, areaDis, nDiseno, nTotal, espaciamiento, qRoc, pRoc, pDiseno, qReal,
@@ -17550,7 +17550,7 @@ Object.assign(REF, {
   "fuego.riesgo":  { ref: "Clase de riesgo de NFPA 13. Define densidad, área de operación, cobertura por rociador y reserva de manguera.", rec: "Ordinario grupo 2 para manufactura y cuarto limpio de proceso · ligero solo para oficina pura" },
   "fuego.area":    { ref: "Superficie total a proteger con rociadores.", rec: "Toda el área bajo techo, no solo la climatizada" },
   "fuego.areaDis": { ref: "Área de operación: la parte que se supone en incendio simultáneo. NFPA 13 permite moverse sobre la curva densidad-área.", rec: "0 para usar el mínimo de la clase, que es lo más común en proyecto nuevo" },
-  "fuego.altura":  { ref: "Altura libre al rociador más alto del proyecto, capturada aquí (la del rociador más alto, no el promedio; H-205, H-264).", rec: "Arriba de 12 m hay que revisar si aplica protección en rack o rociadores de almacenamiento" },
+  "fuego.altura":  { ref: "Altura libre al rociador más alto del proyecto, capturada aquí (la del rociador más alto, no el promedio; H-205, H-264).", rec: "Arriba de 12 m hay que revisar si aplica protección en rack o rociadores de almacenamiento (umbral de 12 m: criterio de la casa, NFPA 13 sin texto en el repositorio; AUD-19)" },
   "fuego.cabezal": { ref: "Longitud del cabezal que alimenta el área de diseño, desde el montante hasta el rociador más lejano.", rec: "Se calcula con el caudal completo del área de diseño: es conservador, la red real reparte el caudal" },
   "fuego.pres":    { ref: "Presión disponible en la fuente, en metros de columna de agua.", rec: "Con cisterna y bomba, la presión de la fuente es cero: la pone la bomba" },
   "quote.indirect":  { ref: "Indirectos: oficina, supervisión y seguros. Fianzas y financiamiento van en renglones propios sobre el costo directo.", rec: "12–22 % del costo directo en obra de especialidad." },
