@@ -1791,9 +1791,10 @@ function buildElecPdf() {
   pdfConsideracionesElec(d, R, E);
   pdfHeading(d, "3. Cuadro de cargas");
   pdfTable(d, ["Carga", "kW", "fp", "V/F", "A", "Cal.", "Prot.", "Tierra", "Tubo", "L m", "e %"],
-    R.calc.map((c) => [c.nombre.slice(0, 34), c.kWsin ? "pend." : `${n(c.kWtot, 2)}${c.kWEst ? " e" : c.kWOrigen !== "capturado" ? " c" : ""}`, `${n(c.fp, 2)}${c.fpOrigen === "casa" ? "*" : ""}`, `${c.V}/${c.ph}`, ...(c.sinI ? ["pend.", "pend.", "pend.", "pend.", "pend."] : [n(c.I, 1), c.cond.awg, String(c.cond.ocpd), c.cond.tierra, c.cond.tubo.d]), c.sinL ? "pend." : `${n(c.L, 0)}${c.Lsin ? "*" : ""}`, c.cond.dv == null ? "pend." : n(c.cond.dv, 2)]),
+    R.calc.map((c) => [c.nombre.slice(0, 34), c.kWsin ? "pend." : `${n(c.kWtot, 2)}${c.kWEst ? " e" : c.kWOrigen !== "capturado" ? " c" : ""}`, `${n(c.fp, 2)}${c.fpOrigen === "casa" ? "*" : ""}`, `${c.V}/${c.ph}`, ...(c.sinI ? ["pend.", "pend.", "pend.", "pend.", "pend."] : [n(c.I, 1), `${c.cond.awg}${c.cond.rPend ? "*" : ""}`, String(c.cond.ocpd), c.cond.tierra, c.cond.tubo.d]), c.sinL ? "pend." : `${n(c.L, 0)}${c.Lsin ? "*" : ""}`, c.cond.dv == null ? "pend." : n(c.cond.dv, 2)]),
     [118, 42, 28, 36, 34, 36, 34, 38, 40, 36, 40]);
   pdfParagraph(d, "kW: e = ESTIMADO por el motor de origen, c = de catalogo de la casa, sin marca = capturado. fp: * = el del tipo de carga o el supuesto del motor de origen, criterio de la casa (no capturado). La procedencia de cada carga va en la memoria (seccion 6).");
+  if (R.calc.some((c) => !c.sinI && c.cond && c.cond.rPend)) pdfParagraph(d, "Cal.: * = calibre pendiente: aluminio de 8 AWG o menor, sin resistencia en la NOM-001-SEDE-2012, Cap. 10, Tabla 9; es el minimo por ampacidad y su caida (e %) no se evalua (H-190).");
   pdfDiagramasElec(d, R);
   pdfHeading(d, "4. Demanda y balanceo");
   pdfRows(d, [
@@ -10472,12 +10473,13 @@ function selConductor(o) {
   dv = sinL || rPend ? null : dvDe(awg) / paralelo;
   const rigeBase = rige;
   if (sinL) rige = `${rige}; caída de tensión pendiente de longitud (calibre mínimo)`;
+  const rigeEn = `${{ "ampacidad": "ampacity", "caída de tensión": "voltage drop", "ampacidad con conductores en paralelo": "ampacity with parallel conductors", "caída de tensión con conductores en paralelo": "voltage drop with parallel conductors" }[rigeBase] || rigeBase}${sinL ? "; voltage drop pending length (minimum size)" : ""}${rPend ? `; size pending: NOM-001-SEDE-2012 Table 9 gives no R for ${awg} AWG aluminum (voltage drop not evaluated; minimum size by ampacity)` : ""}`;   /* H-190: espejo EN del «rige» para el unifilar */
   if (rPend) rige = `${rige}; calibre pendiente: la NOM-001-SEDE-2012, Cap. 10, Tabla 9 no da R de aluminio en ${awg} AWG (caída sin evaluar; calibre mínimo por ampacidad)`;
   return {
-    awg, material: mat, aislamiento: ais, ampBase, ampCorr, ft, fg, I, Idis, ocpd, tierra, tierraMat, tubo, dv, dvMax, rige,
+    awg, material: mat, aislamiento: ais, ampBase, ampCorr, ft, fg, I, Idis, ocpd, tierra, tierraMat, tubo, dv, dvMax, rige, rigeEn,
     topeAplicado, ph, V, L: sinL ? null : L, fp, paralelo, sinL, rPend, mop: mop > 0 ? mop : null, fusible: mop > 0 && SOLO_FUSIBLE.includes(ocpd),
     nota: `${paralelo > 1 ? `${paralelo} × ` : ""}${awg} AWG/kcmil ${mat}${paralelo > 1 ? ` por fase (art. 310-10(h)), ${paralelo} canalizaciones` : ""} · ampacidad ${n(ampBase, 0)} A × ${n(ft, 2)} (temp) × ${n(fg, 2)} (agrup.)${paralelo > 1 ? ` × ${paralelo}` : ""} = ${n(ampCorr, 0)} A · rige ${rige} · protección ${ocpd} A${mop > 0 ? ` (MOP ${n(mop, 0)} A, art. 440-22${SOLO_FUSIBLE.includes(ocpd) ? "; fusible" : ""})` : ""} · tierra ${tierra}${tierraMat !== mat ? ` ${tierraMat} (la Tabla 250-122 no da aluminio hasta 100 A)` : ""} · ${tubo.d}${paralelo > 1 ? " cada una" : ""}`,
-    notaEn: `${paralelo > 1 ? `${paralelo} × ` : ""}${awg} AWG/kcmil ${mat === "aluminio" ? "aluminum" : "copper"}${paralelo > 1 ? ` per phase (art. 310-10(h)), ${paralelo} raceways` : ""} · ampacity ${n(ampBase, 0)} A × ${n(ft, 2)} (temp.) × ${n(fg, 2)} (grouping)${paralelo > 1 ? ` × ${paralelo}` : ""} = ${n(ampCorr, 0)} A · governed by ${{ "ampacidad": "ampacity", "caída de tensión": "voltage drop", "ampacidad con conductores en paralelo": "ampacity with parallel conductors", "caída de tensión con conductores en paralelo": "voltage drop with parallel conductors" }[rigeBase] || rigeBase}${sinL ? "; voltage drop pending length (minimum size)" : ""}${rPend ? `; size pending: NOM-001-SEDE-2012 Table 9 gives no R for ${awg} AWG aluminum (voltage drop not evaluated; minimum size by ampacity)` : ""} · OCPD ${ocpd} A${mop > 0 ? ` (MOP ${n(mop, 0)} A, art. 440-22${SOLO_FUSIBLE.includes(ocpd) ? "; fuse" : ""})` : ""} · ground ${tierra}${tierraMat !== mat ? " copper (Table 250-122 gives no aluminum size up to 100 A)" : ""} · ${tubo.d}${paralelo > 1 ? " each" : ""}`,
+    notaEn: `${paralelo > 1 ? `${paralelo} × ` : ""}${awg} AWG/kcmil ${mat === "aluminio" ? "aluminum" : "copper"}${paralelo > 1 ? ` per phase (art. 310-10(h)), ${paralelo} raceways` : ""} · ampacity ${n(ampBase, 0)} A × ${n(ft, 2)} (temp.) × ${n(fg, 2)} (grouping)${paralelo > 1 ? ` × ${paralelo}` : ""} = ${n(ampCorr, 0)} A · governed by ${rigeEn} · OCPD ${ocpd} A${mop > 0 ? ` (MOP ${n(mop, 0)} A, art. 440-22${SOLO_FUSIBLE.includes(ocpd) ? "; fuse" : ""})` : ""} · ground ${tierra}${tierraMat !== mat ? " copper (Table 250-122 gives no aluminum size up to 100 A)" : ""} · ${tubo.d}${paralelo > 1 ? " each" : ""}`,
   };
 }
 
@@ -10931,8 +10933,8 @@ function computeElec(E) {
   if (sinLong.length) avisos.push({ lvl: "err", msg: `${sinLong.length} carga(s) sin longitud capturada (${sinLong.slice(0, 4).map((c) => c.nombre).join(", ")}${sinLong.length > 4 ? "…" : ""}): su caída de tensión queda pendiente; no se supone una distancia ni se toma como 0 %. Captura la distancia de cada una a su tablero${sinLong.some((c) => c.auto) ? "; las que vienen de otros motores (migración de un proyecto anterior) no tienen campo de distancia hasta quedar en el cuadro: captúrala en «Editar cargas capturadas»" : ""}.` });
   if (calc.length && alimSinL) avisos.push({ lvl: "err", msg: "Falta la distancia al tablero (de la subestación al tablero general): la caída de tensión del alimentador queda pendiente; no se supone." });
   /* H-190: aluminio de 14 a 8 AWG sin R en la Tabla 9: calibre pendiente, no se supone una resistencia. */
-  const rPendC = calc.filter((c) => c.cond && c.cond.rPend);
-  if (rPendC.length) avisos.push({ lvl: "err", msg: `${rPendC.length} carga(s) en aluminio de 8 AWG o menor (${rPendC.slice(0, 4).map((c) => c.nombre).join(", ")}${rPendC.length > 4 ? "…" : ""}): la NOM-001-SEDE-2012, Cap. 10, Tabla 9 no da la resistencia del aluminio en esos calibres, así que su caída de tensión no se evalúa y el calibre queda pendiente (el mínimo por ampacidad). Captura cobre o un calibre de aluminio con dato (6 AWG o mayor) (H-190).` });
+  const rPendC = calc.filter((c) => c.cond && c.cond.rPend && !c.sinI);   /* sinI: sin ramal dimensionado, ya tiene su aviso */
+  if (rPendC.length) avisos.push({ lvl: "err", msg: `${rPendC.length} carga(s) en aluminio de 8 AWG o menor (${rPendC.slice(0, 4).map((c) => c.nombre).join(", ")}${rPendC.length > 4 ? "…" : ""}): la NOM-001-SEDE-2012, Cap. 10, Tabla 9 no da la resistencia del aluminio en esos calibres, así que su caída de tensión no se evalúa y el calibre queda pendiente (el mínimo por ampacidad). Para evaluarla, captura cobre como material del conductor: la Tabla 9 sí da su resistencia en esos calibres (H-190).` });
   if (calc.length && alim.rPend) avisos.push({ lvl: "err", msg: `Alimentador general en aluminio ${alim.awg} AWG: la NOM-001-SEDE-2012, Cap. 10, Tabla 9 no da su resistencia; la caída del alimentador queda pendiente y el calibre es el mínimo por ampacidad (H-190).` });
   if (calc.length && !conTrafo) avisos.push({ lvl: "err", msg: !(kVAtr > 0) && !(z > 0)
     ? "Falta el transformador de la acometida (kVA y Z de placa): la corriente de falla y la capacidad interruptiva quedan pendientes; no se supone un transformador."
@@ -22657,6 +22659,8 @@ function describirUnifilar(R, en = false) {
     detalle: L(`Barras ${R.principal} A (capacidad del interruptor principal, ${calcT}) · ${sis} · ${calc.length} circuito(s), ${nDim} dimensionado(s)`,
       `Bus ${R.principal} A (main breaker rating, ${calcT}) · ${sis} · ${calc.length} circuit(s), ${nDim} sized`) });
   tramos.push({ de: "general", a: "tablero", etiqueta: alimTxt, detalle: L(`Alimentador general: ${A.nota} · ${Ltab}${A.dv != null ? ` · caída ${n(A.dv, 2)} %` : ""}`, `Main feeder: ${A.notaEn} · ${Ltab}${A.dv != null ? ` · drop ${n(A.dv, 2)} %` : ""}`) });
+  if (A.rPend) pendientes.push(L(`Alimentador general en aluminio ${A.awg} AWG: calibre pendiente; la NOM-001-SEDE-2012, Cap. 10, Tabla 9 no da su resistencia y la caída del alimentador no se evalúa (H-190).`,
+    `Main feeder in aluminum ${A.awg} AWG: size pending; NOM-001-SEDE-2012, Ch. 10, Table 9 gives no resistance for it and the feeder voltage drop is not evaluated (H-190).`));
   if (R.Lalim == null) pendientes.push(L("Distancia al tablero sin capturar: la caída del alimentador general queda pendiente (no se supone).", "Panel distance not captured: the main feeder voltage drop remains pending (not assumed)."));
   /* Un renglón por circuito: alimentador (protección + conductor + canalización) → carga. */
   calc.forEach((c, i) => {
@@ -22674,14 +22678,14 @@ function describirUnifilar(R, en = false) {
     }
     const K = c.cond, aisl = ufAisl(K.aislamiento), polos = c.ph === 3 ? "3P" : "1F";
     const Ltxt = c.L != null ? `${n(c.L, 0)} m (${c.Lsin ? L("sin confirmar", "unconfirmed") : cap})` : L("longitud pendiente", "length pending");
-    const dvTxt = K.dv != null ? `e ${n(K.dv, 2)} %` : L("e pendiente", "VD pending");
+    const dvTxt = K.dv != null ? `e ${n(K.dv, 2)} %` : K.rPend ? L("e pendiente: calibre pendiente", "VD pending: size pending") : L("e pendiente", "VD pending");
     const protOrigen = c.art440 ? L("hasta el MOP de placa, 440-22", "up to the nameplate MOP, 440-22") : c.tipo === "motor" ? L("Tabla 430-52, hasta 250 % de la corriente", "Table 430-52, up to 250 % of the current") : L("240-6(a) sobre la corriente de diseño; tope 240-4(d)", "240-6(a) above the design current; 240-4(d) cap");
     const origenI = c.motorTabla && c.motorTabla.I > 0 ? `${L("Tabla", "Table")} ${c.motorTabla.tabla}, ${origenMotorTexto(c, en)}` : c.art440 ? L("MCA de placa, art. 440", "nameplate MCA, art. 440") : formulaKw(c.ph);
     nodos.push({ id: idC, tipo: "alimentador",
       etiqueta: `${num} · ${K.ocpd} A ${polos}${K.fusible ? L(" fusible", " fuse") : ""} · ${K.paralelo > 1 ? `${K.paralelo} × ` : ""}${K.awg} ${ufUnidad(K.awg)}`,
       sub: `${mat} ${aisl} · T ${K.tierra} ${ufUnidad(K.tierra)} · ${K.tubo.d} · ${Ltxt} · ${dvTxt}`,
       detalle: L(`${num} · protección ${K.ocpd} A${K.fusible ? " (fusible)" : ""} (${calcT}: ${protOrigen}) · conductor ${K.paralelo > 1 ? `${K.paralelo} × ` : ""}${K.awg} ${ufUnidad(K.awg)} ${mat} ${aisl} (${calcT}: ampacidad Tabla 310-15(b)(16) a 75 °C; rige ${K.rige}) · tierra ${K.tierra} ${ufUnidad(K.tierra)} ${K.tierraMat} (Tabla 250-122) · canalización ${K.tubo.d} (Cap. 10, Tabla 5) · ${Ltxt} · ${dvTxt}`,
-        `${num} · protection ${K.ocpd} A${K.fusible ? " (fuse)" : ""} (${calcT}: ${protOrigen}) · conductor ${K.paralelo > 1 ? `${K.paralelo} × ` : ""}${K.awg} ${ufUnidad(K.awg)} ${mat} ${aisl} (${calcT}: ampacity Table 310-15(b)(16) at 75 °C; governs ${K.rige}) · ground ${K.tierra} ${ufUnidad(K.tierra)} ${K.tierraMat} (Table 250-122) · raceway ${K.tubo.d} (Ch. 10, Table 5) · ${Ltxt} · ${dvTxt}`) });
+        `${num} · protection ${K.ocpd} A${K.fusible ? " (fuse)" : ""} (${calcT}: ${protOrigen}) · conductor ${K.paralelo > 1 ? `${K.paralelo} × ` : ""}${K.awg} ${ufUnidad(K.awg)} ${mat} ${aisl} (${calcT}: ampacity Table 310-15(b)(16) at 75 °C; governed by ${K.rigeEn}) · ground ${K.tierra} ${ufUnidad(K.tierra)} ${ufMaterial(K.tierraMat, true)} (Table 250-122) · raceway ${K.tubo.d} (Ch. 10, Table 5) · ${Ltxt} · ${dvTxt}`) });
     nodos.push({ id: idK, tipo: "carga", etiqueta: nombre, motor: c.tipo === "motor", tipoCarga: c.tipo,
       sub: `${kWcorto} · ${c.V} V ${c.ph}F · ${n(c.I, 1)} A${c.ph === 1 && c.fase ? ` · ${L("fase", "phase")} ${c.fase}` : ""}`,
       detalle: L(`${c.label} · ${kWtxt} · ${c.V} V ${c.ph}F · ${n(c.I, 1)} A (${calcT}: ${origenI}) · fp ${n(c.fp, 2)} (${fpOrigenTexto(c, en)})${c.ph === 1 && c.fase ? ` · fase ${c.fase} (balanceo ${calcT})` : ""}${c.auto ? " · desde otro motor" : ""}`,
@@ -22689,6 +22693,8 @@ function describirUnifilar(R, en = false) {
     tramos.push({ de: "tablero", a: idC, etiqueta: "" });
     tramos.push({ de: idC, a: idK, etiqueta: `${Ltxt} · ${dvTxt}` });
     if (c.sinL) pendientes.push(L(`${num} ${c.nombre}: longitud pendiente; la caída de tensión no se supone.`, `${num} ${c.nombre}: length pending; the voltage drop is not assumed.`));
+    if (K.rPend) pendientes.push(L(`${num} ${c.nombre}: calibre pendiente; la NOM-001-SEDE-2012, Cap. 10, Tabla 9 no da la resistencia del aluminio en ${K.awg} AWG y la caída de tensión no se evalúa (H-190).`,
+      `${num} ${c.nombre}: size pending; NOM-001-SEDE-2012, Ch. 10, Table 9 gives no aluminum resistance for ${K.awg} AWG and the voltage drop is not evaluated (H-190).`));
   });
   return out;
 }

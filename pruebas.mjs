@@ -10779,6 +10779,31 @@ t("S.239 (soporte v15, aprobado por el dueño el 12-oct-2026) claros máximos de
   /* Lejos del borde no cambia nada: 10 m rectangular sigue en 6 (10/2.4384 = 4.10). */
   eq(ct({ id: "c3", tipo: "ducto_rect", ancho_mm: 600, alto_mm: 400, longitud_m: 10 }, {}).n_soportes, 6, "10 m rectangular, igual que antes:");
 });
+t("S.240 (H-190, complemento) el calibre pendiente del aluminio llega a las salidas propias del eléctrico: el unifilar lo lista como pendiente en ES y EN y su detalle en inglés no mete el «rige» ni el material de tierra en español; el aviso no cuenta las cargas sin corriente (sinI: no tienen ramal dimensionado); el PDF del eléctrico marca el calibre con * y lo explica. Sólo textos: ningún número cambia", () => {
+  const guardado = JSON.stringify(S.elec), tab0 = S.tab;
+  try {
+    S.elec = { ...G("defaultElec")(), tomarHVAC: false, material: "aluminio", trafoKVA: 300, trafoZ: 4, Ltablero: 30, cargas: [
+      { ...G("defaultCarga")("Bomba Al"), tipo: "proceso", kW: Math.sqrt(3) * 220 * 25 * 0.9 / 1000, V: 220, ph: 3, L: 20, fp: 0.9 },
+      { ...G("defaultCarga")("Bomba sin datos"), tipo: "motor", kW: 0, V: 220, ph: 3, cant: 1, L: 10, fp: .85 }] };
+    G("recompute")();
+    const E = G("ELEC"), [bomba, sinDatos] = E.calc;
+    if (!bomba.cond.rPend || !sinDatos.sinI) throw new Error("el caso no aísla lo que se prueba: una carga con calibre pendiente y otra sin corriente");
+    const av = E.avisos.find((a) => a.lvl === "err" && /aluminio de 8 AWG o menor/.test(a.msg));
+    if (!av) throw new Error("falta el aviso del calibre pendiente: " + JSON.stringify(E.avisos.map((a) => a.msg)));
+    contiene(av.msg, "1 carga(s)", "el aviso cuenta sólo la carga dimensionada:");
+    if (/Bomba sin datos/.test(av.msg)) throw new Error("el aviso cuenta una carga sin corriente (sin ramal dimensionado): " + av.msg);
+    const ues = G("describirUnifilar")(E, false), uen = G("describirUnifilar")(E, true);
+    if (!ues.pendientes.some((p) => /Bomba Al: calibre pendiente/.test(p) && /Tabla 9/.test(p))) throw new Error("el unifilar no lista el calibre pendiente: " + JSON.stringify(ues.pendientes));
+    if (!uen.pendientes.some((p) => /Bomba Al: size pending/.test(p) && /Table 9/.test(p))) throw new Error("ni en inglés: " + JSON.stringify(uen.pendientes));
+    if (E.alim.rPend && !ues.pendientes.some((p) => /Alimentador general en aluminio .*calibre pendiente/.test(p))) throw new Error("el alimentador con calibre pendiente no está en los pendientes del unifilar");
+    const nodoEn = uen.nodos.find((x) => x.tipo === "alimentador");
+    if (/calibre|caída|rige |cobre|aluminio/.test(nodoEn.detalle)) throw new Error("el detalle en inglés mete texto en español: " + nodoEn.detalle);
+    contiene(nodoEn.detalle, "size pending", "el detalle en inglés dice el calibre pendiente:");
+    const pdf = txtPdfE(G("buildElecPdf")());
+    contiene(pdf, "Cal.: * = calibre pendiente", "el PDF explica la marca:");
+    if (!/(^| )8\*( |$)/.test(pdf)) throw new Error("el PDF no marca el 8 AWG pendiente con *");
+  } finally { S.elec = JSON.parse(guardado); S.tab = tab0; G("recompute")(); }
+});
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {
   const guardado = JSON.stringify(S);
   try {

@@ -306,5 +306,13 @@
   { "id": "elec.m153", "que": "H-190: la R faltante vuelve a dar caída infinita y salta en silencio a 6 AWG", "logica": true, "estado": "vigente",
     "buscar": "    if (R == null) return null;", "reemplazar": "    if (R == null) return Infinity;" },
   { "id": "elec.m154", "que": "H-190: sin el aviso de error de las cargas en aluminio con calibre pendiente", "logica": true, "estado": "vigente",
-    "buscar": "  if (rPendC.length) avisos.push(", "reemplazar": "  if (false) avisos.push(" }
+    "buscar": "  if (rPendC.length) avisos.push(", "reemplazar": "  if (false) avisos.push(" },
+  { "id": "elec.m155", "que": "H-190 (complemento): el aviso del calibre pendiente vuelve a contar las cargas sin corriente (sinI, sin ramal dimensionado)", "logica": true, "estado": "vigente",
+    "buscar": "calc.filter((c) => c.cond && c.cond.rPend && !c.sinI);", "reemplazar": "calc.filter((c) => c.cond && c.cond.rPend);" },
+  { "id": "elec.m156", "que": "H-190 (complemento): el unifilar deja de listar el calibre pendiente de una carga", "logica": true, "estado": "vigente",
+    "buscar": "    if (K.rPend) pendientes.push(L(`${num} ${c.nombre}: calibre pendiente;", "reemplazar": "    if (false) pendientes.push(L(`${num} ${c.nombre}: calibre pendiente;" },
+  { "id": "elec.m157", "que": "H-190 (complemento): el detalle EN del unifilar vuelve a meter el «rige» en español", "logica": false, "estado": "vigente",
+    "buscar": "at 75 °C; governed by ${K.rigeEn})", "reemplazar": "at 75 °C; governed by ${K.rige})" },
+  { "id": "elec.m158", "que": "H-190 (complemento): el PDF del eléctrico deja de marcar con * el calibre pendiente", "logica": false, "estado": "vigente",
+    "buscar": "`${c.cond.awg}${c.cond.rPend ? \"*\" : \"\"}`", "reemplazar": "c.cond.awg" }
 ]
