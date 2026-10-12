@@ -1,4 +1,4 @@
-# Contra incendio (`fuego`, v6) · pendientes de la Fase 1 (rev 2.9.24)
+# Contra incendio (`fuego`, v7) · pendientes de la Fase 1 (rev 2.9.24)
 
 ## 0. Cierres de la Fase 2
 
@@ -9,9 +9,11 @@
 | H-206 (bomba a 385,000 fijos + 9,500/m³ sin fuente) | **Cerrado** (quote v8 → v9, 25-sep-2026; fuego sin cambio de cifras) | `QUOTE_SEED.bombaFuego` y `cisternaM3` retirados. Bomba «Por cotizar» (LOTE, sección D) con gpm, L/min, presión, HP; reserva «Por cotizar» (M3) con L/min × min. Con red municipal que alcanza no hay ninguna de las dos (la red que NO alcanza sigue sin partida: H-211, pendiente). Prueba S.59; CM.fuego.1.v redefinida (0 partidas LOTE con importe), F5 vigente y F5b nueva; S.20 con las cifras nuevas (−1,697,446.66 directos). Sin mutante propio: la lógica es de quote (S.59 y R.1 la vigilan). |
 | H-210 (bomba dimensionada con altura, cabezal o montante en 0) | **Cerrado** (fuego v4 → v5, 27-sep-2026) | Sin altura al rociador más alto, cabezal o montante capturados la bomba no se dimensiona: presión en la base, carga y potencia «pendiente», aviso err y semáforo «incompleta»; la cotización la lleva a pendientes (ES/EN) y no se ofrece a eléctrico; salen los 6 / 30 / 12 m y 30 mca ocultos de un campo nulo. `CM.fuego.6.F10–.F12` vigentes; salen `CM.fuego.6.m/.n/.r/.s`, que documentaban 16.3 m y 15 HP. Prueba S.105 |
 | H-264 complemento (migración de proyectos anteriores) | **Cerrado** (fuego v5 → v6, 28-sep-2026) | La altura y el área heredadas (o el área que se tomaba en vivo con tomarArea y load>fuego) se copian una vez al abrir con la cifra que daba la herencia (zona más alta, suma de zonas) y quedan «sin confirmar». El fixture de regresión guarda otra vez 4.71 m heredados y abre con 6 m. Prueba S.106 |
+| AUD-04 (migración: área heredada < 0.5 m² subía a 1 m²) | **Cerrado** (fuego v6 → v7, 7-oct-2026; regla 6) | Un área heredada menor a 0.5 m² queda en 0 («dato pendiente») en vez de subir a 1 m². Prueba S.221 |
+| AUD-19 (umbral de rack de 12 m y tope de 12 bar sin texto de NFPA 13) | **Cerrado** (sin cambio de versión ni de números; S.210 el 7-oct-2026 y S.242 el 12-oct-2026) | El aviso de rack, el tope de 12 bar y la guía de `fuego.altura` dicen «criterio de la casa (NFPA 13 sin texto en el repositorio)»; S.58 endurecida; `CM.fuego.2.F4` con la fuente corregida; mutante `fuego.m43`, muerto por S.242 |
 
-Hoja: `fuego.csv` (187 filas: 180 vigentes, 7 fase2) · cálculo: `fuego.calc.mjs` · módulo: `pruebas-motores/fuego.mjs` ·
-mutantes: `parches/mutantes/fuego.json`. Numeración de líneas: `master` en `2185dcd`.
+Hoja: `fuego.csv` (187 filas: 180 vigentes, 7 fase2) · cálculo: `fuego.calc.mjs` · módulo: `pruebas-motores/fuego.mjs` (10 casos, CM.fuego.1–10) ·
+mutantes: `parches/mutantes/fuego.json` (42, todos de lógica y vigentes; sin m14). Numeración de líneas: `master` en `2185dcd`.
 
 ## Pruebas que hoy protegen valores incorrectos (se marcan; se corrigen en la Fase 2 con su hallazgo)
 
@@ -33,7 +35,8 @@ visible; su `descripcion` dice «hoy; cambia con H-nnn»): `CM.fuego.*.m/.n` (es
 | Fila | H | Esperado | Suite hoy | Fuente / edición | Carácter |
 |---|---|---|---|---|---|
 | ~~CM.fuego.1.F1 / .F2~~ | H-205 | **vigentes desde el 25-sep-2026** (estática 7 m; H 39.105 m) | = esperado | PLAN-CRITICOS.md §4 (regla del dueño) | memoria |
-| ~~CM.fuego.2.F1–.F4~~ | H-205 | **vigentes desde el 25-sep-2026** (estática 14 m; H 46.0 m; 40 HP; aviso de rack) | = esperado | ídem | memoria |
+| ~~CM.fuego.2.F1–.F3~~ | H-205 | **vigentes desde el 25-sep-2026** (estática 14 m; H 46.0 m; 40 HP) | = esperado | ídem | memoria |
+| ~~CM.fuego.2.F4~~ | H-205 / AUD-19 | **vigente desde el 25-sep-2026** (aviso de rack con 13 m; umbral de 12 m) | = esperado | criterio de la casa (AUD-19, 12-oct-2026): umbral de 12 m sin texto de NFPA 13 en el repositorio; antes «NFPA 13 cap. 12/20 (memoria)». Prueba S.242; mutante `fuego.m43` | memoria |
 | ~~CM.fuego.1.F5~~ / .F5b | H-206 | **vigentes desde el 25-sep-2026** (bomba y reserva Por cotizar) | = esperado | PLAN-CRITICOS.md §4 H-206 y decisión 6 | — |
 | CM.fuego.1.F6 | H-207 | reserva 207.4 m³ (90 min) | 138.2 m³ (60 min) | NFPA 13-2016 §11.2.3.1.3 / Tabla 11.2.3.1.2 | memoria |
 | CM.fuego.5.F6 | H-207 | 618.9 m³ (120 min) | 464.6 m³ (90 min) | ídem | memoria |

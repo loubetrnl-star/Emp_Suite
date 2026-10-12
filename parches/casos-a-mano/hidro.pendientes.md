@@ -1,8 +1,8 @@
 # hidro · pendientes de la Fase 1 y cierre de la Fase 2 (rev 2.9.24, 22/24-sep-2026)
 
-Motor hidrosanitario (`hidro`, v8). Entregas: `hidro.calc.mjs` (cálculo independiente, imprime y escribe la hoja),
-`hidro.csv` (105 filas: 88 vigentes, 17 `fase2:H-nnn`), `pruebas-motores/hidro.mjs` (25 pruebas `CM.hidro.*`),
-`parches/mutantes/hidro.json` (62 mutantes; ver §3). Banco al cierre de H-196: 462/462 sin base, 468/468 con base. Con
+Motor hidrosanitario (`hidro`, v11). Entregas: `hidro.calc.mjs` (cálculo independiente, imprime y escribe la hoja),
+`hidro.csv` (107 filas: 91 vigentes, 16 `fase2:H-nnn`), `pruebas-motores/hidro.mjs` (23 pruebas `CM.hidro.*`),
+`parches/mutantes/hidro.json` (63 mutantes, todos de lógica: 59 vigentes y 4 `fase2` —m12 H-202, m24 y m37 H-199, m28 H-203—; ver §3). Banco al cierre de H-196: 462/462 sin base, 468/468 con base. Con
 `CM_FASE2=1` las filas fase2 fallan hoy, ninguna pasa por casualidad (arnés `tmp-fase1/fase2-filas.mjs`, no commiteado).
 
 ## 0. Hallazgos cerrados en la Fase 2
@@ -19,11 +19,11 @@ Motor hidrosanitario (`hidro`, v8). Entregas: `hidro.calc.mjs` (cálculo indepen
 
 | H-196 (cisterna y bomba con precio semilla sin fuente, cotizadas siempre y aun con «Cisterna de 0 m³») | **Cerrado** (quote v7 → v8, 25-sep-2026; hidro sin cambio de cifras) | `QUOTE_SEED.bombaHP` retirado; `cisternaM3` queda sólo para la reserva contra incendio. La cisterna con volumen va «Por cotizar» (M3, con consumo diario × días); en 0 queda «pendiente de volumen». La bomba va «Por cotizar» (LOTE, con HP, gasto y CDT) sólo si `presOk` es falso; si la red alcanza, la memoria y el PDF dicen que se dimensiona como referencia y no se cotiza. Matriz de alcance del Excel: pendientes y Por cotizar también en secciones sin importe. Prueba S.57; filas 1.ad (vigente), 1.ae, 1.af; S.18/S.20/S.35/S.39/S.41/S.55/22.11 ajustadas. |
 
-**Dependencia para elec (H-196):** la lista de cargas eléctricas sigue trayendo «Bomba de agua · X HP» (fila auto `hidro-1`, index.html ≈ 9729) aunque `presOk` sea verdadero y la bomba no haga falta. Debería omitirse o marcarse «no requerida». No se tocó (motor ajeno).
+**Dependencia para elec (H-196):** la lista de cargas eléctricas sigue trayendo «Bomba de agua · X HP» (fila auto `hidro-1` de `cargasOtrosMotoresElec`) aunque `presOk` sea verdadero y la bomba no haga falta (la condición es sólo `HIDRO.kWbomba > 0`); desde H-268/H-306 `computeElec` no lee esa fila: sólo llega al cuadro al migrar un proyecto anterior en vivo (`propuestaElecFilas()`). Debería omitirse o marcarse «no requerida». No se tocó (motor ajeno).
 
 **Dependencia para soporte (H-198):** la soportería sigue contando un tramo fuera de catálogo con el diámetro tope (43.59 mm en CPVC) y un tramo de PEAD con su DI genérico. Debería dejarlos «pendiente de diámetro verificado». No se tocó la lógica de soportería (regla del motor ajeno); sólo se recalculó su caso 7 con la nueva entrada.
 
-Defecto latente registrado (fuera del alcance de H-195, sin prueba todavía): `muebleDe(id)` devuelve el WC con fluxómetro para un
+Defecto latente (fuera del alcance de H-195) **CERRADO en AUD-24.2** (hidro v10 → v11, 7-oct-2026; prueba S.216: `muebleDe` devuelve null y el mueble queda «dato pendiente» con aviso). Texto original: `muebleDe(id)` devuelve el WC con fluxómetro para un
 id desconocido (`|| MUEBLES[0]`), así que un mueble que no existe en la tabla se calcula como WC con fluxómetro (10 UM, 35 psi) en
 vez de rechazarse. Lo mostró la prueba 16.a antes de agregar `lavaojos_solo`.
 
@@ -132,7 +132,7 @@ lógica vigente + m34, que no es lógica); 11 en estado fase2, de los que 9 sigu
 | hidro.m18 | drenaje: tabla contra UD/4 | vigente | MUERTO | **sólo CM.hidro.9** |
 | hidro.m19 | drenaje sin límite de WC por diámetro | vigente | MUERTO | **sólo CM.hidro.1, .4, .9** |
 | hidro.m20 | ventilación ¼ de la bajada (906.2 pide ½) | vigente | MUERTO | **sólo CM.hidro.1, .4** |
-| hidro.m21 | HP redondeados al más cercano | vigente | MUERTO | 22.5, R.1, CM.hidro.1 |
+| hidro.m21 | HP nominales redondeados al más cercano en vez de hacia arriba (reanclado tras AUD-14) | vigente | MUERTO | sólo S.237 (12-oct-2026; 22.5, R.1 y CM.hidro.1 no lo mataban: fracción ≥ 0.5) |
 | hidro.m22 | cp del agua 4.186 → 4.0 | vigente | MUERTO | **sólo CM.hidro.1** |
 | hidro.m23 | dotación industria 100 → 50 | vigente | MUERTO | **sólo CM.hidro.3.a, .3.b** |
 | hidro.m24 | Qcal con la curva del sistema | fase2:H-199 | VIVO | sólo lo mataría afirmar 7.2 UM sin fuente · fila CM.hidro.1.v |
@@ -167,7 +167,7 @@ bloquean: se matan al cerrar su hallazgo, cuando la fila fase2 pase a «vigente�
   los respalde y el aviso es de texto.
 - **Bajada con más de 3 intervalos de ramal**: la suite no captura intervalos; la fila 9.z exige la columna ≤ 3 (la
   conservadora) según H-201.
-- **Regla de la casa de dos WC en 75 mm** (index.html:9801-9811): las filas 4.e y 9.w la fijan como *criterio de la casa*
+- **Regla de la casa de dos WC en 75 mm** (`DRENAJE` con `wcMax: 2` en 75 mm y `sizeDrenaje`): las filas 4.e y 9.w la fijan como *criterio de la casa*
   porque la Tabla 710.1(2) del IPC 2015 en up.codes no trae esa nota (el IPC la pone en 710.1(1) sólo como «mínimo 3"
   con WC»). No es hallazgo nuevo; se anota para que el dueño decida si se conserva.
 - **Memoria/PDF/Excel del motor**: no se comparan textos (regla de la Fase 1: sólo números).

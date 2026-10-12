@@ -1,6 +1,6 @@
 # vent · pendientes de la Fase 1 (rev 2.9.24, 22-sep-2026)
 
-Motor de ventilación (`vent`, v3). Hoja: `vent.csv` (58 filas: 46 vigentes, 12 fase2) · cálculo independiente:
+Motor de ventilación (`vent`, v4). Hoja: `vent.csv` (58 filas: 55 vigentes, 3 fase2) · cálculo independiente:
 `vent.calc.mjs` · módulo: `pruebas-motores/vent.mjs` (16 pruebas CM.vent.0–15) · compuerta: `parches/mutantes/vent.json`
 (35 mutantes al 7-oct-2026: 32 de lógica vigente, 2 de lógica fase2 —m31 H-159 y m32 H-157— y 1 valor por omisión
 fase2:H-160, m24. Antes de H-154/H-155 eran 34: 27 de lógica vigente, 6 de lógica fase2 y 1 valor por omisión; m35 entró

@@ -1,8 +1,8 @@
 # duct · pendientes de la Fase 1 (rev 2.9.24, 25-sep-2026)
 
-Motor de ductos (`duct`, v1). Hoja: `duct.csv` (74 filas, todas vigentes) · cálculo independiente:
+Motor de ductos (`duct`, v7). Hoja: `duct.csv` (74 filas, todas vigentes) · cálculo independiente:
 `duct.calc.mjs` (no carga index.html) · módulo: `pruebas-motores/duct.mjs` (10 pruebas CM.duct.0–9) · compuerta:
-`parches/mutantes/duct.json` (35 mutantes de lógica, todos vigentes y MUERTOS).
+`parches/mutantes/duct.json` (39 mutantes: 38 de lógica y 1 de texto, m41; todos vigentes; MUERTOS en la verificación del 10-oct-2026).
 
 ## 0. Cierres de la Fase 2
 

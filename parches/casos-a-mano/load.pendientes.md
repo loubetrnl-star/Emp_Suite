@@ -1,9 +1,9 @@
 # load · pendientes de la Fase 1 (rev 2.9.24, 23-sep-2026)
 
-Motor de carga térmica (`load`, v3). Hoja: `load.csv` (108 filas: 91 vigentes, 17 fase2) · cálculo independiente:
+Motor de carga térmica (`load`, v7). Hoja: `load.csv` (99 filas: 92 vigentes, 7 fase2) · cálculo independiente:
 `load.calc.mjs` (no carga index.html; `node parches/casos-a-mano/load.calc.mjs --csv` regenera la hoja) · módulo:
-`pruebas-motores/load.mjs` (12 pruebas CM.load.0–11) · compuerta: `parches/mutantes/load.json` (84 mutantes: 78 de lógica
-vigente, 6 de lógica `fase2:H-nnn`).
+`pruebas-motores/load.mjs` (12 pruebas CM.load.0–11) · compuerta: `parches/mutantes/load.json` (95 mutantes: 90 de lógica
+vigente, 4 de lógica `fase2:H-nnn` —H-121 ×2, H-123, H-157— y 1 no lógica, m90).
 
 Fuentes de los esperados: psicrometría ASHRAE Handbook—Fundamentals 2017 cap. 1 (ec. 3, 5-6, 20, 22, 33) vía PsychroLib
 (https://raw.githubusercontent.com/psychrometrics/psychrolib/master/src/js/psychrolib.js, **secundaria**; el texto de ASHRAE

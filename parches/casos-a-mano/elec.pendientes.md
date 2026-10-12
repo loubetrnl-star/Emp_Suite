@@ -1,18 +1,18 @@
 # elec · pendientes de la Fase 1 (rev 2.9.24)
 
-Motor eléctrico (`elec`, v8). Hoja: `elec.csv` (127 filas: 116 vigentes, 11 fase2). Cálculo independiente: `elec.calc.mjs`.
-Módulo: `pruebas-motores/elec.mjs` (15 pruebas CM.elec.1–15). Compuerta: `parches/mutantes/elec.json` (139 mutantes).
+Motor eléctrico (`elec`, v12). Hoja: `elec.csv` (127 filas: 117 vigentes, 10 fase2). Cálculo independiente: `elec.calc.mjs`.
+Módulo: `pruebas-motores/elec.mjs` (15 pruebas CM.elec.1–15). Compuerta: `parches/mutantes/elec.json` (158 mutantes `elec.m01`–`m158`: 120 de lógica y 38 no lógica; todos vigentes).
 Norma: NOM-001-SEDE-2012, texto del DOF en `parches/normas-texto/NOM-001-SEDE-2012_DOF_texto.txt` (página en cada fila).
 
 ## 1. Pruebas de `pruebas.mjs` que protegen valores incorrectos o no prueban (NO se arreglan en la Fase 1)
 
 | pruebas.mjs | prueba | qué protege | hallazgo |
 |---|---|---|---|
-| 3026 | 22.4 | **Reescrita en H-178 (elec v8)**: ya no repite kW/fp; usa las corrientes de la Tabla 430-250 (68 y 28 A) con antes → después (59.71 → 73.73 kVA; 2/0 → 4/0; principal 175 → 225). Antes: Tautológica: `Iref` repite la fórmula del código (kW/fp, sin Tabla 430-250, sin eficiencia) y fija el principal en 175 A «porque domina el alimentador» (mayor de dos valores) | H-178, H-188 |
-| 3698 | J.1 | Consagra `principal = max(alim.ocpd, ocpd del motor mayor)`; 430-63 (p. 426) pide la **suma** de la otra carga más la protección del motor | H-188 |
-| 3712 | J.2 | Sin motores `principal = alim.ocpd`: repite la regla del código, no la norma | H-188 |
-| 5502 | S.29 | ~~Fija tierra 6 AWG para 100/125 A con la tabla del NEC y la protección al 250 % sin 440-22~~ **Retirada (rev 2.9.24, Fase 2):** sus tierras (100 → 8, 125 → 6 AWG) son iguales en NOM y NEC y nunca pasa `motor:true`; las sondas de H-183 y H-177 la dejan verde. No protege valores incorrectos. | — |
-| 777 | 11.6 | «Las hojas se alimentan de los resultados reales»: sólo busca el texto del principal en el libro; no comprueba cálculo alguno | — (no prueba) |
+| 3596 | 22.4 | **Reescrita en H-178 (elec v8)**: ya no repite kW/fp; usa las corrientes de la Tabla 430-250 (68 y 28 A) con antes → después (59.71 → 73.73 kVA; 2/0 → 4/0; principal 175 → 225). Antes: Tautológica: `Iref` repite la fórmula del código (kW/fp, sin Tabla 430-250, sin eficiencia) y fija el principal en 175 A «porque domina el alimentador» (mayor de dos valores) | H-178, H-188 |
+| 4284 | J.1 | Consagra `principal = max(alim.ocpd, ocpd del motor mayor)`; 430-63 (p. 426) pide la **suma** de la otra carga más la protección del motor | H-188 |
+| 4298 | J.2 | Sin motores `principal = alim.ocpd`: repite la regla del código, no la norma | H-188 |
+| 6148 | S.29 | ~~Fija tierra 6 AWG para 100/125 A con la tabla del NEC y la protección al 250 % sin 440-22~~ **Retirada (rev 2.9.24, Fase 2):** sus tierras (100 → 8, 125 → 6 AWG) son iguales en NOM y NEC y nunca pasa `motor:true`; las sondas de H-183 y H-177 la dejan verde. No protege valores incorrectos. | — |
+| 1293 | 11.6 | «Las hojas se alimentan de los resultados reales»: sólo busca el texto del principal en el libro; no comprueba cálculo alguno | — (no prueba) |
 
 ## 2. Filas fase2 de la hoja (valor correcto por norma que hoy la suite NO da; se exigen sólo con `CM_FASE2=1`)
 
@@ -47,7 +47,7 @@ Norma: NOM-001-SEDE-2012, texto del DOF en `parches/normas-texto/NOM-001-SEDE-20
 - **Erratas del DOF** detectadas al transcribir (no afectan valores usados): Tabla 5 (p. 1006) trae «55.68» para 10 AWG
   THW (diámetro 4.470 mm → 15.69 mm²; la suite usa 15.68, correcto); Tabla 430-250 (p. 443) trae «44» en 10 hp / 575 V.
 
-## 2b. Dependencia resuelta en H-177
+## 2b. Dependencia resuelta en H-177 (propuesta retirada en H-306)
 `PROPUESTAS["cedula>elec"].aplicar` descartaba MCA y MOP al aceptar la cédula: se corrigió en el mismo commit (es la entrada del
 motor eléctrico). Las cargas aceptadas antes de la rev 2.9.24 no los traen: el cuadro avisa y se protegen como motor general
 hasta que se vuelva a aceptar la cédula o se capture la placa. La firma de la propuesta no cambió (no se marca desactualizada).
@@ -79,7 +79,7 @@ Tres lentes (norma, consumidores, pruebas) y verificación con sonda: 27 hallazg
 | H-187 (bomba contra incendio como motor general, art. 695) | El texto del art. 695 (p. 827-831) está en la NOM, pero la corrección es una rama propia (no un número del cuadro actual): sin caso numérico posible hasta que exista la rama. |
 | H-192 (equivalencia THW-LS ↔ THW no declarada; sin columna de cantidad) | No mueve números; texto de memoria. Se anota en la fila CM.elec.1.k como equivalencia usada. |
 | H-193 (tubo 3½" designación 89 vs 91; «factor de demanda 1.16»; resistencia Al 8 AWG) | Cosméticos; sólo el factor < 25 °C tiene fila (CM.elec.11.f). La designación 91 mm se evita en la hoja usando `tubo.area`. |
-| Neutro contado en el circuito del motor de 3F4H-220 (CM.elec.1.k/l) | Se deja **vigente** como criterio de la casa declarado (index.html:9368): la NOM no dice que un motor trifásico lleve neutro, pero tampoco lo prohíbe en un sistema de 4 hilos; H-191 sólo se exige para 3F3H (CM.elec.13.d). Decisión pendiente del dueño. |
+| Neutro contado en el circuito del motor de 3F4H-220 (CM.elec.1.k/l) | Se deja **vigente** como criterio de la casa declarado (index.html, `selConductor`: `if (o.neutro !== false && ph === 3) conductores.push(...)`): la NOM no dice que un motor trifásico lleve neutro, pero tampoco lo prohíbe en un sistema de 4 hilos; H-191 sólo se exige para 3F3H (CM.elec.13.d). Decisión pendiente del dueño. |
 | 125 % compuesto con los factores de corrección | La suite exige `base·ft·fg ≥ 1.25·I`; 210-19(a)(1) y 215-2(a)(1) (p. 52, 61) piden el 125 % «antes de la aplicación de cualquier factor de ajuste o de corrección» y aparte la ampacidad corregida ≥ carga. La regla de la casa es más conservadora (nunca subdimensiona); se declara, no se corrige. |
 | Corriente de falla (bus infinito) | Fórmula de memoria, no de la NOM: las filas CM.elec.3.n y CM.elec.12.a/b van con `caracter = memoria`. |
 | Valores normalizados 16, 32 y 63 A de 240-6(a) | La suite no los lista (criterio de la casa, valores IEC del DOF). Sin fila: ningún caso vigente cae en ellos. |
