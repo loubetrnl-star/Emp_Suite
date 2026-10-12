@@ -6968,7 +6968,8 @@ const TUB_AIRE = {
    tipo L PROPIO de aire comprimido. Misma transcripción que usa hidrosanitario (H-84): ASTM B88 tipo L, Copper Development
    Association, Copper Tube Handbook (2006), tabla 2b, cruzada contra una segunda fuente; mm. Antes aire leía TUB_AGUA.cobre. */
 const DI_COBRE_L_AIRE = [[13.84, "1/2\""], [19.94, "3/4\""], [26.04, "1\""], [32.13, "1 1/4\""], [38.23, "1 1/2\""], [50.42, "2\""], [62.61, "2 1/2\""], [74.80, "3\""], [99.19, "4\""]];
-/* AUD-03: factor de fricción de Darcy por Haaland (1983), copia propia de aire (antes llamaba a haaland() de ductos). Laminar
+/* AUD-03: factor de fricción de Darcy por Haaland (1983), copia propia de aire (antes llamaba a haaland() de ductos); sin texto de
+   norma en el repo: criterio de la casa, declarado en la memoria y en NORMAS.aire. Laminar
    64/Re abajo de Re 2300; 0.05 abajo de Re 1, como la de la casa. */
 function haalandAire(Re, rr) { if (Re < 1) return .05; if (Re < 2300) return 64 / Math.max(Re, 1); const inv = -1.8 * Math.log10(Math.pow(rr / 3.7, 1.11) + 6.9 / Re); return 1 / (inv * inv); }
 /* Diámetros interiores reales, mm. Los nominales mienten y con la quinta
@@ -7269,6 +7270,7 @@ function computeAire(A) {
   memo.push(`Red en ${mat.label.toLowerCase()}: densidad del aire a ${pDescarga.toFixed(1)} bar y ${tAmb} °C = ${n(rho, 2)} kg/m³, contra ${n(rhoAire(0, tAmb, pAtm), 2)} del aire libre. Dimensionar con densidad atmosférica es el error clásico de esta disciplina y deja la caída ${n(rho / rhoAire(0, tAmb, pAtm), 1)} veces baja.`);
   memo.push(`Longitud equivalente: ${n(Leq * 100 - 100, 0)} % adicional por válvulas, tes y codos (criterio de la casa, declarado).`);
   memo.push(`Diámetros interiores de ${mat.label.toLowerCase()}: ${DI.fuente} (H-218).`);
+  memo.push("Factor de fricción de Darcy: Haaland (1983), sin texto de norma en el repo; criterio de la casa. 1/raiz(f) = -1.8·log10[(e/D/3.7)^1.11 + 6.9/Re] desde Re 2300, con e la rugosidad absoluta del material; laminar 64/Re abajo de Re 2300.");
 
   /* ---- 7. Energía y costo de las fugas ---- */
   const horas = Math.max(0, num(A.horas, 3500)), tarifa = Math.max(0, num(A.tarifaKWh, 2.85));
@@ -12025,7 +12027,7 @@ const NORMAS = {
   elec:  { norma: "NOM-001-SEDE-2012 Instalaciones Eléctricas (utilización)", edicion: "DOF 29-nov-2012, vigente", extra: "Tablas 310-15, 250-122 y 240-6; artículos 220 y 430" },
   hidro: { norma: "Método de Hunter (IPC apéndice E, Table E103.3(3)) · Hazen-Williams", edicion: "IPC 2015/2024 (mismos valores)", extra: "Normas Técnicas Complementarias para dotaciones y drenaje" },
   fuego: { norma: "NFPA 13 (rociadores) y NFPA 20 (bomba)", edicion: "vigente", extra: "Curva densidad-área y coberturas por clase de riesgo" },
-  aire:  { norma: "ISO 8573-1 (calidad del aire) · ISO 1217 anexo C (FAD) · ASME B31.3 (tubería)", edicion: "vigente", extra: "Darcy-Weisbach a la densidad real de línea; ISO 7183 para secadores" },
+  aire:  { norma: "ISO 8573-1 (calidad del aire) · ISO 1217 anexo C (FAD) · ASME B31.3 (tubería)", edicion: "vigente", extra: "Darcy-Weisbach a la densidad real de línea, con factor de fricción de Haaland (1983), sin texto de norma en el repo; criterio de la casa; ISO 7183 para secadores" },
   civil: { norma: "Catálogo de conceptos de la casa · cuantificación por geometría", edicion: CAT_REV.version, extra: "ISO 14644-4 e ISPE para acabados de área clasificada" },
   soporte: { norma: "MSS SP-58 (tubería) · SMACNA (ducto) · NFPA 13 cap. 18 (sísmico)", edicion: "vigente", extra: "NOM-009-STPS para trabajos en altura" },
   quote: { norma: "Lista de precios de la casa", edicion: CAT_REV.version, extra: "Ley de potencia de costos con exponente de escala capturado" },

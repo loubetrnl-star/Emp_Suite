@@ -10880,6 +10880,20 @@ t("S.242 (AUD-19) los umbrales de 12 m de altura (protección en rack) y de 12 b
     if (G("FUEGO").avisos.some((a) => /rack/.test(a.msg))) throw new Error("con 12 m exactos no debe salir el aviso de rack");
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
+t("S.243 (aire, regla 4) el factor de fricción de Darcy de la red de aire sale de Haaland (1983), que no tiene texto de norma en el repositorio: la memoria (pantalla y notas del PDF) y la trazabilidad (NORMAS.aire) lo declaran «Haaland (1983), sin texto de norma en el repo; criterio de la casa», con la fórmula que usa el motor; sólo texto, sin mover números", () => {
+  const guardado = JSON.stringify(S);
+  try {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.243";
+    S.aire = { ...G("defaultAire")(), material: "cobre", Lprincipal: 30, Lramales: 20, consumos: [{ id: "s243", tipo: "generico", nombre: "Carga", cant: 1, lmin: 600, bar: 6, uso: 1 }] };
+    G("recompute")();
+    const m = G("AIRE").memo.find((x) => x.includes("Haaland (1983), sin texto de norma en el repo; criterio de la casa"));
+    if (!m) throw new Error("la memoria de aire no declara Haaland como criterio de la casa");
+    contiene(m, "-1.8·log10[(e/D/3.7)^1.11 + 6.9/Re]", "con la fórmula del motor:");
+    contiene(G("NORMAS").aire.extra, "Haaland (1983), sin texto de norma en el repo; criterio de la casa", "NORMAS.aire:");
+    const pdf = txtPdfE(G("buildAirePdf")());
+    if ((pdf.match(/Haaland \(1983\), sin texto de norma en el repo; criterio de la casa/g) || []).length < 2) throw new Error("el PDF de aire debe traer el rótulo en las notas y en la trazabilidad");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
+});
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {
   const guardado = JSON.stringify(S);
   try {
