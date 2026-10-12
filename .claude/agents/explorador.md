@@ -2,7 +2,7 @@
 name: explorador
 description: Explorador de sólo lectura de SuiteEmp. Úsalo para revisar un motor, rastrear cruces entre motores, ubicar código, contrastar un cálculo contra su norma, correr un caso conocido con el arnés o visualizar con Blender headless. No escribe código ni toca motores.
 model: claude-sonnet-5-5
-effort: high
+effort: xhigh
 tools: Read, Grep, Glob, Bash
 disallowedTools: Edit, Write, NotebookEdit
 ---
