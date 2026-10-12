@@ -8659,7 +8659,7 @@ t("S.132 (H-266) un proyecto anterior que contaba en vivo sin nada que soportar 
     /* Con metros en un motor de origen, aunque sin captura real (red de aire con longitud y sin consumos), la toma igual: el conteo en
        vivo los soportaba y abre con las mismas cifras. */
     const pa = JSON.parse(JSON.stringify(G("defaultState")())); pa.meta.name = "S.132-A";
-    pa.aire = { ...pa.aire, Lprincipal: 30, Lramales: 12 };
+    pa.aire = { ...pa.aire, material: "acero_gal", Lprincipal: 30, Lramales: 12 };   /* soporte v15: sin material el aire queda pendiente (S.241) */
     pa.soporte = { usarMotores: true, sismico: true, alturaTrabajo: 0, mesesElevacion: 3, basesEquipo: 0, rielM: 0 };
     G("importarRespaldo")(JSON.stringify(pa)); G("recompute")();
     eq(!!S.soporte.snap, true, "con metros en el origen toma la instantánea:"); eq(G("SOPORTE").mTub, 42, "mismas cifras (30 + 12 m de aire):");
@@ -10803,6 +10803,50 @@ t("S.240 (H-190, complemento) el calibre pendiente del aluminio llega a las sali
     contiene(pdf, "Cal.: * = calibre pendiente", "el PDF explica la marca:");
     if (!/(^| )8\*( |$)/.test(pdf)) throw new Error("el PDF no marca el 8 AWG pendiente con *");
   } finally { S.elec = JSON.parse(guardado); S.tab = tab0; G("recompute")(); }
+});
+t("S.241 (soporte v15, AUD-14 en la instantánea; aprobado por el dueño el 12-oct-2026) una red de aire comprimido sin material capturado no se soporta como acero: queda pendiente de material (ES/EN) en la lista a mano, la cotización y los avisos, sin metros de tubería ni soportes; cobre y acero siguen contando; aluminio e inoxidable siguen como acero (su claro va a propuesta); una instantánea vieja sin la clave conserva el acero con que se aceptó", () => {
+  const guardado = JSON.stringify(S);
+  const armar = (material) => {
+    G("reemplazarEstado")(G("defaultState")()); S.meta.name = "S.241";
+    S.aire = { ...G("defaultAire")(), material, Lprincipal: 60, Lramales: 20, consumos: [{ id: "s241", tipo: "generico", nombre: "Prueba S.241", cant: 4, lmin: 500, bar: 6, uso: .5 }] };
+    S.soporte = { ...S.soporte, alturaColgadoM: 1 };
+    aceptarSoporte(); return G("SOPORTE");
+  };
+  const redAire = (SP) => (SP.porTuberia || []).find((x) => x.etiqueta === "Aire comprimido");
+  const mSnap = () => S.soporte.snap.aire.reduce((a, x) => a + x.L, 0);
+  const pendAire = (SP) => (SP.manualPendientes || []).find((p) => /^Red de aire comprimido/.test(p.que));
+  try {
+    for (const mat of [null, ""]) {
+      const SP = armar(mat), et = JSON.stringify(mat);
+      eq(S.soporte.snap.aireMat, null, et + ": la instantánea guarda el material como pendiente (antes «acero»):");
+      eq(mSnap(), 80, et + ": y conserva los 80 m de la red:");
+      eq(SP.mTub, 0, et + ": sin metros de tubería soportados:"); eq(redAire(SP), undefined, et + ": sin grupo de aire en la tubería:");
+      const p = pendAire(SP);
+      if (!p) throw new Error(et + ": falta el pendiente de material del aire: " + JSON.stringify(SP.manualPendientes));
+      eq(p.que, "Red de aire comprimido (80 m)", et + ":"); eq(p.queEn, "Compressed air network (80 m)", et + ", EN:");
+      eq(p.falta, "material", et + ": falta el material:"); eq(p.faltaEn, "material", et + ", EN:");
+      if (!SP.cot.pendientes.some((q) => q.mot === "soporte" && q.desc === "Soportes: Red de aire comprimido (80 m)" && q.descEn === "Supports: Compressed air network (80 m)" && q.motivo === "pendiente de material" && q.motivoEn === "material pending"))
+        throw new Error(et + ": la cotización de soportería no trae el aire pendiente de material (ES/EN): " + JSON.stringify(SP.cot.pendientes));
+      if (!SP.avisos.some((a) => a.lvl === "warn" && /^Red de aire comprimido \(80 m\): soportes pendientes de material/.test(a.msg))) throw new Error(et + ": sin aviso del aire pendiente");
+      if (SP.avisos.some((a) => /no trae metros de ducto ni de tubería/.test(a.msg))) throw new Error(et + ": el aviso dice que la instantánea no trae metros, pero los trae pendientes de material");
+      /* El null sobrevive al guardado (JSON) y sigue pendiente. */
+      S.soporte.snap = JSON.parse(JSON.stringify(S.soporte.snap)); G("recompute")();
+      eq(G("SOPORTE").mTub, 0, et + ": tras guardar y abrir, sigue pendiente:");
+    }
+    /* Con material: cobre como cobre y los aceros del catálogo como acero, con sus 80 m. */
+    let SP = armar("cobre");
+    eq(S.soporte.snap.aireMat, "cobre", "cobre:"); eq(SP.mTub, 80, "cobre: 80 m soportados:"); eq(pendAire(SP), undefined, "cobre: sin pendiente:");
+    const snapCobre = JSON.parse(JSON.stringify(S.soporte.snap));
+    for (const mat of Object.keys(G("TUB_AIRE"))) {
+      SP = armar(mat);
+      eq(S.soporte.snap.aireMat, mat === "cobre" ? "cobre" : "acero", mat + " (aluminio e inoxidable siguen como acero hasta que el dueño decida su claro):");
+      eq(SP.mTub, 80, mat + ": 80 m:");
+    }
+    /* Instantánea vieja (antes de soporte v15) sin la clave: conserva el acero con que se aceptó. */
+    G("reemplazarEstado")(G("defaultState")()); delete snapCobre.aireMat;
+    S.soporte = { ...S.soporte, alturaColgadoM: 1, snap: snapCobre, usarMotores: true }; G("recompute")();
+    eq(G("SOPORTE").mTub, 80, "instantánea sin la clave: 80 m, como acero:"); eq(pendAire(G("SOPORTE")), undefined, "sin pendiente:");
+  } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {
   const guardado = JSON.stringify(S);

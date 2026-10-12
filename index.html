@@ -8550,9 +8550,16 @@ function computeSoporte(Gc, F) {
           falta: "longitudes del cabezal y del montante (se capturan en contra incendio)", faltaEn: "header and riser lengths (captured in fire protection)" });
       }
     }
-    if (F.aire && F.aire.tramos)
-      agregarTuberia(F.aire.tramos.map((t) => ({ tag: t.etiqueta, L: t.L, d: t.d })),
+    if (F.aire && F.aire.tramos) {
+      /* Soporte v15 (AUD-14 en la instantánea, aprobado por el dueño el 12-oct-2026): el aire sin material capturado no se soporta
+         como acero (antes «acero» por omisión): pendiente de material, como en la captura a mano. Sólo null: una instantánea
+         anterior sin la clave (undefined) conserva el acero con que se aceptó. */
+      const mAire = F.aire.tramos.reduce((a, t) => a + Math.max(0, num(t.L)), 0);
+      if (F.aireMaterial === null) {
+        if (mAire > 0) manualPendientes.push({ que: `Red de aire comprimido (${n(mAire, 0)} m)`, queEn: `Compressed air network (${n(mAire, 0)} m)`, falta: "material", faltaEn: "material" });
+      } else agregarTuberia(F.aire.tramos.map((t) => ({ tag: t.etiqueta, L: t.L, d: t.d })),
         F.aireMaterial === "cobre" ? "cobre" : "acero", "aire_comprimido", "Aire comprimido");
+    }
   } else {
     /* H-230: cada línea a mano lleva su diámetro y su material capturados; sin diámetro no se inventa (antes 50 / 100 / 32 mm de acero). */
     const manual = (tag, tagEn, L, d, mat, disciplina, etiqueta) => {
@@ -8745,7 +8752,7 @@ function computeSoporte(Gc, F) {
   /* H-266 (revisión adversarial U16): desde H-266 los metros de los motores no entran solos; el aviso ya no dice «no hay ductos ni
      tubería calculados en los motores» (falso con tramos en Ductos sin aceptar). computeSoporteGobernado precisa si hay metros
      en los motores sin aceptar. */
-  if (nSoportes === 0) avisos.push({ lvl: "warn", msg: Gc.usarMotores !== false && Gc.snap ? "No hay soportes que contar: la instantánea aceptada no trae metros de ducto ni de tubería." : "No hay soportes que contar: no hay metros capturados a mano en esta pestaña ni una propuesta de los motores aceptada (H-266)." });
+  if (nSoportes === 0) avisos.push({ lvl: "warn", msg: Gc.usarMotores !== false && Gc.snap ? (manualPendientes.length ? "No hay soportes que contar: los metros de la instantánea quedan pendientes de dato (ver los avisos de soportes pendientes)." : "No hay soportes que contar: la instantánea aceptada no trae metros de ducto ni de tubería.") : "No hay soportes que contar: no hay metros capturados a mano en esta pestaña ni una propuesta de los motores aceptada (H-266)." });
   if (hTrab > 10 && !mesesPendiente && meses < 2) avisos.push({ lvl: "info", msg: `Trabajo a ${n(hTrab, 1)} m con solo ${meses} mes(es) de renta. Revisa el programa: a esa altura casi todo el montaje mecánico y eléctrico necesita plataforma.` });
 
   /* ---- Memoria ---- */
@@ -18996,7 +19003,9 @@ function snapshotSoporte() {
       ...(FUEGO.tub && !/^acero/.test(FUEGO.tub) ? { tub: FUEGO.tub } : {}),
     } : { nTotal: 0, Lram: 0, ramD: 100, Lmon: 0, monD: 100 },
     aire: at.map((t) => ({ etiqueta: t.etiqueta || "", L: num(t.L), d: num(t.d) })),
-    aireMat: (S.aire && S.aire.material === "cobre") ? "cobre" : "acero",
+    /* Soporte v15 (AUD-14 en la instantánea, aprobado por el dueño el 12-oct-2026): sin material capturado (o fuera de TUB_AIRE,
+       el mismo criterio que matCap del motor de aire) viaja null y queda pendiente; aluminio e inoxidable siguen como acero. */
+    aireMat: (S.aire && S.aire.material === "cobre") ? "cobre" : (S.aire && TUB_AIRE[S.aire.material]) ? "acero" : null,
     /* H-266: los equipos se cuentan de las partidas de Selección (equiposCotizados, S.equip.items; H-301), no de la cotización. */
     nEquip: equiposCotizados() + ((typeof AIRE !== "undefined" && AIRE) ? num(AIRE.totalUnidades) : 0),
     ts: Date.now(),
@@ -20181,7 +20190,7 @@ const MOTOR_CAMBIOS = {
     { ver: "12", rev: "2.9.24", que: "H-266 (decisión del dueño, 27-sep-2026): soportería es autónoma: sin instantánea aceptada cuenta sólo lo capturado a mano (se retiró el conteo en vivo de ductos, hidráulica, incendio y aire); aceptar la propuesta concede los cruces y ya no se mueve sola. Altura de trabajo y altura de la estructura (sismo) capturadas: ya no salen de la zona más alta; sin ellas, renta de elevación pendiente y aviso sísmico. Bases de equipo capturadas o de la instantánea (ya no de la cotización ni de aire). Un proyecto guardado se migra una vez al abrirlo, con las mismas cifras. Red contra incendio sin longitudes de cabezal y montante: pendiente (antes 30 + 12 m a 100 mm leídos en vivo de contra incendio, aun con la instantánea)" },
     { ver: "13", rev: "2.9.24", que: "H-266, complementos de la revisión adversarial (27-sep-2026): con arriostramiento sísmico y sin la altura de la estructura capturada el anclaje va Por cotizar con su motivo (antes se cotizaba como calculado con z/h = 0 supuesto, el lado no conservador de ASCE 7-16 §13.3.1); sin sismo la altura no entra al anclaje. Proyecto fijo: cifras sin cambio" },
     { ver: "14", rev: "2.9.24", que: "AUD-14 (auditoría externa, 29-sep-2026; «nada se estima»): la tubería capturada a mano sin material ya no se soporta como acero (antes «acero» por omisión en el estado y en el cálculo): queda pendiente de material, sin soportes ni importe, con aviso; un proyecto nuevo nace sin material y la pantalla ofrece «sin capturar»" },
-    { ver: "15", rev: "2.9.24", que: "Claros máximos de ducto con los pies exactos de SMACNA HVAC-DCS 2.ª ed. 1995 (aprobado por el dueño, 12-oct-2026; sistema imperial primario): rectangular 8 ft = 2.4384 m (§4.2.8) y redondo 12 ft = 3.6576 m (Tabla 4-2); antes 2.44 y 3.66 m, que excedían el máximo por 1.6 y 2.4 mm. Mueve el número de soportes sólo en tramos cuya longitud cae en (k·2.4384, k·2.44] o (k·3.6576, k·3.66] y la carga por soporte −0.066 %; proyectos fijos sin cambio de cifras. Prueba S.239" }],
+    { ver: "15", rev: "2.9.24", que: "Claros máximos de ducto con los pies exactos de SMACNA HVAC-DCS 2.ª ed. 1995 (aprobado por el dueño, 12-oct-2026; sistema imperial primario): rectangular 8 ft = 2.4384 m (§4.2.8) y redondo 12 ft = 3.6576 m (Tabla 4-2); antes 2.44 y 3.66 m, que excedían el máximo por 1.6 y 2.4 mm. Mueve el número de soportes sólo en tramos cuya longitud cae en (k·2.4384, k·2.44] o (k·3.6576, k·3.66] y la carga por soporte −0.066 %; proyectos fijos sin cambio de cifras. Prueba S.239. Además (AUD-14 en la instantánea): la red de aire comprimido sin material capturado ya no se soporta como acero; queda pendiente de material (ES/EN) en la lista, la cotización y los avisos. Cobre y acero igual; aluminio e inoxidable siguen como acero (su claro va a propuesta); una instantánea anterior sin la clave conserva el acero. Proyectos fijos sin cambio. Prueba S.241" }],
 };
 const motorVer = (id) => MOTOR_VER[id] || "1";
 /* H-283 (y los que sigan): cuando sólo cambia la FORMA de la huella de un motor —qué entra a ella— sin cambiar su cálculo, no sube

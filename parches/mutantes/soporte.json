@@ -85,5 +85,9 @@
   { "id": "soporte.m88", "que": "S.228: la pantalla vuelve a mostrar «null» en Soportes (S.228)", "logica": true, "buscar": "<td class=\"num\">${d.n == null ? \"pendiente\" : d.n}", "reemplazar": "<td class=\"num\">${d.n}", "estado": "vigente" },
   { "id": "soporte.m89", "que": "S.228: el PDF vuelve a imprimir «null» en Soportes (S.228)", "logica": true, "buscar": "n(t.L, 0), t.n == null ? \"pendiente\" : String(t.n)])),", "reemplazar": "n(t.L, 0), String(t.n)])),", "estado": "vigente" }
 ,
-  { "id": "soporte.m90", "que": "soporte v15: el claro de ducto redondo vuelve a 3.66 m (excede 12 ft = 3.6576 m de la Tabla 4-2 de SMACNA 1995)", "logica": true, "buscar": "  const ESPAC_DUCTO_RED = 3.6576;", "reemplazar": "  const ESPAC_DUCTO_RED = 3.66;", "estado": "vigente" }
+  { "id": "soporte.m90", "que": "soporte v15: el claro de ducto redondo vuelve a 3.66 m (excede 12 ft = 3.6576 m de la Tabla 4-2 de SMACNA 1995)", "logica": true, "buscar": "  const ESPAC_DUCTO_RED = 3.6576;", "reemplazar": "  const ESPAC_DUCTO_RED = 3.66;", "estado": "vigente" },
+  { "id": "soporte.m91", "que": "soporte v15 (AUD-14 en la instantánea): el aire sin material vuelve a guardarse como acero", "logica": true, "buscar": "(S.aire && TUB_AIRE[S.aire.material]) ? \"acero\" : null,", "reemplazar": "\"acero\",", "estado": "vigente" },
+  { "id": "soporte.m92", "que": "soporte v15: el aire con material null se soporta como acero (sin pendiente)", "logica": true, "buscar": "      if (F.aireMaterial === null) {", "reemplazar": "      if (false) {", "estado": "vigente" },
+  { "id": "soporte.m93", "que": "soporte v15: el aire sin material desaparece sin dejar pendiente", "logica": true, "buscar": "        if (mAire > 0) manualPendientes.push({ que: `Red de aire comprimido", "reemplazar": "        if (false) manualPendientes.push({ que: `Red de aire comprimido", "estado": "vigente" },
+  { "id": "soporte.m94", "que": "soporte v15: una instantánea vieja sin la clave del material de aire queda pendiente (antes acero)", "logica": true, "buscar": "      if (F.aireMaterial === null) {", "reemplazar": "      if (F.aireMaterial == null) {", "estado": "vigente" }
 ]
