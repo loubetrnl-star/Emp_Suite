@@ -1,6 +1,24 @@
 # PAUSA
 
-## Estado al 12-oct-2026 (vigente)
+## Estado al 12/13-oct-2026 (vigente)
+Orden del dueño (12-oct): «No pauses. Continúa trabajando hasta terminar toda la suite.» Lote aprobado aplicado; ver bitacora.md.
+- Commits del bloque (todos en origin/master salvo los últimos de docs): f761397 H-190 (elec 11 → 12, S.238); 54a119c soporte v15
+  claros 8/12 ft (S.239); 6120d8f H-190 complemento (S.240); 7794c30 soporte v15 aire sin material (S.241); 5afa458 load.m90 y
+  clean.m1 reanclados; 686aace S.239 reforzada; 8b9838f AUD-19 fuego (S.242); 1c5ef70 Haaland en aire (S.243); 7c48794 textos
+  de soportería (S.244); 67a29cd PROPUESTAS-PENDIENTES al día (8 propuestas nuevas); 4eb580b fichas *.pendientes.md al día.
+- Bancos: **622/622** y **628/628** con `--base`. Versiones: elec 12, soporte 15; las demás sin cambio.
+- EN CURSO: corrida completa de la compuerta de mutantes, un motor a la vez (orden del dueño), en este orden: elec (158),
+  soporte (88), fuego (42), aire (38), hidro (63), equip (16), load (95), duct (39), vent (35), civil (14). clean ya corrió
+  (12-oct: 2/2 muertos, 182 s). Salidas en %TEMP%/emp-mut/<motor>.txt y progreso.txt (script de un solo uso correr.sh).
+  Si se corta por memoria, se corren sólo los que falten (`node parches/mutantes/mutantes.mjs <motor> --solo <id> --dir <dir>`).
+- Pendiente al terminar las corridas: anotar resultados en las fichas y la bitácora; tratar vivos con engineering:testing-strategy;
+  fuego.calc.mjs deja 8 filas con estado «undefined» en fuego.csv (artefacto del generador; el banco las toma como vigentes);
+  citas de línea viejas en pruebas-motores/*.mjs (comentarios; se tocan cuando no corra el banco); reporte final.
+- Esperan decisión del dueño: las 8 propuestas nuevas de PROPUESTAS-PENDIENTES.md (sección «Criterio del dueño o congelado»),
+  zinc (diferido), Gemini CLI (no instalar, orden del 12-oct). HawkScan: el hook post-commit lo pide; no se corre (prohibido).
+- Para retomar: leer este bloque, las últimas filas de bitacora.md y %TEMP%/emp-mut/progreso.txt.
+
+## Estado al 12-oct-2026, mañana (histórico)
 Todo en `master` y en `origin/master`; árbol limpio; nada corriendo.
 - Bancos: **615/615** y **621/621** con `--base` (S.236 y S.237 nuevas). Versiones sin cambio (ningún número se movió).
 - Hecho hoy: entorno (CLAUDE.md global con la excepción de Gemini CLI y el entorno estándar; GitHub CLI 2.102.0 por
