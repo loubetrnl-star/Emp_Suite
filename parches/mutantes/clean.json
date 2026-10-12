@@ -1,10 +1,10 @@
 [
  {
   "id": "clean.m1",
-  "que": "H-283: la huella de cuartos limpios vuelve a llevar el sitio de Proyecto (cambiarlo marcaría «la captura cambió» sin que cambie nada)",
+  "que": "H-283: la huella de cuartos limpios vuelve a llevar el sitio de Proyecto (cambiarlo marcaría «la captura cambió» sin que cambie nada); reanclado 12-oct a la huella con precios y comercial",
   "logica": true,
-  "buscar": "  clean: () => ({ rooms: cleanRooms() }),",
-  "reemplazar": "  clean: () => ({ rooms: cleanRooms(), site: S.site }),",
+  "buscar": "  clean: () => ({ rooms: cleanRooms(), precios: S.clean.precios || null, comercial: S.clean.comercial || null }),",
+  "reemplazar": "  clean: () => ({ rooms: cleanRooms(), site: S.site, precios: S.clean.precios || null, comercial: S.clean.comercial || null }),",
   "estado": "vigente"
  },
  {
