@@ -6350,7 +6350,7 @@ t("S.36 (rev 2.9.20, decisión del dueño) versión por motor en el sello: sólo
      H-194: hidro v5 = presión mínima por mueble de la Tabla 604.3 del IPC 2015 y CDT con máx(residual, mínima); H-195: v6 = equipo de emergencia fuera de Hunter; H-197: v7 = sin pisos sin norma (días, ΔT, pendiente 704.1); H-198: v8 = CPVC sólo hasta 2" CTS, fuera de catálogo y PEAD sin SDR como error.
      H-263: carga v6 = calor del motor del ventilador seleccionado en Ventilación como misceláneos de la zona elegida; H-262: ventilación v4 = ya no hereda de carga térmica;
      H-268: eléctrico v9 = autónomo (las cargas de otros motores sólo como propuesta aceptada). */
-  eq(MV.elec, "11", "eléctrico v11 (AUD-14, sistema pendiente):"); eq(MV.hidro, "11", "hidro v11 (AUD-24.2):"); eq(MV.load, "7", "carga v7 (H-290):"); eq(MV.duct, "7", "ductos v7 (H-170):"); eq(MV.equip, "4", "selección v4 (H-288):"); eq(MV.kaizen, "1", "Kaizen sin cambio de lógica: v1:");
+  eq(MV.elec, "12", "eléctrico v12 (H-190, R y XL de conduit de acero):"); eq(MV.hidro, "11", "hidro v11 (AUD-24.2):"); eq(MV.load, "7", "carga v7 (H-290):"); eq(MV.duct, "7", "ductos v7 (H-170):"); eq(MV.equip, "4", "selección v4 (H-288):"); eq(MV.kaizen, "1", "Kaizen sin cambio de lógica: v1:");
   Object.keys(MV).forEach((id) => { const c = G("MOTOR_CAMBIOS")[id] || []; if (MV[id] !== "1" && !c.some((x) => x.ver === MV[id])) throw new Error(`${id}: la versión ${MV[id]} no tiene hallazgo registrado`); });
   const s0 = JSON.stringify(S.sellos || {});
   try {
@@ -10742,6 +10742,30 @@ t("S.237 (mata hidro.m21) la bomba hidroneumática se cotiza con el motor comerc
     if (!(hp * 0.746 - kW < 0.373 + 1e-12)) throw new Error(`no es el motor comercial siguiente: ${hp} HP sobra más de ½ HP sobre ${kW} kW`);
   } finally { G("reemplazarEstado")(JSON.parse(guardado)); G("recompute")(); }
 });
+t("S.238 (H-190, aprobado por el dueño el 12-oct-2026) la caída de tensión usa R y XL de la columna «Conduit de acero» de NOM-001-SEDE-2012, Cap. 10, Tabla 9 (75 °C), por calibre, porque la suite canaliza en EMT (acero); antes R de la columna PVC y XL = 0.19 Ω/km fijo. Aluminio de 14 a 8 AWG: la Tabla 9 no da su R, así que el calibre queda pendiente (calibre mínimo por ampacidad, caída sin evaluar y aviso de error), sin valores sin respaldo y sin saltar en silencio a 6 AWG. Esperados calculados aparte en Python con la Tabla 9 (Ze = R·FP + XL·sen φ, nota 2)", () => {
+  const sc = G("selConductor");
+  /* Cu 8 AWG (Idis 37.5 A → 8 AWG, 50 A): R 2.56, XL 0.213 → ΔV 2.702241 % (antes 2.6879 % con XL 0.19). */
+  let c = sc({ I: 30, V: 220, ph: 3, L: 50, fp: 0.85 });
+  eq(c.awg, "8", "Cu 30 A: 8 AWG por ampacidad:"); cerca(c.dv, 2.702241, 1e-6, "ΔV con R y XL de acero (Tabla 9) en 8 AWG Cu:");
+  /* Cu 1 AWG, 1F (Idis 125 A → 1 AWG, 130 A): R 0.52 (PVC 0.49), XL 0.187 → ΔV 1.739813 %. */
+  c = sc({ I: 100, V: 127, ph: 1, L: 20, fp: 0.95 });
+  eq(c.awg, "1", "Cu 100 A: 1 AWG:"); cerca(c.dv, 1.739813, 1e-6, "ΔV con R de acero 0.52 en 1 AWG Cu:");
+  /* Al 6 AWG (Idis 45 A → 6 AWG, 50 A): R 2.66, XL 0.210 → ΔV 2.113401 %. */
+  c = sc({ I: 36, V: 220, ph: 3, L: 30, fp: 0.9, material: "aluminio" });
+  eq(c.awg, "6", "Al 36 A: 6 AWG:"); cerca(c.dv, 2.113401, 1e-6, "ΔV en 6 AWG Al:"); eq(c.rPend, false, "6 AWG Al tiene R en la Tabla 9:");
+  /* Al 8 AWG (Idis 35 A → 8 AWG, 40 A): sin R en la Tabla 9 → calibre pendiente, no 6 AWG por «caída infinita». */
+  c = sc({ I: 28, V: 220, ph: 3, L: 20, fp: 0.9, material: "aluminio" });
+  eq(c.awg, "8", "Al 28 A: queda el mínimo por ampacidad (8 AWG), no salta a 6 AWG:");
+  eq(c.rPend, true, "calibre pendiente marcado:"); eq(c.dv, null, "la caída no se evalúa:"); eq(c.sinL, false, "no es falta de longitud:");
+  contiene(c.rige, "calibre pendiente", "rige lo dice:"); contiene(c.notaEn, "size pending", "y la nota en inglés:");
+  /* En el motor eléctrico: aviso de error (semáforo incompleta) que cita la Tabla 9; la memoria no dice «falta la distancia». */
+  const R = G("computeElec")({ ...G("defaultElec")(), material: "aluminio", trafoKVA: 300, trafoZ: 4, Ltablero: 30,
+    cargas: [{ ...G("defaultCarga")("Bomba Al"), tipo: "proceso", kW: Math.sqrt(3) * 220 * 25 * 0.9 / 1000, V: 220, ph: 3, L: 20, fp: 0.9 }] });
+  const cc = R.cargas ? R.cargas[0] : R.calc[0];
+  if (!cc || cc.cond.awg !== "8") throw new Error("el caso no aísla lo que se quiere probar: la carga de 25 A en aluminio a 40 °C debe quedar en 8 AWG; quedó " + (cc && cc.cond.awg));
+  eq(cc.cond.rPend, true, "la carga queda con calibre pendiente:");
+  if (!R.avisos.some((a) => a.lvl === "err" && /Tabla 9/.test(a.msg) && /Bomba Al/.test(a.msg))) throw new Error("falta el aviso de error del calibre pendiente: " + JSON.stringify(R.avisos.map((a) => a.msg)));
+});
 t("R.1 regresión por motor: las cifras del proyecto fijo coinciden con el esperado de cada disciplina; si un motor cambia sin subir MOTOR_VER, truena", () => {
   const guardado = JSON.stringify(S);
   try {
@@ -11320,7 +11344,7 @@ t("GA.6 ventilación no tenía texto de guía repetido y sigue sin él: la vista
       ["Método: ampacidad de la Tabla 310-15(b)(16)", "metodo", "Ampacidad de la Tabla 310-15(b)(16) a 75 °C"],
       ["factores de demanda del art. 220, 125 % del motor mayor por el art. 430-24", "metodo", "factores de demanda del art. 220, 125 % del motor mayor por el art. 430-24"],
       ["protección por 240-6 y tierra por la Tabla 250-122", "metodo", "protección por 240-6 y tierra por la Tabla 250-122"],
-      ["R·cosφ + X·senφ y la Tabla 9 del capítulo 9, no con una constante K", "metodo", "R·cosφ + X·senφ y la Tabla 9 del capítulo 9, no con una constante K"],
+      ["R·cosφ + X·senφ con R y XL de la columna de conduit de acero de la Tabla 9 del Capítulo 10 (H-190), no con una constante K", "metodo", "R·cosφ + X·senφ con R y XL de la columna de conduit de acero de la Tabla 9 del Capítulo 10 (H-190), no con una constante K"],
     ],
     hidro: [
       ["Método: unidades mueble y de descarga por tabla", "metodo", "Unidades mueble y de descarga por tabla"],

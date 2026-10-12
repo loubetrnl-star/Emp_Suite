@@ -20,7 +20,7 @@ Norma: NOM-001-SEDE-2012, texto del DOF en `parches/normas-texto/NOM-001-SEDE-20
 |---|---|---|---|
 | CM.elec.1.m/n/o/p | H-178 | **Retiradas (H-178, elec v8)**: el dueño eligió la lectura literal de la decisión 2 (23-sep-2026): 15 kW → 25 hp → 68 A; las filas 1.a–1.l ya lo exigen. Eran: motor 15 kW ↔ 20 hp: I 54 A (Tabla 430-250 p. 443), Idis 67.5, protección 150 A (Tabla 430-52 p. 422), caída 1.233 % | 46.31 A, 57.89, 125 A, 1.058 % |
 | CM.elec.2.i | H-182 | tierra 6 AWG cuando la fase sube de 2 a 1 AWG por caída (250-122(b) p. 150) | 8 AWG |
-| CM.elec.2.j | H-190 | caída 2.740 % con la columna de tubo de acero de la Tabla 9 (p. 1011: R 0.52, XL 0.187) | 2.603 % (columna PVC, X fijo 0.19) |
+| ~~CM.elec.2.j~~ | H-190 | CERRADO el 12-oct-2026 (elec v12, prueba S.238): la caída usa R y XL de conduit de acero; la fila pasó a vigente | — |
 | CM.elec.3.p | H-188 | principal 225 A = 175 A del ramal del motor (H-178) + 26.24 A de alumbrado = 201.24 → 225 (430-63 p. 426) | 175 A (el mayor de dos) |
 | CM.elec.4.b | H-183 | tierraDe(400) = 2 AWG (Tabla 250-122 p. 151) | **cerrado** (vigente desde H-183, elec v5) |
 | CM.elec.4.e | H-183 | tierraDe(2500) = 350 kcmil (p. 151) | **cerrado** (vigente desde H-183, elec v5) |
@@ -28,7 +28,7 @@ Norma: NOM-001-SEDE-2012, texto del DOF en `parches/normas-texto/NOM-001-SEDE-20
 | CM.elec.7.c | H-186 | aluminio 15 A → mínimo 6 AWG (Tabla 310-106(a) p. 216; sin renglón < 6 AWG en Tabla 310-15(b)(16) p. 190) | 12 AWG |
 | CM.elec.8.c | H-184 | 660 A a 440 V: protección ≤ ampacidad (240-4(c) p. 102); hay que subir el conductor | 1000 A sobre 2 × 750 = 836 A |
 | CM.elec.8.d | H-185 | 1900 A: protección 2500 A (240-6(a) p. 104) | 2000 A (lista cortada; queda por debajo de Idis 2375) |
-| CM.elec.11.e | H-190 | 65 °C → 0.47 (Tabla 310-15(b)(2)(a) p. 186) | 0.33 (salta la banda 61-65) |
+| CM.elec.11.e | H-190 (parte fTemp, sigue abierta) | 65 °C → 0.47 (Tabla 310-15(b)(2)(a) p. 186) | 0.33 (salta la banda 61-65) |
 | CM.elec.11.f | H-193 | 20 °C → 1.11 (p. 186) | 1.00 (no aplica factores > 1) |
 | CM.elec.12.a | H-191 | 1F3H-220, 75 kVA Z 2 %: Icc = S/(V·Z) = 17 045 A (memoria: bus infinito monofásico) | 9 841 A (divide entre √3) |
 | CM.elec.12.c | H-185 | kAIC ≥ 114.1 kA (110-9 p. 29) | 100 kA (tope de la lista) |

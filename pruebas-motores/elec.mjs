@@ -71,7 +71,7 @@ export default async function ({ t, G, S, CM, fs }) {
 
   t("CM.elec.1 (H-178) (NOM-001-SEDE-2012 430-6(a)(1) p. 405, Tabla 430-250 p. 443, Tablas 310-15(b)(16)/(2)(a)/(3)(a) p. 186-190, Tabla 430-52 p. 422, Tabla 250-122 p. 151, Cap. 10 Tablas 1/4/5) motor 15 kW 220 V 3F a 30 m, 40 °C: 25 hp → 68 A, Idis 85, 3 AWG, 1.28 %, 175 A, tierra 6, EMT 1¼\" (antes 46.31 A, 4 AWG, 125 A)",
     () => conEstado(FIXTURE, () => comprobar("CM.elec.1")));
-  t("CM.elec.2 (NOM-001-SEDE-2012 210-19(a)(1) p. 52, Tabla 9 p. 1011, Tabla 250-122 p. 151, Cap. 10 Tablas 4/5) alumbrado 9.5 kW 127 V 1F fp 0.95 a 40 m: 78.74 A, 1 AWG por caída 2.60 %, 100 A, tierra 8, EMT 1¼\"; fase2:H-182 tierra 6 (250-122(b) p. 150), fase2:H-190 columna de acero",
+  t("CM.elec.2 (NOM-001-SEDE-2012 210-19(a)(1) p. 52, Tabla 9 p. 1011, Tabla 250-122 p. 151, Cap. 10 Tablas 4/5) alumbrado 9.5 kW 127 V 1F fp 0.95 a 40 m: 78.74 A, 1 AWG por caída 2.74 % (H-190: R y XL de conduit de acero), 100 A, tierra 8, EMT 1¼\"; fase2:H-182 tierra 6 (250-122(b) p. 150)",
     () => conEstado(FIXTURE, () => comprobar("CM.elec.2")));
   t("CM.elec.3 (H-178) (NOM-001-SEDE-2012 430-24 p. 415, 215-2(a)(1) p. 61, Tabla 310-15(b)(16) p. 190, Cap. 10 Tabla 5 p. 1006) alimentador del proyecto de regresión con el motor por la Tabla 430-250: 42.389 kVA, 111.24 A, 1/0, 125 A, principal 175, falla 19.68 kA → 22 kA; fase2:H-188 principal 225 A (430-63 p. 426)",
     () => conEstado(FIXTURE, () => comprobar("CM.elec.3")));

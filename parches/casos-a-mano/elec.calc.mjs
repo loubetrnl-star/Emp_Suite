@@ -47,8 +47,11 @@ const tuboPara = (areas) => { const s = areas.reduce((a, b) => a + b, 0), r = re
 const R_CU_PVC = { "14": 10.2, "12": 6.6, "10": 3.9, "8": 2.56, "6": 1.61, "4": 1.02, "3": 0.82, "2": 0.62, "1": 0.49, "1/0": 0.39, "2/0": 0.33, "3/0": 0.253, "4/0": 0.203, "250": 0.171, "300": 0.144, "350": 0.125, "400": 0.108, "500": 0.089, "600": 0.075, "750": 0.062 };
 const R_CU_ACERO = { "14": 10.2, "12": 6.6, "10": 3.9, "8": 2.56, "6": 1.61, "4": 1.02, "3": 0.82, "2": 0.66, "1": 0.52, "1/0": 0.39, "2/0": 0.33, "3/0": 0.259, "4/0": 0.207, "250": 0.177, "300": 0.148, "350": 0.128, "400": 0.115, "500": 0.095, "600": 0.082, "750": 0.069 };
 const R_AL_PVC = { "6": 2.66, "4": 1.67, "3": 1.31, "2": 1.05, "1": 0.82, "1/0": 0.66, "2/0": 0.52, "3/0": 0.43, "4/0": 0.33, "250": 0.279, "300": 0.233, "350": 0.200, "400": 0.177, "500": 0.141, "600": 0.118, "750": 0.095 };
+const R_AL_ACERO = { "6": 2.66, "4": 1.67, "3": 1.31, "2": 1.05, "1": 0.82, "1/0": 0.66, "2/0": 0.52, "3/0": 0.43, "4/0": 0.33, "250": 0.282, "300": 0.236, "350": 0.207, "400": 0.180, "500": 0.148, "600": 0.125, "750": 0.102 };   // conduit de acero; 14–8 AWG sin dato en la Tabla 9
 const X_ACERO = { "14": 0.240, "12": 0.223, "10": 0.207, "8": 0.213, "6": 0.210, "4": 0.197, "3": 0.194, "2": 0.187, "1": 0.187, "1/0": 0.180, "2/0": 0.177, "3/0": 0.171, "4/0": 0.167, "250": 0.171, "300": 0.167, "350": 0.164, "400": 0.161, "500": 0.157, "600": 0.157, "750": 0.157 };
-const X_CASA = 0.19;   // criterio de la casa (index.html X_KM): reactancia fija «del orden de 0.19-0.20 en acero»
+const X_CASA = 0.19;   // histórico (antes de H-190, index.html X_KM): la suite ya no lo usa en la caída de tensión
+/* H-190 (aprobado por el dueño, 12-oct-2026): la suite canaliza en EMT (acero), así que la caída usa R y XL de la columna
+   «Conduit de acero» de la Tabla 9 por calibre (antes R de PVC y X = 0.19 fijo). */
 /* ---------- Tabla 430-250 (p. 442-443), motores trifásicos de inducción, amperes ---------- */
 /* Columnas 230 V y 460 V. El DOF trae «44» en 10 hp/575 V (errata, no se usa esa columna). */
 const T430_250 = { /* hp: [kW de la tabla, 230 V, 460 V] */
@@ -77,9 +80,9 @@ const PCT_MOTOR = 2.5;
    (4) Tabla 430-52: 250 % + Exc. 1 en motores. (5) 240-4(d). (6) Tabla 250-122. (7) Tabla 1/4/5 del Cap. 10 con
    3 fases + neutro (la casa cuenta neutro en todo circuito trifásico, H-191) + tierra. */
 function sel(o) {
-  const { I, V, ph, L, fp, mat = "cobre", ais = "thw", tempAmb = 40, nCond = 3, dvMax = 3, continua = true, motor = false, Idis: IdisIn, neutro = true, R = null, X = X_CASA, ocpdLista = OCPD_CASA } = o;
+  const { I, V, ph, L, fp, mat = "cobre", ais = "thw", tempAmb = 40, nCond = 3, dvMax = 3, continua = true, motor = false, Idis: IdisIn, neutro = true, R = null, X = X_ACERO, ocpdLista = OCPD_CASA } = o;
   const AMP = mat === "aluminio" ? AMP75_AL : AMP75_CU, AREAS = ais === "thhn" ? AREA_THHN : AREA_THW;
-  const RT = R || (mat === "aluminio" ? R_AL_PVC : R_CU_PVC);
+  const RT = R || (mat === "aluminio" ? R_AL_ACERO : R_CU_ACERO);
   const ft = fTemp(tempAmb), fg = fGrupo(nCond);
   const Idis = IdisIn ?? I * (continua ? 1.25 : 1);
   const sen = Math.sqrt(1 - fp * fp), k = ph === 3 ? Math.sqrt(3) : 2;
@@ -121,7 +124,7 @@ const fila = (id, valor, nota) => { out.push([id, valor, nota]); };
   fila("CM.elec.1.e", c.fg, "Tabla 310-15(b)(3)(a) ≤ 3");
   fila("CM.elec.1.f", r(c.ampCorr, 2), `${c.ampBase}·0.88·1.00`);
   fila("CM.elec.1.g", c.idx, `awg ${c.awg} (índice en 14…750)`);
-  fila("CM.elec.1.h", r(c.dv, 3), `caída % con I 68 A, R ${R_CU_PVC[c.awg]} (PVC), X 0.19, senφ 0.5268`);
+  fila("CM.elec.1.h", r(c.dv, 3), `caída % con I 68 A, R ${R_CU_ACERO[c.awg]} y XL ${X_ACERO[c.awg]} (conduit de acero, H-190), senφ 0.5268`);
   fila("CM.elec.1.i", c.ocpd, "250 %·68 = 170 → 175 (Tabla 430-52 + Exc. 1)");
   fila("CM.elec.1.j", c.tierraIdx, `tierra ${c.tierra} (Tabla 250-122, ≤ 200 A)`);
   fila("CM.elec.1.k", r(c.tubo.ocupado, 2), `4·${AREA_THW[c.awg]} + ${AREA_THW[c.tierra]} (Tabla 5 THW)`);
@@ -134,9 +137,9 @@ const fila = (id, valor, nota) => { out.push([id, valor, nota]); };
   const c = sel({ I, V: 127, ph: 1, L: 40, fp: 0.95 });
   fila("CM.elec.2.a", r(I, 2), "I = 9500/(127·0.95)");
   fila("CM.elec.2.b", r(c.Idis, 2), "1.25·I (210-19(a)(1))");
-  const dv2awg = 2 * I * 0.040 * (R_CU_PVC["2"] * 0.95 + X_CASA * Math.sqrt(1 - 0.95 * 0.95)) / 127 * 100;
+  const dv2awg = 2 * I * 0.040 * (R_CU_ACERO["2"] * 0.95 + X_ACERO["2"] * Math.sqrt(1 - 0.95 * 0.95)) / 127 * 100;
   fila("CM.elec.2.c", c.idx, `awg ${c.awg}, rige ${c.rige} (por ampacidad bastaba 2 AWG: 115·0.88 = 101.2 ≥ 98.43, pero daría ${r(dv2awg, 3)} % > 3 %)`);
-  fila("CM.elec.2.d", r(c.dv, 3), "caída % con R 0.49 (1 AWG, PVC), X 0.19, senφ 0.3122, k = 2");
+  fila("CM.elec.2.d", r(c.dv, 3), "caída % con R 0.52 y XL 0.187 (1 AWG, conduit de acero, H-190), senφ 0.3122, k = 2");
   fila("CM.elec.2.e", c.ocpd, "arriba(98.42) = 100 ≤ 130·0.88");
   fila("CM.elec.2.f", c.tierraIdx, `tierra ${c.tierra} (Tabla 250-122, ≤ 100 A)`);
   fila("CM.elec.2.g", r(c.tubo.ocupado, 2), "2·122.60 + 28.19");
@@ -166,7 +169,7 @@ const fila = (id, valor, nota) => { out.push([id, valor, nota]); };
   fila("CM.elec.3.e", r(IdisAlim, 2), `Itab·(${r(demanda, 3)} + 2.5)/${r(demanda, 3)}`);
   fila("CM.elec.3.f", a.idx, `alimentador ${a.awg} AWG`);
   fila("CM.elec.3.g", r(a.ampCorr, 2), `${a.ampBase}·0.88`);
-  fila("CM.elec.3.h", r(a.dv, 3), `caída % con R ${R_CU_PVC[a.awg]}, X 0.19, senφ 0.3122`);
+  fila("CM.elec.3.h", r(a.dv, 3), `caída % con R ${R_CU_ACERO[a.awg]} y XL ${X_ACERO[a.awg]} (conduit de acero, H-190), senφ 0.3122`);
   fila("CM.elec.3.i", a.ocpd, `arriba(${r(IdisAlim, 2)}) = ${a.ocpd} ≤ ${r(a.ampCorr, 1)}`);
   fila("CM.elec.3.j", a.tierraIdx, `tierra ${a.tierra}`);
   fila("CM.elec.3.k", r(a.tubo.ocupado, 2), `4·${AREA_THW[a.awg]} + ${AREA_THW[a.tierra]}`);

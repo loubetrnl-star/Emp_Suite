@@ -98,7 +98,7 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 |---|---|---|
 | 1 | 2.9.15 | lógica de partida |
 
-## Eléctrico (`elec`) · v11
+## Eléctrico (`elec`) · v12
 
 | Versión | Rev | Hallazgo / cambio de lógica |
 |---|---|---|
@@ -119,6 +119,7 @@ Generado desde `MOTOR_VER` y `MOTOR_CAMBIOS` de index.html (rev 2.9.23).
 | 9 (sin cambio) | 2.9.24 | H-277 (hallado al implementar H-269): con la temperatura ambiente vacía el motor calcula con 30 °C (`fTemp`), pero la memoria del motor, el PDF («2. Bases de cálculo») y el libro (MEMORIA_ELECTRICA, ES/EN) imprimían 40 °C junto al factor de 30 °C: el documento no decía lo que se calculó (regla 8). Ahora una sola función, `tempAmbDe`, da la temperatura al cálculo y a los cuatro documentos. **No mueve cifras**: MOTOR_VER.elec sigue en 9. Prueba S.154; mutantes elec.m148 y elec.m149. |
 | 10 | 2.9.24 | AUD-14 (auditoría externa, 29-sep-2026; «nada se estima»): una MCA o un MOP ESTIMADOS por la suite (elecOf: 0.85·FLA × 125 % y 175 %) ya no fijan el conductor ni la protección del equipo con motocompresor: se imprimen como referencia con aviso y el equipo se dimensiona sin placa (por su kW) hasta capturarla (antes la MOP estimada fijaba la protección); el conductor sin distancia o sin fp ya no supone 20 m ni fp 0.9 (caída pendiente) |
 | 11 | 2.9.24 | AUD-14 (aprobada por el dueño, 7-oct-2026; regla 6, nada se estima): sin sistema eléctrico capturado y del catálogo ya no se suponen 3 fases 4 hilos 220/127 V (antes sistemaDe caía en 3F4H-220 y la cotización contaba 4 hilos): el sistema queda «dato pendiente» con error visible en avisos, memoria, PDF y consideraciones; ninguna carga, alimentador, corriente de falla ni hilo se dimensiona ni se cotiza, y el semáforo queda incompleto. Con un sistema válido la cotización cuenta los hilos de ese sistema. Mueve números sólo con el sistema vacío o fuera del catálogo. Prueba S.218 |
+| 12 | 2.9.24 | H-190 (aprobado por el dueño, 12-oct-2026): la caída de tensión usa R y XL por calibre de la columna «Conduit de acero» de la NOM-001-SEDE-2012, Cap. 10, Tabla 9 (DOF, p. 1011), porque la suite canaliza en EMT; antes R de la columna PVC y XL = 0.19 Ω/km fijo. Aluminio de 14 a 8 AWG: la tabla no da su R, así que el calibre queda pendiente (mínimo por ampacidad, caída sin evaluar, aviso de error) en vez de saltar en silencio a 6 AWG. Proyectos fijos: caídas 1.1293 → 1.1211 %, 1.2802 → 1.2836 %, 2.6031 → 2.7399 % (fijo 1) y 0.9455 → 0.9235 %, 0.5965 → 0.5838 %, 2.8968 → 2.8943 % (fijo 2); ningún calibre cambia. Kaizen (congelado) sigue leyendo R_KM de PVC: dependencia registrada. Prueba S.238 |
 
 ## Hidráulico sanitario (`hidro`) · v11
 

@@ -1807,7 +1807,7 @@ function buildElecPdf() {
   pdfRows(d, [
     ["Corriente de demanda", `${n(R.Itab, 1)} A`],
     ["Alimentador", R.alim.nota],
-    ["Caida de tension del alimentador", R.alim.dv == null ? "pendiente: falta la distancia al tablero" : `${n(R.alim.dv, 2)} % · rige ${R.alim.rige}`],
+    ["Caida de tension del alimentador", R.alim.dv == null ? (R.alim.rPend ? "pendiente: aluminio sin R en la Tabla 9 (calibre pendiente)" : "pendiente: falta la distancia al tablero") : `${n(R.alim.dv, 2)} % · rige ${R.alim.rige}`],
     ["Interruptor principal", `${R.principal} A`],
     ["Corriente de falla estimada", R.IccTrafo == null ? "pendiente: falta el transformador (kVA y Z de placa)" : `${n(R.IccTrafo / 1000, 1)} kA · capacidad interruptiva minima ${R.kAIC} kA simetricos`],
   ]);
@@ -10156,6 +10156,16 @@ const R_KM = {
    declara: es coherente con el tubo que se especifica y queda del lado
    conservador en la caida de tension. */
 const X_KM = 0.19;
+/* H-190 (aprobado por el dueño, 12-oct-2026): la caída de tensión usa R y XL por calibre de la columna «Conduit de acero» de
+   la NOM-001-SEDE-2012, Cap. 10, Tabla 9 (DOF 29-nov-2012, p. 1011; 75 °C; texto en parches/normas-texto), porque la suite
+   canaliza en EMT (acero). La Tabla 9 no da R de aluminio en 14, 12, 10 y 8 AWG («––»): esos calibres quedan sin dato y el
+   calibre queda pendiente (nada se supone). R_KM y X_KM de arriba ya no los usa el eléctrico: sólo el detector de Kaizen
+   (congelado) lee R_KM; queda registrado como dependencia para cuando se descongele. */
+const R_KM_ACERO = {
+  cobre:    { "14": 10.2, "12": 6.6, "10": 3.9, "8": 2.56, "6": 1.61, "4": 1.02, "3": 0.82, "2": 0.66, "1": 0.52, "1/0": 0.39, "2/0": 0.33, "3/0": 0.259, "4/0": 0.207, "250": 0.177, "300": 0.148, "350": 0.128, "400": 0.115, "500": 0.095, "600": 0.082, "750": 0.069 },
+  aluminio: { "14": null, "12": null, "10": null, "8": null, "6": 2.66, "4": 1.67, "3": 1.31, "2": 1.05, "1": 0.82, "1/0": 0.66, "2/0": 0.52, "3/0": 0.43, "4/0": 0.33, "250": 0.282, "300": 0.236, "350": 0.207, "400": 0.18, "500": 0.148, "600": 0.125, "750": 0.102 },
+};
+const X_KM_ACERO = { "14": 0.24, "12": 0.223, "10": 0.207, "8": 0.213, "6": 0.21, "4": 0.197, "3": 0.194, "2": 0.187, "1": 0.187, "1/0": 0.18, "2/0": 0.177, "3/0": 0.171, "4/0": 0.167, "250": 0.171, "300": 0.167, "350": 0.164, "400": 0.161, "500": 0.157, "600": 0.157, "750": 0.157 };
 /* Área total del conductor con aislamiento THHN/THWN-2, mm². Tabla 5 del
    capítulo 9. Se usa para el porcentaje de relleno de la canalización. */
 /* H-30 · CORREGIDO. La tabla anterior NO era la Tabla 5: los calibres chicos
@@ -10370,10 +10380,10 @@ function selConductor(o) {
   const Idis = num(o.Idis, 0) > 0 ? num(o.Idis) : I * (o.continua === false ? 1 : 1.25);
   const senPhi = Math.sqrt(Math.max(0, 1 - fp * fp));
   const dvDe = (awg) => {
-    const R = R_KM[mat][awg];
-    if (!R) return Infinity;
+    const R = R_KM_ACERO[mat][awg];
+    if (R == null) return null;   // H-190: la Tabla 9 no da R (aluminio 14–8 AWG): calibre pendiente
     const k = ph === 3 ? Math.sqrt(3) : 2;
-    const dV = k * I * (L / 1000) * (R * fp + X_KM * senPhi);
+    const dV = k * I * (L / 1000) * (R * fp + X_KM_ACERO[awg] * senPhi);
     return dV / V * 100;
     };
   let rige = "ampacidad", awg = null;
@@ -10384,12 +10394,16 @@ function selConductor(o) {
   }
   if (!awg) awg = AWG_ORD[AWG_ORD.length - 1];
   /* Sube de calibre hasta cumplir caída de tensión, y lo dice. */
-  let dv = dvDe(awg);
-  if (dv > dvMax) {
+  let dv = sinL ? null : dvDe(awg);
+  /* H-190: sin R en la Tabla 9 (aluminio 14–8 AWG) la caída no se evalúa: queda el calibre mínimo por ampacidad y se marca
+     pendiente; antes la R faltante daba una caída infinita y saltaba en silencio a 6 AWG (también sin longitud). */
+  const rPend = !sinL && dv === null;
+  if (!rPend && dv > dvMax) {
     rige = "caída de tensión";
     for (const a of AWG_ORD.slice(AWG_ORD.indexOf(awg))) {
       if (!AMP75[mat][a]) continue;
-      if (dvDe(a) <= dvMax) { awg = a; break; }
+      const da = dvDe(a);
+      if (da !== null && da <= dvMax) { awg = a; break; }
       awg = a;
     }
     dv = dvDe(awg);
@@ -10452,14 +10466,15 @@ function selConductor(o) {
   if (o.neutro !== false && ph === 3) conductores.push(AREAS[awg] || 0);
   conductores.push(AREAS[tierra] || 0);
   const tubo = tuboPara(conductores);
-  dv = sinL ? null : dvDe(awg) / paralelo;
+  dv = sinL || rPend ? null : dvDe(awg) / paralelo;
   const rigeBase = rige;
   if (sinL) rige = `${rige}; caída de tensión pendiente de longitud (calibre mínimo)`;
+  if (rPend) rige = `${rige}; calibre pendiente: la NOM-001-SEDE-2012, Cap. 10, Tabla 9 no da R de aluminio en ${awg} AWG (caída sin evaluar; calibre mínimo por ampacidad)`;
   return {
     awg, material: mat, aislamiento: ais, ampBase, ampCorr, ft, fg, I, Idis, ocpd, tierra, tierraMat, tubo, dv, dvMax, rige,
-    topeAplicado, ph, V, L: sinL ? null : L, fp, paralelo, sinL, mop: mop > 0 ? mop : null, fusible: mop > 0 && SOLO_FUSIBLE.includes(ocpd),
+    topeAplicado, ph, V, L: sinL ? null : L, fp, paralelo, sinL, rPend, mop: mop > 0 ? mop : null, fusible: mop > 0 && SOLO_FUSIBLE.includes(ocpd),
     nota: `${paralelo > 1 ? `${paralelo} × ` : ""}${awg} AWG/kcmil ${mat}${paralelo > 1 ? ` por fase (art. 310-10(h)), ${paralelo} canalizaciones` : ""} · ampacidad ${n(ampBase, 0)} A × ${n(ft, 2)} (temp) × ${n(fg, 2)} (agrup.)${paralelo > 1 ? ` × ${paralelo}` : ""} = ${n(ampCorr, 0)} A · rige ${rige} · protección ${ocpd} A${mop > 0 ? ` (MOP ${n(mop, 0)} A, art. 440-22${SOLO_FUSIBLE.includes(ocpd) ? "; fusible" : ""})` : ""} · tierra ${tierra}${tierraMat !== mat ? ` ${tierraMat} (la Tabla 250-122 no da aluminio hasta 100 A)` : ""} · ${tubo.d}${paralelo > 1 ? " cada una" : ""}`,
-    notaEn: `${paralelo > 1 ? `${paralelo} × ` : ""}${awg} AWG/kcmil ${mat === "aluminio" ? "aluminum" : "copper"}${paralelo > 1 ? ` per phase (art. 310-10(h)), ${paralelo} raceways` : ""} · ampacity ${n(ampBase, 0)} A × ${n(ft, 2)} (temp.) × ${n(fg, 2)} (grouping)${paralelo > 1 ? ` × ${paralelo}` : ""} = ${n(ampCorr, 0)} A · governed by ${{ "ampacidad": "ampacity", "caída de tensión": "voltage drop", "ampacidad con conductores en paralelo": "ampacity with parallel conductors", "caída de tensión con conductores en paralelo": "voltage drop with parallel conductors" }[rigeBase] || rigeBase}${sinL ? "; voltage drop pending length (minimum size)" : ""} · OCPD ${ocpd} A${mop > 0 ? ` (MOP ${n(mop, 0)} A, art. 440-22${SOLO_FUSIBLE.includes(ocpd) ? "; fuse" : ""})` : ""} · ground ${tierra}${tierraMat !== mat ? " copper (Table 250-122 gives no aluminum size up to 100 A)" : ""} · ${tubo.d}${paralelo > 1 ? " each" : ""}`,
+    notaEn: `${paralelo > 1 ? `${paralelo} × ` : ""}${awg} AWG/kcmil ${mat === "aluminio" ? "aluminum" : "copper"}${paralelo > 1 ? ` per phase (art. 310-10(h)), ${paralelo} raceways` : ""} · ampacity ${n(ampBase, 0)} A × ${n(ft, 2)} (temp.) × ${n(fg, 2)} (grouping)${paralelo > 1 ? ` × ${paralelo}` : ""} = ${n(ampCorr, 0)} A · governed by ${{ "ampacidad": "ampacity", "caída de tensión": "voltage drop", "ampacidad con conductores en paralelo": "ampacity with parallel conductors", "caída de tensión con conductores en paralelo": "voltage drop with parallel conductors" }[rigeBase] || rigeBase}${sinL ? "; voltage drop pending length (minimum size)" : ""}${rPend ? `; size pending: NOM-001-SEDE-2012 Table 9 gives no R for ${awg} AWG aluminum (voltage drop not evaluated; minimum size by ampacity)` : ""} · OCPD ${ocpd} A${mop > 0 ? ` (MOP ${n(mop, 0)} A, art. 440-22${SOLO_FUSIBLE.includes(ocpd) ? "; fuse" : ""})` : ""} · ground ${tierra}${tierraMat !== mat ? " copper (Table 250-122 gives no aluminum size up to 100 A)" : ""} · ${tubo.d}${paralelo > 1 ? " each" : ""}`,
   };
 }
 
@@ -10912,6 +10927,10 @@ function computeElec(E) {
   const sinLong = calc.filter((c) => c.sinL);
   if (sinLong.length) avisos.push({ lvl: "err", msg: `${sinLong.length} carga(s) sin longitud capturada (${sinLong.slice(0, 4).map((c) => c.nombre).join(", ")}${sinLong.length > 4 ? "…" : ""}): su caída de tensión queda pendiente; no se supone una distancia ni se toma como 0 %. Captura la distancia de cada una a su tablero${sinLong.some((c) => c.auto) ? "; las que vienen de otros motores (migración de un proyecto anterior) no tienen campo de distancia hasta quedar en el cuadro: captúrala en «Editar cargas capturadas»" : ""}.` });
   if (calc.length && alimSinL) avisos.push({ lvl: "err", msg: "Falta la distancia al tablero (de la subestación al tablero general): la caída de tensión del alimentador queda pendiente; no se supone." });
+  /* H-190: aluminio de 14 a 8 AWG sin R en la Tabla 9: calibre pendiente, no se supone una resistencia. */
+  const rPendC = calc.filter((c) => c.cond && c.cond.rPend);
+  if (rPendC.length) avisos.push({ lvl: "err", msg: `${rPendC.length} carga(s) en aluminio de 8 AWG o menor (${rPendC.slice(0, 4).map((c) => c.nombre).join(", ")}${rPendC.length > 4 ? "…" : ""}): la NOM-001-SEDE-2012, Cap. 10, Tabla 9 no da la resistencia del aluminio en esos calibres, así que su caída de tensión no se evalúa y el calibre queda pendiente (el mínimo por ampacidad). Captura cobre o un calibre de aluminio con dato (6 AWG o mayor) (H-190).` });
+  if (calc.length && alim.rPend) avisos.push({ lvl: "err", msg: `Alimentador general en aluminio ${alim.awg} AWG: la NOM-001-SEDE-2012, Cap. 10, Tabla 9 no da su resistencia; la caída del alimentador queda pendiente y el calibre es el mínimo por ampacidad (H-190).` });
   if (calc.length && !conTrafo) avisos.push({ lvl: "err", msg: !(kVAtr > 0) && !(z > 0)
     ? "Falta el transformador de la acometida (kVA y Z de placa): la corriente de falla y la capacidad interruptiva quedan pendientes; no se supone un transformador."
     : !(z > 0) ? `Falta la impedancia Z de placa del transformador (kVA capturado: ${n(kVAtr, 0)}): la corriente de falla y la capacidad interruptiva quedan pendientes; no se supone una Z.`
@@ -10923,7 +10942,7 @@ function computeElec(E) {
   memo.push(`Sistema ${SISTEMAS.find(([k]) => k === E.sistema)?.[1] || sis.V + " V"} · conductor de ${mat} tipo ${AISLAMIENTOS[aislamientoDe(E.aislamiento)].nombre} con ampacidad de la columna de 75 °C · relleno de canalización con las áreas de ese mismo conductor (NOM-001-SEDE-2012, Capítulo 10, Tabla 5, p. 1006) · temperatura ambiente de diseño ${tempAmbDe(E.tempAmb)} °C (factor ${n(fTemp(E.tempAmb), 2)}) · ${num(E.nCond, 3)} portadores por canalización (factor ${n(fGrupo(E.nCond), 2)}).`);
   memo.push(`Carga conectada ${n(kVAconectada, 2)} kVA · demanda ${n(kVAdemanda, 2)} kVA (factor de demanda ${n(fdem, 2)}), incluyendo el 25 % adicional del motor mayor que pide el art. 430-24 (${n(extraMotor, 2)} kVA).`);
   memo.push(`Balanceo: fase A ${n(fases.A, 2)} · B ${n(fases.B, 2)} · C ${n(fases.C, 2)} kVA · desbalance ${n(desbalance, 1)} %.`);
-  memo.push(`Alimentador general: ${alim.nota}. Caída de tensión ${alim.dv == null ? "PENDIENTE (falta la distancia al tablero)" : `${n(alim.dv, 2)} % en ${n(Lalim, 0)} m${sinConf.Ltablero ? " (sin confirmar)" : ""}`} de los ${n(num(E.dvTotal, 5), 1)} % acumulados admisibles. Interruptor principal ${principal} A.`);
+  memo.push(`Alimentador general: ${alim.nota}. Caída de tensión ${alim.dv == null ? (alim.rPend ? "PENDIENTE (aluminio sin R en la Tabla 9 de la NOM-001-SEDE-2012: calibre pendiente)" : "PENDIENTE (falta la distancia al tablero)") : `${n(alim.dv, 2)} % en ${n(Lalim, 0)} m${sinConf.Ltablero ? " (sin confirmar)" : ""}`} de los ${n(num(E.dvTotal, 5), 1)} % acumulados admisibles. Interruptor principal ${principal} A.`);
   memo.push(`Distancias al tablero (H-179: ninguna se supone; «sin confirmar» = valor por omisión de una revisión anterior): ${calc.map((c) => `${c.nombre} ${c.sinL ? "pendiente" : `${n(c.L, 0)} m${c.Lsin ? " (sin confirmar)" : ""}`}`).join(" · ")} · alimentador general ${alimSinL ? "pendiente" : `${n(Lalim, 0)} m${sinConf.Ltablero ? " (sin confirmar)" : ""}`}.`);
   /* H-178: motores de uso general con la corriente de la tabla. */
   const conTabla = calc.filter((c) => c.motorTabla && c.motorTabla.I > 0);
@@ -20092,7 +20111,7 @@ function huellaMotor(id) { const f = ENTRADAS[id]; return f ? huellaTexto(establ
    textos, interfaz ni documentos). El sello guarda la versión con la que se calculó: al abrir, sólo las disciplinas cuyo motor
    cambió se marcan «Desactualizado», con el cambio que lo movió. Nada se recalcula solo; al recalcular, la memoria muestra el
    antes y el después. Los sellos anteriores a esta rev no traen versión y se toman como v1 (la lógica de la rev 2.9.15). */
-const MOTOR_VER = { load: "7", clean: "3", equip: "4", duct: "7", vent: "4", quote: "24", valor: "2", kaizen: "1", elec: "11", hidro: "11", fuego: "7", aire: "8", civil: "8", soporte: "14" };
+const MOTOR_VER = { load: "7", clean: "3", equip: "4", duct: "7", vent: "4", quote: "24", valor: "2", kaizen: "1", elec: "12", hidro: "11", fuego: "7", aire: "8", civil: "8", soporte: "14" };
 const MOTOR_CAMBIOS = {
   load: [{ ver: "2", rev: "2.9.20", que: "zonas con control de humedad se diseñan con dos casos ASHRAE (enfriamiento y deshumidificación)" },
     /* H-107 (auditoría 22-sep-2026): la rev 2.9.21 cambió esta lógica sin subir la versión; se declara aquí, con efecto retroactivo. */
@@ -20119,7 +20138,8 @@ const MOTOR_CAMBIOS = {
     { ver: "8", rev: "2.9.24", que: "H-178: la corriente de un motor de uso general sale de la Tabla 430-250 (trifásico) o 430-248 (monofásico, con su columna de 127 V) de la NOM-001-SEDE-2012 (430-6(a)(1)), no de kW/(1.732·V·fp): hp de placa (campo nuevo) o, sin él, el renglón inmediato superior al kW por la columna kW de la propia tabla (decisión del dueño 2; 15 kW → 25 hp → 68 A, antes 46.31 A → 4 AWG/125 A, ahora 3 AWG/175 A). Su kVA en la demanda sale de esa corriente. El hp de catálogo o estimado por otro motor (compresor, bombas) no es de placa: sólo puede subir el renglón. Los FFU entran como aparato (Exc. 2). Fuera de la tabla, corriente ESTIMADA con aviso, o PENDIENTE sin kW. Los proyectos que aceptaron la cédula antes salen con la propuesta «Desactualizada». Además H-180 (misma rev, sin subir versión; declarado por AUD-11): con el fp capturado fuera de [0.5, 1] o en 0 se usa el fp de la casa del tipo de carga, con aviso (antes el capturado se limitaba a 0.5–1); dentro de [0.5, 1] nada cambia" },
     { ver: "9", rev: "2.9.24", que: "H-268 (decisión del dueño, 27-sep-2026): el eléctrico es autónomo: calcula sólo con las cargas de su pestaña (capturadas y aceptadas de otros motores como propuesta, instantánea con origen y fecha). Se retiró el modo EN VIVO (tomarHVAC con permisos) que metía al calcular el equipo de la cédula HVAC, el ventilador, el compresor, las bombas y los FFU; aceptar la propuesta concede los cruces y, ya aceptada, no se mueve sola (si el origen cambia sale «desactualizada»). Un proyecto guardado en vivo se migra una vez al abrir (acepta la propuesta con los cruces que tenía) con las mismas cifras. Cambia de dónde salen las entradas del motor, no una fórmula: la huella del sello es sólo S.elec y permisos" },
     { ver: "10", rev: "2.9.24", que: "AUD-14 (auditoría externa, 29-sep-2026; «nada se estima»): una MCA o un MOP ESTIMADOS por la suite (elecOf: 0.85·FLA × 125 % y 175 %) ya no fijan el conductor ni la protección del equipo con motocompresor: se imprimen como referencia con aviso y el equipo se dimensiona sin placa (por su kW) hasta capturarla (antes la MOP estimada fijaba la protección); el conductor sin distancia o sin fp ya no supone 20 m ni fp 0.9 (caída pendiente)" },
-    { ver: "11", rev: "2.9.24", que: "AUD-14 (aprobada por el dueño, 7-oct-2026; regla 6, nada se estima): sin sistema eléctrico capturado y del catálogo ya no se suponen 3 fases 4 hilos 220/127 V (antes sistemaDe caía en 3F4H-220 y la cotización contaba 4 hilos): el sistema queda «dato pendiente» con error visible en avisos, memoria, PDF y consideraciones; ninguna carga, alimentador, corriente de falla ni hilo se dimensiona ni se cotiza, y el semáforo queda incompleto. Con un sistema válido la cotización cuenta los hilos de ese sistema. Mueve números sólo con el sistema vacío o fuera del catálogo. Prueba S.218" }],
+    { ver: "11", rev: "2.9.24", que: "AUD-14 (aprobada por el dueño, 7-oct-2026; regla 6, nada se estima): sin sistema eléctrico capturado y del catálogo ya no se suponen 3 fases 4 hilos 220/127 V (antes sistemaDe caía en 3F4H-220 y la cotización contaba 4 hilos): el sistema queda «dato pendiente» con error visible en avisos, memoria, PDF y consideraciones; ninguna carga, alimentador, corriente de falla ni hilo se dimensiona ni se cotiza, y el semáforo queda incompleto. Con un sistema válido la cotización cuenta los hilos de ese sistema. Mueve números sólo con el sistema vacío o fuera del catálogo. Prueba S.218" },
+    { ver: "12", rev: "2.9.24", que: "H-190 (aprobado por el dueño, 12-oct-2026): la caída de tensión usa R y XL por calibre de la columna «Conduit de acero» de la NOM-001-SEDE-2012, Cap. 10, Tabla 9 (antes R de la columna PVC y XL = 0.19 Ω/km fijo), porque la suite canaliza en EMT; aluminio de 14 a 8 AWG sin R en la tabla: calibre pendiente (mínimo por ampacidad, caída sin evaluar, aviso de error), sin saltar a 6 AWG. Mueve la caída de tensión de todo conductor; ningún calibre de los proyectos fijos cambia. Prueba S.238" }],
   hidro: [{ ver: "2", rev: "2.9.16", que: "tramo sin longitud ya no supone 10 m" }, { ver: "3", rev: "2.9.18", que: "curva de Hunter de IPC apéndice E Table E103.3(3)" }, { ver: "4", rev: "2.9.19", que: "renglones de 2500 a 5000 UM de la misma tabla" },
     { ver: "5", rev: "2.9.24", que: "H-194: presión mínima en la salida de cada mueble por la Tabla 604.3 del IPC 2015 (WC con fluxómetro 35 psi = 24.6 m, antes 10.5 m sin fuente; mingitorio 25, WC de tanque 20, regadera 20 por §424.3, lavabo/fregadero/lavadero/bebedero/manguera 8 psi); la carga dinámica de la bomba lleva máx(residual capturado, mínima de norma del mueble más exigente), antes sólo el residual fijo de 15 m" },
     { ver: "6", rev: "2.9.24", que: "H-195: regadera de emergencia (20 gpm = 75.7 L/min) y lavaojos fijo (0.4 gal/min = 1.5 L/min, mueble nuevo) fuera de Hunter con gasto fijo sumado al del sistema, antes 6 unidades mueble cada uno; volumen para 15 min; el tramo declara el gasto de emergencia que conduce (L/min) con aviso si ninguno lo lleva. Fuente secundaria: ANSI Z358.1-1990 citada por OSHA (cartas del 18-abr-2002 y 22-nov-1993); ratificar con Z358.1-2014" },
@@ -23147,7 +23167,7 @@ const NORMAS_ELEC = [
   { ...NOM001_2012, seccion: "Capítulo 10, Tabla 5", pagina: "1006", ancla: "TABLA 5. Dimensiones de los conductores aislados",
     uso: ["áreas de los conductores con su aislamiento para el relleno", "insulated conductor areas for the fill"], aplica: hayCargasElec },
   { ...NOM001_2012, seccion: "Capítulo 10, Tabla 9", pagina: "1011", ancla: "Tabla 9. Resistencia y reactancia en corriente alterna",
-    uso: ["resistencia en corriente alterna a 75 °C para la caída de tensión", "AC resistance at 75 °C for the voltage drop"], aplica: hayCargasElec },
+    uso: ["resistencia y reactancia en corriente alterna a 75 °C, columna de conduit de acero, para la caída de tensión (H-190)", "AC resistance and reactance at 75 °C, steel-conduit column, for the voltage drop (H-190)"], aplica: hayCargasElec },
 ];
 /* Etiqueta de una norma: con edición, año, sección y página sólo si su texto está en parches/normas-texto (regla 4). */
 const seccionNormaEn = (s) => String(s).replace("Capítulo 10, Tabla", "Chapter 10, Table").replace(/^Tabla /, "Table ").replace(" y Tabla ", " and Table ")
@@ -23225,8 +23245,8 @@ function consideracionesElec(R, E, en = false) {
     L("capturado por carga; las aceptadas de otro motor traen la tensión de su propuesta (instantánea con origen y fecha)", "captured per load; loads accepted from another module bring the voltage of their proposal (snapshot with source and date)"));
   P("canalizacion", L("Canalización", "Raceway"), L("tubo conduit metálico ligero (EMT)", "electrical metallic tubing (EMT)"), "casa",
     L("criterio de la casa declarado en el código (áreas de la Tabla 4 del Capítulo 10, renglón del Artículo 358)", "house criterion declared in the code (Chapter 10 Table 4 areas, Article 358 row)"));
-  P("reactancia", L("Reactancia de los conductores (caída de tensión)", "Conductor reactance (voltage drop)"), "0.19 ohm/km", "casa",
-    L("criterio de la casa declarado en el código (X_KM, canalización de acero)", "house criterion declared in the code (X_KM, steel raceway)"));
+  P("reactancia", L("Reactancia de los conductores (caída de tensión)", "Conductor reactance (voltage drop)"), L("por calibre, columna de conduit de acero (de 0.157 a 0.240 ohm/km)", "per size, steel-conduit column (0.157 to 0.240 ohm/km)"), "norma",
+    L("NOM-001-SEDE-2012, Cap. 10, Tabla 9 (DOF, p. 1011), con la resistencia de la misma columna; aluminio de 14 a 8 AWG sin dato: calibre pendiente (H-190)", "NOM-001-SEDE-2012, Ch. 10, Table 9 (DOF, p. 1011), with the resistance from the same column; aluminum 14 to 8 AWG has no data: size pending (H-190)"));
   P("kAIC", L("Capacidad interruptiva sugerida", "Suggested interrupting rating"), R && R.kAIC != null ? `≥ ${R.kAIC} kA` : L("pendiente (falta el transformador)", "pending (transformer missing)"), R && R.kAIC != null ? "casa" : "pendiente",
     L("criterio de la casa: primer valor comercial del escalón de computeElec arriba de la Icc estimada = kVA / (1.732·V·Z), cota superior; no es estudio de corto circuito", "house criterion: first commercial value of the computeElec ladder above the estimated Isc = kVA / (1.732·V·Z), an upper bound; not a short-circuit study"));
   out.normas = NORMAS_ELEC.map((x) => ({ familia: x.familia, norma: x.texto ? x.norma : null, edicion: x.texto ? x.edicion : null, anio: x.texto ? x.anio : null,
@@ -23270,7 +23290,7 @@ function viewElec() {
     <td class="num">${c.cond.ocpd}</td>
     <td class="num">${esc(c.cond.tierra)}</td>
     <td class="num">${esc(c.cond.tubo.d)}</td>`}
-    <td class="num" style="color:${c.cond.dv > num(E.dvRamal, 3) ? "var(--warn);font-weight:700;text-decoration:underline dotted" : "var(--dato)"}">${c.cond.dv == null ? `<span title="Sin longitud capturada: la caída no se supone">pendiente</span>` : `${M(c.cond.dv, 2)} %`}</td>
+    <td class="num" style="color:${c.cond.dv > num(E.dvRamal, 3) ? "var(--warn);font-weight:700;text-decoration:underline dotted" : "var(--dato)"}">${c.cond.dv == null ? `<span title="${c.cond.rPend ? "Aluminio sin R en la Tabla 9 de la NOM-001-SEDE-2012: calibre pendiente" : "Sin longitud capturada: la caída no se supone"}">pendiente</span>` : `${M(c.cond.dv, 2)} %`}</td>
     <td>${c.auto ? `<span class="badge">auto</span>` : `<button class="icon-btn" data-act="ec-del" data-i="${(E.cargas || []).findIndex((x) => x.id === c.id)}" aria-label="Eliminar carga">×</button>`}</td>
   </tr>`;
   const cargasUsuario = (E.cargas || []);
@@ -23312,7 +23332,7 @@ function viewElec() {
           <div class="metric"><div class="k">Corriente</div><div class="v">${M(R.Itab, 0)} <small>A</small></div></div>
           <div class="metric"><div class="k">Interruptor principal</div><div class="v">${R.principal} <small>A</small></div></div>
           <div class="metric"><div class="k">Alimentador</div><div class="v" style="font-size:19px">${R.alim.paralelo > 1 ? `${R.alim.paralelo} × ` : ""}${esc(R.alim.awg)}</div><div class="sub">${esc(R.mat)} · ${esc(R.alim.tubo.d)}${R.alim.paralelo > 1 ? ` × ${R.alim.paralelo}` : ""}${R.alim.dv == null ? " · mínimo por ampacidad" : ""}</div></div>
-          <div class="metric"><div class="k">Caída del alimentador</div>${R.alim.dv == null ? `<div class="v" style="font-size:17px">pendiente</div><div class="sub">falta la distancia al tablero</div>` : `<div class="v">${M(R.alim.dv, 2)} <small>%</small></div><div class="sub">rige ${esc(R.alim.rige)}</div>`}</div>
+          <div class="metric"><div class="k">Caída del alimentador</div>${R.alim.dv == null ? `<div class="v" style="font-size:17px">pendiente</div><div class="sub">${R.alim.rPend ? "aluminio sin R en la Tabla 9: calibre pendiente" : "falta la distancia al tablero"}</div>` : `<div class="v">${M(R.alim.dv, 2)} <small>%</small></div><div class="sub">rige ${esc(R.alim.rige)}</div>`}</div>
           <div class="metric"><div class="k">Falla estimada</div>${R.IccTrafo == null ? `<div class="v" style="font-size:17px">pendiente</div><div class="sub">falta el transformador (kVA y Z)</div>` : `<div class="v">${M(R.IccTrafo / 1000, 1)} <small>kA</small></div><div class="sub">interruptivo ≥ ${R.kAIC} kA</div>`}</div>
           <div class="metric"><div class="k">Desbalance</div><div class="v" style="color:${R.desbalance > 5 ? "var(--warn);font-weight:700;text-decoration:underline dotted" : "var(--dato)"}">${M(R.desbalance, 1)} <small>%</small></div></div>
         </div>
@@ -23994,7 +24014,7 @@ const GUIA = {
   electrico: { que: "Cuadro de cargas del proyecto con lo que capturas en esta pestaña: demanda, balanceo por fase, alimentador, protección, tierra y canalización.",
     cuando: "Cuando tienes las cargas del proyecto: cada una se captura en esta pestaña con su kW, tensión, fases y distancia (H-306: ya no se toman de los demás motores).",
     ojo: "Eléctrico es autónomo (H-268): calcula sólo con las cargas capturadas aquí y con las que aceptas de los demás motores como propuesta (instantánea con origen y fecha); nada entra sin aceptarse y, si el origen cambia, la propuesta avisa «desactualizada» y tú decides. El sistema, la distancia al tablero y el transformador también se capturan aquí. No es estudio de corto circuito ni coordinación de protecciones: los datos del transformador de la acometida solo sirven para estimar la corriente de falla, elegir la capacidad interruptiva y avisar si la demanda pasa del 80 % de su capacidad.",
-    metodo: "Ampacidad de la Tabla 310-15(b)(16) a 75 °C corregida por temperatura y agrupamiento, factores de demanda del art. 220, 125 % del motor mayor por el art. 430-24, protección por 240-6 y tierra por la Tabla 250-122. La caída de tensión se resuelve con R·cosφ + X·senφ y la Tabla 9 del capítulo 9, no con una constante K." },
+    metodo: "Ampacidad de la Tabla 310-15(b)(16) a 75 °C corregida por temperatura y agrupamiento, factores de demanda del art. 220, 125 % del motor mayor por el art. 430-24, protección por 240-6 y tierra por la Tabla 250-122. La caída de tensión se resuelve con R·cosφ + X·senφ con R y XL de la columna de conduit de acero de la Tabla 9 del Capítulo 10 (H-190), no con una constante K." },
   hidro: { que: "Agua fría y caliente por unidades mueble y método de Hunter, drenaje sanitario, cisterna y equipo de bombeo.",
     cuando: "Cuando hay muebles sanitarios que resolver; corre independiente del aire.",
     ojo: "Por debajo de diez unidades mueble el método de Hunter pierde sentido estadístico.",
