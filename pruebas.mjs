@@ -10778,6 +10778,17 @@ t("S.239 (soporte v15, aprobado por el dueño el 12-oct-2026) claros máximos de
   contiene(d.espaciamiento.fuente, "Tabla 4-2", "la fuente del redondo cita la tabla:");
   /* Lejos del borde no cambia nada: 10 m rectangular sigue en 6 (10/2.4384 = 4.10). */
   eq(ct({ id: "c3", tipo: "ducto_rect", ancho_mm: 600, alto_mm: 400, longitud_m: 10 }, {}).n_soportes, 6, "10 m rectangular, igual que antes:");
+  /* Borde k = 1, donde rige el piso de 2 soportes: 2.439/2.4384 = 1.00025 → 3 (con 2.44 daba 0.99959 → 2); 3.659/3.6576 = 1.00038 → 3 (con 3.66, 2). */
+  eq(ct({ id: "c4", tipo: "ducto_rect", ancho_mm: 600, alto_mm: 400, longitud_m: 2.439 }, {}).n_soportes, 3, "2.439 m rectangular:");
+  eq(ct({ id: "c5", tipo: "ducto_redondo", diam_mm: 500, longitud_m: 3.659 }, {}).n_soportes, 3, "3.659 m redondo:");
+  /* Control lejos del borde en redondo: 15 m sigue en 6 (15/3.6576 = 4.101; con 3.66, 4.098). */
+  eq(ct({ id: "c6", tipo: "ducto_redondo", diam_mm: 500, longitud_m: 15 }, {}).n_soportes, 6, "15 m redondo, igual que antes:");
+  ["SMACNA", "HVAC-DCS", "1995", "12 ft"].forEach((k) => contiene(d.espaciamiento.fuente, k, "fuente del redondo:"));
+  ["SMACNA", "HVAC-DCS", "8 ft"].forEach((k) => contiene(r.espaciamiento.fuente, k, "fuente del rectangular:"));
+  /* El PDF de soportería cita los pies exactos (antes «2.44 m en rectangular y 3.66 m en espiroducto»). */
+  const pdf = txtPdfE(G("buildSoportePdf")());
+  contiene(pdf, "8 ft (2.4384 m)", "PDF, rectangular:"); contiene(pdf, "12 ft (3.6576 m)", "PDF, redondo:");
+  if (/2\.44 m en rectangular|3\.66 m en espiroducto/.test(pdf)) throw new Error("el PDF conserva los claros viejos");
 });
 t("S.240 (H-190, complemento) el calibre pendiente del aluminio llega a las salidas propias del eléctrico: el unifilar lo lista como pendiente en ES y EN y su detalle en inglés no mete el «rige» ni el material de tierra en español; el aviso no cuenta las cargas sin corriente (sinI: no tienen ramal dimensionado); el PDF del eléctrico marca el calibre con * y lo explica. Sólo textos: ningún número cambia", () => {
   const guardado = JSON.stringify(S.elec), tab0 = S.tab;
